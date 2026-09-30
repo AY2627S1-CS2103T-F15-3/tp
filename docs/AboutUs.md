@@ -11,16 +11,6 @@ You can reach us at the email `seer[at]comp.nus.edu.sg`
 
 ## Project team
 
-### John Doe
-
-<img src="images/johndoe.png" width="200px">
-
-[[homepage](http://www.comp.nus.edu.sg/~damithch)]
-[[github](https://github.com/johndoe)]
-[[portfolio](team/johndoe.md)]
-
-* Role: Project Advisor
-
 ### Jane Doe
 
 <img src="images/johndoe.png" width="200px">
@@ -31,6 +21,7 @@ You can reach us at the email `seer[at]comp.nus.edu.sg`
 * Role: Team Lead
 * Responsibilities: UI
 
+
 ### Almarzooq Abdulaziz Moayad A
 
 <img src="images/aziz-almarzooq.png" width="200px">
@@ -38,7 +29,37 @@ You can reach us at the email `seer[at]comp.nus.edu.sg`
 [[github](http://github.com/aziz-Almarzooq)] [[portfolio](team/johndoe.md)]
 
 * Role: Developer
+* Responsibilities:
+
+### Hyunmin Lee
+
+<img src="images/hyunmin1211.png" width="200px">
+
+[[github](http://github.com/hyunmin1211)]
+
+
+* Role: Developer
 * Responsibilities: Data
+
+### Selene Chan
+
+<img src="images/sel-couth-ene.png" width="200px">
+
+[[github](http://github.com/sel-couth-ene)] [[portfolio](team/johndoe.md)]
+
+* Role: Developer
+* Responsibilities: Data
+
+### Ray
+
+<img src="images/ray.png" width="200px">
+
+[[homepage](http://www.comp.nus.edu.sg/~damithch)]
+[[github](https://github.com/RayWHJ)]
+[[portfolio](team/johndoe.md)]
+
+* Role: Developer
+* Responsibilities: 
 
 ### Jean Doe
 
@@ -49,13 +70,3 @@ You can reach us at the email `seer[at]comp.nus.edu.sg`
 
 * Role: Developer
 * Responsibilities: Dev Ops + Threading
-
-### James Doe
-
-<img src="images/johndoe.png" width="200px">
-
-[[github](http://github.com/johndoe)]
-[[portfolio](team/johndoe.md)]
-
-* Role: Developer
-* Responsibilities: UI
