@@ -16,5 +16,4 @@ You can reach us at the email `seer[at]comp.nus.edu.sg`
 <img src="images/peterpei666.png" width="200px">
 
 [[github](https://github.com/peterpei666)]
-
 * Role: Developer
