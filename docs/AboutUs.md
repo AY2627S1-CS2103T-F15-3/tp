@@ -21,11 +21,22 @@ You can reach us at the email `seer[at]comp.nus.edu.sg`
 * Role: Team Lead
 * Responsibilities: UI
 
+
+### Almarzooq Abdulaziz Moayad A
+
+<img src="images/aziz-almarzooq.png" width="200px">
+
+[[github](http://github.com/aziz-Almarzooq)] [[portfolio](team/johndoe.md)]
+
+* Role: Developer
+* Responsibilities:
+
 ### Hyunmin Lee
 
 <img src="images/hyunmin1211.png" width="200px">
 
 [[github](http://github.com/hyunmin1211)]
+
 
 * Role: Developer
 * Responsibilities: Data
