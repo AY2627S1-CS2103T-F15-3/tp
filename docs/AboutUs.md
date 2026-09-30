@@ -21,6 +21,15 @@ You can reach us at the email `seer[at]comp.nus.edu.sg`
 * Role: Team Lead
 * Responsibilities: UI
 
+### Hyunmin Lee
+
+<img src="images/hyunmin1211.png" width="200px">
+
+[[github](http://github.com/hyunmin1211)]
+
+* Role: Developer
+* Responsibilities: Data
+
 ### Selene Chan
 
 <img src="images/sel-couth-ene.png" width="200px">
