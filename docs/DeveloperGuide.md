@@ -298,28 +298,73 @@ Priorities: High (must have) - `* * *`, Medium (nice to have) - `* *`, Low (unli
 
 (For all use cases below, the **System** is the `AddressBook` and the **Actor** is the `user`, unless specified otherwise)
 
-**Use case: Delete a person**
+**Use case: Add a contact**
 
 **MSS**
 
-1.  User requests to list persons
-2.  AddressBook shows a list of persons
-3.  User requests to delete a specific person in the list
-4.  AddressBook deletes the person
+1.  User requests to add a new contact 
+2.  User provides the person's name, phone number, email address, and address
+3.  UniMate validates the provided contact information
+4.  UniMate adds the contact 
+5.  UniMate informs the user that the contact has been added
 
     Use case ends.
 
 **Extensions**
 
-* 2a. The list is empty.
+* 2a. User does not provide all required information.
 
-  Use case ends.
+    * 2a1. UniMate informs user that the required information is missing.
 
-* 3a. The given index is invalid.
+      Use case ends.
 
-    * 3a1. AddressBook shows an error message.
+* 3a. UniMate detects invalid contact information.
 
-      Use case resumes at step 2.
+    * 3a1. UniMate informs user which information is invalid.
+      
+      Use case ends.
+
+* 3b. UniMate detects a duplicate contact with the same name.
+
+    * 3a1. UniMate informs user that the contact already exists.
+      
+      Use case ends.
+
+**Use case: View contacts**
+
+**MSS**
+
+1.  User requests to view all existing contacts.
+2.  UniMate shows all existing contacts.
+
+    Use case ends.
+
+**Extensions**
+
+* 2a. There are no existing contacts.
+
+    * 2a1. UniMate shows an empty contact list.
+
+      Use case ends.
+
+**Use case: Delete a contact**
+
+**MSS**
+
+1.  <u>User view all existing contacts (Use case: View contacts) </u>
+2.  User requests to delete a specific contact from the displayed list. 
+3.  UniMate deletes the specified contact. 
+4.  UniMate informs user that the contact has been deleted.
+
+    Use case ends.
+
+**Extensions**
+
+* 2a. The given index is invalid.
+
+    * 3a1. UniMate informs user that the given index is invalid.
+
+      Use case resumes at step 1.
 
 *{More to be added}*
 
