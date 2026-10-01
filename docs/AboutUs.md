@@ -15,12 +15,15 @@ You can reach us at the email `seer[at]comp.nus.edu.sg`
 
 <img src="images/johndoe.png" width="200px">
 
-[[github](http://github.com/johndoe)]
-[[portfolio](team/johndoe.md)]
 
-* Role: Team Lead
-* Responsibilities: UI
+### Pei Teer
 
+<img src="images/peterpei666.png" width="200px">
+
+[[github](https://github.com/peterpei666)]
+
+* Role: Developer
+* Responsibilities:
 
 ### Zhang Ruixuan
 
@@ -76,5 +79,4 @@ You can reach us at the email `seer[at]comp.nus.edu.sg`
 [[github](http://github.com/johndoe)]
 [[portfolio](team/johndoe.md)]
 
-* Role: Developer
-* Responsibilities: Dev Ops + Threading
+
