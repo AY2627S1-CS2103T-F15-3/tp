@@ -1,7 +1,7 @@
 {
   "baseUrl": "",
-  "titlePrefix": "UniMate",
-  "titleSuffix": "AddressBook Level-3",
+  "titlePrefix": "",
+  "titleSuffix": "UniMate",
   "faviconPath": "images/SeEduLogo.png",
   "style": {
     "codeTheme": "light"
