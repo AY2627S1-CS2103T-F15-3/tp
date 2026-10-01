@@ -63,14 +63,13 @@ You can reach us at the email `seer[at]comp.nus.edu.sg`
 
 ### Ray
 
-<img src="images/ray.png" width="200px">
+<img src="images/raywhj.png" width="200px">
 
-[[homepage](http://www.comp.nus.edu.sg/~damithch)]
 [[github](https://github.com/RayWHJ)]
 [[portfolio](team/johndoe.md)]
 
 * Role: Developer
-* Responsibilities: 
+* Responsibilities:
 
 ### Jean Doe
 
