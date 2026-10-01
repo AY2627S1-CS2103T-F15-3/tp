@@ -22,6 +22,15 @@ You can reach us at the email `seer[at]comp.nus.edu.sg`
 * Responsibilities: UI
 
 
+### Zhang Ruixuan
+
+<img src="images/zruixuan.png" width="200px">
+
+[[github](https://github.com/zruixuan)]
+
+* Role: Developer
+* Responsibilities:
+
 ### Almarzooq Abdulaziz Moayad A
 
 <img src="images/aziz-almarzooq.png" width="200px">
@@ -36,7 +45,6 @@ You can reach us at the email `seer[at]comp.nus.edu.sg`
 <img src="images/hyunmin1211.png" width="200px">
 
 [[github](http://github.com/hyunmin1211)]
-
 
 * Role: Developer
 * Responsibilities: Data
