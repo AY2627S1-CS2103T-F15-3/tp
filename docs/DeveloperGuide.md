@@ -399,8 +399,21 @@ Priorities: High (must have) - `* * *`, Medium (nice to have) - `* *`, Low (unli
 
 ### Glossary
 
-* **Mainstream OS**: Windows, Linux, Unix, or macOS
-* **Private contact detail**: A contact detail that is not meant to be shared with others
+* **Category**: A grouping used to organise contacts by a shared attribute or context, such as a module, major, CCA, event, or project.
+* **CCA (Co-Curricular Activity)**: An organised student activity outside academic classes, such as a sports club, performing arts group, or student society.
+* **CLI (Command-Line Interface)**: An interface in which users type text commands to perform operations. UniMate accepts these commands through the command box in its graphical window.
+* **Contact**: A record representing a person in the user's collection, containing their name and contact information. Also referred to as a person in this guide.
+* **Contact information**: Details recorded about a person, such as their phone number, email address, and postal address.
+* **Contact list index**: The one-based position of a contact in the currently displayed list, used by commands to select that contact. It is not a permanent identifier for the person.
+* **GUI (Graphical User Interface)**: An interface that presents information through visual elements such as windows, lists, and buttons.
+* **Mainstream OS (Operating System)**: Windows, Linux, Unix, or macOS, as used in this guide's non-functional requirements.
+* **Major**: A student's principal academic field of study, such as Computer Science.
+* **Module**: A university course or unit of study, typically identified by a code such as CS2103T. Here, it refers to an academic course rather than a software component.
+* **Private contact detail**: A contact detail that is not meant to be shared with others.
+* **Tag**: A text label attached to a contact to help organise the contact collection. A contact can have multiple tags.
+* **Tutorial group**: A group of students assigned to attend the same tutorial session for a particular module.
+* **University-related context**: Information that connects a contact to university life, such as their module, major, year of study, CCA, or the event or project through which the user knows them.
+* **Year of study**: A student's current stage in their university programme, such as Year 1 or Year 2, rather than a calendar year.
 
 --------------------------------------------------------------------------------------------------------------------
 
