@@ -270,29 +270,50 @@ _{Explain here how the data archiving feature will be implemented}_
 
 **Target user profile**:
 
-* has a need to manage a significant number of contacts
-* prefers desktop apps over other types of applications
-* can type fast
-* prefers typing to mouse interactions
+* is a university student with many university-related contacts
+* needs to retain and maintain personal contact information
+* prefers desktop apps
+* can type fast and prefers typing to mouse interactions
 * is reasonably comfortable using CLI apps
+* manages their own contact collection
 
-**Value proposition**: Manage contacts faster than with a typical mouse-driven GUI application.
-
+**Value proposition**: Organise university contacts and find the right person by name or university-related context using typed commands.
 
 ### User stories
 
 Priorities: High (must have) - `* * *`, Medium (nice to have) - `* *`, Low (unlikely to have) - `*`
 
-| Priority | As a …                                    | I want to …                 | So that I can…                                                        |
-|----------|--------------------------------------------|------------------------------|------------------------------------------------------------------------|
-| `* * *`  | new user                                   | see usage instructions       | refer to instructions when I forget how to use the App                 |
-| `* * *`  | user                                       | add a new person             |                                                                        |
-| `* * *`  | user                                       | delete a person              | remove entries that I no longer need                                   |
-| `* * *`  | user                                       | find a person by name        | locate details of persons without having to go through the entire list |
-| `* *`    | user                                       | hide private contact details | minimize chance of someone else seeing them by accident                |
-| `*`      | user with many persons in the address book | sort persons by name         | locate a person easily                                                 |
+| Priority | As a …         | I want to …                                                                     | So that I can …                                                 |
+|----------|----------------|---------------------------------------------------------------------------------|-----------------------------------------------------------------|
+| `* * *`  | new user       | see usage instructions                                                          | understand UniMate's capabilities and learn its commands        |
+| `* * *`  | user           | add a person and their contact information                                      | retain the details of people I meet                             |
+| `* * *`  | user           | view all my stored contacts                                                     | review the people in my collection                              |
+| `* * *`  | user           | view a contact's details                                                        | retrieve their information when needed                          |
+| `* * *`  | user           | delete a contact                                                                | remove an entry that I no longer need                           |
+| `* * *`  | user           | edit a contact's information                                                    | keep their details up to date                                   |
+| `* * *`  | returning user | access previously saved contacts                                                | continue using my collection without recreating it              |
+| `* * *`  | user           | categorise contacts by module, major, year, nationality, CCA, event, or project | organise people by their university-related context             |
+| `* * *`  | user           | assign multiple categories to one contact                                       | represent different contexts without creating duplicate records |
+| `* * *`  | user           | find contacts by name                                                           | retrieve someone's details without browsing the entire list     |
+| `* * *`  | user           | filter contacts by university-related context                                   | find relevant people when I cannot remember their names         |
+| `* *`    | user           | identify contacts from the same tutorial group                                  | contact the appropriate classmates                              |
+| `* *`    | user           | add short notes to a contact                                                    | remember useful information, including how we met               |
+| `* *`    | user           | distinguish academic contacts from personal contacts                            | focus on the group relevant to my current activity              |
+| `* *`    | user           | mark and retrieve favourite contacts                                            | quickly access people I contact frequently                      |
+| `* *`    | user           | undo a recent contact change                                                    | recover from an accidental addition or edit                     |
+| `* *`    | user           | redo an undone contact change                                                   | restore an intended change without entering it again            |
+| `* *`    | user           | recall previously entered commands                                              | repeat or modify commands without retyping them                 |
+| `* *`    | user           | use short command aliases                                                       | perform frequent operations with fewer keystrokes               |
+| `* *`    | user           | autocomplete partially entered commands                                         | reduce typing effort and spelling mistakes                      |
+| `* *`    | new user       | receive suggestions after an invalid command                                    | correct mistakes without repeatedly consulting the usage guide  |
+| `* *`    | user           | sort contacts by a chosen attribute                                             | review my collection in a useful order                          |
+| `* *`    | user           | see automatic labels for missing optional contact information                   | identify records that need more details                         |
+| `* *`    | user           | see when a contact was last updated                                             | judge how recently their information was maintained             |
+| `* *`    | user           | see automatic labels for contacts not updated for over a year                   | identify potentially outdated records                           |
+| `*`      | user           | identify contacts I have not interacted with for a long time                    | decide whom to reconnect with or remove                         |
+| `*`      | user           | attach a follow-up task and deadline to a contact                               | remember what I need to do for that person and when             |
+| `*`      | user           | open a contact's recorded GitHub or Telegram profile                            | access their external profile without searching separately      |
 
-*{More to be added}*
 
 ### Use cases
 
