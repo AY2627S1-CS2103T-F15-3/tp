@@ -113,6 +113,20 @@ Examples:
 *  `edit 1 p/91234567 e/johndoe@example.com` Edits the phone number and email address of the 1st person to be `91234567` and `johndoe@example.com` respectively.
 *  `edit 2 n/Betsy Crower t/` Edits the name of the 2nd person to be `Betsy Crower` and clears all existing tags.
 
+### Adding or clearing a remark: `remark`
+
+Adds or replaces an optional note for a person.
+
+Format: `remark INDEX [r/REMARK]`
+
+* `INDEX` is a positive integer referring to the currently displayed person list.
+* The new remark replaces the old one and appears on the person's card.
+* `remark INDEX r/` or `remark INDEX` clears the remark.
+* Repeating `r/` is rejected. Other contact details are preserved.
+* Remarks are saved with the contacts and remain after restarting the app.
+
+Example: `remark 1 r/Met during orientation`
+
 ### Locating persons by name: `find`
 
 Finds persons whose names contain any of the given keywords.
@@ -200,5 +214,6 @@ Action     | Format, Examples
 **Delete** | `delete INDEX`<br> e.g., `delete 3`
 **Edit**   | `edit INDEX [n/NAME] [p/PHONE_NUMBER] [e/EMAIL] [a/ADDRESS] [t/TAG]... `<br> e.g.,`edit 2 n/James Lee e/jameslee@example.com`
 **Find**   | `find KEYWORD [MORE_KEYWORDS]`<br> e.g., `find James Jake`
+**Remark** | `remark INDEX [r/REMARK]`<br> e.g., `remark 1 r/Met during orientation`
 **List**   | `list`
 **Help**   | `help`
