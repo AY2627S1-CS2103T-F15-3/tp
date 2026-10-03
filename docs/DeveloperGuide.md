@@ -394,8 +394,11 @@ Priorities: High (must have) - `* * *`, Medium (nice to have) - `* *`, Low (unli
 1.  Should work on any _mainstream OS_ as long as it has Java `25` or above installed.
 2.  Should be able to hold up to 1000 persons without noticeable sluggishness in performance for typical usage.
 3.  A user with above average typing speed for regular English text (i.e. not code, not system admin commands) should be able to accomplish most of the tasks faster using commands than using the mouse.
-
-*{More to be added}*
+4.  UniMate should respond to user commands within 1 second for up to 1,000 stored contacts.  
+5.  UniMate should work without an Internet connection.  
+6.  UniMate should preserve all saved contact information between application sessions.  
+7.  Invalid user input should not corrupt or modify existing stored contact data.  
+8.  UniMate should display a meaningful error message for invalid user input without crashing.
 
 ### Glossary
 
