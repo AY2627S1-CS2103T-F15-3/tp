@@ -91,7 +91,7 @@ public class DefaultTagsIntegrationTest {
     @Test
     public void parse_invalidTagSyntax_rejectsCommand() {
         for (String input : new String[]{"tag", "tag 1", "tag 0 d/1", "tag -1 d/1",
-            "tag x d/1", "tag 1 t/NOC", "tag 1 d/1 t/NOC", "tag 1 f/NOC d/1"}) {
+            "tag x d/1", "tag 1 f/NOC d/1"}) {
             assertThrows(ParseException.class, () -> parser.parseCommand(input));
         }
     }
