@@ -80,8 +80,8 @@ public class DefaultTagsIntegrationTest {
         for (String value : new String[]{"", "0", "-1", "6", "1.5", "abc", "99999999999999999"}) {
             for (String prefix : new String[]{"tag 1 d/1 d/",
                 "add n/Alice p/91234567 e/alice@example.com a/NUS d/1 d/"}) {
-                ParseException exception = assertThrows(ParseException.class,
-                        () -> parser.parseCommand(prefix + value));
+                ParseException exception = assertThrows(ParseException.class, () ->
+                        parser.parseCommand(prefix + value));
                 assertEquals(ParserUtil.MESSAGE_INVALID_DEFAULT_TAG_INDEX, exception.getMessage());
             }
         }
