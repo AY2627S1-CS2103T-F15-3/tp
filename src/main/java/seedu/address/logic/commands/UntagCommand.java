@@ -15,23 +15,23 @@ import seedu.address.model.person.Person;
 import seedu.address.model.tag.Tag;
 
 /**
- * Adds tags to a person in the displayed list without removing existing tags.
+ * Removes specified tags from a person in the displayed list.
  */
-public class TagCommand extends Command {
-    public static final String COMMAND_WORD = "tag";
-    public static final String MESSAGE_USAGE = "tag: Adds tags to the person at the displayed index. "
-            + "Existing tags are preserved.\n"
-            + "Parameters: INDEX [d/DEFAULT_INDEX]... [t/TAG]... (at least one tag is required)\n"
-            + "Example: tag 1 d/1 t/NOC";
-    public static final String MESSAGE_SUCCESS = "Tagged person: %1$s";
+public class UntagCommand extends Command {
+    public static final String COMMAND_WORD = "untag";
+    public static final String MESSAGE_USAGE = "untag: Removes tags from the person at the displayed index. "
+            + "Other tags are preserved.\n"
+            + "Parameters: INDEX t/TAG [t/TAG]...\n"
+            + "Example: untag 1 t/NOC";
+    public static final String MESSAGE_SUCCESS = "Untagged person: %1$s";
 
     private final Index index;
     private final Set<Tag> tags;
 
     /**
-     * Creates a command to add the given tags to the person at {@code index}.
+     * Creates a command to remove the given tags from the person at {@code index}.
      */
-    public TagCommand(Index index, Set<Tag> tags) {
+    public UntagCommand(Index index, Set<Tag> tags) {
         requireAllNonNull(index, tags);
         this.index = index;
         this.tags = Set.copyOf(tags);
@@ -46,7 +46,7 @@ public class TagCommand extends Command {
         }
         Person person = displayedPersons.get(index.getZeroBased());
         Set<Tag> updatedTags = new HashSet<>(person.getTags());
-        updatedTags.addAll(tags);
+        updatedTags.removeAll(tags);
         Person updatedPerson = new Person(person.getName(), person.getPhone(), person.getEmail(),
                 person.getAddress(), updatedTags);
         model.setPerson(person, updatedPerson);
@@ -55,7 +55,7 @@ public class TagCommand extends Command {
 
     @Override
     public boolean equals(Object other) {
-        return other == this || (other instanceof TagCommand otherCommand
+        return other == this || (other instanceof UntagCommand otherCommand
                 && index.equals(otherCommand.index) && tags.equals(otherCommand.tags));
     }
 }
