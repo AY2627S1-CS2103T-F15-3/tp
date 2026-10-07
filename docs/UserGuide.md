@@ -80,7 +80,7 @@ Format: `help`
 
 Adds a person to the address book.
 
-Format: `add n/NAME p/PHONE_NUMBER e/EMAIL a/ADDRESS [t/TAG]... `
+Format: `add n/NAME p/PHONE_NUMBER e/EMAIL a/ADDRESS [t/TAG]... [d/DEFAULT_INDEX]...`
 
 <box type="tip" seamless>
 
@@ -90,6 +90,34 @@ Format: `add n/NAME p/PHONE_NUMBER e/EMAIL a/ADDRESS [t/TAG]... `
 Examples:
 * `add n/John Doe p/98765432 e/johnd@example.com a/John street, block 123, #01-01`
 * `add n/Betsy Crowe t/friend e/betsycrowe@example.com a/Newgate Prison p/1234567 t/criminal`
+
+### Listing default tags: `tags`
+
+Displays the available default tags and their fixed indices:
+
+1. Friend
+2. Classmate
+3. Teammate
+4. Tutor
+5. Prof
+
+Format: `tags`
+
+### Adding default tags to a person: `tag`
+
+Format: `tag INDEX d/DEFAULT_INDEX [d/DEFAULT_INDEX]...`
+
+Uses the person's index in the currently displayed list. Default tag indices must be integers from 1 to 5.
+Existing tags are preserved; repeated tags are stored only once. The current list filter is preserved.
+
+Examples:
+* `tag 1 d/2` adds `Classmate` to the first displayed person.
+* `tag 1 d/1 d/3` adds `Friend` and `Teammate`.
+* `add n/Alice p/91234567 e/alice@example.com a/NUS d/1 d/3 t/NOC` creates a person with
+  two default tags and the custom tag `NOC`.
+
+Default tags are stored by name, just like existing tags. For example, `d/1` and `t/Friend` select the same tag.
+Custom tags still use `t/` in `add` and `edit`. The `tag` command currently accepts only `d/`.
 
 ### Listing all persons: `list`
 

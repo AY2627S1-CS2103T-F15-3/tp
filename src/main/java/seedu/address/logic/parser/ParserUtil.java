@@ -13,6 +13,7 @@ import seedu.address.model.person.Address;
 import seedu.address.model.person.Email;
 import seedu.address.model.person.Name;
 import seedu.address.model.person.Phone;
+import seedu.address.model.tag.DefaultTags;
 import seedu.address.model.tag.Tag;
 
 /**
@@ -21,6 +22,30 @@ import seedu.address.model.tag.Tag;
 public class ParserUtil {
 
     public static final String MESSAGE_INVALID_INDEX = "Index must be a positive integer.";
+    public static final String MESSAGE_INVALID_DEFAULT_TAG_INDEX =
+            "Default tag index must be an integer from 1 to " + DefaultTags.TAGS.size() + ". Use tags to view them.";
+
+    /**
+     * Parses default tag indices into a set of tags.
+     * @throws ParseException if any index is invalid or outside the default tag list.
+     */
+    public static Set<Tag> parseDefaultTags(Collection<String> indices) throws ParseException {
+        requireNonNull(indices);
+        Set<Tag> tags = new HashSet<>();
+        for (String value : indices) {
+            Index index;
+            try {
+                index = parseIndex(value);
+            } catch (ParseException e) {
+                throw new ParseException(MESSAGE_INVALID_DEFAULT_TAG_INDEX, e);
+            }
+            if (index.getZeroBased() >= DefaultTags.TAGS.size()) {
+                throw new ParseException(MESSAGE_INVALID_DEFAULT_TAG_INDEX);
+            }
+            tags.add(DefaultTags.TAGS.get(index.getZeroBased()));
+        }
+        return tags;
+    }
 
     /**
      * Parses {@code oneBasedIndex} into an {@code Index} and returns it. Leading and trailing whitespaces will be
