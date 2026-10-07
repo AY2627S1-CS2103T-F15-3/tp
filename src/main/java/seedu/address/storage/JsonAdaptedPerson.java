@@ -12,6 +12,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import seedu.address.commons.exceptions.IllegalValueException;
 import seedu.address.model.person.Address;
 import seedu.address.model.person.Email;
+import seedu.address.model.person.GraduationYear;
+import seedu.address.model.person.Major;
 import seedu.address.model.person.Name;
 import seedu.address.model.person.Person;
 import seedu.address.model.person.Phone;
@@ -28,6 +30,8 @@ class JsonAdaptedPerson {
     private final String phone;
     private final String email;
     private final String address;
+    private final String major;
+    private final String graduationYear;
     private final List<JsonAdaptedTag> tags = new ArrayList<>();
 
     /**
@@ -36,11 +40,14 @@ class JsonAdaptedPerson {
     @JsonCreator
     public JsonAdaptedPerson(@JsonProperty("name") String name, @JsonProperty("phone") String phone,
             @JsonProperty("email") String email, @JsonProperty("address") String address,
+            @JsonProperty("major") String major, @JsonProperty("graduationYear") String graduationYear,
             @JsonProperty("tags") List<JsonAdaptedTag> tags) {
         this.name = name;
         this.phone = phone;
         this.email = email;
         this.address = address;
+        this.major = major;
+        this.graduationYear = graduationYear;
         if (tags != null) {
             this.tags.addAll(tags);
         }
@@ -54,6 +61,8 @@ class JsonAdaptedPerson {
         phone = source.getPhone().value;
         email = source.getEmail().value;
         address = source.getAddress().value;
+        major = source.getMajor().value;
+        graduationYear = source.getGraduationYear().value;
         tags.addAll(source.getTags().stream()
                 .map(JsonAdaptedTag::new)
                 .collect(Collectors.toList()));
@@ -102,8 +111,22 @@ class JsonAdaptedPerson {
         }
         final Address modelAddress = new Address(address);
 
+        // Older AB3 files do not contain these optional fields.
+        String storedMajor = major == null ? "" : major;
+        if (!Major.isValidMajor(storedMajor)) {
+            throw new IllegalValueException(Major.MESSAGE_CONSTRAINTS);
+        }
+        final Major modelMajor = new Major(storedMajor);
+
+        String storedYear = graduationYear == null ? "" : graduationYear;
+        if (!GraduationYear.isValidGraduationYear(storedYear)) {
+            throw new IllegalValueException(GraduationYear.MESSAGE_CONSTRAINTS);
+        }
+        final GraduationYear modelGraduationYear = new GraduationYear(storedYear);
+
         final Set<Tag> modelTags = new HashSet<>(personTags);
-        return new Person(modelName, modelPhone, modelEmail, modelAddress, modelTags);
+        return new Person(modelName, modelPhone, modelEmail, modelAddress,
+                modelMajor, modelGraduationYear, modelTags);
     }
 
 }

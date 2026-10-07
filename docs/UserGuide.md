@@ -80,14 +80,22 @@ Format: `help`
 
 Adds a person to the address book.
 
-Format: `add n/NAME p/PHONE_NUMBER e/EMAIL a/ADDRESS [t/TAG]... `
+Format: `add n/NAME p/PHONE_NUMBER e/EMAIL a/ADDRESS [m/MAJOR] [c/CLASS_YEAR] [t/TAG]... `
 
 <box type="tip" seamless>
 
 **Tip:** A person can have any number of tags, including zero.
+Major and class year are optional and can be supplied independently.
 </box>
 
+* `m/MAJOR` records the person's academic major. A supplied major must be non-blank text on one line.
+* `c/CLASS_YEAR` records the graduation year (class of 20XX). Enter exactly four digits from `2000` to `2099`.
+* Omit `m/` or `c/` if the value is unknown or does not apply; an empty supplied value is rejected.
+* Each of these prefixes may appear only once. Leading and trailing spaces around their values are ignored.
+* The fields are saved with the contact. Displaying and editing them will be added in a later increment.
+
 Examples:
+* `add n/Alex Tan p/91234567 e/alex@example.com a/10 Kent Ridge Road m/Computer Science c/2027 t/classmate`
 * `add n/John Doe p/98765432 e/johnd@example.com a/John street, block 123, #01-01`
 * `add n/Betsy Crowe t/friend e/betsycrowe@example.com a/Newgate Prison p/1234567 t/criminal`
 
@@ -195,7 +203,7 @@ _Details coming soon ..._
 
 Action     | Format, Examples
 -----------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------
-**Add**    | `add n/NAME p/PHONE_NUMBER e/EMAIL a/ADDRESS [t/TAG]... ` <br> e.g., `add n/James Ho p/22224444 e/jamesho@example.com a/123, Clementi Rd, 1234665 t/friend t/colleague`
+**Add**    | `add n/NAME p/PHONE_NUMBER e/EMAIL a/ADDRESS [m/MAJOR] [c/CLASS_YEAR] [t/TAG]... ` <br> e.g., `add n/James Ho p/22224444 e/jamesho@example.com a/123, Clementi Rd, 1234665 t/friend t/colleague`
 **Clear**  | `clear`
 **Delete** | `delete INDEX`<br> e.g., `delete 3`
 **Edit**   | `edit INDEX [n/NAME] [p/PHONE_NUMBER] [e/EMAIL] [a/ADDRESS] [t/TAG]... `<br> e.g.,`edit 2 n/James Lee e/jameslee@example.com`

@@ -26,6 +26,8 @@ import static seedu.address.logic.commands.CommandTestUtil.VALID_TAG_FRIEND;
 import static seedu.address.logic.commands.CommandTestUtil.VALID_TAG_HUSBAND;
 import static seedu.address.logic.parser.CliSyntax.PREFIX_ADDRESS;
 import static seedu.address.logic.parser.CliSyntax.PREFIX_EMAIL;
+import static seedu.address.logic.parser.CliSyntax.PREFIX_GRADUATION_YEAR;
+import static seedu.address.logic.parser.CliSyntax.PREFIX_MAJOR;
 import static seedu.address.logic.parser.CliSyntax.PREFIX_NAME;
 import static seedu.address.logic.parser.CliSyntax.PREFIX_PHONE;
 import static seedu.address.logic.parser.CommandParserTestUtil.assertParseFailure;
@@ -33,12 +35,16 @@ import static seedu.address.logic.parser.CommandParserTestUtil.assertParseSucces
 import static seedu.address.testutil.TypicalPersons.AMY;
 import static seedu.address.testutil.TypicalPersons.BOB;
 
+import java.util.List;
+
 import org.junit.jupiter.api.Test;
 
 import seedu.address.logic.Messages;
 import seedu.address.logic.commands.AddCommand;
 import seedu.address.model.person.Address;
 import seedu.address.model.person.Email;
+import seedu.address.model.person.GraduationYear;
+import seedu.address.model.person.Major;
 import seedu.address.model.person.Name;
 import seedu.address.model.person.Person;
 import seedu.address.model.person.Phone;
@@ -192,5 +198,48 @@ public class AddCommandParserTest {
         assertParseFailure(parser, PREAMBLE_NON_EMPTY + NAME_DESC_BOB + PHONE_DESC_BOB + EMAIL_DESC_BOB
                 + ADDRESS_DESC_BOB + TAG_DESC_HUSBAND + TAG_DESC_FRIEND,
                 String.format(MESSAGE_INVALID_COMMAND_FORMAT, AddCommand.MESSAGE_USAGE));
+    }
+
+    @Test
+    public void parse_universityFieldsAndTags_success() {
+        String existingFields = NAME_DESC_BOB + PHONE_DESC_BOB + EMAIL_DESC_BOB + ADDRESS_DESC_BOB;
+        Person expected = new PersonBuilder(BOB).withMajor("Computer Science").withGraduationYear("2027")
+                .withTags(VALID_TAG_FRIEND, VALID_TAG_HUSBAND).build();
+        assertParseSuccess(parser, existingFields + " m/Computer Science c/2027"
+                + TAG_DESC_FRIEND + TAG_DESC_HUSBAND + TAG_DESC_FRIEND, new AddCommand(expected));
+        assertParseSuccess(parser, " c/ 2027  m/ Computer Science  " + existingFields
+                + TAG_DESC_HUSBAND + TAG_DESC_FRIEND, new AddCommand(expected));
+    }
+
+    @Test
+    public void parse_universityFieldsIndependentlyOptional_success() {
+        String existingFields = NAME_DESC_BOB + PHONE_DESC_BOB + EMAIL_DESC_BOB + ADDRESS_DESC_BOB;
+        Person majorOnly = new PersonBuilder(BOB).withTags().withMajor("Business").build();
+        Person yearOnly = new PersonBuilder(BOB).withTags().withGraduationYear("2027").build();
+        assertParseSuccess(parser, existingFields + " m/Business", new AddCommand(majorOnly));
+        assertParseSuccess(parser, existingFields + " c/2027", new AddCommand(yearOnly));
+    }
+
+    @Test
+    public void parse_invalidUniversityFields_failure() {
+        String existingFields = NAME_DESC_BOB + PHONE_DESC_BOB + EMAIL_DESC_BOB + ADDRESS_DESC_BOB;
+        for (String invalidMajor : List.of(" m/", " m/   ", " m/Computer\nScience")) {
+            assertParseFailure(parser, existingFields + invalidMajor, Major.MESSAGE_CONSTRAINTS);
+        }
+        for (String invalidYear : List.of(" c/", " c/   ", " c/1999", " c/2100", " c/27", " c/20XX",
+                " c/20270", " c/2027.0", " c/２０２７")) {
+            assertParseFailure(parser, existingFields + invalidYear, GraduationYear.MESSAGE_CONSTRAINTS);
+        }
+    }
+
+    @Test
+    public void parse_repeatedUniversityFields_failure() {
+        String existingFields = NAME_DESC_BOB + PHONE_DESC_BOB + EMAIL_DESC_BOB + ADDRESS_DESC_BOB;
+        assertParseFailure(parser, existingFields + " m/Business m/Computer Science",
+                Messages.getErrorMessageForDuplicatePrefixes(PREFIX_MAJOR));
+        assertParseFailure(parser, existingFields + " m/Business m/Business",
+                Messages.getErrorMessageForDuplicatePrefixes(PREFIX_MAJOR));
+        assertParseFailure(parser, existingFields + " c/20XX c/2027",
+                Messages.getErrorMessageForDuplicatePrefixes(PREFIX_GRADUATION_YEAR));
     }
 }

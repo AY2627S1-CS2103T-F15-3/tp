@@ -85,6 +85,14 @@ public class PersonTest {
         editedAlice = new PersonBuilder(ALICE).withAddress(VALID_ADDRESS_BOB).build();
         assertFalse(ALICE.equals(editedAlice));
 
+        // new fields affect equality but do not change identity
+        editedAlice = new PersonBuilder(ALICE).withMajor("Computer Science").build();
+        assertFalse(ALICE.equals(editedAlice));
+        assertTrue(ALICE.isSamePerson(editedAlice));
+        editedAlice = new PersonBuilder(ALICE).withGraduationYear("2027").build();
+        assertFalse(ALICE.equals(editedAlice));
+        assertTrue(ALICE.isSamePerson(editedAlice));
+
         // different tags -> returns false
         editedAlice = new PersonBuilder(ALICE).withTags(VALID_TAG_HUSBAND).build();
         assertFalse(ALICE.equals(editedAlice));
@@ -93,7 +101,9 @@ public class PersonTest {
     @Test
     public void toStringMethod() {
         String expected = Person.class.getCanonicalName() + "{name=" + ALICE.getName() + ", phone=" + ALICE.getPhone()
-                + ", email=" + ALICE.getEmail() + ", address=" + ALICE.getAddress() + ", tags=" + ALICE.getTags() + "}";
+                + ", email=" + ALICE.getEmail() + ", address=" + ALICE.getAddress()
+                + ", major=" + ALICE.getMajor() + ", graduationYear=" + ALICE.getGraduationYear()
+                + ", tags=" + ALICE.getTags() + "}";
         assertEquals(expected, ALICE.toString());
     }
 }

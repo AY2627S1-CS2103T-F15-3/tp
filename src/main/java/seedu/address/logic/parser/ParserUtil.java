@@ -11,6 +11,8 @@ import seedu.address.commons.util.StringUtil;
 import seedu.address.logic.parser.exceptions.ParseException;
 import seedu.address.model.person.Address;
 import seedu.address.model.person.Email;
+import seedu.address.model.person.GraduationYear;
+import seedu.address.model.person.Major;
 import seedu.address.model.person.Name;
 import seedu.address.model.person.Phone;
 import seedu.address.model.tag.Tag;
@@ -93,6 +95,36 @@ public class ParserUtil {
             throw new ParseException(Email.MESSAGE_CONSTRAINTS);
         }
         return new Email(trimmedEmail);
+    }
+
+    /**
+     * Parses a {@code String major} into a {@code Major}.
+     * Leading and trailing whitespaces will be trimmed.
+     *
+     * @throws ParseException if the given {@code major} is blank or invalid.
+     */
+    public static Major parseMajor(String major) throws ParseException {
+        requireNonNull(major);
+        String trimmedMajor = major.trim();
+        if (trimmedMajor.isEmpty() || !Major.isValidMajor(trimmedMajor)) {
+            throw new ParseException(Major.MESSAGE_CONSTRAINTS);
+        }
+        return new Major(trimmedMajor);
+    }
+
+    /**
+     * Parses a {@code String graduationYear} into a {@code GraduationYear}.
+     * Leading and trailing whitespaces will be trimmed.
+     *
+     * @throws ParseException if the given {@code graduationYear} is blank or invalid.
+     */
+    public static GraduationYear parseGraduationYear(String graduationYear) throws ParseException {
+        requireNonNull(graduationYear);
+        String trimmedYear = graduationYear.trim();
+        if (trimmedYear.isEmpty() || !GraduationYear.isValidGraduationYear(trimmedYear)) {
+            throw new ParseException(GraduationYear.MESSAGE_CONSTRAINTS);
+        }
+        return new GraduationYear(trimmedYear);
     }
 
     /**
