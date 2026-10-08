@@ -125,6 +125,7 @@ How the parsing works:
 The `Model` component,
 
 * stores the address book data i.e., all `Person` objects (which are contained in a `UniquePersonList` object).
+  Each `Person` includes `Major` and `GraduationYear` value objects in addition to its existing contact details and tags.
 * stores the `Person` objects selected by the current filter, such as search results, in a separate _filtered_ list. It exposes this list as an unmodifiable `ObservableList<Person>` that the UI can observe and bind to, so the UI updates when the list changes.
 * stores a `UserPrefs` object that represents the user’s preferences (currently, just the GUI settings). This is exposed to the outside as a `ReadOnlyUserPrefs` object.
 * does not depend on any of the other three components (as the `Model` represents data entities of the domain, they should make sense on their own without depending on other components)
@@ -187,6 +188,16 @@ the stored `Major`, `GraduationYear`, and tags.
 
 After deletion, `DeleteCommand` uses `Messages#format(Person)` to include the deleted contact's details in the
 command result.
+### Displaying academic fields in the contact list
+
+`ListCommand` resets the model's filtered person list to `PREDICATE_SHOW_ALL_PERSONS`. `PersonListPanel` observes
+that list and creates a `PersonCard` for every visible `Person`, so the card layout determines which fields appear
+after `list` as well as in filtered results produced by `find`.
+
+`PersonCard` reads the existing `Major` and `GraduationYear` value objects and formats them as labeled rows.
+`PersonListCard.fxml` places those rows below the contact details. Because both fields are optional, an empty value
+is rendered as `Not specified` instead of leaving an ambiguous blank line. This is a presentation-only change:
+`ListCommand`, the model, and the JSON storage format are unchanged.
 
 ### \[Proposed\] Undo/redo feature
 

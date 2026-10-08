@@ -18,6 +18,8 @@ Class Address
 Class Email
 Class Name
 Class Phone
+Class Major
+Class GraduationYear
 Class Tag
 
 Class I #FFFFFF
@@ -41,6 +43,8 @@ Person *--> Name
 Person *--> Phone
 Person *--> Email
 Person *--> Address
+Person *--> Major
+Person *--> GraduationYear
 Person *--> "*" Tag
 
 Person -[hidden]up--> I
@@ -49,6 +53,8 @@ UniquePersonList -[hidden]right-> I
 Name -[hidden]right-> Phone
 Phone -[hidden]right-> Address
 Address -[hidden]right-> Email
+Email -[hidden]right-> Major
+Major -[hidden]right-> GraduationYear
 
 ModelManager --> "~* filtered" Person
 @enduml
