@@ -1,6 +1,7 @@
 package seedu.address.ui;
 
 import java.util.Comparator;
+import java.util.function.Consumer;
 
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
@@ -58,18 +59,23 @@ public class PersonCard extends UiPart<Region> {
         phone.setText(person.getPhone().value);
         address.setText(person.getAddress().value);
         email.setText(person.getEmail().value);
-        major.setText(formatMajor(person.getMajor()));
-        graduationYear.setText(formatGraduationYear(person.getGraduationYear()));
+        setAcademicFieldTexts(person, major::setText, graduationYear::setText);
         person.getTags().stream()
                 .sorted(Comparator.comparing(tag -> tag.tagName))
                 .forEach(tag -> tags.getChildren().add(new Label(tag.tagName)));
     }
 
-    static String formatMajor(Major major) {
+    static void setAcademicFieldTexts(Person person, Consumer<String> majorTextSetter,
+            Consumer<String> graduationYearTextSetter) {
+        majorTextSetter.accept(formatMajor(person.getMajor()));
+        graduationYearTextSetter.accept(formatGraduationYear(person.getGraduationYear()));
+    }
+
+    private static String formatMajor(Major major) {
         return "Major: " + getValueOrFallback(major.value);
     }
 
-    static String formatGraduationYear(GraduationYear graduationYear) {
+    private static String formatGraduationYear(GraduationYear graduationYear) {
         return "Class year: " + getValueOrFallback(graduationYear.value);
     }
 
