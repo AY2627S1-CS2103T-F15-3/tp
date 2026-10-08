@@ -63,6 +63,13 @@ public class NameContainsKeywordsPredicateTest {
     }
 
     @Test
+    public void test_graduationYearContainsKeywords_returnsTrue() {
+        NameContainsKeywordsPredicate predicate = new NameContainsKeywordsPredicate(List.of("2027"));
+        assertTrue(predicate.test(new PersonBuilder().withName("Alice").withMajor("")
+                .withGraduationYear("2027").build()));
+    }
+
+    @Test
     public void test_nameDoesNotContainKeywords_returnsFalse() {
         // Zero keywords
         NameContainsKeywordsPredicate predicate = new NameContainsKeywordsPredicate(List.of());
