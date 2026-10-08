@@ -55,6 +55,8 @@
         "common-classes": "Common classes",
         "implementation": "Implementation",
         "editing-academic-fields": "Editing academic fields",
+        "formatting-academic-fields-in-command-messages": "Formatting academic fields in command messages",
+        "deleting-contacts-with-academic-fields": "Deleting contacts with academic fields",
         "displaying-academic-fields-in-the-contact-list": "Displaying academic fields in the contact list",
         "proposed-undo-redo-feature": "[Proposed] Undo/redo feature",
         "proposed-data-archiving": "[Proposed] Data archiving",
