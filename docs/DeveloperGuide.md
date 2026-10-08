@@ -159,6 +159,17 @@ Classes used by multiple components are in the `seedu.address.commons` package.
 
 This section describes some noteworthy details on how certain features are implemented.
 
+### Editing academic fields
+
+`EditCommandParser` recognises `m/` (major) and `c/` (graduation year) alongside existing edit prefixes.
+It rejects repeated academic prefixes and validates supplied values using `ParserUtil.parseMajor` and
+`ParserUtil.parseGraduationYear`. An empty prefix value maps to `Major.EMPTY` or `GraduationYear.EMPTY`
+to clear the optional field; an omitted prefix leaves the descriptor field null.
+
+`EditCommand.EditPersonDescriptor` stores, copies and compares both academic fields. `EditCommand`
+uses the supplied values when constructing the edited `Person`, retaining existing values for omitted fields.
+The existing model update and JSON storage path save the edited values without a storage format change.
+
 ### \[Proposed\] Undo/redo feature
 
 #### Proposed Implementation

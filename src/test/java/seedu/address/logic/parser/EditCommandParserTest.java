@@ -24,6 +24,8 @@ import static seedu.address.logic.commands.CommandTestUtil.VALID_TAG_FRIEND;
 import static seedu.address.logic.commands.CommandTestUtil.VALID_TAG_HUSBAND;
 import static seedu.address.logic.parser.CliSyntax.PREFIX_ADDRESS;
 import static seedu.address.logic.parser.CliSyntax.PREFIX_EMAIL;
+import static seedu.address.logic.parser.CliSyntax.PREFIX_GRADUATION_YEAR;
+import static seedu.address.logic.parser.CliSyntax.PREFIX_MAJOR;
 import static seedu.address.logic.parser.CliSyntax.PREFIX_PHONE;
 import static seedu.address.logic.parser.CliSyntax.PREFIX_TAG;
 import static seedu.address.logic.parser.CommandParserTestUtil.assertParseFailure;
@@ -40,6 +42,8 @@ import seedu.address.logic.commands.EditCommand;
 import seedu.address.logic.commands.EditCommand.EditPersonDescriptor;
 import seedu.address.model.person.Address;
 import seedu.address.model.person.Email;
+import seedu.address.model.person.GraduationYear;
+import seedu.address.model.person.Major;
 import seedu.address.model.person.Name;
 import seedu.address.model.person.Phone;
 import seedu.address.model.tag.Tag;
@@ -193,6 +197,34 @@ public class EditCommandParserTest {
 
         assertParseFailure(parser, userInput,
                 Messages.getErrorMessageForDuplicatePrefixes(PREFIX_PHONE, PREFIX_EMAIL, PREFIX_ADDRESS));
+    }
+
+    @Test
+    public void parse_academicFields_success() {
+        assertParseSuccess(parser, "1 m/Computer Science c/2027",
+                new EditCommand(INDEX_FIRST_PERSON, new EditPersonDescriptorBuilder()
+                        .withMajor("Computer Science").withGraduationYear("2027").build()));
+        assertParseSuccess(parser, "1 m/  Philosophy, Politics & Economics  ",
+                new EditCommand(INDEX_FIRST_PERSON, new EditPersonDescriptorBuilder()
+                        .withMajor("Philosophy, Politics & Economics").build()));
+        assertParseSuccess(parser, "1 c/2099",
+                new EditCommand(INDEX_FIRST_PERSON, new EditPersonDescriptorBuilder()
+                        .withGraduationYear("2099").build()));
+        assertParseSuccess(parser, "1 m/   c/   ",
+                new EditCommand(INDEX_FIRST_PERSON, new EditPersonDescriptorBuilder()
+                        .withMajor("").withGraduationYear("").build()));
+    }
+
+    @Test
+    public void parse_invalidAcademicFields_failure() {
+        assertParseFailure(parser, "1 m/Computer\nScience", Major.MESSAGE_CONSTRAINTS);
+        for (String year : new String[]{"1999", "2100", "27", "202x"}) {
+            assertParseFailure(parser, "1 c/" + year, GraduationYear.MESSAGE_CONSTRAINTS);
+        }
+        assertParseFailure(parser, "1 m/Computer Science m/",
+                Messages.getErrorMessageForDuplicatePrefixes(PREFIX_MAJOR));
+        assertParseFailure(parser, "1 c/ c/2027",
+                Messages.getErrorMessageForDuplicatePrefixes(PREFIX_GRADUATION_YEAR));
     }
 
     @Test

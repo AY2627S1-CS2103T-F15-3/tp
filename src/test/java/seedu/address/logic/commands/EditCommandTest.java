@@ -71,6 +71,36 @@ public class EditCommandTest {
     }
 
     @Test
+    public void execute_academicFields_success() throws Exception {
+        Person original = model.getFilteredPersonList().get(0);
+        Person academicPerson = new PersonBuilder(original).withMajor("Mathematics")
+                .withGraduationYear("2026").build();
+        model.setPerson(original, academicPerson);
+
+        // Editing one academic field preserves the other field and all contact details.
+        Person updated = new PersonBuilder(academicPerson).withMajor("Computer Science").build();
+        new EditCommand(INDEX_FIRST_PERSON, new EditPersonDescriptorBuilder()
+                .withMajor("Computer Science").build()).execute(model);
+        assertEquals(updated, model.getFilteredPersonList().get(0));
+
+        updated = new PersonBuilder(updated).withGraduationYear("2027").build();
+        new EditCommand(INDEX_FIRST_PERSON, new EditPersonDescriptorBuilder()
+                .withGraduationYear("2027").build()).execute(model);
+        assertEquals(updated, model.getFilteredPersonList().get(0));
+
+        // Editing a contact field preserves both academic fields.
+        updated = new PersonBuilder(updated).withPhone(VALID_PHONE_BOB).build();
+        new EditCommand(INDEX_FIRST_PERSON, new EditPersonDescriptorBuilder()
+                .withPhone(VALID_PHONE_BOB).build()).execute(model);
+        assertEquals(updated, model.getFilteredPersonList().get(0));
+
+        updated = new PersonBuilder(updated).withMajor("").withGraduationYear("").build();
+        new EditCommand(INDEX_FIRST_PERSON, new EditPersonDescriptorBuilder()
+                .withMajor("").withGraduationYear("").build()).execute(model);
+        assertEquals(updated, model.getFilteredPersonList().get(0));
+    }
+
+    @Test
     public void execute_noFieldSpecifiedUnfilteredList_success() {
         EditCommand editCommand = new EditCommand(INDEX_FIRST_PERSON, new EditPersonDescriptor());
         Person editedPerson = model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased());
