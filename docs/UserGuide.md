@@ -80,7 +80,7 @@ Format: `help`
 
 Adds a person to the address book.
 
-Format: `add n/NAME p/PHONE_NUMBER e/EMAIL a/ADDRESS [m/MAJOR] [c/CLASS_YEAR] [t/TAG]... `
+Format: `add n/NAME p/PHONE_NUMBER e/EMAIL a/ADDRESS [m/MAJOR] [c/CLASS_YEAR] [t/TAG]...[d/DEFAULT_INDEX]...`
 
 <box type="tip" seamless>
 
@@ -98,6 +98,53 @@ Examples:
 * `add n/Alex Tan p/91234567 e/alex@example.com a/10 Kent Ridge Road m/Computer Science c/2027 t/classmate`
 * `add n/John Doe p/98765432 e/johnd@example.com a/John street, block 123, #01-01`
 * `add n/Betsy Crowe t/friend e/betsycrowe@example.com a/Newgate Prison p/1234567 t/criminal`
+
+### Listing default tags: `tags`
+
+Displays the available default tags and their fixed indices:
+
+1. Friend
+2. Classmate
+3. Teammate
+4. Tutor
+5. Prof
+
+Format: `tags`
+
+### Adding tags to a person: `tag`
+
+Format: `tag INDEX [d/DEFAULT_INDEX]... [t/TAG]...`
+
+At least one tag is required. Use `d/` for a default tag index and `t/` for a custom tag name.
+Custom tag names follow the same alphanumeric rules as in `add`.
+
+Uses the person's index in the currently displayed list. Default tag indices must be integers from 1 to 5.
+Existing tags are preserved; repeated tags are stored only once. The current list filter is preserved.
+
+Examples:
+* `tag 1 d/2` adds `Classmate` to the first displayed person.
+* `tag 1 d/1 d/3` adds `Friend` and `Teammate`.
+* `tag 1 t/NOC` appends `NOC` without removing existing tags.
+* `tag 1 t/NOC t/CCA d/2` appends two custom tags and `Classmate`.
+* `add n/Alice p/91234567 e/alice@example.com a/NUS d/1 d/3 t/NOC` creates a person with
+  two default tags and the custom tag `NOC`.
+
+Default tags are stored by name, just like existing tags. For example, `d/1` and `t/Friend` select the same tag.
+Custom tags still use `t/` in `add` and `edit`. Unlike `tag`, `edit INDEX t/TAG` replaces the entire tag set.
+
+### Removing tags from a person: `untag`
+
+Format: `untag INDEX t/TAG [t/TAG]...`
+
+Removes the specified tags from the person at `INDEX` in the current displayed list.
+Other tags, contact details and the current filter are preserved. At least one non-empty tag name is required.
+Names are matched exactly, including case, following the existing tag rules.
+Repeated names and tags the person does not have are ignored.
+
+Examples:
+* `untag 1 t/NOC` removes `NOC` while keeping the person's other tags.
+* `untag 1 t/NOC t/CCA` removes both tags.
+* `untag 1 t/Friend` removes the default tag `Friend` by name. `untag` does not accept `d/`.
 
 ### Listing all persons: `list`
 
