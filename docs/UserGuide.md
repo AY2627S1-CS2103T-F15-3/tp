@@ -92,7 +92,7 @@ Major and class year are optional and can be supplied independently.
 * `c/CLASS_YEAR` records the graduation year (class of 20XX). Enter exactly four digits from `2000` to `2099`.
 * Omit `m/` or `c/` if the value is unknown or does not apply; an empty supplied value is rejected.
 * Each of these prefixes may appear only once. Leading and trailing spaces around their values are ignored.
-* The fields are saved with the contact. They can be edited using `edit`; displaying them will be added in a later increment.
+* The fields are saved with the contact, can be edited using `edit`, and are shown in the displayed contact list.
 
 Examples:
 * `add n/Alex Tan p/91234567 e/alex@example.com a/10 Kent Ridge Road m/Computer Science c/2027 t/classmate`
@@ -148,7 +148,9 @@ Examples:
 
 ### Listing all persons: `list`
 
-Shows a list of all persons in the address book.
+Shows a list of all persons in the address book. Each contact card includes the person's name, tags, phone number,
+address, email address, major, and class year. Optional academic fields that have no saved value are displayed as
+`Major: Not specified` or `Class year: Not specified`.
 
 Format: `list`
 

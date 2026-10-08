@@ -7,6 +7,8 @@ import javafx.scene.control.Label;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Region;
+import seedu.address.model.person.GraduationYear;
+import seedu.address.model.person.Major;
 import seedu.address.model.person.Person;
 
 /**
@@ -39,6 +41,10 @@ public class PersonCard extends UiPart<Region> {
     @FXML
     private Label email;
     @FXML
+    private Label major;
+    @FXML
+    private Label graduationYear;
+    @FXML
     private FlowPane tags;
 
     /**
@@ -52,8 +58,22 @@ public class PersonCard extends UiPart<Region> {
         phone.setText(person.getPhone().value);
         address.setText(person.getAddress().value);
         email.setText(person.getEmail().value);
+        major.setText(formatMajor(person.getMajor()));
+        graduationYear.setText(formatGraduationYear(person.getGraduationYear()));
         person.getTags().stream()
                 .sorted(Comparator.comparing(tag -> tag.tagName))
                 .forEach(tag -> tags.getChildren().add(new Label(tag.tagName)));
+    }
+
+    static String formatMajor(Major major) {
+        return "Major: " + getValueOrFallback(major.value);
+    }
+
+    static String formatGraduationYear(GraduationYear graduationYear) {
+        return "Class year: " + getValueOrFallback(graduationYear.value);
+    }
+
+    private static String getValueOrFallback(String value) {
+        return value.isEmpty() ? "Not specified" : value;
     }
 }
