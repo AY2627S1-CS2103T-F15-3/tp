@@ -170,6 +170,24 @@ to clear the optional field; an omitted prefix leaves the descriptor field null.
 uses the supplied values when constructing the edited `Person`, retaining existing values for omitted fields.
 The existing model update and JSON storage path save the edited values without a storage format change.
 
+### Formatting academic fields in command messages
+
+Commands that report a contact's full details use `Messages#format(Person)`. The formatter includes `Major` and
+`Class year` before tags when those optional academic fields are specified. If either academic field is unspecified,
+that field is omitted from the command message.
+
+This centralizes command-message formatting for add, edit, and delete results while preserving the independent
+optional behavior of major and class year.
+
+### Deleting contacts with academic fields
+
+`DeleteCommand` identifies the target `Person` from `Model#getFilteredPersonList()` using the displayed index.
+It then calls `Model#deletePerson`, which removes the entire `Person` object from the `AddressBook`, including
+the stored `Major`, `GraduationYear`, and tags.
+
+After deletion, `DeleteCommand` uses `Messages#format(Person)` to include the deleted contact's details in the
+command result.
+
 ### \[Proposed\] Undo/redo feature
 
 #### Proposed Implementation
@@ -385,8 +403,8 @@ Priorities: High (must have) - `* * *`, Medium (nice to have) - `* *`, Low (unli
 
 1.  <u>User view all existing contacts (Use case: View contacts) </u>
 2.  User requests to delete a specific contact from the displayed list. 
-3.  UniMate deletes the specified contact. 
-4.  UniMate informs user that the contact has been deleted.
+3.  UniMate deletes the specified contact, including its stored academic fields and tags.
+4.  UniMate informs user that the contact has been deleted and shows the deleted contact's details.
 
     Use case ends.
 
@@ -465,8 +483,9 @@ testers are expected to do more *exploratory* testing.
 
    1. Prerequisites: List all persons using the `list` command, with multiple persons in the list.
 
-   1. Test case: `delete 1`<br>
-      Expected: The first contact is deleted from the list. The status message shows the deleted contact's details.
+   1. Test case: `delete 1` after adding `add n/Alex Tan p/91234567 e/alex@example.com a/10 Kent Ridge Road m/Computer Science c/2027 t/classmate`<br>
+      Expected: The first contact is deleted from the list. The status message shows the deleted contact's details,
+      including `Major: Computer Science` and `Class year: 2027` before tags.
 
    1. Test case: `delete 0`<br>
       Expected: No person is deleted. The status message shows error details.
