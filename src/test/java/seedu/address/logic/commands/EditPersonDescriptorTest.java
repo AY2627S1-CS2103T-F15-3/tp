@@ -52,9 +52,28 @@ public class EditPersonDescriptorTest {
         editedAmy = new EditPersonDescriptorBuilder(DESC_AMY).withAddress(VALID_ADDRESS_BOB).build();
         assertFalse(DESC_AMY.equals(editedAmy));
 
+        editedAmy = new EditPersonDescriptorBuilder(DESC_AMY).withMajor("Computer Science").build();
+        assertFalse(DESC_AMY.equals(editedAmy));
+
+        editedAmy = new EditPersonDescriptorBuilder(DESC_AMY).withGraduationYear("2027").build();
+        assertFalse(DESC_AMY.equals(editedAmy));
+
         // different tags -> returns false
         editedAmy = new EditPersonDescriptorBuilder(DESC_AMY).withTags(VALID_TAG_HUSBAND).build();
         assertFalse(DESC_AMY.equals(editedAmy));
+    }
+
+    @Test
+    public void copy_academicFields_preservesValues() {
+        EditPersonDescriptor descriptor = new EditPersonDescriptorBuilder()
+                .withMajor("Computer Science").withGraduationYear("2027").build();
+        EditPersonDescriptor copy = new EditPersonDescriptor(descriptor);
+        descriptor.setMajor(null);
+        descriptor.setGraduationYear(null);
+        assertEquals(new EditPersonDescriptorBuilder()
+                .withMajor("Computer Science").withGraduationYear("2027").build(), copy);
+        assertFalse(descriptor.isAnyFieldEdited());
+        assertTrue(copy.isAnyFieldEdited());
     }
 
     @Test
@@ -64,7 +83,9 @@ public class EditPersonDescriptorTest {
                 + editPersonDescriptor.getName().orElse(null) + ", phone="
                 + editPersonDescriptor.getPhone().orElse(null) + ", email="
                 + editPersonDescriptor.getEmail().orElse(null) + ", address="
-                + editPersonDescriptor.getAddress().orElse(null) + ", tags="
+                + editPersonDescriptor.getAddress().orElse(null) + ", major="
+                + editPersonDescriptor.getMajor().orElse(null) + ", graduationYear="
+                + editPersonDescriptor.getGraduationYear().orElse(null) + ", tags="
                 + editPersonDescriptor.getTags().orElse(null) + "}";
         assertEquals(expected, editPersonDescriptor.toString());
     }
