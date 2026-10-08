@@ -57,6 +57,12 @@ public class NameContainsKeywordsPredicateTest {
     }
 
     @Test
+    public void test_majorContainsKeywords_returnsTrue() {
+        NameContainsKeywordsPredicate predicate = new NameContainsKeywordsPredicate(List.of("Computer", "Science"));
+        assertTrue(predicate.test(new PersonBuilder().withName("Alice").withMajor("Computer Science").build()));
+    }
+
+    @Test
     public void test_nameDoesNotContainKeywords_returnsFalse() {
         // Zero keywords
         NameContainsKeywordsPredicate predicate = new NameContainsKeywordsPredicate(List.of());
