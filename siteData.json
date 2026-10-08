@@ -55,6 +55,7 @@
         "common-classes": "Common classes",
         "implementation": "Implementation",
         "editing-academic-fields": "Editing academic fields",
+        "displaying-academic-fields-in-the-contact-list": "Displaying academic fields in the contact list",
         "proposed-undo-redo-feature": "[Proposed] Undo/redo feature",
         "proposed-data-archiving": "[Proposed] Data archiving",
         "documentation-logging-testing-dev-ops": "Documentation, logging, testing, dev-ops",
