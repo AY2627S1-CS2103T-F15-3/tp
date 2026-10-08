@@ -18,6 +18,7 @@ import seedu.address.model.Model;
 import seedu.address.model.ModelManager;
 import seedu.address.model.UserPrefs;
 import seedu.address.model.person.Person;
+import seedu.address.testutil.PersonBuilder;
 
 /**
  * Contains integration tests (interaction with the Model) and unit tests for
@@ -39,6 +40,36 @@ public class DeleteCommandTest {
         expectedModel.deletePerson(personToDelete);
 
         assertCommandSuccess(deleteCommand, model, expectedMessage, expectedModel);
+    }
+
+    @Test
+    public void execute_validIndexWithAcademicFields_successMessageShowsAcademicFields() {
+        Person personToDelete = new PersonBuilder()
+                .withName("Alex Tan")
+                .withPhone("91234567")
+                .withEmail("alex@example.com")
+                .withAddress("10 Kent Ridge Road")
+                .withMajor("Computer Science")
+                .withGraduationYear("2027")
+                .withTags("classmate")
+                .build();
+        Model academicModel = new ModelManager();
+        academicModel.addPerson(personToDelete);
+        DeleteCommand deleteCommand = new DeleteCommand(INDEX_FIRST_PERSON);
+
+        String expectedDeletedPerson = "Alex Tan"
+                + "; Phone: 91234567"
+                + "; Email: alex@example.com"
+                + "; Address: 10 Kent Ridge Road"
+                + "; Major: Computer Science"
+                + "; Class year: 2027"
+                + "; Tags: [classmate]";
+        String expectedMessage = String.format(DeleteCommand.MESSAGE_DELETE_PERSON_SUCCESS, expectedDeletedPerson);
+
+        Model expectedModel = new ModelManager(academicModel.getAddressBook(), new UserPrefs());
+        expectedModel.deletePerson(personToDelete);
+
+        assertCommandSuccess(deleteCommand, academicModel, expectedMessage, expectedModel);
     }
 
     @Test

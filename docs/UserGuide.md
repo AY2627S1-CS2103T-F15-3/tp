@@ -92,7 +92,7 @@ Major and class year are optional and can be supplied independently.
 * `c/CLASS_YEAR` records the graduation year (class of 20XX). Enter exactly four digits from `2000` to `2099`.
 * Omit `m/` or `c/` if the value is unknown or does not apply; an empty supplied value is rejected.
 * Each of these prefixes may appear only once. Leading and trailing spaces around their values are ignored.
-* The fields are saved with the contact, can be edited using `edit`, and are shown in the displayed contact list.
+* The fields are saved with the contact, can be edited using `edit`, are shown in the displayed contact list and appear in command messages when specified.
 
 Examples:
 * `add n/Alex Tan p/91234567 e/alex@example.com a/10 Kent Ridge Road m/Computer Science c/2027 t/classmate`
@@ -201,10 +201,13 @@ Format: `delete INDEX`
 * Deletes the person at the specified `INDEX`.
 * The index refers to the index number shown in the displayed person list.
 * The index **must be a positive integer** 1, 2, 3, ...
+* The deleted person message includes the deleted contact's major and class year when those fields are specified.
 
 Examples:
 * `list` followed by `delete 2` deletes the 2nd person in the address book.
 * `find Betsy` followed by `delete 1` deletes the 1st person in the results of the `find` command.
+* Deleting a contact with academic fields shows a message such as
+  `Deleted person: Alex Tan; Phone: 91234567; Email: alex@example.com; Address: 10 Kent Ridge Road; Major: Computer Science; Class year: 2027; Tags: [classmate]`.
 
 ### Clearing all entries: `clear`
 

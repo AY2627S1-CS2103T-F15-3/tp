@@ -44,6 +44,81 @@ public class AddCommandTest {
     }
 
     @Test
+    public void execute_personWithAcademicFields_addSuccessfulMessageShowsAcademicFields() throws Exception {
+        ModelStubAcceptingPersonAdded modelStub = new ModelStubAcceptingPersonAdded();
+        Person validPerson = new PersonBuilder()
+                .withName("Alex Tan")
+                .withPhone("91234567")
+                .withEmail("alex@example.com")
+                .withAddress("10 Kent Ridge Road")
+                .withMajor("Computer Science")
+                .withGraduationYear("2027")
+                .withTags("classmate")
+                .build();
+
+        CommandResult commandResult = new AddCommand(validPerson).execute(modelStub);
+
+        String expectedPerson = "Alex Tan"
+                + "; Phone: 91234567"
+                + "; Email: alex@example.com"
+                + "; Address: 10 Kent Ridge Road"
+                + "; Major: Computer Science"
+                + "; Class year: 2027"
+                + "; Tags: [classmate]";
+        assertEquals(String.format(AddCommand.MESSAGE_SUCCESS, expectedPerson), commandResult.getFeedbackToUser());
+        assertEquals(List.of(validPerson), modelStub.personsAdded);
+    }
+
+    @Test
+    public void execute_personWithOneAcademicField_addSuccessfulMessageShowsOnlySpecifiedAcademicField()
+            throws Exception {
+        ModelStubAcceptingPersonAdded modelStub = new ModelStubAcceptingPersonAdded();
+        Person validPerson = new PersonBuilder()
+                .withName("Alex Tan")
+                .withPhone("91234567")
+                .withEmail("alex@example.com")
+                .withAddress("10 Kent Ridge Road")
+                .withMajor("Computer Science")
+                .withTags("classmate")
+                .build();
+
+        CommandResult commandResult = new AddCommand(validPerson).execute(modelStub);
+
+        String expectedPerson = "Alex Tan"
+                + "; Phone: 91234567"
+                + "; Email: alex@example.com"
+                + "; Address: 10 Kent Ridge Road"
+                + "; Major: Computer Science"
+                + "; Tags: [classmate]";
+        assertEquals(String.format(AddCommand.MESSAGE_SUCCESS, expectedPerson), commandResult.getFeedbackToUser());
+        assertEquals(List.of(validPerson), modelStub.personsAdded);
+    }
+
+    @Test
+    public void execute_personWithClassYearOnly_addSuccessfulMessageShowsOnlyClassYear() throws Exception {
+        ModelStubAcceptingPersonAdded modelStub = new ModelStubAcceptingPersonAdded();
+        Person validPerson = new PersonBuilder()
+                .withName("Alex Tan")
+                .withPhone("91234567")
+                .withEmail("alex@example.com")
+                .withAddress("10 Kent Ridge Road")
+                .withGraduationYear("2027")
+                .withTags("classmate")
+                .build();
+
+        CommandResult commandResult = new AddCommand(validPerson).execute(modelStub);
+
+        String expectedPerson = "Alex Tan"
+                + "; Phone: 91234567"
+                + "; Email: alex@example.com"
+                + "; Address: 10 Kent Ridge Road"
+                + "; Class year: 2027"
+                + "; Tags: [classmate]";
+        assertEquals(String.format(AddCommand.MESSAGE_SUCCESS, expectedPerson), commandResult.getFeedbackToUser());
+        assertEquals(List.of(validPerson), modelStub.personsAdded);
+    }
+
+    @Test
     public void execute_duplicatePerson_throwsCommandException() {
         Person validPerson = new PersonBuilder().build();
         AddCommand addCommand = new AddCommand(validPerson);
