@@ -31,7 +31,7 @@ public class AddCommand extends Command {
             + PREFIX_ADDRESS + "ADDRESS "
             + "[" + PREFIX_MAJOR + "MAJOR] "
             + "[" + PREFIX_GRADUATION_YEAR + "CLASS_YEAR] "
-            + "[" + PREFIX_TAG + "TAG]..."
+            + "[" + PREFIX_TAG + "TAG]... "
             + "[" + PREFIX_DEFAULT_TAG + "DEFAULT_INDEX]...\n"
             + "Example: " + COMMAND_WORD + " "
             + PREFIX_NAME + "John Doe "
