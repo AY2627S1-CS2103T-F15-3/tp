@@ -113,38 +113,81 @@ Format: `tags`
 
 ### Adding tags to a person: `tag`
 
+Adds default or custom tags to an existing person without replacing their existing tags.
+
 Format: `tag INDEX [d/DEFAULT_INDEX]... [t/TAG]...`
 
-At least one tag is required. Use `d/` for a default tag index and `t/` for a custom tag name.
-Custom tag names follow the same alphanumeric rules as in `add`.
+**Parameters:**
 
-Uses the person's index in the currently displayed list. Default tag indices must be integers from 1 to 5.
-Existing tags are preserved; repeated tags are stored only once. The current list filter is preserved.
+* `INDEX` is the person's position in the currently displayed list, including results from `find`. It must be a positive integer from `1` to `2147483647` and refer to a displayed person. Signs such as `+1`, zero, negative values and decimals are not accepted.
+* `d/DEFAULT_INDEX` selects a default tag from `1` to `5`: `Friend`, `Classmate`, `Teammate`, `Tutor`, `Prof`, respectively. Use [the `tags` command](#listing-default-tags-tags) to view this list. The same integer syntax rules apply.
+* `t/TAG` supplies a non-empty custom tag name containing only English letters (`A-Z`, `a-z`) and digits (`0-9`). Spaces within a name and punctuation are not allowed. Leading and trailing whitespace is trimmed.
+* At least one `d/` or `t/` value is required. Both prefixes can be repeated and mixed in any order **after `INDEX`**. Separate each prefix from the preceding argument with a space.
 
-Examples:
+Examples (assuming at least one person is displayed):
+
 * `tag 1 d/2` adds `Classmate` to the first displayed person.
 * `tag 1 d/1 d/3` adds `Friend` and `Teammate`.
 * `tag 1 t/NOC` appends `NOC` without removing existing tags.
 * `tag 1 t/NOC t/CCA d/2` appends two custom tags and `Classmate`.
-* `add n/Alice p/91234567 e/alice@example.com a/NUS d/1 d/3 t/NOC` creates a person with
-  two default tags and the custom tag `NOC`.
 
-Default tags are stored by name, just like existing tags. For example, `d/1` and `t/Friend` select the same tag.
-Custom tags still use `t/` in `add` and `edit`. Unlike `tag`, `edit INDEX t/TAG` replaces the entire tag set.
+**Expected behaviour:**
+
+* The selected person's tags are updated; their other details and the current list filter are preserved.
+* The result message starts with `Tagged person: `, followed by the person's name, phone, email, address, any specified major and class year, and updated tags. Tag display order is not guaranteed.
+* Repeated tags and tags already attached to the person are stored only once. Adding an existing tag still returns the success message.
+* Names are case-sensitive: `NOC` and `noc` are different tags. Default tags are stored by name in the same collection as custom tags: `d/1` and `t/Friend` select the same tag, whereas `t/friend` is different.
+* Custom tags still use `t/` in `add` and `edit`. Unlike `tag`, `edit INDEX t/TAG` replaces the entire tag set.
+
+**Error handling:**
+
+| Input or situation | Result message |
+|--------------------|----------------|
+| Missing tags (`tag 1`), missing index, or invalid index syntax (`tag 0 t/NOC`, `tag x t/NOC`) | `Invalid command format!`, followed by the `tag` usage instructions. |
+| A valid positive index outside the displayed list, with otherwise valid input | `The person index provided is invalid.` |
+| Empty, non-integer or out-of-range default index (`tag 1 d/`, `tag 1 d/6`) | `Default tag index must be an integer from 1 to 5. Use tags to view them.` |
+| Empty or invalid custom tag (`tag 1 t/`, `tag 1 t/NOC!`, `tag 1 t/two words`) | `Tag names should be alphanumeric` |
+
+These input errors leave all contacts unchanged. If any supplied tag is invalid, none of the tags in that command are added. Use only `d/` and `t/`; unsupported prefixes are not ignored and may cause an index or tag validation error.
 
 ### Removing tags from a person: `untag`
 
+Removes specified tags from an existing person while preserving all other tags and contact details.
+
 Format: `untag INDEX t/TAG [t/TAG]...`
 
-Removes the specified tags from the person at `INDEX` in the current displayed list.
-Other tags, contact details and the current filter are preserved. At least one non-empty tag name is required.
-Names are matched exactly, including case, following the existing tag rules.
-Repeated names and tags the person does not have are ignored.
+**Parameters:**
 
-Examples:
+* `INDEX` identifies a person in the currently displayed list and follows the same positive integer rules as [`tag`](#adding-tags-to-a-person-tag).
+* At least one non-empty `t/TAG` is required. Names must contain only English letters and digits; leading and trailing whitespace is trimmed. Names are matched exactly, including case.
+* Place `INDEX` first and separate each `t/` prefix from the preceding argument with a space. Repeat `t/` to remove multiple tags.
+* `untag` does not accept `d/`. To remove a default tag, use its name, such as `t/Friend`.
+
+Examples (assuming at least one person is displayed):
+
 * `untag 1 t/NOC` removes `NOC` while keeping the person's other tags.
 * `untag 1 t/NOC t/CCA` removes both tags.
-* `untag 1 t/Friend` removes the default tag `Friend` by name. `untag` does not accept `d/`.
+* `untag 1 t/Friend` removes the default tag `Friend` by name.
+
+**Expected behaviour:**
+
+* The result message starts with `Untagged person: `, followed by the person's name, phone, email, address, any specified major and class year, and remaining tags. Tag display order is not guaranteed.
+* The current list filter is preserved. Removing the last tag leaves the person with no tags; it does not delete the person.
+* Repeated names and tags the person does not have are ignored. The command still returns the success message, even if no tags were removed. For example, `untag 1 t/noc` does not remove `NOC`.
+
+**Error handling:**
+
+| Input or situation | Result message |
+|--------------------|----------------|
+| Missing tags (`untag 1`), missing index, or invalid index syntax (`untag 0 t/NOC`) | `Invalid command format!`, followed by the `untag` usage instructions. |
+| A valid positive index outside the displayed list, with otherwise valid input | `The person index provided is invalid.` |
+| Empty or invalid tag (`untag 1 t/`, `untag 1 t/NOC!`) | `Tag names should be alphanumeric` |
+| Unsupported default index syntax (`untag 1 d/1`) | `Invalid command format!`, followed by the `untag` usage instructions. |
+| Unsupported prefix after a tag (`untag 1 t/NOC d/1`) | `Tag names should be alphanumeric` |
+
+These input errors leave all contacts unchanged. If any supplied tag is invalid, none of the tags in that command are removed. Unlike `edit 1 t/`, `untag 1 t/` does not clear the tag collection.
+
+For both commands, UniMate saves the updated data automatically. A saving failure reports `Could not save data due to the following error: ...` or `Could not save data to file ... due to insufficient permissions to write to the file or the folder.` The in-memory change has already occurred in this case, so the error does not mean it was rolled back.
 
 ### Listing all persons: `list`
 
@@ -270,3 +313,6 @@ Action     | Format, Examples
 **Find**   | `find KEYWORD [MORE_KEYWORDS]`<br> e.g., `find James Jake`, `find Computer Science`, `find 2027`
 **List**   | `list`
 **Help**   | `help`
+**Tags**   | `tags`
+**Tag**    | `tag INDEX [d/DEFAULT_INDEX]... [t/TAG]...` (at least one tag)<br> e.g., `tag 1 d/2 t/NOC`
+**Untag**  | `untag INDEX t/TAG [t/TAG]...`<br> e.g., `untag 1 t/NOC`
