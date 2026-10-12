@@ -171,6 +171,14 @@ to clear the optional field; an omitted prefix leaves the descriptor field null.
 uses the supplied values when constructing the edited `Person`, retaining existing values for omitted fields.
 The existing model update and JSON storage path save the edited values without a storage format change.
 
+### Searching by academic fields
+
+`FindCommandParser` splits the input into keywords and passes them to `NameContainsKeywordsPredicate`.
+Despite its name, the predicate matches a `Person` if any keyword matches a full word in the person's
+`Name`, `Major` or `GraduationYear`, using `StringUtil.containsWordIgnoreCase`. Matching is therefore
+case-insensitive, whole-word and `OR`-based across all three fields. An empty `Major` or `GraduationYear`
+never matches a keyword. `FindCommand` applies the predicate through `Model#updateFilteredPersonList`;
+the model and storage format are unchanged.
 ### Formatting academic fields in command messages
 
 Commands that report a contact's full details use `Messages#format(Person)`. The formatter includes `Major` and
