@@ -125,6 +125,7 @@ How the parsing works:
 The `Model` component,
 
 * stores the address book data i.e., all `Person` objects (which are contained in a `UniquePersonList` object).
+  Each `Person` includes `Major` and `GraduationYear` value objects in addition to its existing contact details and tags.
 * stores the `Person` objects selected by the current filter, such as search results, in a separate _filtered_ list. It exposes this list as an unmodifiable `ObservableList<Person>` that the UI can observe and bind to, so the UI updates when the list changes.
 * stores a `UserPrefs` object that represents the user’s preferences (currently, just the GUI settings). This is exposed to the outside as a `ReadOnlyUserPrefs` object.
 * does not depend on any of the other three components (as the `Model` represents data entities of the domain, they should make sense on their own without depending on other components)
@@ -178,6 +179,33 @@ Despite its name, the predicate matches a `Person` if any keyword matches a full
 case-insensitive, whole-word and `OR`-based across all three fields. An empty `Major` or `GraduationYear`
 never matches a keyword. `FindCommand` applies the predicate through `Model#updateFilteredPersonList`;
 the model and storage format are unchanged.
+### Formatting academic fields in command messages
+
+Commands that report a contact's full details use `Messages#format(Person)`. The formatter includes `Major` and
+`Class year` before tags when those optional academic fields are specified. If either academic field is unspecified,
+that field is omitted from the command message.
+
+This centralizes command-message formatting for add, edit, and delete results while preserving the independent
+optional behavior of major and class year.
+
+### Deleting contacts with academic fields
+
+`DeleteCommand` identifies the target `Person` from `Model#getFilteredPersonList()` using the displayed index.
+It then calls `Model#deletePerson`, which removes the entire `Person` object from the `AddressBook`, including
+the stored `Major`, `GraduationYear`, and tags.
+
+After deletion, `DeleteCommand` uses `Messages#format(Person)` to include the deleted contact's details in the
+command result.
+### Displaying academic fields in the contact list
+
+`ListCommand` resets the model's filtered person list to `PREDICATE_SHOW_ALL_PERSONS`. `PersonListPanel` observes
+that list and creates a `PersonCard` for every visible `Person`, so the card layout determines which fields appear
+after `list` as well as in filtered results produced by `find`.
+
+`PersonCard` reads the existing `Major` and `GraduationYear` value objects and formats them as labeled rows.
+`PersonListCard.fxml` places those rows below the contact details. Because both fields are optional, an empty value
+is rendered as `Not specified` instead of leaving an ambiguous blank line. This is a presentation-only change:
+`ListCommand`, the model, and the JSON storage format are unchanged.
 
 ### \[Proposed\] Undo/redo feature
 
@@ -394,8 +422,8 @@ Priorities: High (must have) - `* * *`, Medium (nice to have) - `* *`, Low (unli
 
 1.  <u>User view all existing contacts (Use case: View contacts) </u>
 2.  User requests to delete a specific contact from the displayed list. 
-3.  UniMate deletes the specified contact. 
-4.  UniMate informs user that the contact has been deleted.
+3.  UniMate deletes the specified contact, including its stored academic fields and tags.
+4.  UniMate informs user that the contact has been deleted and shows the deleted contact's details.
 
     Use case ends.
 
@@ -474,8 +502,9 @@ testers are expected to do more *exploratory* testing.
 
    1. Prerequisites: List all persons using the `list` command, with multiple persons in the list.
 
-   1. Test case: `delete 1`<br>
-      Expected: The first contact is deleted from the list. The status message shows the deleted contact's details.
+   1. Test case: `delete 1` after adding `add n/Alex Tan p/91234567 e/alex@example.com a/10 Kent Ridge Road m/Computer Science c/2027 t/classmate`<br>
+      Expected: The first contact is deleted from the list. The status message shows the deleted contact's details,
+      including `Major: Computer Science` and `Class year: 2027` before tags.
 
    1. Test case: `delete 0`<br>
       Expected: No person is deleted. The status message shows error details.

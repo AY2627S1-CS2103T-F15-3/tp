@@ -42,8 +42,16 @@ public class Messages {
                 .append("; Email: ")
                 .append(person.getEmail())
                 .append("; Address: ")
-                .append(person.getAddress())
-                .append("; Tags: ");
+                .append(person.getAddress());
+        if (!person.getMajor().value.isEmpty()) {
+            builder.append("; Major: ")
+                    .append(person.getMajor());
+        }
+        if (!person.getGraduationYear().value.isEmpty()) {
+            builder.append("; Class year: ")
+                    .append(person.getGraduationYear());
+        }
+        builder.append("; Tags: ");
         person.getTags().forEach(builder::append);
         return builder.toString();
     }
