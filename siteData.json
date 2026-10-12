@@ -59,6 +59,7 @@
         "formatting-academic-fields-in-command-messages": "Formatting academic fields in command messages",
         "deleting-contacts-with-academic-fields": "Deleting contacts with academic fields",
         "displaying-academic-fields-in-the-contact-list": "Displaying academic fields in the contact list",
+        "tagging-and-untagging-contacts": "Tagging and untagging contacts",
         "proposed-undo-redo-feature": "[Proposed] Undo/redo feature",
         "proposed-data-archiving": "[Proposed] Data archiving",
         "documentation-logging-testing-dev-ops": "Documentation, logging, testing, dev-ops",
@@ -71,6 +72,7 @@
         "appendix-instructions-for-manual-testing": "Appendix: Instructions for manual testing",
         "launch-and-shutdown": "Launch and shutdown",
         "deleting-a-person": "Deleting a person",
+        "tagging-and-untagging-a-person": "Tagging and untagging a person",
         "saving-data": "Saving data"
       },
       "headingKeywords": {}
