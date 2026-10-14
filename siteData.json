@@ -54,6 +54,7 @@
         "storage-component": "Storage component",
         "common-classes": "Common classes",
         "implementation": "Implementation",
+        "adding-academic-fields": "Adding academic fields",
         "editing-academic-fields": "Editing academic fields",
         "searching-by-academic-fields": "Searching by academic fields",
         "formatting-academic-fields-in-command-messages": "Formatting academic fields in command messages",
@@ -71,6 +72,7 @@
         "glossary": "Glossary",
         "appendix-instructions-for-manual-testing": "Appendix: Instructions for manual testing",
         "launch-and-shutdown": "Launch and shutdown",
+        "adding-academic-fields-2": "Adding academic fields",
         "deleting-a-person": "Deleting a person",
         "tagging-and-untagging-a-person": "Tagging and untagging a person",
         "saving-data": "Saving data"
