@@ -150,6 +150,11 @@ The `Storage` component,
 * is implemented by `StorageManager`, which delegates the actual JSON file access to `JsonAddressBookStorage` and `JsonUserPrefsStorage` (one class per data file).
 * depends on some classes in the `Model` component (because the `Storage` component's job is to save/retrieve objects that belong to the `Model`)
 
+`JsonAdaptedPerson` stores each contact's academic fields as the JSON properties `major` and
+`graduationYear`. Unspecified values are saved as empty strings. When loading older data files that
+omit either property, it treats the missing value as an empty string and constructs an unspecified
+`Major` or `GraduationYear`. Supplied non-empty values are validated before the contact is loaded.
+
 ### Common classes
 
 Classes used by multiple components are in the `seedu.address.commons` package.
@@ -159,6 +164,22 @@ Classes used by multiple components are in the `seedu.address.commons` package.
 ## **Implementation**
 
 This section describes some noteworthy details on how certain features are implemented.
+
+### Adding academic fields
+
+`CliSyntax` defines `m/` for a major and `c/` for a graduation year. `AddCommandParser` recognises
+these prefixes alongside the existing contact fields and rejects repeated occurrences of either
+academic prefix. Both fields are independently optional: an omitted prefix maps to `Major.EMPTY`
+or `GraduationYear.EMPTY`, whose empty string value represents an unspecified field.
+
+For supplied values, `ParserUtil.parseMajor` and `ParserUtil.parseGraduationYear` trim leading and
+trailing whitespace and reject blank values. A major must contain non-whitespace text without control
+characters; spaces and punctuation are allowed. A graduation year must match `20[0-9]{2}`, representing
+a four-digit year from `2000` to `2099`. Invalid input produces a parse error before a contact is added.
+
+The parser constructs a `Person` containing both academic values and passes it to `AddCommand`.
+The command checks for an existing contact with the same name before adding the person to the model.
+The normal storage path then saves the contact, including its academic fields.
 
 ### Editing academic fields
 
@@ -397,7 +418,7 @@ Priorities: High (must have) - `* * *`, Medium (nice to have) - `* *`, Low (unli
 | Priority | As a …         | I want to …                                                                     | So that I can …                                                 |
 |----------|----------------|---------------------------------------------------------------------------------|-----------------------------------------------------------------|
 | `* * *`  | new user       | see usage instructions                                                          | understand UniMate's capabilities and learn its commands        |
-| `* * *`  | user           | add a person and their contact information                                      | retain the details of people I meet                             |
+| `* * *`  | user           | add a person with contact information and optional major and graduation year     | retain their contact details and academic background                             |
 | `* * *`  | user           | view all my stored contacts                                                     | review the people in my collection                              |
 | `* * *`  | user           | view a contact's details                                                        | retrieve their information when needed                          |
 | `* * *`  | user           | delete a contact                                                                | remove an entry that I no longer need                           |
@@ -519,6 +540,7 @@ Priorities: High (must have) - `* * *`, Medium (nice to have) - `* *`, Low (unli
 * **Contact**: A record representing a person in the user's collection, containing their name and contact information. Also referred to as a person in this guide.
 * **Contact information**: Details recorded about a person, such as their phone number, email address, and postal address.
 * **Contact list index**: The one-based position of a contact in the currently displayed list, used by commands to select that contact. It is not a permanent identifier for the person.
+* **Graduation year / Class year**: The calendar year in which a person graduates or expects to graduate, such as 2027 (class of 2027). This differs from their current year of study. UniMate accepts years from 2000 to 2099.
 * **GUI (Graphical User Interface)**: An interface that presents information through visual elements such as windows, lists, and buttons.
 * **Mainstream OS (Operating System)**: Windows, Linux, Unix, or macOS, as used in this guide's non-functional requirements.
 * **Major**: A student's principal academic field of study, such as Computer Science.
@@ -558,6 +580,50 @@ testers are expected to do more *exploratory* testing.
        Expected: The most recent window size and location are retained.
 
 1. _{ more test cases … }_
+
+### Adding academic fields
+
+1. Valid values and independently optional fields
+
+   1. Prerequisites: Use a test copy of the app in a separate folder. Ensure the names used below do
+      not already exist; use different unique names if repeating the tests.
+   1. Test case: `add n/AcademicBoth p/91234567 e/both@example.com a/10 Kent Ridge Road m/Computer Science c/2027`<br>
+      Expected: A contact is added with major `Computer Science` and class year `2027`. Both values
+      appear in the contact card and the success message.
+   1. Test case: `add n/AcademicMajor p/91234567 e/major@example.com a/10 Kent Ridge Road m/Mathematics`<br>
+      Expected: The contact has major `Mathematics` and an unspecified class year.
+   1. Test case: `add n/AcademicYear p/91234567 e/year@example.com a/10 Kent Ridge Road c/2028`<br>
+      Expected: The contact has class year `2028` and an unspecified major.
+   1. Test case: `add n/AcademicNeither p/91234567 e/neither@example.com a/10 Kent Ridge Road`<br>
+      Expected: The contact is added with both academic fields unspecified. Each unspecified field
+      is displayed as `Not specified` in the contact card and omitted from the success message.
+   1. Repeat the first command with a new unique name and `c/2000`, then another unique name and
+      `c/2099`.<br>
+      Expected: Both boundary years are accepted.
+
+1. Invalid values and repeated prefixes
+
+   1. Prerequisites: Ensure `AcademicInvalid` does not exist. Use
+      `add n/AcademicInvalid p/91234567 e/invalid@example.com a/10 Kent Ridge Road` as the base command
+      and append each suffix below separately.
+   1. Test cases: `m/`, `m/   `, `c/`, `c/   `.<br>
+      Expected: A major or class-year validation error is shown. No contact is added.
+   1. Test cases: `c/1999`, `c/2100`, `c/202`, `c/20270`, `c/abcd`.<br>
+      Expected: A class-year validation error is shown. No contact is added.
+   1. Test cases: `m/Computer Science m/Mathematics`, `c/2027 c/2028`.<br>
+      Expected: A repeated-prefix error is shown. No contact is added, and existing contacts are unchanged.
+
+1. Saving, reloading and older data files
+
+   1. Prerequisites: Complete the valid-input tests above in the test copy of the app.
+   1. Close and relaunch the app from the same folder, then run `list`.<br>
+      Expected: All four test contacts retain their supplied academic values and unspecified fields.
+   1. Close the app and back up the test copy's `data/addressbook.json`. In that test file, remove the
+      `major` and `graduationYear` properties from the `AcademicBoth` contact, leaving valid JSON.
+      Relaunch the app and run `find AcademicBoth`.<br>
+      Expected: The contact loads with its original name, phone, email, address and tags, and both
+      academic fields show `Not specified`. Other contacts retain their academic values. Restore the
+      backup with the app closed when finished.
 
 ### Deleting a person
 

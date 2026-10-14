@@ -18,7 +18,7 @@ UniMate is a **desktop application for managing contacts, optimized for use thro
 1. Ensure that Java `25` or later is installed on your computer.<br>
    **Mac users:** Ensure you have the precise JDK version prescribed [here](https://se-education.org/guides/tutorials/javaInstallationMac.html).
 
-1. Download the latest `.jar` file from [here](https://github.com/se-edu/addressbook-level3/releases).
+1. Download the latest `.jar` file from the [UniMate releases page](https://github.com/AY2627S1-CS2103T-F15-3/tp/releases).
 
 1. Copy the file to the folder you want to use as the _home folder_ for your AddressBook.
 
@@ -93,6 +93,7 @@ Major and class year are optional and can be supplied independently.
 * Omit `m/` or `c/` if the value is unknown or does not apply; an empty supplied value is rejected.
 * Each of these prefixes may appear only once. Leading and trailing spaces around their values are ignored.
 * The fields are saved with the contact, can be edited using `edit`, are shown in the displayed contact list and appear in command messages when specified.
+* A contact with exactly the same name as an existing contact is rejected as a duplicate, even if their major, class year or other details differ. Name comparison is case-sensitive.
 
 Examples:
 * `add n/Alex Tan p/91234567 e/alex@example.com a/10 Kent Ridge Road m/Computer Science c/2027 t/classmate`
