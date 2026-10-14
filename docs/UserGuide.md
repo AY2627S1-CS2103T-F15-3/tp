@@ -283,6 +283,16 @@ If your changes make the data file invalid, UniMate starts with an empty contact
 Furthermore, certain edits can cause UniMate to behave in unexpected ways (e.g., if a value entered is outside of the acceptable range). Therefore, edit the data file only if you are confident that you can update it correctly.
 </box>
 
+--------------------------------------------------------------------------------------------------------------------
+
+## Coming soon
+
+The following features are not available in the MVP.
+
+### Undo/redo
+
+Planned support for undoing a contact change and redoing an undone change. The `undo` and `redo` commands are not supported in the current release.
+
 ### Archiving data files `[coming in v2.0]`
 
 _Details coming soon ..._

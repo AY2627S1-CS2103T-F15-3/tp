@@ -6,6 +6,8 @@
 
 # UniMate Developer Guide
 
+This guide describes the v1.3 MVP.
+
 <!-- * Table of Contents -->
 <page-nav-print />
 
@@ -13,7 +15,10 @@
 
 ## **Acknowledgements**
 
-* _{List the sources of reused or adapted ideas, code, documentation, and third-party libraries here, with links to the originals.}_
+* UniMate is adapted from [AddressBook-Level3](https://github.com/se-edu/addressbook-level3) by the SE-EDU initiative. We reused and adapted its application architecture, baseline contact-management code, tests, documentation structure and UML diagrams.
+* [JavaFX](https://openjfx.io/) provides the desktop UI, and [Jackson](https://github.com/FasterXML/jackson) handles JSON persistence.
+* [JUnit 5](https://docs.junit.org/5.14.4/overview.html) provides the automated testing framework.
+* [MarkBind](https://markbind.org/) generates the documentation website, and [PlantUML](https://plantuml.com/) renders the UML diagrams.
 
 --------------------------------------------------------------------------------------------------------------------
 
@@ -291,19 +296,27 @@ The current `EditCommand` still supports replacing the entire tag set through `e
 
 For command formats and user-facing examples, see [Adding tags](UserGuide.md#adding-tags-to-a-person-tag) and [Removing tags](UserGuide.md#removing-tags-from-a-person-untag). Manual checks are listed under [Tagging and untagging a person](#tagging-and-untagging-a-person).
 
+--------------------------------------------------------------------------------------------------------------------
+
+## **Coming soon**
+
+The features in this section are not implemented in the MVP. The descriptions and diagrams below are proposals for future development.
+
 ### \[Proposed\] Undo/redo feature
 
 #### Proposed Implementation
 
-The proposed undo/redo mechanism is facilitated by a versioned UniMate data model. It stores undo/redo history internally as an `addressBookStateList` and `currentStatePointer`. Additionally, it implements the following operations:
+The proposed `VersionedAddressBook` class would extend `AddressBook` to represent UniMate contact data with an undo/redo history. It would store that history internally as an `addressBookStateList` and `currentStatePointer`. This class and the undo/redo methods described below do not exist in the current implementation.
 
-* `VersionedAddressBook#commit()` -- Saves the current UniMate data state in its history.
-* `VersionedAddressBook#undo()` -- Restores the previous UniMate data state from its history.
-* `VersionedAddressBook#redo()` -- Restores a previously undone UniMate data state from its history.
+The proposed operations are:
 
-These operations are exposed in the `Model` interface as `Model#commitAddressBook()`, `Model#undoAddressBook()` and `Model#redoAddressBook()` respectively.
+* `VersionedAddressBook#commit()` -- Would save the current UniMate data state in its history.
+* `VersionedAddressBook#undo()` -- Would restore the previous UniMate data state from its history.
+* `VersionedAddressBook#redo()` -- Would restore a previously undone UniMate data state from its history.
 
-Given below is an example usage scenario and how the undo/redo mechanism behaves at each step.
+These operations would be exposed in the `Model` interface as `Model#commitAddressBook()`, `Model#undoAddressBook()` and `Model#redoAddressBook()` respectively.
+
+The following hypothetical scenario illustrates how the proposed mechanism would behave. The `undo` and `redo` commands are not available in the MVP.
 
 Step 1. The user launches the application for the first time. The versioned data model will be initialized with the initial UniMate data state, and the `currentStatePointer` pointing to that single state.
 
@@ -369,7 +382,7 @@ The following activity diagram summarizes what happens when a user executes a ne
 
 **Aspect: How undo & redo execute:**
 
-* **Alternative 1 (current choice):** Saves the entire UniMate data state.
+* **Alternative 1 (proposed choice):** Saves the entire UniMate data state.
   * Pros: Easy to implement.
   * Cons: May have performance issues in terms of memory usage.
 
@@ -378,11 +391,9 @@ The following activity diagram summarizes what happens when a user executes a ne
   * Pros: Will use less memory (e.g. for `delete`, just save the person being deleted).
   * Cons: We must ensure that the implementation of each individual command is correct.
 
-_{more aspects and alternatives to be added}_
-
 ### \[Proposed\] Data archiving
 
-_{Explain here how the data archiving feature will be implemented}_
+Data archiving is planned for a future version. Its implementation details have not yet been specified.
 
 
 --------------------------------------------------------------------------------------------------------------------
@@ -412,6 +423,8 @@ _{Explain here how the data archiving feature will be implemented}_
 **Value proposition**: Organise university contacts and find the right person by name or university-related context using typed commands.
 
 ### User stories
+
+These user stories include requirements for v1.3 and candidates for future iterations. Priority indicates importance, not implementation status. The [User Guide's Features section](UserGuide.md#features) describes the functionality available in the MVP.
 
 Priorities: High (must have) - `* * *`, Medium (nice to have) - `* *`, Low (unlikely to have) - `*`
 
@@ -519,8 +532,6 @@ Priorities: High (must have) - `* * *`, Medium (nice to have) - `* *`, Low (unli
 
       Use case resumes at step 1.
 
-*{More to be added}*
-
 ### Non-Functional Requirements
 
 1.  Should work on any _mainstream OS_ as long as it has Java `25` or above installed.
@@ -555,7 +566,7 @@ Priorities: High (must have) - `* * *`, Medium (nice to have) - `* *`, Low (unli
 
 ## **Appendix: Instructions for manual testing**
 
-Given below are instructions to test the app manually.
+Given below are instructions to test the v1.3 MVP manually. Use a separate test folder and test contacts, as these checks modify saved data. Ensure the test contact names do not already exist before each scenario; use different unique names when repeating a scenario.
 
 <box type="info" seamless>
 
@@ -567,19 +578,20 @@ testers are expected to do more *exploratory* testing.
 
 1. Initial launch
 
-   1. Download the JAR file and copy it into an empty folder.
+   1. Ensure Java 25 or later is installed. Copy the v1.3 `unimate.jar` into an empty test folder.
 
-   1. Double-click the JAR file.<br>
-      Expected: The GUI opens with a set of sample contacts. The window size may not be optimal.
+   1. Open a terminal, change to that folder, and run `java -jar unimate.jar`.<br>
+      Expected: A window titled `UniMate` opens with sample contacts. Unspecified academic fields display `Not specified`. The window size may not be optimal.
+
+   1. Enter `exit`.<br>
+      Expected: The application window closes normally.
 
 1. Saving window preferences
 
-   1. Resize the window to an optimal size. Move the window to a different location. Close the window.
+   1. Relaunch the app with `java -jar unimate.jar`. Resize the window to an optimal size, move it to a different location, and close it.
 
-   1. Relaunch the app by double-clicking the JAR file.<br>
+   1. Relaunch the app from the same test folder with `java -jar unimate.jar`.<br>
        Expected: The most recent window size and location are retained.
-
-1. _{ more test cases … }_
 
 ### Adding academic fields
 
@@ -625,25 +637,79 @@ testers are expected to do more *exploratory* testing.
       academic fields show `Not specified`. Other contacts retain their academic values. Restore the
       backup with the app closed when finished.
 
+### Editing academic fields
+
+1. Updating and clearing optional fields
+
+   1. Prerequisites: Add a test contact using `add n/AcademicEdit p/91234567 e/edit@example.com a/10 Kent Ridge Road m/Computer Science c/2027 t/StudyGroup`.
+   1. Before **each** edit below, run `find AcademicEdit` and confirm that it is the only result. Successful edits return the display to the full contact list, so the search must be repeated before editing index `1` again.
+   1. Test case: `edit 1 m/Mathematics`.<br>
+      Expected: The major changes to `Mathematics`; class year remains `2027`. Other contact details and `StudyGroup` are preserved.
+   1. Test case: `edit 1 c/2028`.<br>
+      Expected: Class year changes to `2028`; major remains `Mathematics`.
+   1. Test case: `edit 1 m/`.<br>
+      Expected: The major displays `Not specified`; class year remains `2028`.
+   1. Test case: `edit 1 c/`.<br>
+      Expected: Both academic fields display `Not specified`. Other contact details and tags remain unchanged.
+   1. Close and relaunch the app from the same folder, then run `find AcademicEdit`.<br>
+      Expected: The cleared fields remain unspecified.
+
+1. Rejecting invalid edits
+
+   1. Prerequisites: Run `find AcademicEdit`.
+   1. Test cases: `edit 1 c/1999`, `edit 1 c/abcd`, `edit 1 m/Computer Science m/Mathematics`.<br>
+      Expected: A class-year validation error or repeated-prefix error is shown. The contact is unchanged.
+
+### Searching by academic fields
+
+1. Matching names, majors and class years
+
+   1. Prerequisites: Add these two test contacts:
+
+      * `add n/SearchComputing p/91234567 e/computing@example.com a/10 Kent Ridge Road m/Computer Science c/2027`
+      * `add n/SearchBusiness p/91234568 e/business@example.com a/11 Kent Ridge Road m/Business c/2028`
+
+   1. Test case: `find computer`.<br>
+      Expected: `SearchComputing` is included and `SearchBusiness` is excluded. Matching is case-insensitive; other contacts with matching names or academic fields may also appear.
+   1. Test case: `find 2028`.<br>
+      Expected: `SearchBusiness` is included and `SearchComputing` is excluded.
+   1. Test case: `find SearchComputing 2028`.<br>
+      Expected: Both test contacts appear because matching any keyword is sufficient.
+   1. Test case: `find comp`.<br>
+      Expected: Neither test contact appears; partial words do not match `Computer` or `SearchComputing`.
+   1. Test case: `list`.<br>
+      Expected: The full contact list is displayed again, including both test contacts and contacts without academic fields.
+
 ### Deleting a person
 
-1. Deleting a person while all persons are being shown
+1. Deleting a contact with academic fields
 
-   1. Prerequisites: List all persons using the `list` command, with multiple persons in the list.
+   1. Prerequisites: Add a test contact using `add n/DeleteCheck p/91234567 e/delete@example.com a/10 Kent Ridge Road m/Computer Science c/2027 t/classmate`.
+   1. Run `find DeleteCheck` and confirm that it is the only result. Then run `delete 1`.<br>
+      Expected: `DeleteCheck` is removed. The status message includes `Major: Computer Science`, `Class year: 2027` and the contact's tag. The filtered list becomes empty.
+   1. Run `list`.<br>
+      Expected: Other contacts remain present; only `DeleteCheck` was removed.
+   1. Close and relaunch the app from the same folder, then run `find DeleteCheck`.<br>
+      Expected: No matching contact is found; the deletion was saved.
 
-   1. Test case: `delete 1` after adding `add n/Alex Tan p/91234567 e/alex@example.com a/10 Kent Ridge Road m/Computer Science c/2027 t/classmate`<br>
-      Expected: The first contact is deleted from the list. The status message shows the deleted contact's details,
-      including `Major: Computer Science` and `Class year: 2027` before tags.
+1. Rejecting invalid indices
 
-   1. Test case: `delete 0`<br>
-      Expected: No person is deleted. The status message shows error details.
-
-   1. Other incorrect delete commands to try: `delete`, `delete x`, `...` (where x is larger than the list size)<br>
-      Expected: Similar to previous.
-
-1. _{ more test cases … }_
+   1. Prerequisites: Run `list` with at least one contact present.
+   1. Test cases: `delete 0`, `delete`, `delete x`.<br>
+      Expected: An invalid-command-format error is shown and no contact is deleted.
+   1. Run `delete` with a numeric index greater than the displayed list size.<br>
+      Expected: `The person index provided is invalid.` No contact is deleted.
 
 ### Tagging and untagging a person
+
+1. Listing and assigning default tags
+
+   1. Test case: `tags`.<br>
+      Expected: The result lists `1. Friend`, `2. Classmate`, `3. Teammate`, `4. Tutor` and `5. Prof`, in that order.
+   1. Test case: `add n/DefaultTagCheck p/91234567 e/defaulttags@example.com a/10 Kent Ridge Road d/1 d/2 t/StudyGroup`.<br>
+      Expected: The contact has `Friend`, `Classmate` and `StudyGroup`. Tag display order may vary.
+   1. Test case: `tags extra`.<br>
+      Expected: A usage error is shown; contacts and tags are unchanged.
 
 1. Adding and removing tags
 
@@ -668,8 +734,42 @@ testers are expected to do more *exploratory* testing.
 
 ### Saving data
 
-1. Dealing with missing/corrupted data files
+Use only the separate test folder for these checks. The paths below are relative to the folder from which you run `java -jar unimate.jar`. Close the app before changing data files. Keep a backup outside the `data` folder and restore it with the app closed after each scenario.
 
-   1. _{Explain how to simulate missing or corrupted data files and state the expected behavior.}_
+1. Saving and reloading a contact
 
-1. _{ more test cases … }_
+   1. Test case: `add n/SaveCheck p/91234567 e/save@example.com a/10 Kent Ridge Road m/Computer Science c/2027 t/StudyGroup`.
+   1. Close and relaunch the app from the same folder, then run `find SaveCheck`.<br>
+      Expected: The contact retains all details, including its major, class year and tag.
+   1. Close the app and back up `data/unimate.json` before continuing.
+
+1. Missing data file
+
+   1. With the app closed, move the test copy's `data/unimate.json` to a backup location so that no file remains at that exact path.
+   1. Relaunch the app.<br>
+      Expected: The sample contacts appear. The backed-up contacts are not loaded, and no data file has been written yet.
+   1. Run `list`.<br>
+      Expected: `data/unimate.json` is created with the sample contacts. Close the app and restore the backup before the next scenario.
+
+1. Malformed JSON
+
+   1. With the app closed and the valid backup retained, replace the contents of the test copy's `data/unimate.json` with `not valid JSON`.
+   1. Relaunch the app without entering a command.<br>
+      Expected: The app opens with an empty contact list. The malformed file remains unchanged on disk; the loading error is recorded in the application log.
+   1. Run `list`.<br>
+      Expected: The command succeeds and replaces the malformed file with valid JSON containing an empty person list. Close the app and restore the valid backup.
+
+1. Valid JSON containing an invalid contact
+
+   1. With the app closed and the valid backup retained, change `SaveCheck`'s `graduationYear` value to `"1999"` in the test file. Keep the JSON syntax valid.
+   1. Relaunch the app without entering a command.<br>
+      Expected: The whole data file is rejected and the app opens with an empty contact list. It does not partially load the other contacts or silently correct the invalid year. The invalid file remains unchanged at this point.
+   1. Close the window using its close button, then restore the valid backup. Do not enter `exit` before restoring, because a successfully executed command would save the empty in-memory list over the invalid file.
+
+1. Loading a file saved under the old filename
+
+   1. With the app closed and the valid backup retained, place a copy of the valid contact file at `data/addressbook.json` and ensure `data/unimate.json` is absent. If the old filename is already in use, perform this scenario in another test folder.
+   1. Relaunch the app without entering a command.<br>
+      Expected: Sample contacts appear. UniMate v1.3 reads `data/unimate.json` and does not automatically migrate `data/addressbook.json`.
+   1. Close the window using its close button. Copy `data/addressbook.json` to `data/unimate.json`, then relaunch and run `find SaveCheck`.<br>
+      Expected: The saved contact and its academic fields and tag load correctly. The old file is unchanged. Restore the backup when finished.
