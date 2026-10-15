@@ -20,9 +20,9 @@ UniMate is a **desktop application for managing contacts, optimized for use thro
 
 1. Download the latest `.jar` file from the [UniMate releases page](https://github.com/AY2627S1-CS2103T-F15-3/tp/releases).
 
-1. Copy the file to the folder you want to use as the _home folder_ for your AddressBook.
+1. Copy the file to the folder you want to use as the _home folder_ for UniMate.
 
-1. Open a terminal, `cd` to the folder containing the JAR file, and run `java -jar addressbook.jar`.<br>
+1. Open a terminal, `cd` to the folder containing the JAR file, and run `java -jar unimate.jar`.<br>
    A GUI similar to the one below should appear in a few seconds. Note how the app contains some sample data.<br>
    ![Ui](images/Ui.png)
 
@@ -31,7 +31,7 @@ UniMate is a **desktop application for managing contacts, optimized for use thro
 
    * `list` : Lists all contacts.
 
-   * `add n/John Doe p/98765432 e/johnd@example.com a/John street, block 123, #01-01` : Adds a contact named `John Doe` to the Address Book.
+   * `add n/John Doe p/98765432 e/johnd@example.com a/John street, block 123, #01-01` : Adds a contact named `John Doe` to UniMate.
 
    * `delete 3` : Deletes the 3rd contact shown in the current list.
 
@@ -78,7 +78,7 @@ Format: `help`
 
 ### Adding a person: `add`
 
-Adds a person to the address book.
+Adds a person to UniMate.
 
 Format: `add n/NAME p/PHONE_NUMBER e/EMAIL a/ADDRESS [m/MAJOR] [c/CLASS_YEAR] [t/TAG]... [d/DEFAULT_INDEX]...`
 
@@ -192,7 +192,7 @@ For both commands, UniMate saves the updated data automatically. A saving failur
 
 ### Listing all persons: `list`
 
-Shows a list of all persons in the address book. Each contact card includes the person's name, tags, phone number,
+Shows a list of all persons in UniMate. Each contact card includes the person's name, tags, phone number,
 address, email address, major, and class year. Optional academic fields that have no saved value are displayed as
 `Major: Not specified` or `Class year: Not specified`.
 
@@ -200,7 +200,7 @@ Format: `list`
 
 ### Editing a person: `edit`
 
-Edits an existing person in the address book.
+Edits an existing person in UniMate.
 
 Format: `edit INDEX [n/NAME] [p/PHONE] [e/EMAIL] [a/ADDRESS] [m/MAJOR] [c/CLASS_YEAR] [t/TAG]... `
 
@@ -241,7 +241,7 @@ Examples:
 
 ### Deleting a person: `delete`
 
-Deletes the specified person from the address book.
+Deletes the specified person from UniMate.
 
 Format: `delete INDEX`
 
@@ -251,14 +251,14 @@ Format: `delete INDEX`
 * The deleted person message includes the deleted contact's major and class year when those fields are specified.
 
 Examples:
-* `list` followed by `delete 2` deletes the 2nd person in the address book.
+* `list` followed by `delete 2` deletes the 2nd person in UniMate.
 * `find Betsy` followed by `delete 1` deletes the 1st person in the results of the `find` command.
 * Deleting a contact with academic fields shows a message such as
   `Deleted person: Alex Tan; Phone: 91234567; Email: alex@example.com; Address: 10 Kent Ridge Road; Major: Computer Science; Class year: 2027; Tags: [classmate]`.
 
 ### Clearing all entries: `clear`
 
-Clears all entries from the address book.
+Clears all entries from UniMate.
 
 Format: `clear`
 
@@ -270,18 +270,28 @@ Format: `exit`
 
 ### Saving the data
 
-AddressBook automatically saves data after every command. You do not need to save manually.
+UniMate automatically saves data after every command. You do not need to save manually.
 
 ### Editing the data file
 
-AddressBook data is saved automatically as a JSON file `[JAR file location]/data/addressbook.json`. Advanced users are welcome to update data directly by editing that data file.
+UniMate data is saved automatically as a JSON file `[JAR file location]/data/unimate.json`. Advanced users are welcome to update data directly by editing that data file.
 
 <box type="warning" seamless>
 
 **Caution:**
-If your changes make the data file invalid, AddressBook starts with an empty address book at the next run. The invalid file remains on disk until you run a command (AddressBook saves after every command). Still, we recommend backing up the file before editing it.<br>
-Furthermore, certain edits can cause the AddressBook to behave in unexpected ways (e.g., if a value entered is outside of the acceptable range). Therefore, edit the data file only if you are confident that you can update it correctly.
+If your changes make the data file invalid, UniMate starts with an empty contact list at the next run. The invalid file remains on disk until you run a command (UniMate saves after every command). Still, we recommend backing up the file before editing it.<br>
+Furthermore, certain edits can cause UniMate to behave in unexpected ways (e.g., if a value entered is outside of the acceptable range). Therefore, edit the data file only if you are confident that you can update it correctly.
 </box>
+
+--------------------------------------------------------------------------------------------------------------------
+
+## Coming soon
+
+The following features are not available in the MVP.
+
+### Undo/redo
+
+Planned support for undoing a contact change and redoing an undone change. The `undo` and `redo` commands are not supported in the current release.
 
 ### Archiving data files `[coming in v2.0]`
 
@@ -292,7 +302,7 @@ _Details coming soon ..._
 ## FAQ
 
 **Q**: How do I transfer my data to another computer?<br>
-**A**: Install the app on the other computer and overwrite the data file it creates with the data file from your previous AddressBook home folder.
+**A**: Install the app on the other computer and overwrite the data file it creates with the data file from your previous UniMate home folder.
 
 --------------------------------------------------------------------------------------------------------------------
 
