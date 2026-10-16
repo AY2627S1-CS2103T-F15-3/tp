@@ -71,8 +71,55 @@ public class AddressBookHistory {
         return !isStale() && !redoStates.isEmpty();
     }
 
+    /**
+     * Restores the tracked address book to the state before the most recent recorded change.
+     *
+     * @return true if a state was restored, or false (leaving the tracked address book unchanged)
+     *     if there is no valid state to undo to.
+     */
+    public boolean undo() {
+        discardIfStale();
+        if (undoStates.isEmpty()) {
+            return false;
+        }
+
+        redoStates.push(currentState);
+        restore(undoStates.pop());
+        return true;
+    }
+
+    /**
+     * Restores the tracked address book to the state before the most recent undo.
+     *
+     * @return true if a state was restored, or false (leaving the tracked address book unchanged)
+     *     if there is no valid state to redo to.
+     */
+    public boolean redo() {
+        discardIfStale();
+        if (redoStates.isEmpty()) {
+            return false;
+        }
+
+        undoStates.push(currentState);
+        restore(redoStates.pop());
+        return true;
+    }
+
+    private void restore(AddressBook state) {
+        currentState = state;
+        trackedAddressBook.resetData(state);
+    }
+
     private boolean isStale() {
         return !hasSameData(currentState, trackedAddressBook);
+    }
+
+    private void discardIfStale() {
+        if (isStale()) {
+            undoStates.clear();
+            redoStates.clear();
+            currentState = new AddressBook(trackedAddressBook);
+        }
     }
 
     private static boolean hasSameData(ReadOnlyAddressBook first, ReadOnlyAddressBook second) {
