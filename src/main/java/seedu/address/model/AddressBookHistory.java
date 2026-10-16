@@ -57,4 +57,25 @@ public class AddressBookHistory {
         currentState = new AddressBook(trackedAddressBook);
     }
 
+    /**
+     * Returns true if there is a valid state to undo to.
+     */
+    public boolean canUndo() {
+        return !isStale() && !undoStates.isEmpty();
+    }
+
+    /**
+     * Returns true if there is a valid state to redo to.
+     */
+    public boolean canRedo() {
+        return !isStale() && !redoStates.isEmpty();
+    }
+
+    private boolean isStale() {
+        return !hasSameData(currentState, trackedAddressBook);
+    }
+
+    private static boolean hasSameData(ReadOnlyAddressBook first, ReadOnlyAddressBook second) {
+        return first.getPersonList().equals(second.getPersonList());
+    }
 }
