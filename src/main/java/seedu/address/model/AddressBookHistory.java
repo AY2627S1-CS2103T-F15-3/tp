@@ -35,4 +35,26 @@ public class AddressBookHistory {
         currentState = new AddressBook(trackedAddressBook);
     }
 
+    /**
+     * Records a completed change from {@code previousState} to the current data of the tracked address book,
+     * and clears the redo history.
+     * Does nothing if the change did not modify any data.
+     */
+    public void commit(ReadOnlyAddressBook previousState) {
+        requireNonNull(previousState);
+
+        if (hasSameData(previousState, trackedAddressBook)) {
+            return;
+        }
+
+        if (!hasSameData(previousState, currentState)) {
+            // Unrecorded changes were made before this change, so older snapshots are stale.
+            undoStates.clear();
+        }
+
+        undoStates.push(new AddressBook(previousState));
+        redoStates.clear();
+        currentState = new AddressBook(trackedAddressBook);
+    }
+
 }
