@@ -36,4 +36,53 @@ public class AddressBookHistoryTest {
         history.commit(previousState);
     }
 
+    @Test
+    public void constructor_null_throwsNullPointerException() {
+        assertThrows(NullPointerException.class, () -> new AddressBookHistory(null));
+    }
+
+    @Test
+    public void constructor_newHistory_hasNoUndoOrRedoStates() {
+        assertFalse(history.canUndo());
+        assertFalse(history.canRedo());
+    }
+
+    @Test
+    public void commit_null_throwsNullPointerException() {
+        assertThrows(NullPointerException.class, () -> history.commit(null));
+    }
+
+    @Test
+    public void commit_dataChanged_createsOneUndoableState() {
+        addAndCommit(BENSON);
+
+        assertTrue(history.canUndo());
+        assertFalse(history.canRedo());
+
+        assertTrue(history.undo());
+        assertEquals(new AddressBookBuilder().withPerson(ALICE).build(), addressBook);
+        assertFalse(history.canUndo());
+    }
+
+    @Test
+    public void commit_dataUnchanged_doesNotCreateUndoableState() {
+        history.commit(new AddressBook(addressBook));
+
+        assertFalse(history.canUndo());
+        assertFalse(history.canRedo());
+    }
+
+    @Test
+    public void commit_previousStateModifiedAfterCommit_snapshotUnaffected() {
+        AddressBook previousState = new AddressBook(addressBook);
+        addressBook.addPerson(BENSON);
+        history.commit(previousState);
+
+        // Mutating the object passed in must not change the stored snapshot.
+        previousState.addPerson(CARL);
+
+        assertTrue(history.undo());
+        assertEquals(new AddressBookBuilder().withPerson(ALICE).build(), addressBook);
+    }
+
 }
