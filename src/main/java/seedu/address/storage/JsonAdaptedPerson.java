@@ -32,22 +32,33 @@ class JsonAdaptedPerson {
     private final String address;
     private final String major;
     private final String graduationYear;
+    private final boolean favourite;
     private final List<JsonAdaptedTag> tags = new ArrayList<>();
 
     /**
      * Constructs a {@code JsonAdaptedPerson} with the given person details.
      */
+    public JsonAdaptedPerson(String name, String phone, String email, String address,
+            String major, String graduationYear, List<JsonAdaptedTag> tags) {
+        this(name, phone, email, address, major, graduationYear, tags, false);
+    }
+
+    /**
+     * Reads favourite as false when loading older files without the field.
+     */
     @JsonCreator
     public JsonAdaptedPerson(@JsonProperty("name") String name, @JsonProperty("phone") String phone,
             @JsonProperty("email") String email, @JsonProperty("address") String address,
             @JsonProperty("major") String major, @JsonProperty("graduationYear") String graduationYear,
-            @JsonProperty("tags") List<JsonAdaptedTag> tags) {
+            @JsonProperty("tags") List<JsonAdaptedTag> tags,
+            @JsonProperty("favourite") Boolean favourite) {
         this.name = name;
         this.phone = phone;
         this.email = email;
         this.address = address;
         this.major = major;
         this.graduationYear = graduationYear;
+        this.favourite = Boolean.TRUE.equals(favourite);
         if (tags != null) {
             this.tags.addAll(tags);
         }
@@ -63,6 +74,7 @@ class JsonAdaptedPerson {
         address = source.getAddress().value;
         major = source.getMajor().value;
         graduationYear = source.getGraduationYear().value;
+        favourite = source.isFavourite();
         tags.addAll(source.getTags().stream()
                 .map(JsonAdaptedTag::new)
                 .collect(Collectors.toList()));
@@ -126,7 +138,7 @@ class JsonAdaptedPerson {
 
         final Set<Tag> modelTags = new HashSet<>(personTags);
         return new Person(modelName, modelPhone, modelEmail, modelAddress,
-                modelMajor, modelGraduationYear, modelTags);
+                modelMajor, modelGraduationYear, modelTags, favourite);
     }
 
 }
