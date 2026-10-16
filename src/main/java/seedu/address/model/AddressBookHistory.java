@@ -8,10 +8,10 @@ import java.util.Deque;
 /**
  * An in-memory undo/redo history of an {@code AddressBook}.
  *
- * <p>Snapshots are stored as defensive copies in two stacks: 
+ * <p>Snapshots are stored as defensive copies in two stacks:
  * {@code undoStates} holds the states before each recorded change
- * {@code redoStates} holds the states that were undone 
- * Undoing and redoing reset the data of the tracked address book in place, 
+ * {@code redoStates} holds the states that were undone
+ * Undoing and redoing reset the data of the tracked address book in place,
  * so references to it (and lists backed by it) remain valid.
  *
  * <p>{@code currentState} is a copy of the state that the tracked address book is expected to be in

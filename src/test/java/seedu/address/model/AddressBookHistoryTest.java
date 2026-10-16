@@ -221,5 +221,5 @@ public class AddressBookHistoryTest {
         assertFalse(history.undo());
         assertEquals(new AddressBookBuilder().withPerson(BENSON).build(), addressBook);
     }
-    
+
 }
