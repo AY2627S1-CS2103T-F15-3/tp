@@ -18,6 +18,9 @@ import org.junit.jupiter.api.io.TempDir;
 import seedu.address.commons.exceptions.DataLoadingException;
 import seedu.address.model.AddressBook;
 import seedu.address.model.ReadOnlyAddressBook;
+import seedu.address.model.person.Notes;
+import seedu.address.model.person.Person;
+import seedu.address.testutil.PersonBuilder;
 
 public class JsonAddressBookStorageTest {
     private static final Path TEST_DATA_FOLDER = Paths.get("src", "test", "data", "JsonAddressBookStorageTest");
@@ -58,6 +61,30 @@ public class JsonAddressBookStorageTest {
     @Test
     public void readAddressBook_invalidAndValidPersonAddressBook_throwDataLoadingException() {
         assertThrows(DataLoadingException.class, () -> readAddressBook("invalidAndValidPersonAddressBook.json"));
+    }
+
+    @Test
+    public void readAndSaveAddressBook_notesUpdatedAndCleared_preservesLatestValue() throws Exception {
+        Path filePath = testFolder.resolve("notes.json");
+        JsonAddressBookStorage storage = new JsonAddressBookStorage(filePath);
+        AddressBook addressBook = new AddressBook();
+        Person person = new PersonBuilder(ALICE).withNotes("Met at \"orientation\"").build();
+        addressBook.addPerson(person);
+
+        storage.saveAddressBook(addressBook);
+        assertEquals(addressBook,
+                new AddressBook(new JsonAddressBookStorage(filePath).readAddressBook().orElseThrow()));
+
+        Person updated = person.withNotes(new Notes("Now a project teammate"));
+        addressBook.setPerson(person, updated);
+        storage.saveAddressBook(addressBook);
+        assertEquals(addressBook,
+                new AddressBook(new JsonAddressBookStorage(filePath).readAddressBook().orElseThrow()));
+
+        addressBook.setPerson(updated, updated.withNotes(Notes.EMPTY));
+        storage.saveAddressBook(addressBook);
+        assertEquals(addressBook,
+                new AddressBook(new JsonAddressBookStorage(filePath).readAddressBook().orElseThrow()));
     }
 
     @Test
