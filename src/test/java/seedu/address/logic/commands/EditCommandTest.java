@@ -177,6 +177,135 @@ public class EditCommandTest {
     }
 
     @Test
+    public void execute_successfulEdit_createsOneUndoableState() throws Exception {
+        AddressBook originalAddressBook = new AddressBook(model.getAddressBook());
+        Person originalPerson = model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased());
+        Person editedPerson = new PersonBuilder(originalPerson).withPhone(VALID_PHONE_BOB).build();
+
+        new EditCommand(INDEX_FIRST_PERSON,
+                new EditPersonDescriptorBuilder().withPhone(VALID_PHONE_BOB).build()).execute(model);
+        AddressBook editedAddressBook = new AddressBook(model.getAddressBook());
+
+        assertTrue(model.canUndoAddressBook());
+        assertFalse(model.canRedoAddressBook());
+
+        assertTrue(model.undoAddressBook());
+        assertEquals(originalAddressBook, model.getAddressBook());
+        assertEquals(originalPerson, model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased()));
+        assertFalse(model.canUndoAddressBook());
+
+        assertTrue(model.redoAddressBook());
+        assertEquals(editedAddressBook, model.getAddressBook());
+        assertEquals(editedPerson, model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased()));
+        assertFalse(model.canRedoAddressBook());
+    }
+
+    @Test
+    public void execute_multipleEdits_retainIndependentSnapshots() throws Exception {
+        Person originalPerson = model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased());
+        Person withMajor = new PersonBuilder(originalPerson).withMajor("Mathematics").build();
+        Person withMajorAndYear = new PersonBuilder(withMajor).withGraduationYear("2026").build();
+
+        new EditCommand(INDEX_FIRST_PERSON,
+                new EditPersonDescriptorBuilder().withMajor("Mathematics").build()).execute(model);
+        new EditCommand(INDEX_FIRST_PERSON,
+                new EditPersonDescriptorBuilder().withGraduationYear("2026").build()).execute(model);
+        assertEquals(withMajorAndYear, model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased()));
+
+        assertTrue(model.undoAddressBook());
+        assertEquals(withMajor, model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased()));
+        assertTrue(model.undoAddressBook());
+        assertEquals(originalPerson, model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased()));
+        assertFalse(model.canUndoAddressBook());
+    }
+
+    @Test
+    public void execute_editAfterAddAndUndo_invalidatesRedoHistory() throws Exception {
+        Person newPerson = new PersonBuilder().withName("Alex Tan").build();
+        new AddCommand(newPerson).execute(model);
+        model.undoAddressBook();
+
+        new EditCommand(INDEX_FIRST_PERSON,
+                new EditPersonDescriptorBuilder().withPhone(VALID_PHONE_BOB).build()).execute(model);
+
+        assertFalse(model.canRedoAddressBook());
+        assertFalse(model.hasPerson(newPerson));
+        assertTrue(model.canUndoAddressBook());
+    }
+
+    @Test
+    public void execute_editFilteredList_undoRestoresOriginalPerson() throws Exception {
+        showPersonAtIndex(model, INDEX_FIRST_PERSON);
+        AddressBook originalAddressBook = new AddressBook(model.getAddressBook());
+
+        new EditCommand(INDEX_FIRST_PERSON,
+                new EditPersonDescriptorBuilder().withName(VALID_NAME_BOB).build()).execute(model);
+
+        assertTrue(model.undoAddressBook());
+        assertEquals(originalAddressBook, model.getAddressBook());
+    }
+
+    @Test
+    public void execute_invalidPersonIndex_doesNotCreateHistoryEntry() {
+        Index outOfBoundIndex = Index.fromOneBased(model.getFilteredPersonList().size() + 1);
+        EditCommand editCommand = new EditCommand(outOfBoundIndex,
+                new EditPersonDescriptorBuilder().withName(VALID_NAME_BOB).build());
+
+        assertCommandFailure(editCommand, model, Messages.MESSAGE_INVALID_PERSON_DISPLAYED_INDEX);
+
+        assertFalse(model.canUndoAddressBook());
+        assertFalse(model.canRedoAddressBook());
+    }
+
+    @Test
+    public void execute_duplicatePerson_doesNotCreateHistoryEntry() {
+        Person firstPerson = model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased());
+        EditCommand editCommand = new EditCommand(INDEX_SECOND_PERSON,
+                new EditPersonDescriptorBuilder(firstPerson).build());
+
+        assertCommandFailure(editCommand, model, EditCommand.MESSAGE_DUPLICATE_PERSON);
+
+        assertFalse(model.canUndoAddressBook());
+        assertFalse(model.canRedoAddressBook());
+    }
+
+    @Test
+    public void execute_noFieldSpecified_doesNotCreateHistoryEntry() throws Exception {
+        new EditCommand(INDEX_FIRST_PERSON, new EditPersonDescriptor()).execute(model);
+
+        assertFalse(model.canUndoAddressBook());
+        assertFalse(model.canRedoAddressBook());
+    }
+
+    @Test
+    public void execute_sameValues_doesNotCreateHistoryEntry() throws Exception {
+        Person firstPerson = model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased());
+        EditCommand editCommand = new EditCommand(INDEX_FIRST_PERSON,
+                new EditPersonDescriptorBuilder(firstPerson).build());
+        String expectedMessage = String.format(EditCommand.MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(firstPerson));
+
+        // The existing success message is preserved even though nothing changed.
+        assertEquals(expectedMessage, editCommand.execute(model).getFeedbackToUser());
+        assertEquals(firstPerson, model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased()));
+        assertFalse(model.canUndoAddressBook());
+        assertFalse(model.canRedoAddressBook());
+    }
+
+    @Test
+    public void execute_sameValuesAfterEdit_keepsExistingHistoryOnly() throws Exception {
+        Person originalPerson = model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased());
+        new EditCommand(INDEX_FIRST_PERSON,
+                new EditPersonDescriptorBuilder().withPhone(VALID_PHONE_BOB).build()).execute(model);
+
+        new EditCommand(INDEX_FIRST_PERSON,
+                new EditPersonDescriptorBuilder().withPhone(VALID_PHONE_BOB).build()).execute(model);
+
+        assertTrue(model.undoAddressBook());
+        assertEquals(originalPerson, model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased()));
+        assertFalse(model.canUndoAddressBook());
+    }
+
+    @Test
     public void equals() {
         final EditCommand standardCommand = new EditCommand(INDEX_FIRST_PERSON, DESC_AMY);
 
