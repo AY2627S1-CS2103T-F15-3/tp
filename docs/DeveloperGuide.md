@@ -659,6 +659,8 @@ testers are expected to do more *exploratory* testing.
    1. Prerequisites: Run `find AcademicEdit`.
    1. Test cases: `edit 1 c/1999`, `edit 1 c/abcd`, `edit 1 m/Computer Science m/Mathematics`.<br>
       Expected: A class-year validation error or repeated-prefix error is shown. The contact is unchanged.
+   1. Test case: `edit 1 m/Mathematics c/2100`.<br>
+      Expected: A class-year validation error is shown. Neither academic field changes, including the valid major supplied in the same command.
 
 ### Searching by academic fields
 
