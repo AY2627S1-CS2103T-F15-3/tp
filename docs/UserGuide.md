@@ -190,6 +190,45 @@ These input errors leave all contacts unchanged. If any supplied tag is invalid,
 
 For both commands, UniMate saves the updated data automatically. A saving failure reports `Could not save data due to the following error: ...` or `Could not save data to file ... due to insufficient permissions to write to the file or the folder.` The in-memory change has already occurred in this case, so the error does not mean it was rolled back.
 
+### Adding or replacing a contact's note: `note`
+
+Saves a short note for an existing contact. Each contact has one note; saving another replaces the previous text.
+
+Format: `note INDEX TEXT`
+
+* `INDEX` is the positive index shown in the current contact list, including search results.
+* `TEXT` is required and must be a single line of up to 500 characters. Spaces, punctuation and Unicode text are allowed; control characters such as tabs are not.
+* Leading and trailing whitespace is trimmed. Spaces within the note are preserved.
+* Everything after the index is note text. No field prefix or quotation marks are needed; text such as `n/` or `t/` is saved literally.
+* The contact's other details and the current list filter are preserved.
+* Notes are saved automatically with contact data and remain available after restarting UniMate. New contacts have no note; use `note` after `add`.
+
+Example: `note 2 Met during CS2103T`
+
+The message area displays `Note saved for NAME.` A small note icon at the bottom right of the contact card indicates that a note is present. Use `shownote` to read it.
+
+### Viewing a contact's note: `shownote`
+
+Displays the contact's note in the message area.
+
+Format: `shownote INDEX`
+
+Example: `shownote 2`
+
+The message starts with `Note for NAME:`, followed by the saved text on the next line. If the contact has no note, it displays `No notes have been added to this contact.` Contact data and the current list filter are preserved.
+
+### Deleting a contact's note: `delnote`
+
+Removes the note from a contact while retaining the contact and all its other details.
+
+Format: `delnote INDEX`
+
+Example: `delnote 2`
+
+The message area displays `Note deleted for NAME.`, and the note icon disappears. The current list filter is preserved. If the contact already has no note, the message is `This contact has no note to delete.` and its data stays unchanged.
+
+For all three note commands, an index outside the displayed list reports `The person index provided is invalid.` Missing or invalid index syntax produces a usage error. `note INDEX` without text is also a usage error; use `delnote INDEX` to clear a note. `shownote` and `delnote` reject extra arguments. Invalid note text is rejected without changing the existing note.
+
 ### Listing all persons: `list`
 
 Shows a list of all persons in UniMate. Each contact card includes the person's name, tags, phone number,
@@ -365,3 +404,6 @@ Action     | Format, Examples
 **Tags**   | `tags`
 **Tag**    | `tag INDEX [d/DEFAULT_INDEX]... [t/TAG]...` (at least one tag)<br> e.g., `tag 1 d/2 t/NOC`
 **Untag**  | `untag INDEX t/TAG [t/TAG]...`<br> e.g., `untag 1 t/NOC`
+**Note**   | `note INDEX TEXT`<br> e.g., `note 2 Met during CS2103T`
+**Show note** | `shownote INDEX`<br> e.g., `shownote 2`
+**Delete note** | `delnote INDEX`<br> e.g., `delnote 2`

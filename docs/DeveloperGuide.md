@@ -171,6 +171,16 @@ Classes used by multiple components are in the `seedu.address.commons` package.
 
 This section describes some noteworthy details on how certain features are implemented.
 
+### Contact notes
+
+`Person` stores an immutable `Notes` value. `Notes.EMPTY` represents an absent note, and existing constructors default to it. Supplied notes contain non-whitespace text on a single line, with no control characters and at most 500 Unicode code points. `Person#withNotes` returns a new contact while preserving all other fields. Notes participate in full equality and hashing, but not in contact identity. Existing `edit`, `tag` and `untag` replacement paths preserve them.
+
+`JsonAdaptedPerson` saves the text under `notes`. Missing or null values in older files become empty notes. Invalid stored note text produces the usual data-loading failure. The UI's presence indicator derives from `Person#getNotes().isEmpty()` and updates when the observable contact list replaces a person; note text is displayed through ordinary command feedback.
+
+`AddressBookParser` routes `note`, `shownote` and `delnote` to their respective parsers. `NoteCommandParser` splits the first index from the remaining text and validates that text without interpreting field prefixes. `ShowNoteCommandParser` and `DeleteNoteCommandParser` accept only an index. Each command resolves the index against `Model#getFilteredPersonList()` and preserves the current filter.
+
+`NoteCommand` overwrites the contact's note. `DeleteNoteCommand` replaces it with `Notes.EMPTY`; deleting an already empty note reports an informational message. Both record actual data changes through the existing model history. `ShowNoteCommand` returns the note, or an empty-note message, in a standard `CommandResult`; it does not mutate contact data or history. `LogicManager` retains its normal save-after-success behaviour for all commands.
+
 ### Adding academic fields
 
 `CliSyntax` defines `m/` for a major and `c/` for a graduation year. `AddCommandParser` recognises
@@ -332,7 +342,7 @@ For command formats and user-facing examples, see [Adding tags](UserGuide.md#add
 
 #### Current implementation
 
-The model keeps an in-memory history of contact data states. Successful `add` and `edit` commands record the state from before their change, and the model can restore earlier or later states. This is the groundwork for undo and redo. The `undo` and `redo` commands themselves are not yet available (see [Undo and redo commands](#proposed-undo-and-redo-commands)).
+The model keeps an in-memory history of contact data states. Successful `add`, `edit`, `note` and `delnote` commands record the state from before an actual change, and the model can restore earlier or later states. This is the groundwork for undo and redo. The `undo` and `redo` commands themselves are not yet available (see [Undo and redo commands](#proposed-undo-and-redo-commands)).
 
 **Relevant classes:**
 
@@ -341,7 +351,7 @@ The model keeps an in-memory history of contact data states. Successful `add` an
 | `AddressBookHistory` | Stores defensive `AddressBook` snapshots in an undo stack and a redo stack, and restores them into the tracked `AddressBook`. |
 | `Model` | Declares `commitAddressBook(ReadOnlyAddressBook)`, `canUndoAddressBook()`, `canRedoAddressBook()`, `undoAddressBook()` and `redoAddressBook()`. |
 | `ModelManager` | Creates one `AddressBookHistory` for its `AddressBook` and delegates the methods above to it. |
-| `AddCommand`, `EditCommand` | Copy the contact data before changing it, then call `Model#commitAddressBook` with that copy. |
+| `AddCommand`, `EditCommand`, `NoteCommand`, `DeleteNoteCommand` | Copy the contact data before changing it, then call `Model#commitAddressBook` with that copy. |
 
 `AddressBookHistory` holds:
 
@@ -816,6 +826,27 @@ testers are expected to do more *exploratory* testing.
       Expected: Both affect the first search result and retain the search filter.
    1. Run either command with an index greater than the displayed list size and a valid tag.<br>
       Expected: `The person index provided is invalid.` No contact changes.
+
+### Managing contact notes
+
+Use a test contact for these checks. Run `list` and identify its displayed index; the examples use `1`.
+
+1. Run `shownote 1` on a contact with no note.<br>
+   Expected: `No notes have been added to this contact.` No note icon is visible.
+1. Run `note 1 Met during CS2103T`, then `shownote 1`.<br>
+   Expected: A note icon appears at the bottom right of the card. The message area shows the saved text beneath the contact's name.
+1. Run `note 1 Project teammate`, then `shownote 1`.<br>
+   Expected: Only `Project teammate` is shown; the previous note was replaced. Other contact details are preserved.
+1. Edit the contact's phone, add a tag with `tag`, and remove it with `untag`, then run `shownote` using the contact's current index.<br>
+   Expected: The note is still `Project teammate`.
+1. Restart the app, locate the same contact, and run `shownote`.<br>
+   Expected: The note and its icon are still present.
+1. Use `find` to show a subset of contacts, then use `note 1 Filtered contact`, `shownote 1`, and `delnote 1`.<br>
+   Expected: Each command targets the first displayed result and preserves the filter. Deleting the note removes its icon and leaves the contact present.
+1. Repeat `delnote 1`, then run `shownote 1`.<br>
+   Expected: `This contact has no note to delete.`, followed by `No notes have been added to this contact.` Restarting preserves the empty note.
+1. Try `note 1`, `note 0 Text`, `shownote 1 extra`, `delnote 1 extra`, and a `note` containing more than 500 characters. Also try an index beyond the displayed list.<br>
+   Expected: An appropriate usage, note-constraint or invalid-index error; existing notes and other contact details are unchanged.
 
 ### Saving data
 

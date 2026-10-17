@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import seedu.address.logic.commands.AddCommand;
 import seedu.address.logic.commands.ClearCommand;
 import seedu.address.logic.commands.DeleteCommand;
+import seedu.address.logic.commands.DeleteNoteCommand;
 import seedu.address.logic.commands.EditCommand;
 import seedu.address.logic.commands.EditCommand.EditPersonDescriptor;
 import seedu.address.logic.commands.ExitCommand;
@@ -25,11 +26,14 @@ import seedu.address.logic.commands.HelpCommand;
 import seedu.address.logic.commands.ListCommand;
 import seedu.address.logic.commands.RedoCommand;
 import seedu.address.logic.commands.UndoCommand;
+import seedu.address.logic.commands.NoteCommand;
+import seedu.address.logic.commands.ShowNoteCommand;
 import seedu.address.logic.parser.exceptions.ParseException;
 import seedu.address.model.person.ContactFilterPredicate;
 import seedu.address.model.person.GraduationYear;
 import seedu.address.model.person.Major;
 import seedu.address.model.person.NameContainsKeywordsPredicate;
+import seedu.address.model.person.Notes;
 import seedu.address.model.person.Person;
 import seedu.address.model.tag.Tag;
 import seedu.address.testutil.EditPersonDescriptorBuilder;
@@ -124,6 +128,14 @@ public class AddressBookParserTest {
                 + " all"));
         // The command word is case-sensitive, like other commands.
         assertThrows(ParseException.class, MESSAGE_UNKNOWN_COMMAND, () -> parser.parseCommand("UNDO"));
+    }
+
+    @Test
+    public void parseCommand_notes() throws Exception {
+        assertEquals(new NoteCommand(INDEX_FIRST_PERSON, new Notes("Met during CS2103T")),
+                parser.parseCommand("note 1 Met during CS2103T"));
+        assertEquals(new ShowNoteCommand(INDEX_FIRST_PERSON), parser.parseCommand("shownote 1"));
+        assertEquals(new DeleteNoteCommand(INDEX_FIRST_PERSON), parser.parseCommand("delnote 1"));
     }
 
     @Test
