@@ -133,6 +133,7 @@ The `Model` component,
   Each `Person` includes `Major` and `GraduationYear` value objects in addition to its existing contact details and tags.
 * stores the `Person` objects selected by the current filter, such as search results, in a separate _filtered_ list. It exposes this list as an unmodifiable `ObservableList<Person>` that the UI can observe and bind to, so the UI updates when the list changes.
 * stores a `UserPrefs` object that represents the user’s preferences (currently, just the GUI settings). This is exposed to the outside as a `ReadOnlyUserPrefs` object.
+* keeps an in-memory history of earlier contact data states in an `AddressBookHistory` object, so that successful `add` and `edit` changes can later be undone and redone. See [Recording contact data history](#recording-contact-data-history).
 * does not depend on any of the other three components (as the `Model` represents data entities of the domain, they should make sense on their own without depending on other components)
 
 
@@ -184,6 +185,8 @@ a four-digit year from `2000` to `2099`. Invalid input produces a parse error be
 
 The parser constructs a `Person` containing both academic values and passes it to `AddCommand`.
 The command checks for an existing contact with the same name before adding the person to the model.
+After a successful add, it records the previous contact data state in the model's history
+(see [Recording contact data history](#recording-contact-data-history)).
 The normal storage path then saves the contact, including its academic fields.
 
 ### Editing academic fields
@@ -196,6 +199,8 @@ to clear the optional field; an omitted prefix leaves the descriptor field null.
 `EditCommand.EditPersonDescriptor` stores, copies and compares both academic fields. `EditCommand`
 uses the supplied values when constructing the edited `Person`, retaining existing values for omitted fields.
 The existing model update and JSON storage path save the edited values without a storage format change.
+After a successful edit that changes the contact, `EditCommand` records the previous contact data state in the
+model's history (see [Recording contact data history](#recording-contact-data-history)).
 
 ### Searching by academic fields
 
@@ -296,100 +301,105 @@ The current `EditCommand` still supports replacing the entire tag set through `e
 
 For command formats and user-facing examples, see [Adding tags](UserGuide.md#adding-tags-to-a-person-tag) and [Removing tags](UserGuide.md#removing-tags-from-a-person-untag). Manual checks are listed under [Tagging and untagging a person](#tagging-and-untagging-a-person).
 
+### Recording contact data history
+
+#### Current implementation
+
+The model keeps an in-memory history of contact data states. Successful `add` and `edit` commands record the state from before their change, and the model can restore earlier or later states. This is the groundwork for undo and redo. The `undo` and `redo` commands themselves are not yet available (see [Undo and redo commands](#proposed-undo-and-redo-commands)).
+
+**Relevant classes:**
+
+| Class | Responsibility |
+|-------|----------------|
+| `AddressBookHistory` | Stores defensive `AddressBook` snapshots in an undo stack and a redo stack, and restores them into the tracked `AddressBook`. |
+| `Model` | Declares `commitAddressBook(ReadOnlyAddressBook)`, `canUndoAddressBook()`, `canRedoAddressBook()`, `undoAddressBook()` and `redoAddressBook()`. |
+| `ModelManager` | Creates one `AddressBookHistory` for its `AddressBook` and delegates the methods above to it. |
+| `AddCommand`, `EditCommand` | Copy the contact data before changing it, then call `Model#commitAddressBook` with that copy. |
+
+`AddressBookHistory` holds:
+
+* `undoStates`: the contact data from before each recorded change, most recent on top.
+* `redoStates`: the contact data that has been undone, most recent on top.
+* `currentState`: a copy of the contact data the tracked `AddressBook` is expected to contain.
+
+Every stored state is a copy made with `new AddressBook(...)`. `Person` and its fields are immutable, so later changes to the model cannot alter a stored snapshot.
+
+#### Execution flow
+
+Given below is the flow for a successful `add n/Alex Tan …​`:
+
+1. `AddCommand#execute` checks `Model#hasPerson`. A duplicate throws a `CommandException` here, so nothing is recorded.
+1. The command creates `previousState = new AddressBook(model.getAddressBook())`, then calls `Model#addPerson`.
+1. The command calls `Model#commitAddressBook(previousState)`. `AddressBookHistory#commit` then:
+   1. returns without recording if `previousState` holds the same contacts as the current data;
+   1. clears `undoStates` if `previousState` differs from `currentState`, which means an unrecorded change happened earlier (see below);
+   1. pushes a copy of `previousState` onto `undoStates`, clears `redoStates`, and sets `currentState` to a copy of the current data.
+1. `LogicManager` saves the contact data to storage as before. The history itself is not saved.
+
+`EditCommand#execute` follows the same pattern. It checks the displayed index and duplicate persons first, copies the data, calls `Model#setPerson`, and then commits. An edit that leaves the person unchanged, such as `edit 1` with the person's current values, still returns the usual success message. Its commit is ignored because the data did not change.
+
+`Model#undoAddressBook()` pushes `currentState` onto `redoStates`, pops the top of `undoStates`, and restores it. `Model#redoAddressBook()` does the reverse. Restoring calls `AddressBook#resetData` on the existing `AddressBook`, so:
+
+* the `AddressBook` object and the `FilteredList` built on it are the same objects before and after, and the UI updates through its existing observers;
+* restoring a state does not record a new history entry.
+
+Both methods return `true` if a state was restored. They return `false` and leave the data unchanged if there is nothing to restore.
+
+#### Commands that are not undoable
+
+`delete`, `tag`, `untag` and `clear` change contact data but do not call `Model#commitAddressBook`. If an old snapshot were restored after one of them, it would silently reverse that change as well. For example, after `add` and then `delete 1`, undoing the add would also bring back the deleted contact.
+
+To prevent this, `AddressBookHistory` compares `currentState` with the live contact data. If they differ, a change was made without being recorded, and the history is stale:
+
+* `canUndoAddressBook()` and `canRedoAddressBook()` return `false`.
+* `undoAddressBook()` and `redoAddressBook()` discard both stacks and return `false`, leaving the data unchanged.
+* The next commit discards the stale undo states before recording the new one.
+
+These commands therefore need no history code, and any future command that changes data without committing is handled the same way.
+
+#### Design considerations
+
+**Aspect: What is stored for each change**
+
+* **Alternative 1 (current choice):** Store a copy of the whole contact data state.
+  * Pros: Easy to implement and to verify, and works the same for any command.
+  * Cons: Uses more memory as the number of contacts and history entries grows.
+* **Alternative 2:** Each command stores how to reverse itself (e.g. `add` stores the person to remove).
+  * Pros: Uses less memory.
+  * Cons: Every command needs its own correct reversal logic.
+
+**Aspect: How the history is structured**
+
+* **Alternative 1 (current choice):** An undo stack and a redo stack in a separate `AddressBookHistory` class.
+  * Pros: Clearing redo history is a single `clear()` call. `AddressBook` stays unchanged, and history can be tested on its own.
+  * Cons: `ModelManager` has to hold and delegate to another object.
+* **Alternative 2:** A `VersionedAddressBook` subclass with a list of states and a current-state pointer.
+  * Pros: Keeps history and data in one object.
+  * Cons: Discarding redo states requires trimming the list after the pointer, and `AddressBook` gains history responsibilities.
+
+**Aspect: How non-undoable commands affect history**
+
+* **Alternative 1 (current choice):** Detect unrecorded changes by comparing the expected state with the live data.
+  * Pros: `delete`, `tag`, `untag` and `clear` are not modified, and future commands cannot leave stale history by mistake.
+  * Cons: Each history check compares the whole contact list. If an unrecorded change is later reversed exactly, the history becomes valid again, which is safe because the data is identical.
+* **Alternative 2:** Have each non-undoable command explicitly clear the history.
+  * Pros: Makes the behaviour visible in each command.
+  * Cons: Every data-changing command must remember to do it, and `tag`, `untag` and `edit` all use `Model#setPerson`, so the model alone cannot tell them apart.
+
 --------------------------------------------------------------------------------------------------------------------
 
 ## **Coming soon**
 
 The features in this section are not implemented in the MVP. The descriptions and diagrams below are proposals for future development.
 
-### \[Proposed\] Undo/redo feature
+### \[Proposed\] Undo and redo commands
 
-#### Proposed Implementation
+The model-level history described in [Recording contact data history](#recording-contact-data-history) is implemented, but no `undo` or `redo` command is available to users yet. The planned commands would:
 
-The proposed `VersionedAddressBook` class would extend `AddressBook` to represent UniMate contact data with an undo/redo history. It would store that history internally as an `addressBookStateList` and `currentStatePointer`. This class and the undo/redo methods described below do not exist in the current implementation.
+* check `Model#canUndoAddressBook()` or `Model#canRedoAddressBook()` and show an error if it returns `false`;
+* otherwise call `Model#undoAddressBook()` or `Model#redoAddressBook()` and report the result.
 
-The proposed operations are:
-
-* `VersionedAddressBook#commit()` -- Would save the current UniMate data state in its history.
-* `VersionedAddressBook#undo()` -- Would restore the previous UniMate data state from its history.
-* `VersionedAddressBook#redo()` -- Would restore a previously undone UniMate data state from its history.
-
-These operations would be exposed in the `Model` interface as `Model#commitAddressBook()`, `Model#undoAddressBook()` and `Model#redoAddressBook()` respectively.
-
-The following hypothetical scenario illustrates how the proposed mechanism would behave. The `undo` and `redo` commands are not available in the MVP.
-
-Step 1. The user launches the application for the first time. The versioned data model will be initialized with the initial UniMate data state, and the `currentStatePointer` pointing to that single state.
-
-<puml src="diagrams/UndoRedoState0.puml" alt="UndoRedoState0" />
-
-Step 2. The user executes `delete 5` command to delete the 5th person in UniMate. The `delete` command calls `Model#commitAddressBook()`, causing the modified UniMate data state after the `delete 5` command executes to be saved in the `addressBookStateList`, and the `currentStatePointer` is shifted to the newly inserted state.
-
-<puml src="diagrams/UndoRedoState1.puml" alt="UndoRedoState1" />
-
-Step 3. The user executes `add n/David …​` to add a new person. The `add` command also calls `Model#commitAddressBook()`, causing another modified UniMate data state to be saved into the `addressBookStateList`.
-
-<puml src="diagrams/UndoRedoState2.puml" alt="UndoRedoState2" />
-
-<box type="info" seamless>
-
-**Note:** If a command fails its execution, it will not call `Model#commitAddressBook()`, so the UniMate data state will not be saved into the `addressBookStateList`.
-</box>
-
-Step 4. The user now decides that adding the person was a mistake, and decides to undo that action by executing the `undo` command. The `undo` command will call `Model#undoAddressBook()`, which will shift the `currentStatePointer` once to the left, pointing it to the previous UniMate data state, and restores UniMate to that state.
-
-<puml src="diagrams/UndoRedoState3.puml" alt="UndoRedoState3" />
-
-
-<box type="info" seamless>
-
-**Note:** If the `currentStatePointer` is at index 0, pointing to the initial UniMate data state, then there are no previous states to restore. The `undo` command uses `Model#canUndoAddressBook()` to check if this is the case. If so, it will return an error to the user rather
-than attempting to perform the undo.
-</box>
-
-The following sequence diagram shows how an undo operation goes through the `Logic` component:
-
-<puml src="diagrams/UndoSequenceDiagram-Logic.puml" alt="UndoSequenceDiagram-Logic" />
-
-<box type="info" seamless>
-
-**Note:** The lifeline for `UndoCommand` should end at the destroy marker (X), but due to a limitation of PlantUML, it continues to the end of the diagram.
-</box>
-
-Similarly, how an undo operation goes through the `Model` component is shown below:
-
-<puml src="diagrams/UndoSequenceDiagram-Model.puml" alt="UndoSequenceDiagram-Model" />
-
-The `redo` command does the opposite — it calls `Model#redoAddressBook()`, which shifts the `currentStatePointer` once to the right, pointing to the previously undone state, and restores UniMate to that state.
-
-<box type="info" seamless>
-
-**Note:** If the `currentStatePointer` is at index `addressBookStateList.size() - 1`, pointing to the latest UniMate data state, then there are no undone states to restore. The `redo` command uses `Model#canRedoAddressBook()` to check if this is the case. If so, it will return an error to the user rather than attempting to perform the redo.
-</box>
-
-Step 5. The user then decides to execute the command `list`. Commands that do not modify the address book, such as `list`, will usually not call `Model#commitAddressBook()`, `Model#undoAddressBook()` or `Model#redoAddressBook()`. Thus, the `addressBookStateList` remains unchanged.
-
-<puml src="diagrams/UndoRedoState4.puml" alt="UndoRedoState4" />
-
-Step 6. The user executes `clear`, which calls `Model#commitAddressBook()`. Since the `currentStatePointer` is not pointing at the end of the `addressBookStateList`, all UniMate data states after the `currentStatePointer` will be purged. Reason: It no longer makes sense to redo the `add n/David …` command. This is the behavior that most modern desktop applications follow.
-
-<puml src="diagrams/UndoRedoState5.puml" alt="UndoRedoState5" />
-
-The following activity diagram summarizes what happens when a user executes a new command:
-
-<puml src="diagrams/CommitActivityDiagram.puml" width="250" />
-
-#### Design considerations:
-
-**Aspect: How undo & redo execute:**
-
-* **Alternative 1 (proposed choice):** Saves the entire UniMate data state.
-  * Pros: Easy to implement.
-  * Cons: May have performance issues in terms of memory usage.
-
-* **Alternative 2:** Individual command knows how to undo/redo by
-  itself.
-  * Pros: Will use less memory (e.g. for `delete`, just save the person being deleted).
-  * Cons: We must ensure that the implementation of each individual command is correct.
+Only `add` and `edit` would be undoable at first. Running `delete`, `tag`, `untag` or `clear` would make any earlier undo and redo history unavailable.
 
 ### \[Proposed\] Data archiving
 
