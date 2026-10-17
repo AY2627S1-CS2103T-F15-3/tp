@@ -26,6 +26,13 @@
           </minWidth>
         </Label>
         <Label fx:id="name" text="\$first" styleClass="cell_big_label" />
+        <Label fx:id="favouriteIcon" text="&#9829;" styleClass="favourite-icon" alignment="CENTER"
+               minWidth="24" prefWidth="24" maxWidth="24" minHeight="24" prefHeight="24" maxHeight="24"
+               visible="false" managed="false" accessibleText="Favourite contact">
+          <HBox.margin>
+            <Insets left="6" />
+          </HBox.margin>
+        </Label>
       </HBox>
       <FlowPane fx:id="tags" />
       <Label fx:id="phone" styleClass="cell_small_label" text="\$phone" />

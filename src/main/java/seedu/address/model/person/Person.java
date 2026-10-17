@@ -26,12 +26,21 @@ public class Person {
     private final Major major;
     private final GraduationYear graduationYear;
     private final Set<Tag> tags = new HashSet<>();
+    private final boolean favourite;
 
     /**
      * Every field must be present and not null.
      */
     public Person(Name name, Phone phone, Email email, Address address, Major major,
             GraduationYear graduationYear, Set<Tag> tags) {
+        this(name, phone, email, address, major, graduationYear, tags, false);
+    }
+
+    /**
+     * Creates a person with the specified favourite state and non-null contact fields.
+     */
+    public Person(Name name, Phone phone, Email email, Address address, Major major,
+            GraduationYear graduationYear, Set<Tag> tags, boolean favourite) {
         requireAllNonNull(name, phone, email, address, major, graduationYear, tags);
         this.name = name;
         this.phone = phone;
@@ -40,6 +49,14 @@ public class Person {
         this.major = major;
         this.graduationYear = graduationYear;
         this.tags.addAll(tags);
+        this.favourite = favourite;
+    }
+
+    /**
+     * Returns whether this person is a favourite.
+     */
+    public boolean isFavourite() {
+        return favourite;
     }
 
     public Name getName() {
@@ -108,13 +125,14 @@ public class Person {
                 && address.equals(otherPerson.address)
                 && major.equals(otherPerson.major)
                 && graduationYear.equals(otherPerson.graduationYear)
-                && tags.equals(otherPerson.tags);
+                && tags.equals(otherPerson.tags)
+                && favourite == otherPerson.favourite;
     }
 
     @Override
     public int hashCode() {
         // use this method for custom fields hashing instead of implementing your own
-        return Objects.hash(name, phone, email, address, major, graduationYear, tags);
+        return Objects.hash(name, phone, email, address, major, graduationYear, tags, favourite);
     }
 
     @Override
@@ -127,6 +145,7 @@ public class Person {
                 .add("major", major)
                 .add("graduationYear", graduationYear)
                 .add("tags", tags)
+                .add("favourite", favourite)
                 .toString();
     }
 
