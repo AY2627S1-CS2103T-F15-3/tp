@@ -24,6 +24,13 @@ checkstyle {
     toolVersion = '14.1.0'
 }
 
+processResources {
+    from('docs/images') {
+        include 'noteicon.png'
+        into 'images'
+    }
+}
+
 test {
     useJUnitPlatform()
     finalizedBy jacocoTestReport

@@ -136,14 +136,6 @@
     -fx-padding: 3;
 }
 
-.note-icon-shape {
-    -fx-fill: transparent;
-    -fx-stroke: #b6cdf8;
-    -fx-stroke-width: 1.5;
-    -fx-stroke-line-cap: round;
-    -fx-stroke-line-join: round;
-}
-
 .stack-pane {
      -fx-background-color: derive(#1d1d1d, 20%);
 }

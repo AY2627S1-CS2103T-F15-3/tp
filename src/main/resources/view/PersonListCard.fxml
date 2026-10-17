@@ -2,13 +2,14 @@
 
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.ColumnConstraints?>
 <?import javafx.scene.layout.FlowPane?>
 <?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.VBox?>
-<?import javafx.scene.shape.SVGPath?>
 
 <HBox id="cardPane" fx:id="cardPane" alignment="BOTTOM_LEFT"
       xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1">
@@ -38,13 +39,16 @@
     </VBox>
   </GridPane>
   <Label fx:id="noteIcon" styleClass="note-icon" contentDisplay="GRAPHIC_ONLY"
-         accessibleText="This contact has a note" minWidth="24" minHeight="24" visible="false" managed="false">
+         accessibleText="This contact has a note" minWidth="30" minHeight="30" visible="false" managed="false">
     <HBox.margin>
       <Insets top="5" right="10" bottom="8" left="5" />
     </HBox.margin>
     <graphic>
-      <SVGPath styleClass="note-icon-shape"
-               content="M 2 1 L 11 1 L 16 6 L 16 19 L 2 19 Z M 11 1 L 11 6 L 16 6 M 5 10 L 13 10 M 5 13 L 13 13 M 5 16 L 10 16" />
+      <ImageView fitWidth="24" fitHeight="24" preserveRatio="true" smooth="true">
+        <image>
+          <Image url="@/images/noteicon.png" />
+        </image>
+      </ImageView>
     </graphic>
   </Label>
 </HBox>
