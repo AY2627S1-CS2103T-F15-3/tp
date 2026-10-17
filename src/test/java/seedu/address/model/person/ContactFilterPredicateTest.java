@@ -9,6 +9,7 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 
+import seedu.address.model.tag.Tag;
 import seedu.address.testutil.PersonBuilder;
 
 public class ContactFilterPredicateTest {
@@ -18,15 +19,15 @@ public class ContactFilterPredicateTest {
     @Test
     public void constructor_noCriteria_throwsIllegalArgumentException() {
         assertThrows(IllegalArgumentException.class, () -> new ContactFilterPredicate(
-                Optional.empty(), Optional.empty()));
+                Optional.empty(), Optional.empty(), Optional.empty()));
     }
 
     @Test
     public void constructor_nullCriteria_throwsNullPointerException() {
         assertThrows(NullPointerException.class, () -> new ContactFilterPredicate(null, Optional.of(
-                new GraduationYear("2027"))));
+                new GraduationYear("2027")), Optional.empty()));
         assertThrows(NullPointerException.class, () -> new ContactFilterPredicate(Optional.of(
-                new Major("Computing")), null));
+                new Major("Computing")), null, Optional.empty()));
     }
 
     @Test
@@ -86,11 +87,41 @@ public class ContactFilterPredicateTest {
     public void toStringMethod_containsCriteria() {
         ContactFilterPredicate predicate = predicate("Computer Science", "2027");
         assertEquals(ContactFilterPredicate.class.getCanonicalName()
-                + "{major=Optional[Computer Science], graduationYear=Optional[2027]}", predicate.toString());
+                + "{major=Optional[Computer Science], graduationYear=Optional[2027], tag=Optional.empty}",
+                predicate.toString());
+    }
+
+    @Test
+    public void test_tagOnly_matchesCompleteTagIgnoringCase() {
+        ContactFilterPredicate predicate = new ContactFilterPredicate(Optional.empty(), Optional.empty(),
+                Optional.of(new Tag("classmate")));
+        assertTrue(predicate.test(new PersonBuilder().withTags("Classmate", "NOC").build()));
+        assertFalse(predicate.test(new PersonBuilder().withTags("Classmates").build()));
+        assertFalse(predicate.test(new PersonBuilder().withTags().build()));
+        assertFalse(predicate.test(new PersonBuilder().withName("Classmate").withTags("Friend").build()));
+    }
+
+    @Test
+    public void test_academicAndTagCriteria_requiresAllThree() {
+        ContactFilterPredicate predicate = new ContactFilterPredicate(Optional.of(new Major("Computer Science")),
+                Optional.of(new GraduationYear("2027")), Optional.of(new Tag("Classmate")));
+        Person matching = new PersonBuilder(computing).withTags("Classmate", "NOC").build();
+        assertTrue(predicate.test(matching));
+        assertFalse(predicate.test(new PersonBuilder(matching).withMajor("Mathematics").build()));
+        assertFalse(predicate.test(new PersonBuilder(matching).withGraduationYear("2028").build()));
+        assertFalse(predicate.test(new PersonBuilder(matching).withTags("Friend").build()));
+        assertFalse(predicate.equals(new ContactFilterPredicate(Optional.of(new Major("Computer Science")),
+                Optional.of(new GraduationYear("2027")), Optional.of(new Tag("Friend")))));
+    }
+
+    @Test
+    public void constructor_nullTag_throwsNullPointerException() {
+        assertThrows(NullPointerException.class, () -> new ContactFilterPredicate(Optional.of(new Major("Computing")),
+                Optional.empty(), null));
     }
 
     private ContactFilterPredicate predicate(String major, String year) {
         return new ContactFilterPredicate(Optional.ofNullable(major).map(Major::new),
-                Optional.ofNullable(year).map(GraduationYear::new));
+                Optional.ofNullable(year).map(GraduationYear::new), Optional.empty());
     }
 }
