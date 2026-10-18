@@ -83,6 +83,7 @@
         "sorting-contacts": "Sorting contacts",
         "deleting-a-person": "Deleting a person",
         "tagging-and-untagging-a-person": "Tagging and untagging a person",
+        "undoing-and-redoing-changes": "Undoing and redoing changes",
         "managing-contact-notes": "Managing contact notes",
         "undoing-and-redoing-contact-changes": "Undoing and redoing contact changes",
         "saving-data": "Saving data"
@@ -151,7 +152,7 @@
         "deleting-a-person-delete": "Deleting a person: delete",
         "clearing-all-entries-clear": "Clearing all entries: clear",
         "undoing-a-change-undo": "Undoing a change: undo",
-        "redoing-a-change-redo": "Redoing a change: redo",
+        "redoing-an-undone-change-redo": "Redoing an undone change: redo",
         "exiting-the-program-exit": "Exiting the program: exit",
         "saving-the-data": "Saving the data",
         "editing-the-data-file": "Editing the data file",
