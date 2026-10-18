@@ -8,6 +8,7 @@ plugins {
 
 application {
     mainClass = 'seedu.address.Main'
+    applicationDefaultJvmArgs = ['--enable-native-access=ALL-UNNAMED']
 }
 
 java {
@@ -24,8 +25,16 @@ checkstyle {
     toolVersion = '14.1.0'
 }
 
+processResources {
+    from('docs/images') {
+        include 'noteicon.png'
+        into 'images'
+    }
+}
+
 test {
     useJUnitPlatform()
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
     finalizedBy jacocoTestReport
 }
 
@@ -73,6 +82,9 @@ dependencies {
 
 shadowJar {
     archiveFileName = 'unimate.jar'
+    manifest {
+        attributes 'Enable-Native-Access': 'ALL-UNNAMED'
+    }
 }
 
 defaultTasks 'clean', 'test'
