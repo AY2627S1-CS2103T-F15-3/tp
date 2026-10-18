@@ -12,11 +12,13 @@ import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 
 import seedu.address.commons.exceptions.IllegalValueException;
+import seedu.address.commons.util.JsonUtil;
 import seedu.address.model.person.Address;
 import seedu.address.model.person.Email;
 import seedu.address.model.person.GraduationYear;
 import seedu.address.model.person.Major;
 import seedu.address.model.person.Name;
+import seedu.address.model.person.Notes;
 import seedu.address.model.person.Person;
 import seedu.address.model.person.Phone;
 import seedu.address.testutil.PersonBuilder;
@@ -41,6 +43,32 @@ public class JsonAdaptedPersonTest {
         JsonAdaptedPerson person =
                 new JsonAdaptedPerson(BENSON);
         assertEquals(BENSON, person.toModelType());
+    }
+
+    @Test
+    public void toModelType_notesRoundTrip_preservesText() throws Exception {
+        Person expected = new PersonBuilder(BENSON).withNotes("Met at \"orientation\"; \u674e\u540c\u5b66").build();
+        String json = JsonUtil.toJsonString(new JsonAdaptedPerson(expected));
+        assertEquals(expected, JsonUtil.fromJsonString(json, JsonAdaptedPerson.class).toModelType());
+    }
+
+    @Test
+    public void toModelType_emptyOrNullNotes_returnsEmptyNotes() throws Exception {
+        for (String notes : new String[]{"", null}) {
+            JsonAdaptedPerson person = new JsonAdaptedPerson(VALID_NAME, VALID_PHONE, VALID_EMAIL, VALID_ADDRESS,
+                    null, null, VALID_TAGS, notes);
+            assertEquals(BENSON, person.toModelType());
+            assertEquals(Notes.EMPTY, person.toModelType().getNotes());
+        }
+    }
+
+    @Test
+    public void toModelType_invalidNotes_throwsIllegalValueException() {
+        for (String notes : new String[]{" ", "First\nSecond", "a".repeat(Notes.MAX_LENGTH + 1)}) {
+            JsonAdaptedPerson person = new JsonAdaptedPerson(VALID_NAME, VALID_PHONE, VALID_EMAIL, VALID_ADDRESS,
+                    null, null, VALID_TAGS, notes);
+            assertThrows(IllegalValueException.class, Notes.MESSAGE_CONSTRAINTS, person::toModelType);
+        }
     }
 
     @Test

@@ -25,6 +25,7 @@ public class Person {
     private final Address address;
     private final Major major;
     private final GraduationYear graduationYear;
+    private final Notes notes;
     private final Set<Tag> tags = new HashSet<>();
 
     /**
@@ -32,13 +33,22 @@ public class Person {
      */
     public Person(Name name, Phone phone, Email email, Address address, Major major,
             GraduationYear graduationYear, Set<Tag> tags) {
-        requireAllNonNull(name, phone, email, address, major, graduationYear, tags);
+        this(name, phone, email, address, major, graduationYear, tags, Notes.EMPTY);
+    }
+
+    /**
+     * Creates a person with optional notes. Every field must be present and not null.
+     */
+    public Person(Name name, Phone phone, Email email, Address address, Major major,
+            GraduationYear graduationYear, Set<Tag> tags, Notes notes) {
+        requireAllNonNull(name, phone, email, address, major, graduationYear, tags, notes);
         this.name = name;
         this.phone = phone;
         this.email = email;
         this.address = address;
         this.major = major;
         this.graduationYear = graduationYear;
+        this.notes = notes;
         this.tags.addAll(tags);
     }
 
@@ -64,6 +74,17 @@ public class Person {
 
     public GraduationYear getGraduationYear() {
         return graduationYear;
+    }
+
+    public Notes getNotes() {
+        return notes;
+    }
+
+    /**
+     * Returns a copy with the given notes, preserving all other contact details.
+     */
+    public Person withNotes(Notes updatedNotes) {
+        return new Person(name, phone, email, address, major, graduationYear, tags, updatedNotes);
     }
 
     /**
@@ -108,13 +129,14 @@ public class Person {
                 && address.equals(otherPerson.address)
                 && major.equals(otherPerson.major)
                 && graduationYear.equals(otherPerson.graduationYear)
+                && notes.equals(otherPerson.notes)
                 && tags.equals(otherPerson.tags);
     }
 
     @Override
     public int hashCode() {
         // use this method for custom fields hashing instead of implementing your own
-        return Objects.hash(name, phone, email, address, major, graduationYear, tags);
+        return Objects.hash(name, phone, email, address, major, graduationYear, tags, notes);
     }
 
     @Override
@@ -127,6 +149,7 @@ public class Person {
                 .add("major", major)
                 .add("graduationYear", graduationYear)
                 .add("tags", tags)
+                .add("notes", notes)
                 .toString();
     }
 
