@@ -27,20 +27,37 @@ public class Person {
     private final GraduationYear graduationYear;
     private final Notes notes;
     private final Set<Tag> tags = new HashSet<>();
+    private final boolean favourite;
 
     /**
      * Every field must be present and not null.
      */
     public Person(Name name, Phone phone, Email email, Address address, Major major,
             GraduationYear graduationYear, Set<Tag> tags) {
-        this(name, phone, email, address, major, graduationYear, tags, Notes.EMPTY);
+        this(name, phone, email, address, major, graduationYear, tags, Notes.EMPTY, false);
     }
 
     /**
-     * Creates a person with optional notes. Every field must be present and not null.
+     * Creates a person with the specified favourite state and empty notes.
+     */
+    public Person(Name name, Phone phone, Email email, Address address, Major major,
+            GraduationYear graduationYear, Set<Tag> tags, boolean favourite) {
+        this(name, phone, email, address, major, graduationYear, tags, Notes.EMPTY, favourite);
+    }
+
+    /**
+     * Creates a person with optional notes and no favourite status.
      */
     public Person(Name name, Phone phone, Email email, Address address, Major major,
             GraduationYear graduationYear, Set<Tag> tags, Notes notes) {
+        this(name, phone, email, address, major, graduationYear, tags, notes, false);
+    }
+
+    /**
+     * Creates a person preserving both notes and favourite status.
+     */
+    public Person(Name name, Phone phone, Email email, Address address, Major major,
+            GraduationYear graduationYear, Set<Tag> tags, Notes notes, boolean favourite) {
         requireAllNonNull(name, phone, email, address, major, graduationYear, tags, notes);
         this.name = name;
         this.phone = phone;
@@ -50,6 +67,14 @@ public class Person {
         this.graduationYear = graduationYear;
         this.notes = notes;
         this.tags.addAll(tags);
+        this.favourite = favourite;
+    }
+
+    /**
+     * Returns whether this person is a favourite.
+     */
+    public boolean isFavourite() {
+        return favourite;
     }
 
     public Name getName() {
@@ -84,7 +109,7 @@ public class Person {
      * Returns a copy with the given notes, preserving all other contact details.
      */
     public Person withNotes(Notes updatedNotes) {
-        return new Person(name, phone, email, address, major, graduationYear, tags, updatedNotes);
+        return new Person(name, phone, email, address, major, graduationYear, tags, updatedNotes, favourite);
     }
 
     /**
@@ -130,13 +155,14 @@ public class Person {
                 && major.equals(otherPerson.major)
                 && graduationYear.equals(otherPerson.graduationYear)
                 && notes.equals(otherPerson.notes)
-                && tags.equals(otherPerson.tags);
+                && tags.equals(otherPerson.tags)
+                && favourite == otherPerson.favourite;
     }
 
     @Override
     public int hashCode() {
         // use this method for custom fields hashing instead of implementing your own
-        return Objects.hash(name, phone, email, address, major, graduationYear, tags, notes);
+        return Objects.hash(name, phone, email, address, major, graduationYear, tags, notes, favourite);
     }
 
     @Override
@@ -150,6 +176,7 @@ public class Person {
                 .add("graduationYear", graduationYear)
                 .add("tags", tags)
                 .add("notes", notes)
+                .add("favourite", favourite)
                 .toString();
     }
 
