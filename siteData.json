@@ -55,6 +55,7 @@
         "adding-academic-fields": "Adding academic fields",
         "editing-academic-fields": "Editing academic fields",
         "searching-by-academic-fields": "Searching by academic fields",
+        "filtering-contacts-by-academic-fields-and-tags": "Filtering contacts by academic fields and tags",
         "formatting-academic-fields-in-command-messages": "Formatting academic fields in command messages",
         "deleting-contacts-with-academic-fields": "Deleting contacts with academic fields",
         "displaying-academic-fields-in-the-contact-list": "Displaying academic fields in the contact list",
@@ -75,6 +76,7 @@
         "adding-academic-fields-2": "Adding academic fields",
         "editing-academic-fields-2": "Editing academic fields",
         "searching-by-academic-fields-2": "Searching by academic fields",
+        "filtering-contacts": "Filtering contacts",
         "deleting-a-person": "Deleting a person",
         "tagging-and-untagging-a-person": "Tagging and untagging a person",
         "saving-data": "Saving data"
@@ -132,6 +134,7 @@
         "listing-all-persons-list": "Listing all persons: list",
         "editing-a-person-edit": "Editing a person: edit",
         "locating-persons-by-name-major-or-class-year-find": "Locating persons by name, major or class year: find",
+        "filtering-contacts-by-major-class-year-and-tag-filter": "Filtering contacts by major, class year and tag: filter",
         "deleting-a-person-delete": "Deleting a person: delete",
         "clearing-all-entries-clear": "Clearing all entries: clear",
         "exiting-the-program-exit": "Exiting the program: exit",
