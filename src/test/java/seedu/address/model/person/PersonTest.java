@@ -99,11 +99,32 @@ public class PersonTest {
     }
 
     @Test
+    public void constructor_withoutNotes_defaultsToEmpty() {
+        Person person = new Person(ALICE.getName(), ALICE.getPhone(), ALICE.getEmail(), ALICE.getAddress(),
+                ALICE.getMajor(), ALICE.getGraduationYear(), ALICE.getTags());
+        assertEquals(Notes.EMPTY, person.getNotes());
+    }
+
+    @Test
+    public void withNotes_preservesDetailsAndOriginalPerson() {
+        Person original = new PersonBuilder(ALICE).withMajor("Computer Science").withGraduationYear("2027")
+                .withNotes("Met in class").build();
+        Person updated = original.withNotes(new Notes("Project teammate"));
+        assertEquals(new PersonBuilder(original).withNotes("Project teammate").build(), updated);
+        assertEquals(new Notes("Met in class"), original.getNotes());
+        assertTrue(original.isSamePerson(updated));
+        assertFalse(original.equals(updated));
+        assertEquals(updated.hashCode(), new PersonBuilder(updated).build().hashCode());
+        assertEquals(new PersonBuilder(original).withNotes("").build(), updated.withNotes(Notes.EMPTY));
+        assertThrows(NullPointerException.class, () -> original.withNotes(null));
+    }
+
+    @Test
     public void toStringMethod() {
         String expected = Person.class.getCanonicalName() + "{name=" + ALICE.getName() + ", phone=" + ALICE.getPhone()
                 + ", email=" + ALICE.getEmail() + ", address=" + ALICE.getAddress()
                 + ", major=" + ALICE.getMajor() + ", graduationYear=" + ALICE.getGraduationYear()
-                + ", tags=" + ALICE.getTags() + "}";
+                + ", tags=" + ALICE.getTags() + ", notes=" + ALICE.getNotes() + "}";
         assertEquals(expected, ALICE.toString());
     }
 }
