@@ -890,6 +890,57 @@ testers are expected to do more *exploratory* testing.
    1. Run either command with an index greater than the displayed list size and a valid tag.<br>
       Expected: `The person index provided is invalid.` No contact changes.
 
+### Undoing and redoing changes
+
+Perform these scenarios in order; each one relies on the contacts left by the previous one.
+
+1. Undoing and redoing an add
+
+   1. Test case: `add n/UndoCheck p/91234567 e/undo@example.com a/10 Kent Ridge Road m/Computer Science c/2027 t/StudyGroup`, then `undo`.<br>
+      Expected: `UndoCheck` is removed and the full contact list is shown. The status message is `Rollback to before the most recent change.`
+   1. Test case: `redo`.<br>
+      Expected: `UndoCheck` reappears with all of its details, including its major, class year and tag. The status message is `Restored the most recently undone change.`
+   1. Close and relaunch the app from the same folder, then run `find UndoCheck`.<br>
+      Expected: `UndoCheck` is present; the redone state was saved.
+   1. Test case: `undo`.<br>
+      Expected: `There is no change to undo. Only add and edit can be undone, and not after a delete, tag, untag or clear.` Undo history is not kept between sessions, so `UndoCheck` remains.
+
+1. Undoing and redoing several edits
+
+   1. Prerequisites: Run `find UndoCheck` and confirm that it is the only result.
+   1. Run `edit 1 p/98765432 c/2028`, then `edit 1 t/Mentor`.<br>
+      Expected: `UndoCheck` has phone `98765432`, class year `2028` and only the tag `Mentor`.
+   1. Test case: `undo`.<br>
+      Expected: The tag `StudyGroup` replaces `Mentor`; the phone and class year stay `98765432` and `2028`. The full contact list is shown instead of the search result.
+   1. Test case: `undo` again.<br>
+      Expected: The phone and class year return to `91234567` and `2027`.
+   1. Test case: `redo`, then `redo` again.<br>
+      Expected: The first `redo` restores phone `98765432` and class year `2028`; the second restores the tag `Mentor`.
+
+1. Redo is unavailable after a new change
+
+   1. Test case: `undo`, then `add n/RedoCheck p/92345678 e/redo@example.com a/20 Kent Ridge Road`, then `redo`.<br>
+      Expected: The `undo` restores `UndoCheck`'s `StudyGroup` tag and `RedoCheck` is then added. The `redo` fails with `There is no change to redo. Only an undone add or edit can be redone, and not after another change has been made.` and the contacts are unchanged.
+
+1. Commands that do not affect history
+
+   1. Test case: `undo`.<br>
+      Expected: `RedoCheck` is removed.
+   1. Run `add n/UndoCheck p/93456789 e/other@example.com a/30 Kent Ridge Road`, `add n/Incomplete`, `list`, `find UndoCheck` and `tags`.<br>
+      Expected: The first two fail with a duplicate-person error and an invalid-command-format error. No command changes any contact.
+   1. Test case: `redo`.<br>
+      Expected: `RedoCheck` is added back. The failed and non-modifying commands did not discard the undone change.
+   1. Test cases: `undo 1`, `redo 1`.<br>
+      Expected: An invalid-command-format error with the command's usage is shown, and no contact changes.
+
+1. Commands that cannot be undone
+
+   1. Run `find RedoCheck` and confirm that it is the only result. Then run `delete 1`.<br>
+      Expected: `RedoCheck` is deleted.
+   1. Test cases: `undo`, `redo`.<br>
+      Expected: Both report that there is no change to undo or redo. `RedoCheck` stays deleted and `UndoCheck` keeps its current details, even though earlier adds and edits were undoable before the deletion.
+   1. To clean up, run `find UndoCheck`, then `delete 1`.
+
 ### Saving data
 
 Use only the separate test folder for these checks. The paths below are relative to the folder from which you run `java -jar unimate.jar`. Close the app before changing data files. Keep a backup outside the `data` folder and restore it with the app closed after each scenario.
