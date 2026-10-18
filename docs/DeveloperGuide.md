@@ -459,6 +459,20 @@ If saving fails after a successful undo or redo, the in-memory state has already
   * Pros: The user keeps their search context.
   * Cons: The restored change may be hidden by the filter, so it can look as if nothing happened.
 
+#### Testing
+
+Undo and redo are tested at each layer:
+
+| Test class | What it checks |
+|------------|----------------|
+| `AddressBookHistoryTest`, `ModelManagerTest` | Committing, undoing and redoing snapshots, ignoring unchanged commits, clearing redo states on a new commit, and stale history after unrecorded changes. |
+| `AddCommandTest`, `AddCommandIntegrationTest`, `EditCommandTest` | Successful `add` and `edit` commands record exactly one history entry, while failed or unchanged ones record none. |
+| `UndoCommandTest`, `RedoCommandTest` | Each command on its own against a model: success and failure messages, the order of repeated undos and redos, redo invalidation, and resetting the filtered list. |
+| `AddressBookParserTest` | `undo` and `redo` are parsed, and extra arguments are rejected with the usage message. |
+| `LogicManagerTest`, `UndoRedoIntegrationTest` | Full command strings through `LogicManager#execute`: parser, command, model history and JSON storage together. |
+
+`UndoRedoIntegrationTest` starts each test from the typical contacts saved to a temporary data file. After every command, it checks the full contact list in the model, the contacts read back from the data file, and the feedback message. For failing commands, it also checks that `canUndoAddressBook()` and `canRedoAddressBook()` are unchanged. Its scenarios include chains of adds and edits, redo invalidation by a new change, failed commands between undo and redo, interaction with `list`, `find`, `tags` and `help`, and reopening the saved data with no history.
+
 --------------------------------------------------------------------------------------------------------------------
 
 ## **Coming soon**
@@ -605,6 +619,74 @@ Priorities: High (must have) - `* * *`, Medium (nice to have) - `* *`, Low (unli
     * 3a1. UniMate informs user that the given index is invalid.
 
       Use case resumes at step 1.
+
+**Use case: Undo a change**
+
+**MSS**
+
+1.  User adds or edits a contact.
+2.  User requests to undo the most recent change.
+3.  UniMate restores the contacts to their state before that change.
+4.  UniMate shows all contacts and informs the user that the change has been undone.
+
+    Use case ends.
+
+**Extensions**
+
+* 2a. There is no add or edit to undo in the current session, or a delete, tag, untag or clear has changed the contacts since the most recent add or edit.
+
+    * 2a1. UniMate informs the user that there is no change to undo.
+
+      Use case ends.
+
+* 2b. User provides extra input after the command.
+
+    * 2b1. UniMate informs the user that the command format is invalid and shows its usage.
+
+      Use case ends.
+
+* 4a. User wants to revert an earlier add or edit.
+
+    * 4a1. User requests to undo again.
+
+      Use case resumes at step 3.
+
+**Use case: Redo an undone change**
+
+**MSS**
+
+1.  <u>User undoes a change (Use case: Undo a change).</u>
+2.  User requests to redo the most recently undone change.
+3.  UniMate reapplies that change.
+4.  UniMate shows all contacts and informs the user that the change has been restored.
+
+    Use case ends.
+
+**Extensions**
+
+* 1a. User changes the contacts again before requesting a redo.
+
+    * 1a1. UniMate discards the undone changes.
+
+      Use case resumes at step 2.
+
+* 2a. There is no undone change to redo.
+
+    * 2a1. UniMate informs the user that there is no change to redo.
+
+      Use case ends.
+
+* 2b. User provides extra input after the command.
+
+    * 2b1. UniMate informs the user that the command format is invalid and shows its usage.
+
+      Use case ends.
+
+* 4a. User wants to reapply further undone changes.
+
+    * 4a1. User requests to redo again.
+
+      Use case resumes at step 3.
 
 ### Non-Functional Requirements
 
