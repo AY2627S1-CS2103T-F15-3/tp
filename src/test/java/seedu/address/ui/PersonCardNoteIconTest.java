@@ -1,5 +1,6 @@
 package seedu.address.ui;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -8,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.net.URL;
+import java.util.List;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 
@@ -23,6 +25,7 @@ import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import seedu.address.logic.parser.AddressBookParser;
 import seedu.address.model.Model;
 import seedu.address.model.ModelManager;
 import seedu.address.model.person.Notes;
@@ -123,23 +126,75 @@ public class PersonCardNoteIconTest {
     }
 
     @Test
-    public void list_filteredContacts_updatesTooltipIndices() throws Exception {
+    public void list_findAndList_updatesTooltipTargets() throws Exception {
         runOnFxThread(() -> {
             Model model = new ModelManager();
-            Person alice = new PersonBuilder().withName("Alice").build();
+            Person alice = new PersonBuilder().withName("Alice").withNotes("Study group").build();
             Person bob = new PersonBuilder().withName("Bob").withNotes("Project teammate").build();
             model.addPerson(alice);
             model.addPerson(bob);
             Scene scene = createListScene(model);
-            assertNoteIcon(renderedCard(scene, bob), true, 2);
+            assertTooltipTarget(scene, model, alice, 1);
+            assertTooltipTarget(scene, model, bob, 2);
 
-            model.updateFilteredPersonList(person -> person.equals(bob));
-            assertNoteIcon(renderedCard(scene, bob), true, 1);
+            executeCommand(model, "find Bob");
+            assertEquals(List.of(bob), model.getFilteredPersonList());
+            assertTooltipTarget(scene, model, bob, 1);
 
-            model.updateFilteredPersonList(Model.PREDICATE_SHOW_ALL_PERSONS);
-            assertNoteIcon(renderedCard(scene, alice), false, 1);
-            assertNoteIcon(renderedCard(scene, bob), true, 2);
+            executeCommand(model, "list");
+            assertEquals(List.of(alice, bob), model.getFilteredPersonList());
+            assertTooltipTarget(scene, model, alice, 1);
+            assertTooltipTarget(scene, model, bob, 2);
+            assertEquals(List.of(alice, bob), model.getAddressBook().getPersonList());
         });
+    }
+
+    @Test
+    public void list_repeatedFindsAndNoMatches_updatesTooltipTargets() throws Exception {
+        runOnFxThread(() -> {
+            Model model = new ModelManager();
+            Person alice = new PersonBuilder().withName("Alice Lee").withNotes("Study group").build();
+            Person bob = new PersonBuilder().withName("Bob Lee").withNotes("Project teammate").build();
+            model.addPerson(alice);
+            model.addPerson(bob);
+            Scene scene = createListScene(model);
+            assertTooltipTarget(scene, model, bob, 2);
+
+            executeCommand(model, "find Bob");
+            assertEquals(List.of(bob), model.getFilteredPersonList());
+            assertTooltipTarget(scene, model, bob, 1);
+
+            executeCommand(model, "find Alice");
+            assertEquals(List.of(alice), model.getFilteredPersonList());
+            assertTooltipTarget(scene, model, alice, 1);
+
+            executeCommand(model, "find Nobody");
+            scene.getRoot().applyCss();
+            scene.getRoot().layout();
+            ListView<?> list = (ListView<?>) scene.lookup("#personListView");
+            assertTrue(list.getItems().isEmpty());
+            assertTrue(model.getFilteredPersonList().isEmpty());
+
+            executeCommand(model, "find Lee");
+            assertEquals(List.of(alice, bob), model.getFilteredPersonList());
+            assertTooltipTarget(scene, model, alice, 1);
+            assertTooltipTarget(scene, model, bob, 2);
+            assertEquals(List.of(alice, bob), model.getAddressBook().getPersonList());
+        });
+    }
+
+    private void executeCommand(Model model, String command) {
+        assertDoesNotThrow(() -> new AddressBookParser().parseCommand(command).execute(model));
+    }
+
+    private void assertTooltipTarget(Scene scene, Model model, Person expectedPerson, int displayedIndex) {
+        Node card = renderedCard(scene, expectedPerson);
+        assertNoteIcon(card, true, displayedIndex);
+        String tooltip = noteIcon(card).getTooltip().getText();
+        int suggestedIndex = Integer.parseInt(tooltip.split(" ")[2]);
+        Person target = model.getFilteredPersonList().get(suggestedIndex - 1);
+        assertEquals(expectedPerson, target);
+        assertEquals(expectedPerson.getNotes(), target.getNotes());
     }
 
     private Scene createListScene(Model model) {
