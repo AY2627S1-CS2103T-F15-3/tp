@@ -35,6 +35,8 @@ UniMate is a **desktop application for managing contacts, optimized for use thro
 
    * `delete 3` : Deletes the 3rd contact shown in the current list.
 
+   * `undo` : Reverts the most recent `add` or `edit`.
+
    * `clear` : Deletes all contacts.
 
    * `exit` : Exits the app.
@@ -62,7 +64,8 @@ UniMate is a **desktop application for managing contacts, optimized for use thro
   For example, if the command specifies `n/NAME p/PHONE_NUMBER`, `p/PHONE_NUMBER n/NAME` is also acceptable.
 
 * Extraneous parameters for commands that take no parameters, such as `help`, `list`, `exit`, and `clear`, are ignored.<br>
-  For example, `help 123` is interpreted as `help`.
+  For example, `help 123` is interpreted as `help`.<br>
+  `undo` and `redo` are exceptions: extra parameters such as `undo 1` are rejected.
 
 * If you are using a PDF version of this document, be careful when copying and pasting commands that span multiple lines as space characters surrounding line-breaks may be omitted when copied over to the application.
 </box>
@@ -94,6 +97,7 @@ Major and class year are optional and can be supplied independently.
 * Each of these prefixes may appear only once. Leading and trailing spaces around their values are ignored.
 * The fields are saved with the contact, can be edited using `edit`, are shown in the displayed contact list and appear in command messages when specified.
 * A contact with exactly the same name as an existing contact is rejected as a duplicate, even if their major, class year or other details differ. Name comparison is case-sensitive.
+* A successful `add` can be reverted with [`undo`](#undoing-a-change-undo).
 
 Examples:
 * `add n/Alex Tan p/91234567 e/alex@example.com a/10 Kent Ridge Road m/Computer Science c/2027 t/classmate`
@@ -190,6 +194,8 @@ These input errors leave all contacts unchanged. If any supplied tag is invalid,
 
 For both commands, UniMate saves the updated data automatically. A saving failure reports `Could not save data due to the following error: ...` or `Could not save data to file ... due to insufficient permissions to write to the file or the folder.` The in-memory change has already occurred in this case, so the error does not mean it was rolled back.
 
+Neither command can be undone. After `tag` or `untag` changes a person's tags, earlier `add` and `edit` changes can no longer be undone or redone either. See [`undo`](#undoing-a-change-undo).
+
 ### Listing all persons: `list`
 
 Shows a list of all persons in UniMate. Each contact card includes the person's name, tags, phone number,
@@ -214,6 +220,7 @@ Format: `edit INDEX [n/NAME] [p/PHONE] [e/EMAIL] [a/ADDRESS] [m/MAJOR] [c/CLASS_
 * After a successful edit, the full contact list is shown. If editing search results, run `find` again before using a search-result index for another edit.
 * When editing tags, all of the person's existing tags are removed; adding tags is not cumulative.
 * To remove all of a person's tags, enter `t/` without a tag after it.
+* A successful `edit` that changes the person's details can be reverted with [`undo`](#undoing-a-change-undo).
 
 Examples:
 *  `edit 1 p/91234567 e/johndoe@example.com` Edits the phone number and email address of the 1st person to be `91234567` and `johndoe@example.com` respectively.
@@ -251,6 +258,7 @@ Format: `delete INDEX`
 * The index refers to the index number shown in the displayed person list.
 * The index **must be a positive integer** 1, 2, 3, ...
 * The deleted person message includes the deleted contact's major and class year when those fields are specified.
+* A deletion cannot be undone. After a successful `delete`, earlier `add` and `edit` changes can no longer be undone or redone either.
 
 Examples:
 * `list` followed by `delete 2` deletes the 2nd person in UniMate.
@@ -263,6 +271,11 @@ Examples:
 Clears all entries from UniMate.
 
 Format: `clear`
+
+<box type="warning" seamless>
+
+**Caution:** `clear` cannot be undone. After it removes your contacts, earlier `add` and `edit` changes can no longer be undone or redone either.
+</box>
 
 ### Undoing a change: `undo`
 
@@ -370,3 +383,5 @@ Action     | Format, Examples
 **Tags**   | `tags`
 **Tag**    | `tag INDEX [d/DEFAULT_INDEX]... [t/TAG]...` (at least one tag)<br> e.g., `tag 1 d/2 t/NOC`
 **Untag**  | `untag INDEX t/TAG [t/TAG]...`<br> e.g., `untag 1 t/NOC`
+**Undo**   | `undo`
+**Redo**   | `redo`
