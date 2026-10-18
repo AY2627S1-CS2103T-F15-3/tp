@@ -264,6 +264,51 @@ Clears all entries from UniMate.
 
 Format: `clear`
 
+### Undoing a change: `undo`
+
+Reverts the most recent change made by `add` or `edit`.
+
+Format: `undo`
+
+* Restores your contacts to how they were before the most recent `add` or `edit` that has not already been undone.
+* Run `undo` again to revert earlier `add` and `edit` changes one at a time, starting from the most recent.
+* After an undo, the full contact list is shown, even if you were viewing the results of `find`.
+* Only `add` and `edit` can be undone. An `edit` that leaves every detail unchanged does not count as a change.
+* Commands that fail, such as an `add` rejected as a duplicate, and commands that do not change contacts, such as `list`, `find`, `tags` and `help`, do not affect what `undo` reverts.
+* `delete`, `tag`, `untag` and `clear` cannot be undone. After one of them changes your contacts, earlier `add` and `edit` changes can no longer be undone or redone either. Changes you make after that can be undone as usual.
+* `undo` does not take any parameters. Unlike `help` or `list`, extra input such as `undo 1` is rejected and nothing is undone.
+* If there is nothing to undo, UniMate shows `There is no change to undo. Only add and edit can be undone, and not after a delete, tag, untag or clear.` and your contacts are unchanged.
+* Undo history is kept only while UniMate is open. It is cleared when you close UniMate, so changes from an earlier session cannot be undone.
+* The restored contacts are saved automatically.
+
+Examples:
+* `add n/Alex Tan p/91234567 e/alex@example.com a/10 Kent Ridge Road` followed by `undo` removes `Alex Tan` again.
+* `edit 2 p/98765432` followed by `undo` restores the 2nd person's previous phone number.
+* `add n/Alex Tan p/91234567 e/alex@example.com a/10 Kent Ridge Road`, then `edit 1 c/2027`, then `undo` twice first reverts the edit and then removes the added contact.
+
+### Redoing an undone change: `redo`
+
+Reapplies the most recent change that was reverted by `undo`.
+
+Format: `redo`
+
+* The change undone most recently is redone first. Running `redo` repeatedly therefore reapplies undone changes in the order you originally made them.
+* After a redo, the full contact list is shown, even if you were viewing the results of `find`.
+* Undone changes can be redone only until you change your contacts again. After a successful `add` or `edit`, or a `delete`, `tag`, `untag` or `clear` that changes your contacts, `redo` is no longer available.
+* Commands that fail, and commands that do not change contacts, such as `list`, `find`, `tags` and `help`, do not affect what `redo` reapplies.
+* `redo` does not take any parameters. Extra input such as `redo 1` is rejected and nothing is redone.
+* If there is nothing to redo, UniMate shows `There is no change to redo. Only an undone add or edit can be redone, and not after another change has been made.` and your contacts are unchanged.
+* Like undo history, redo history is cleared when you close UniMate. The restored contacts are saved automatically.
+
+Examples:
+* `add n/Alex Tan p/91234567 e/alex@example.com a/10 Kent Ridge Road`, then `undo`, then `redo` adds `Alex Tan` back.
+* `edit 1 p/91234567`, then `undo`, then `redo` changes the 1st person's phone number to `91234567` again.
+
+<box type="tip" seamless>
+
+**Tip:** If you undo a change by mistake, run `redo` before making any other change to your contacts.
+</box>
+
 ### Exiting the program: `exit`
 
 Exits the program.
@@ -290,10 +335,6 @@ Furthermore, certain edits can cause UniMate to behave in unexpected ways (e.g.,
 ## Coming soon
 
 The following features are not available in the MVP.
-
-### Undo/redo
-
-Planned support for undoing a contact change and redoing an undone change. The `undo` and `redo` commands are not supported in the current release.
 
 ### Archiving data files `[coming in v2.0]`
 
