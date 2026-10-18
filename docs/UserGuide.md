@@ -58,7 +58,7 @@ UniMate is a **desktop application for managing contacts, optimized for use thro
 * Items followed by `...` can appear zero or more times.<br>
   For example, `[t/TAG]... ` may be omitted, or written as `t/friend` or `t/friend t/family`.
 
-* Parameters can be in any order.<br>
+* Prefixed parameters can be in any order. For `sort`, the field must precede the direction.<br>
   For example, if the command specifies `n/NAME p/PHONE_NUMBER`, `p/PHONE_NUMBER n/NAME` is also acceptable.
 
 * Extraneous parameters for commands that take no parameters, such as `help`, `list`, `exit`, and `clear`, are ignored.<br>
@@ -198,6 +198,8 @@ address, email address, major, and class year. Optional academic fields that hav
 
 Format: `list`
 
+Clears any search or filter while retaining the active sort order.
+
 ### Editing a person: `edit`
 
 Edits an existing person in UniMate.
@@ -258,8 +260,8 @@ Format: `filter [m/MAJOR] [c/CLASS_YEAR] [t/TAG]`
   error without changing the current results. Use `t/Friend` to filter a default tag; `d/` is not supported.
 * The result message shows the number of matching contacts. Zero matches displays an empty list;
   no contacts are deleted.
-* Each `filter` replaces the previous search or filter and retains the original contact order.
-  `find` replaces the filter; `list` shows all contacts again.
+* Each `filter` replaces the previous search or filter and retains the active sort order, or the saved
+  contact order if no sort has been chosen. `find` replaces the filter; `list` shows all contacts again.
 * Indices refer to the currently displayed list. For example, `delete 1` targets the first filtered result.
   Deleting or untagging a contact that no longer matches removes it from the results and renumbers the list.
 * Successful `add` and `edit` commands show the full list, following their existing behaviour.
@@ -275,6 +277,41 @@ Examples:
 
 Unlike `find Computer Science`, which searches for either word across names and academic fields,
 `filter m/Computer Science` checks only the complete major value.
+
+### Sorting contacts by name, major or class year: `sort`
+
+Orders the displayed contacts while keeping the current search or filter.
+
+Format: `sort FIELD DIRECTION`
+
+* Both arguments are required and must appear in this order, in lowercase.
+  Extra surrounding spaces and spaces between arguments are allowed.
+
+  | Argument | Accepted values | Meaning |
+  | --- | --- | --- |
+  | `FIELD` | `name`, `major`, `year` | Full name, full major or graduation year |
+  | `DIRECTION` | `asc`, `desc` | A–Z / earliest first, or Z–A / latest first |
+
+* Names and majors are compared case-insensitively. Class years are ordered chronologically.
+* Contacts with an unspecified major or class year appear **last** when sorting by that field,
+  for both directions. Equal academic values, including unspecified values, use ascending name order.
+  Names differing only in case compare equally.
+* Sorting an empty list or a single contact succeeds. Sorting does not add or remove contacts.
+* `filter`, `find` and `list` retain the chosen sort order. A successful `add`, `edit`, `undo` or `redo`
+  shows all contacts in that order; tag, untag and delete retain the current filter and sort.
+  Changing a sorted field can move a contact to a new position.
+* Numbered commands use the **currently displayed order**. Check the latest card numbers before
+  using `edit`, `delete`, `tag` or `untag`; sorting and contact changes can renumber the list.
+* Missing arguments, unsupported fields or directions, uppercase arguments and extra arguments produce
+  a usage error without changing the current results or saved data.
+* Sorting is temporary. It does not reorder saved contacts, create an undoable change or clear redo history.
+  Restarting restores the saved contact order and shows all contacts.
+
+Examples:
+* `sort name asc` displays names from A to Z.
+* `sort major desc` displays majors from Z to A, with unspecified majors last.
+* `filter t/Classmate`, then `sort year asc`, shows only classmates, earliest class year first.
+  `list` then shows all contacts in the same year order.
 
 ### Deleting a person: `delete`
 
@@ -360,6 +397,7 @@ Action     | Format, Examples
 **Edit**   | `edit INDEX [n/NAME] [p/PHONE_NUMBER] [e/EMAIL] [a/ADDRESS] [m/MAJOR] [c/CLASS_YEAR] [t/TAG]... `<br> e.g.,`edit 2 n/James Lee e/jameslee@example.com`
 **Find**   | `find KEYWORD [MORE_KEYWORDS]`<br> e.g., `find James Jake`, `find Computer Science`, `find 2027`
 **Filter** | `filter [m/MAJOR] [c/CLASS_YEAR] [t/TAG]` (at least one criterion)<br> e.g., `filter m/Computer Science c/2027 t/Classmate`
+**Sort**   | `sort FIELD DIRECTION`<br> e.g., `sort name asc`, `sort major desc`, `sort year asc`
 **List**   | `list`
 **Help**   | `help`
 **Tags**   | `tags`

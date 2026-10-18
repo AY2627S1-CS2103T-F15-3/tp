@@ -131,7 +131,9 @@ The `Model` component,
 
 * stores UniMate contact data i.e., all `Person` objects (which are contained in a `UniquePersonList` object).
   Each `Person` includes `Major` and `GraduationYear` value objects in addition to its existing contact details and tags.
-* stores the `Person` objects selected by the current filter, such as search results, in a separate _filtered_ list. It exposes this list as an unmodifiable `ObservableList<Person>` that the UI can observe and bind to, so the UI updates when the list changes.
+* selects contacts using a `FilteredList<Person>` and orders that view using a `SortedList<Person>`.
+  It exposes the sorted view as an unmodifiable `ObservableList<Person>` shared by the UI and numbered
+  commands. Both transformations observe the saved contact list, so data changes update the display.
 * stores a `UserPrefs` object that represents the user’s preferences (currently, just the GUI settings). This is exposed to the outside as a `ReadOnlyUserPrefs` object.
 * keeps an in-memory history of earlier contact data states in an `AddressBookHistory` object, so that successful `add` and `edit` changes can later be undone and redone. See [Recording contact data history](#recording-contact-data-history).
 * does not depend on any of the other three components (as the `Model` represents data entities of the domain, they should make sense on their own without depending on other components)
@@ -235,7 +237,44 @@ A filter replaces the previous `find` or `filter` predicate. `list` restores all
 `add` and `edit` keep their existing behaviour of showing all contacts after success. Tag and untag
 preserve the predicate, so a contact can disappear from the results when its tags no longer match.
 Filtering changes no contact data and records no history entry, preserving undo and redo availability.
-Filters are not persisted and the full list is shown on restart.
+The active sort is preserved when the filter changes. Filters are not persisted and the full list
+is shown on restart.
+
+### Sorting the displayed contacts
+
+`AddressBookParser` routes `sort` to `SortCommandParser`. The parser requires exactly two lowercase
+tokens: a field (`name`, `major`, `year`) and a direction (`asc`, `desc`). It constructs `SortCommand`
+with `PersonSortComparator.SortField` and `SortDirection` values. Invalid input raises a `ParseException`
+with usage instructions before any view or data change.
+
+`SortCommand#execute` supplies a `PersonSortComparator` to `Model#updateSortedPersonList`.
+`ModelManager` maintains this observable transformation chain:
+
+```text
+AddressBook / UniquePersonList -> FilteredList -> SortedList -> UI and numbered commands
+```
+
+`getFilteredPersonList()` retains its existing API name and now returns the sorted view. Consequently,
+edit, delete, tag and untag obtain the same indexed `Person` that is shown on the matching contact card.
+The `SortedList` object is retained for the model's lifetime, keeping existing UI observers attached.
+Changing its comparator preserves the `FilteredList` predicate; changing the predicate preserves sorting.
+
+The comparator uses case-insensitive full-value ordering for names and majors. Graduation years are
+four-digit strings, so their lexicographic order is chronological. Empty academic values become null
+sorting keys. Direction is applied to the value comparator **before** `Comparator.nullsLast`, ensuring
+that descending order does not move unspecified values to the front. Equal primary values use ascending
+case-insensitive name order; names differing only in case compare equally.
+
+Sorting the view rather than `UniquePersonList` preserves storage order and history snapshots. As with
+other successful commands, `LogicManager` still invokes storage, but the saved contacts remain in their
+underlying order. Sort commands do not call `commitAddressBook`, so undo and redo availability is preserved.
+Add/edit/undo/redo retain their existing behaviour of clearing the filter, while keeping the comparator.
+Replacing, adding or removing source contacts automatically updates their sorted positions.
+Restarting constructs a view without a comparator or predicate, restoring saved order and all contacts.
+
+Comparator, model, command and parser unit tests cover ordering and validation. `SortCommandIntegrationTest`
+checks command interactions, notes preservation and JSON persistence; `SortUiTest` checks the real command
+box, rendered card numbering and feedback. See [Sorting contacts](#sorting-contacts) for manual checks.
 
 ### Formatting academic fields in command messages
 
@@ -723,8 +762,8 @@ testers are expected to do more *exploratory* testing.
 
 1. Combined criteria, independent fields and full-value matching
 
-   1. Prerequisites: Use a disposable test copy of UniMate. Ensure no existing contact uses the names
-      or custom tag `FilterDemo` below. Add these contacts:
+   1. Prerequisites: Use a disposable test copy of UniMate and restart it before this test so no sort is active.
+      Ensure no existing contact uses the names or custom tag `FilterDemo` below. Add these contacts:
 
       * `add n/FilterMath p/91234567 e/math@example.com a/Kent Ridge m/Mathematics c/2027 t/FilterDemo`
       * `add n/FilterComputing p/92345678 e/computing@example.com a/Clementi m/Computer Science c/2027 t/FilterDemo`
@@ -764,6 +803,57 @@ testers are expected to do more *exploratory* testing.
       Reapply the same filter: no demo contact matches now.
    1. Run `filter t/FilterDemo`, close and relaunch the app from the same folder.<br>
       Expected: The full list is shown. Saved contacts and the changes above remain; the filter is temporary.
+
+### Sorting contacts
+
+1. Directions, ties and unspecified fields
+
+   1. Prerequisites: Use a disposable copy of UniMate. Ensure the following names and tag `SortDemo`
+      do not already exist. Add these contacts, then run `filter t/SortDemo`:
+
+      * `add n/SortGamma p/91234567 e/gamma@example.com a/Dover m/business c/2027 t/SortDemo`
+      * `add n/SortUnknown p/92345678 e/unknown@example.com a/Clementi t/SortDemo`
+      * `add n/SortBeta p/93456789 e/beta@example.com a/Kent Ridge m/Business c/2027 t/SortDemo`
+      * `add n/sortAlpha p/94567890 e/alpha@example.com a/Utown m/Zoology c/2028 t/SortDemo`
+
+   1. Run `sort name asc`, then `sort name desc`.<br>
+      Expected: Ascending shows `sortAlpha`, `SortBeta`, `SortGamma`, `SortUnknown`; descending reverses
+      that order. The cards are numbered `1` to `4`. Feedback identifies the field and direction.
+   1. Run `sort major asc`, then `sort major desc`.<br>
+      Expected: Ascending shows `SortBeta`, `SortGamma`, `sortAlpha`, `SortUnknown`.
+      Descending shows `sortAlpha`, `SortBeta`, `SortGamma`, `SortUnknown`.
+      Major case differences are ignored, equal majors use ascending names, and unspecified majors stay last.
+   1. Run `sort year asc`, then `sort year desc`.<br>
+      Expected: The same two orders as the major checks above. `SortUnknown` stays last in both.
+   1. Run `filter t/SortDemo m/Business`, then `sort name desc`.<br>
+      Expected: Only `SortGamma` and `SortBeta` appear, in that order.
+      Run `list`: all contacts return in descending name order. Reapply `filter t/SortDemo` for later checks.
+
+1. Rejected input and displayed indices
+
+   1. Run `sort name asc`. Try `sort`, `sort name`, `sort phone asc`, `sort year ascending`,
+      `sort NAME asc` and `sort major asc desc` separately.<br>
+      Expected: Usage errors; the same four demo contacts remain in ascending name order.
+   1. Run `edit 2 c/2029`.<br>
+      Expected: `SortBeta` changes year, even though it was third in the saved demo order.
+      The full list appears in ascending name order. Run `filter t/SortDemo`, then `sort year asc`:
+      the order is `SortGamma`, `sortAlpha`, `SortBeta`, `SortUnknown`.
+   1. Run `undo`, then `filter t/SortDemo`.<br>
+      Expected: `SortBeta` returns to `2027`; the order is `SortBeta`, `SortGamma`, `sortAlpha`, `SortUnknown`.
+      Run `redo`, then reapply the same filter: the edited order returns. Sorting and filtering have not
+      consumed the undo entry or cleared the redo opportunity.
+   1. Run `sort name desc`, then `delete 1`.<br>
+      Expected: Only `SortUnknown` is removed. The remaining demo contacts are renumbered in descending
+      name order; contacts outside `SortDemo` are unaffected.
+
+1. Empty results and restarting
+
+   1. Run `filter t/SortDemo m/NoSuchMajor`, then `sort year desc`.<br>
+      Expected: An empty list and successful sort feedback. Run `filter t/SortDemo`:
+      the remaining demo contacts appear in descending year order.
+   1. Close and relaunch UniMate from the same folder, then run `filter t/SortDemo`.<br>
+      Expected: The demo contacts return in saved order: `SortGamma`, `SortBeta`, `sortAlpha`.
+      The edit and deletion remain saved, while the previous sort and filter do not survive restarting.
 
 ### Deleting a person
 
