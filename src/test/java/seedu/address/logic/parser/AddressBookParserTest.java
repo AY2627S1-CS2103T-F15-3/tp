@@ -24,6 +24,7 @@ import seedu.address.logic.commands.FindCommand;
 import seedu.address.logic.commands.HelpCommand;
 import seedu.address.logic.commands.ListCommand;
 import seedu.address.logic.commands.RedoCommand;
+import seedu.address.logic.commands.SortCommand;
 import seedu.address.logic.commands.UndoCommand;
 import seedu.address.logic.parser.exceptions.ParseException;
 import seedu.address.model.person.ContactFilterPredicate;
@@ -31,6 +32,8 @@ import seedu.address.model.person.GraduationYear;
 import seedu.address.model.person.Major;
 import seedu.address.model.person.NameContainsKeywordsPredicate;
 import seedu.address.model.person.Person;
+import seedu.address.model.person.PersonSortComparator.SortDirection;
+import seedu.address.model.person.PersonSortComparator.SortField;
 import seedu.address.model.tag.Tag;
 import seedu.address.testutil.EditPersonDescriptorBuilder;
 import seedu.address.testutil.PersonBuilder;
@@ -96,6 +99,23 @@ public class AddressBookParserTest {
     public void parseCommand_filterWithoutCriteria_throwsParseException() {
         String expectedMessage = String.format(MESSAGE_INVALID_COMMAND_FORMAT, FilterCommand.MESSAGE_USAGE);
         assertThrows(ParseException.class, expectedMessage, () -> parser.parseCommand("filter"));
+    }
+
+    @Test
+    public void parseCommand_sort_routesFieldAndDirection() throws Exception {
+        assertEquals(new SortCommand(SortField.NAME, SortDirection.ASC), parser.parseCommand("sort name asc"));
+        assertEquals(new SortCommand(SortField.MAJOR, SortDirection.DESC),
+                parser.parseCommand("  sort   major  desc  "));
+        assertEquals(new SortCommand(SortField.YEAR, SortDirection.ASC), parser.parseCommand("sort year asc"));
+    }
+
+    @Test
+    public void parseCommand_invalidSort_throwsParseException() {
+        String expectedMessage = String.format(MESSAGE_INVALID_COMMAND_FORMAT, SortCommand.MESSAGE_USAGE);
+        assertThrows(ParseException.class, expectedMessage, () -> parser.parseCommand("sort"));
+        assertThrows(ParseException.class, expectedMessage, () -> parser.parseCommand("sort name"));
+        assertThrows(ParseException.class, expectedMessage, () -> parser.parseCommand("sort name asc extra"));
+        assertThrows(ParseException.class, MESSAGE_UNKNOWN_COMMAND, () -> parser.parseCommand("SORT name asc"));
     }
 
     @Test
