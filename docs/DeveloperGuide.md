@@ -263,6 +263,10 @@ tokens: a field (`name`, `major`, `year`) and a direction (`asc`, `desc`). It co
 with `PersonSortComparator.SortField` and `SortDirection` values. Invalid input raises a `ParseException`
 with usage instructions before any view or data change.
 
+The following sequence summarises `sort year desc`; routing and Model internals are omitted.
+
+<puml src="diagrams/SortSequenceDiagram.puml" alt="Sort command parsing and execution" />
+
 `SortCommand#execute` supplies a `PersonSortComparator` to `Model#updateSortedPersonList`.
 `ModelManager` maintains this observable transformation chain:
 
