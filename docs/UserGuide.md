@@ -241,6 +241,41 @@ Examples:
 * `find alex david` returns `Alex Yeoh`, `David Li`<br>
   ![result for 'find alex david'](images/findAlexDavidResult.png)
 
+### Filtering contacts by major, class year and tag: `filter`
+
+Shows contacts whose complete field values match **all** supplied criteria (AND matching).
+
+Format: `filter [m/MAJOR] [c/CLASS_YEAR] [t/TAG]`
+
+* Supply at least one criterion. Each prefix may appear only once, in any order, separated by spaces.
+* Major and tag matching ignore case but require the complete value: `m/Computer Science` matches
+  `Computer Science`, while `m/Computer` does not. A tag criterion matches any one of the contact's tags.
+* Class year matches exactly and must be four digits from `2000` to `2099`.
+* Omitted criteria leave those fields unrestricted. An unspecified academic field does not match a
+  supplied criterion for that field, but the contact can still match a criterion on another field.
+* Leading and trailing spaces around values are ignored; spaces within a major remain significant.
+* Blank values, repeated prefixes, unsupported single-letter prefixes and invalid values produce an
+  error without changing the current results. Use `t/Friend` to filter a default tag; `d/` is not supported.
+* The result message shows the number of matching contacts. Zero matches displays an empty list;
+  no contacts are deleted.
+* Each `filter` replaces the previous search or filter and retains the original contact order.
+  `find` replaces the filter; `list` shows all contacts again.
+* Indices refer to the currently displayed list. For example, `delete 1` targets the first filtered result.
+  Deleting or untagging a contact that no longer matches removes it from the results and renumbers the list.
+* Successful `add` and `edit` commands show the full list, following their existing behaviour.
+  Reapply the filter before using a filtered index again. Tag and untag retain the active filter.
+* Filters are temporary: restarting UniMate shows the full contact list. Filtering does not create
+  an undoable data change or clear redo history.
+
+Examples:
+* `filter m/Computer Science c/2027 t/Classmate` shows contacts who match all three criteria.
+* `filter c/2027` shows all contacts with class year `2027`, regardless of their major or tags.
+* `filter t/friend` shows contacts with a complete tag matching `friend`, ignoring case.
+* `list` returns to the full contact list.
+
+Unlike `find Computer Science`, which searches for either word across names and academic fields,
+`filter m/Computer Science` checks only the complete major value.
+
 ### Deleting a person: `delete`
 
 Deletes the specified person from UniMate.
@@ -324,6 +359,7 @@ Action     | Format, Examples
 **Delete** | `delete INDEX`<br> e.g., `delete 3`
 **Edit**   | `edit INDEX [n/NAME] [p/PHONE_NUMBER] [e/EMAIL] [a/ADDRESS] [m/MAJOR] [c/CLASS_YEAR] [t/TAG]... `<br> e.g.,`edit 2 n/James Lee e/jameslee@example.com`
 **Find**   | `find KEYWORD [MORE_KEYWORDS]`<br> e.g., `find James Jake`, `find Computer Science`, `find 2027`
+**Filter** | `filter [m/MAJOR] [c/CLASS_YEAR] [t/TAG]` (at least one criterion)<br> e.g., `filter m/Computer Science c/2027 t/Classmate`
 **List**   | `list`
 **Help**   | `help`
 **Tags**   | `tags`
