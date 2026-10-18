@@ -32,6 +32,7 @@ public class PersonBuilder {
     private GraduationYear graduationYear;
     private Notes notes;
     private Set<Tag> tags;
+    private boolean favourite;
 
     /**
      * Creates a {@code PersonBuilder} with the default details.
@@ -51,6 +52,7 @@ public class PersonBuilder {
      * Initializes the PersonBuilder with the data of {@code personToCopy}.
      */
     public PersonBuilder(Person personToCopy) {
+        favourite = personToCopy.isFavourite();
         name = personToCopy.getName();
         phone = personToCopy.getPhone();
         email = personToCopy.getEmail();
@@ -126,7 +128,15 @@ public class PersonBuilder {
     }
 
     public Person build() {
-        return new Person(name, phone, email, address, major, graduationYear, tags, notes);
+        return new Person(name, phone, email, address, major, graduationYear, tags, notes, favourite);
+    }
+
+    /**
+     * Sets the favourite state of the person being built.
+     */
+    public PersonBuilder withFavourite(boolean favourite) {
+        this.favourite = favourite;
+        return this;
     }
 
 }

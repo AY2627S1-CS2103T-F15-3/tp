@@ -5,6 +5,7 @@ import java.util.function.Consumer;
 
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
+import javafx.scene.control.Tooltip;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Region;
@@ -34,6 +35,8 @@ public class PersonCard extends UiPart<Region> {
     @FXML
     private Label name;
     @FXML
+    private Label favouriteIcon;
+    @FXML
     private Label id;
     @FXML
     private Label phone;
@@ -47,6 +50,8 @@ public class PersonCard extends UiPart<Region> {
     private Label graduationYear;
     @FXML
     private FlowPane tags;
+    @FXML
+    private Label noteIcon;
 
     /**
      * Creates a {@code PersonCard} with the given {@code Person} and index to display.
@@ -56,10 +61,16 @@ public class PersonCard extends UiPart<Region> {
         this.person = person;
         id.setText(displayedIndex + ". ");
         name.setText(person.getName().fullName);
+        favouriteIcon.setVisible(person.isFavourite());
+        favouriteIcon.setManaged(person.isFavourite());
         phone.setText(person.getPhone().value);
         address.setText(person.getAddress().value);
         email.setText(person.getEmail().value);
         setAcademicFieldTexts(person, major::setText, graduationYear::setText);
+        boolean hasNotes = !person.getNotes().isEmpty();
+        noteIcon.setVisible(hasNotes);
+        noteIcon.setManaged(hasNotes);
+        noteIcon.setTooltip(new Tooltip("Use shownote " + displayedIndex + " to view this note."));
         person.getTags().stream()
                 .sorted(Comparator.comparing(tag -> tag.tagName))
                 .forEach(tag -> tags.getChildren().add(new Label(tag.tagName)));

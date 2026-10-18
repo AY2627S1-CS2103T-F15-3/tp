@@ -8,6 +8,8 @@
 
 UniMate is a **desktop application for managing contacts, optimized for use through a Command Line Interface (CLI)** while retaining the benefits of a Graphical User Interface (GUI). If you type quickly, UniMate can help you manage contacts faster than traditional GUI applications.
 
+This guide describes the features available in v1.4.
+
 <!-- * Table of Contents -->
 <page-nav-print />
 
@@ -62,7 +64,7 @@ UniMate is a **desktop application for managing contacts, optimized for use thro
   For example, if the command specifies `n/NAME p/PHONE_NUMBER`, `p/PHONE_NUMBER n/NAME` is also acceptable.
 
 * Extraneous parameters for commands that take no parameters, such as `help`, `list`, `exit`, and `clear`, are ignored.<br>
-  For example, `help 123` is interpreted as `help`.
+  For example, `help 123` is interpreted as `help`. This does not apply to `undo` and `redo`, which reject extra arguments.
 
 * If you are using a PDF version of this document, be careful when copying and pasting commands that span multiple lines as space characters surrounding line-breaks may be omitted when copied over to the application.
 </box>
@@ -190,6 +192,116 @@ These input errors leave all contacts unchanged. If any supplied tag is invalid,
 
 For both commands, UniMate saves the updated data automatically. A saving failure reports `Could not save data due to the following error: ...` or `Could not save data to file ... due to insufficient permissions to write to the file or the folder.` The in-memory change has already occurred in this case, so the error does not mean it was rolled back.
 
+### Marking a favourite contact: `fav`
+
+Marks a person in the currently displayed list as a favourite.
+
+Format: `fav INDEX`
+
+* `INDEX` must be a positive integer from `1` to `2147483647` and refer to a person in the currently displayed list. Zero, negative numbers, a leading `+`, decimals and extra arguments are not accepted.
+* The person's other details, tags, major and class year are preserved, together with the current list filter.
+* A successful command shows `Added to favourites: ` followed by the updated person's details.
+* A favourited contact displays a solid heart (`♥`) inside a small circular border to the right of their name. Both the heart and border are red (`#e63946`), with a transparent background. The icon is a visual indicator and cannot be clicked.
+* Favourite status is saved automatically and retained after restarting UniMate. New contacts and contacts loaded from older files without favourite status start as not favourited.
+
+Example (assuming at least one person is displayed):
+
+* `fav 1` marks the first displayed person as a favourite and immediately shows the circular heart.
+
+**Error handling:**
+
+| Input or situation | Result message |
+|--------------------|----------------|
+| Missing or invalid index, or extra arguments (e.g., `fav`, `fav 0`, `fav 1 extra`) | `Invalid command format!`, followed by the `fav` usage instructions. |
+| Index exceeds the displayed list size | `The person index provided is invalid.` |
+| Person is already favourited | `This person is already a favourite.` |
+
+These errors leave contact data unchanged.
+
+### Removing favourite status: `unfav`
+
+Removes favourite status from a person in the currently displayed list.
+
+Format: `unfav INDEX`
+
+* `INDEX` follows the same rules as [`fav`](#marking-a-favourite-contact-fav).
+* A successful command shows `Removed from favourites: ` followed by the person's details, and the circular heart disappears immediately.
+* All other contact fields are preserved. The updated favourite status is saved automatically and remains removed after restarting UniMate.
+* When viewing favourites using `listfav`, the person immediately disappears from that filtered view. The contact remains stored and can be seen again using `list`.
+
+Example (assuming the first displayed person is favourited):
+
+* `unfav 1` removes favourite status from that person.
+
+**Error handling:**
+
+| Input or situation | Result message |
+|--------------------|----------------|
+| Missing or invalid index, or extra arguments (e.g., `unfav`, `unfav -1`, `unfav 1 extra`) | `Invalid command format!`, followed by the `unfav` usage instructions. |
+| Index exceeds the displayed list size | `The person index provided is invalid.` |
+| Person is not favourited | `This person is not a favourite.` |
+
+These errors leave contact data unchanged. After `unfav` removes a person from the favourite list, check the new displayed indices before entering another indexed command.
+
+### Listing favourite contacts: `listfav`
+
+Shows all favourited contacts in their existing order, with displayed indices starting at `1`. This replaces the previous search or list filter. Other contacts are hidden from the view, not deleted or modified.
+
+Format: `listfav`
+
+* No arguments are accepted. For example, `listfav 1` shows `Invalid command format!` followed by the `listfav` usage instructions, and leaves the current view unchanged.
+* When favourites exist, the result is `Listed N favourite contact(s).`, where `N` is the number shown. Contact details and circular heart icons remain visible.
+* If there are no favourites, the list is empty and the result is `No favourite contacts found.`
+
+**Switching between lists:**
+
+* The existing AB3 `list` command shows all contacts. The new `listfav` command shows only favourites. Both change the view without changing contact data or favourite status.
+* `fav INDEX` and `unfav INDEX` always use the indices in the current view, including search results and the favourite list. A displayed index is not a permanent contact identifier.
+* For example, run `list`, then `fav 1`, then `listfav`. Run `unfav 1` to remove the first person shown in the favourite list, then `list` to see all contacts again.
+* The existing `add` and `edit` commands restore the full list after success. Run `listfav` again to return to favourites. Tag and untag operations preserve the current filter and favourite status.
+
+### Adding or replacing a contact's note: `note`
+
+Saves a short note for an existing contact. Each contact has one note; saving another replaces the previous text.
+
+Format: `note INDEX TEXT`
+
+* `INDEX` is the positive index shown in the current contact list, including search results.
+* `TEXT` is required and must be a single line of up to 500 characters. Spaces, punctuation and Unicode text are allowed; control characters such as tabs are not.
+* Leading and trailing whitespace is trimmed. Spaces within the note are preserved.
+* Everything after the index is note text. No field prefix or quotation marks are needed; text such as `n/` or `t/` is saved literally.
+* The contact's other details and the current list filter are preserved.
+* Notes are saved automatically with contact data and remain available after restarting UniMate. New contacts have no note; use `note` after `add`.
+* Adding or replacing a note can be [undone](#undoing-a-change-undo) and [redone](#redoing-a-change-redo). Saving the same text again does not create an undo step or clear any available redo history, because the note has not changed.
+
+Example: `note 2 Met during CS2103T`
+
+The message area displays `Note saved for NAME.` A small note icon at the bottom right of the contact card indicates that a note is present. Use `shownote` to read it.
+
+### Viewing a contact's note: `shownote`
+
+Displays the contact's note in the message area.
+
+Format: `shownote INDEX`
+
+Example: `shownote 2`
+
+The message starts with `Note for NAME:`, followed by the saved text on the next line. If the contact has no note, it displays `No notes have been added to this contact.` Contact data, the current list filter, and undo/redo history are preserved.
+
+### Deleting a contact's note: `delnote`
+
+Removes the note from a contact while retaining the contact and all its other details.
+
+Format: `delnote INDEX`
+
+Example: `delnote 2`
+
+The message area displays `Note deleted for NAME.`, and the note icon disappears. The current list filter is preserved. If the contact already has no note, the message is `This contact has no note to delete.` and its data stays unchanged.
+
+Deleting an existing note can be undone and redone. Deleting an already empty note does not create an undo step or clear any available redo history.
+
+For all three note commands, an index outside the displayed list reports `The person index provided is invalid.` Missing or invalid index syntax produces a usage error. `note INDEX` without text is also a usage error; use `delnote INDEX` to clear a note. `shownote` and `delnote` reject extra arguments. Invalid note text is rejected without changing the existing note.
+
 ### Listing all persons: `list`
 
 Shows a list of all persons in UniMate. Each contact card includes the person's name, tags, phone number,
@@ -264,7 +376,7 @@ Format: `filter [m/MAJOR] [c/CLASS_YEAR] [t/TAG]`
   contact order if no sort has been chosen. `find` replaces the filter; `list` shows all contacts again.
 * Indices refer to the currently displayed list. For example, `delete 1` targets the first filtered result.
   Deleting or untagging a contact that no longer matches removes it from the results and renumbers the list.
-* Successful `add` and `edit` commands show the full list, following their existing behaviour.
+* Successful `add`, `edit`, `undo` and `redo` commands show the full list.
   Reapply the filter before using a filtered index again. Tag and untag retain the active filter.
 * Filters are temporary: restarting UniMate shows the full contact list. Filtering does not create
   an undoable data change or clear redo history.
@@ -336,6 +448,40 @@ Clears all entries from UniMate.
 
 Format: `clear`
 
+### Undoing a change: `undo`
+
+Reverts the most recent undoable contact-data change. Available in v1.4.
+
+Format: `undo`
+
+* Changes made by `add`, `edit`, `note` and `delnote` can be undone. For notes, this includes adding a note, replacing its text, and deleting it.
+* Each `undo` restores one earlier data state. Repeat the command to undo further recorded changes; it does not target a contact index.
+* After a successful undo, the full contact list is shown. Reapply `find` or `filter` and check the displayed indices before targeting another contact.
+* Changes made by `delete`, `tag`, `untag` and `clear` are not undoable. If one changes contact data, earlier undo and redo history becomes unavailable.
+* Undo/redo history lasts only for the current app session. Restored contact data is saved automatically, but restarting the app clears the history.
+* If there is no available change to undo, an error is shown and contact data stays unchanged. Extra arguments, such as `undo 1`, are rejected.
+
+Example, with at least one contact in the full list:
+
+1. `note 1 First note`
+1. `note 1 Second note`
+1. `undo`
+1. `shownote 1` displays `First note`.
+
+### Redoing a change: `redo`
+
+Restores the most recently undone change. Available in v1.4.
+
+Format: `redo`
+
+* Redoes changes made by `add`, `edit`, `note` and `delnote`. Repeat `redo` to restore further undone changes in order.
+* Making a new data-changing `add`, `edit`, `note` or `delnote` clears the redo history. Changes made by non-undoable commands also make earlier history unavailable, as described under [`undo`](#undoing-a-change-undo).
+* Commands that leave contact data unchanged do not clear redo history. This includes `shownote`, `list`, `find`, `filter`, saving an unchanged note, and deleting an already empty note.
+* After a successful redo, the full contact list is shown. Reapply any search or filter before using its indices again.
+* If there is no available change to redo, an error is shown and contact data stays unchanged. Extra arguments, such as `redo 1`, are rejected.
+
+After the undo example above, the saved note is `First note` and `Second note` can be redone. Running `note 1 First note` again leaves redo available; `redo` followed by `shownote 1` then displays `Second note`. If you instead run `note 1 Replacement note` before redoing, the changed text clears the redo history.
+
 ### Exiting the program: `exit`
 
 Exits the program.
@@ -362,10 +508,6 @@ Furthermore, certain edits can cause UniMate to behave in unexpected ways (e.g.,
 ## Coming soon
 
 The following features are not available in the MVP.
-
-### Undo/redo
-
-Planned support for undoing a contact change and redoing an undone change. The `undo` and `redo` commands are not supported in the current release.
 
 ### Archiving data files `[coming in v2.0]`
 
@@ -399,7 +541,15 @@ Action     | Format, Examples
 **Filter** | `filter [m/MAJOR] [c/CLASS_YEAR] [t/TAG]` (at least one criterion)<br> e.g., `filter m/Computer Science c/2027 t/Classmate`
 **Sort**   | `sort FIELD DIRECTION`<br> e.g., `sort name asc`, `sort major desc`, `sort year asc`
 **List**   | `list`
+**Favourite** | `fav INDEX`<br> e.g., `fav 1`
+**Unfavourite** | `unfav INDEX`<br> e.g., `unfav 1`
+**List favourites** | `listfav`
 **Help**   | `help`
 **Tags**   | `tags`
 **Tag**    | `tag INDEX [d/DEFAULT_INDEX]... [t/TAG]...` (at least one tag)<br> e.g., `tag 1 d/2 t/NOC`
 **Untag**  | `untag INDEX t/TAG [t/TAG]...`<br> e.g., `untag 1 t/NOC`
+**Note**   | `note INDEX TEXT`<br> e.g., `note 2 Met during CS2103T`
+**Show note** | `shownote INDEX`<br> e.g., `shownote 2`
+**Delete note** | `delnote INDEX`<br> e.g., `delnote 2`
+**Undo**   | `undo`
+**Redo**   | `redo`
