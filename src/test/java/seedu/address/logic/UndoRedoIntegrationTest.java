@@ -7,6 +7,8 @@ import static seedu.address.logic.Messages.MESSAGE_INVALID_COMMAND_FORMAT;
 import static seedu.address.logic.Messages.MESSAGE_INVALID_PERSON_DISPLAYED_INDEX;
 import static seedu.address.testutil.Assert.assertThrows;
 import static seedu.address.testutil.TypicalPersons.ALICE;
+import static seedu.address.testutil.TypicalPersons.BENSON;
+import static seedu.address.testutil.TypicalPersons.DANIEL;
 import static seedu.address.testutil.TypicalPersons.getTypicalAddressBook;
 import static seedu.address.testutil.TypicalPersons.getTypicalPersons;
 
@@ -14,6 +16,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,14 +25,23 @@ import org.junit.jupiter.api.io.TempDir;
 import seedu.address.logic.commands.AddCommand;
 import seedu.address.logic.commands.CommandResult;
 import seedu.address.logic.commands.EditCommand;
+import seedu.address.logic.commands.ListCommand;
 import seedu.address.logic.commands.RedoCommand;
 import seedu.address.logic.commands.UndoCommand;
 import seedu.address.logic.commands.exceptions.CommandException;
 import seedu.address.logic.parser.exceptions.ParseException;
+import seedu.address.model.AddressBook;
 import seedu.address.model.Model;
 import seedu.address.model.ModelManager;
 import seedu.address.model.UserPrefs;
+import seedu.address.model.person.Address;
+import seedu.address.model.person.Email;
+import seedu.address.model.person.GraduationYear;
+import seedu.address.model.person.Major;
+import seedu.address.model.person.Name;
 import seedu.address.model.person.Person;
+import seedu.address.model.person.Phone;
+import seedu.address.model.tag.Tag;
 import seedu.address.storage.JsonAddressBookStorage;
 import seedu.address.storage.JsonUserPrefsStorage;
 import seedu.address.storage.StorageManager;
@@ -257,6 +269,83 @@ public class UndoRedoIntegrationTest {
         assertUndoSuccess(typicalPersonsWith(ALEX));
         assertUndoSuccess(getTypicalPersons());
         assertCommandFailure(UndoCommand.COMMAND_WORD, CommandException.class, UndoCommand.MESSAGE_FAILURE);
+    }
+
+    @Test
+    public void undoRedo_restoresEveryContactField() throws Exception {
+        assertAddSuccess(ADD_ALEX, ALEX, typicalPersonsWith(ALEX));
+        Person editedAlex = new PersonBuilder().withName("Alexander Tan").withPhone("87654321")
+                .withEmail("alexander@example.com").withAddress("Bukit Timah").withMajor("Data Science")
+                .withGraduationYear("2029").withTags("Mentor").build();
+        assertEditSuccess("edit 8 n/Alexander Tan p/87654321 e/alexander@example.com a/Bukit Timah"
+                + " m/Data Science c/2029 t/Mentor", editedAlex, typicalPersonsWith(editedAlex));
+
+        assertUndoSuccess(typicalPersonsWith(ALEX));
+        Person restored = model.getFilteredPersonList().get(7);
+        assertEquals(new Name("Alex Tan"), restored.getName());
+        assertEquals(new Phone("91234567"), restored.getPhone());
+        assertEquals(new Email("alex@example.com"), restored.getEmail());
+        assertEquals(new Address("Kent Ridge Hall"), restored.getAddress());
+        assertEquals(new Major("Computer Science"), restored.getMajor());
+        assertEquals(new GraduationYear("2027"), restored.getGraduationYear());
+        assertEquals(Set.of(new Tag("Friend"), new Tag("CCA")), restored.getTags());
+
+        assertRedoSuccess(typicalPersonsWith(editedAlex));
+        Person redone = model.getFilteredPersonList().get(7);
+        assertEquals(new Name("Alexander Tan"), redone.getName());
+        assertEquals(new Phone("87654321"), redone.getPhone());
+        assertEquals(new Email("alexander@example.com"), redone.getEmail());
+        assertEquals(new Address("Bukit Timah"), redone.getAddress());
+        assertEquals(new Major("Data Science"), redone.getMajor());
+        assertEquals(new GraduationYear("2029"), redone.getGraduationYear());
+        assertEquals(Set.of(new Tag("Mentor")), redone.getTags());
+    }
+
+    @Test
+    public void undoRedo_savedDataMatchesModelAndHistoryIsNotSaved() throws Exception {
+        assertAddSuccess(ADD_ALEX, ALEX, typicalPersonsWith(ALEX));
+        assertEditSuccess(EDIT_ALICE, EDITED_ALICE, replace(typicalPersonsWith(ALEX), ALICE, EDITED_ALICE));
+        assertUndoSuccess(typicalPersonsWith(ALEX));
+
+        // Reopening the saved data restores the undone state, but starts with no undo or redo history.
+        Model reopenedModel = new ModelManager(addressBookStorage.readAddressBook().orElseThrow(), new UserPrefs());
+        assertEquals(new AddressBook(model.getAddressBook()), reopenedModel.getAddressBook());
+        model = reopenedModel;
+        logic = new LogicManager(model, new StorageManager(addressBookStorage,
+                new JsonUserPrefsStorage(temporaryFolder.resolve("userPrefs.json"))));
+        assertCommandFailure(UndoCommand.COMMAND_WORD, CommandException.class, UndoCommand.MESSAGE_FAILURE);
+        assertCommandFailure(RedoCommand.COMMAND_WORD, CommandException.class, RedoCommand.MESSAGE_FAILURE);
+    }
+
+    @Test
+    public void nonModifyingCommands_leaveHistoryUnchanged() throws Exception {
+        assertAddSuccess(ADD_ALEX, ALEX, typicalPersonsWith(ALEX));
+
+        CommandResult listResult = logic.execute(ListCommand.COMMAND_WORD);
+        assertEquals(ListCommand.MESSAGE_SUCCESS, listResult.getFeedbackToUser());
+        logic.execute("tags");
+        logic.execute("help");
+        CommandResult findResult = logic.execute("find Meier");
+        assertEquals(String.format(Messages.MESSAGE_PERSONS_LISTED_OVERVIEW, 2), findResult.getFeedbackToUser());
+        assertEquals(List.of(BENSON, DANIEL), model.getFilteredPersonList());
+        assertContacts(typicalPersonsWith(ALEX));
+
+        // Undo still reverts the add rather than any of the commands above, and shows every contact again.
+        assertUndoSuccess(getTypicalPersons());
+        logic.execute("find Meier");
+        logic.execute(ListCommand.COMMAND_WORD);
+        assertRedoSuccess(typicalPersonsWith(ALEX));
+    }
+
+    @Test
+    public void editInFilteredList_undoRestoresContactAndShowsAll() throws Exception {
+        logic.execute("find Meier");
+        Person editedDaniel = new PersonBuilder(DANIEL).withPhone("81112222").build();
+
+        // Index 2 refers to the second contact in the filtered list, not in the full list.
+        assertEditSuccess("edit 2 p/81112222", editedDaniel, replace(getTypicalPersons(), DANIEL, editedDaniel));
+        assertUndoSuccess(getTypicalPersons());
+        assertRedoSuccess(replace(getTypicalPersons(), DANIEL, editedDaniel));
     }
 
     /**
