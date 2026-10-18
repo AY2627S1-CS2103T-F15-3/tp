@@ -8,9 +8,11 @@ import static seedu.address.logic.parser.CliSyntax.PREFIX_TAG;
 
 import java.util.Optional;
 import java.util.Set;
+import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import seedu.address.commons.core.LogsCenter;
 import seedu.address.logic.commands.FilterCommand;
 import seedu.address.logic.parser.exceptions.ParseException;
 import seedu.address.model.person.ContactFilterPredicate;
@@ -22,6 +24,7 @@ import seedu.address.model.tag.Tag;
  * Parses independently optional major, graduation-year and tag filter criteria.
  */
 public class FilterCommandParser implements Parser<FilterCommand> {
+    private static final Logger logger = LogsCenter.getLogger(FilterCommandParser.class);
     private static final Pattern PREFIX_PATTERN = Pattern.compile("(?<!\\S)([a-zA-Z]/)");
     private static final Set<String> SUPPORTED_PREFIXES = Set.of(PREFIX_MAJOR.getPrefix(),
             PREFIX_GRADUATION_YEAR.getPrefix(), PREFIX_TAG.getPrefix());
@@ -34,6 +37,15 @@ public class FilterCommandParser implements Parser<FilterCommand> {
     @Override
     public FilterCommand parse(String args) throws ParseException {
         requireNonNull(args);
+        try {
+            return parseCriteria(args);
+        } catch (ParseException e) {
+            logger.fine("Filter arguments rejected: " + e.getMessage());
+            throw e;
+        }
+    }
+
+    private FilterCommand parseCriteria(String args) throws ParseException {
         rejectUnsupportedPrefixes(args);
         ArgumentMultimap arguments = ArgumentTokenizer.tokenize(" " + args,
                 PREFIX_MAJOR, PREFIX_GRADUATION_YEAR, PREFIX_TAG);
