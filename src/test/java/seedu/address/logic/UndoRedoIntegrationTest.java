@@ -2,6 +2,8 @@ package seedu.address.logic;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static seedu.address.testutil.Assert.assertThrows;
 import static seedu.address.testutil.TypicalPersons.ALICE;
 import static seedu.address.testutil.TypicalPersons.getTypicalAddressBook;
 import static seedu.address.testutil.TypicalPersons.getTypicalPersons;
@@ -20,6 +22,7 @@ import seedu.address.logic.commands.CommandResult;
 import seedu.address.logic.commands.EditCommand;
 import seedu.address.logic.commands.RedoCommand;
 import seedu.address.logic.commands.UndoCommand;
+import seedu.address.logic.commands.exceptions.CommandException;
 import seedu.address.model.Model;
 import seedu.address.model.ModelManager;
 import seedu.address.model.UserPrefs;
@@ -39,6 +42,18 @@ public class UndoRedoIntegrationTest {
     private static final Person ALEX = new PersonBuilder().withName("Alex Tan").withPhone("91234567")
             .withEmail("alex@example.com").withAddress("Kent Ridge Hall").withMajor("Computer Science")
             .withGraduationYear("2027").withTags("Friend", "CCA").build();
+
+    private static final String ADD_BETH = "add n/Beth Lim p/92345678 e/beth@example.com a/Pasir Panjang"
+            + " m/Business c/2026";
+    private static final Person BETH = new PersonBuilder().withName("Beth Lim").withPhone("92345678")
+            .withEmail("beth@example.com").withAddress("Pasir Panjang").withMajor("Business")
+            .withGraduationYear("2026").build();
+
+    private static final String ADD_CHEN = "add n/Chen Wei p/93456789 e/chen@example.com a/Tampines"
+            + " m/Mathematics c/2028 t/Teammate";
+    private static final Person CHEN = new PersonBuilder().withName("Chen Wei").withPhone("93456789")
+            .withEmail("chen@example.com").withAddress("Tampines").withMajor("Mathematics")
+            .withGraduationYear("2028").withTags("Teammate").build();
 
     // Changes every editable field of ALICE, the first contact in the typical address book.
     private static final String EDIT_ALICE = "edit 1 n/Alice Tan p/81234567 e/alice.tan@example.com"
@@ -110,6 +125,74 @@ public class UndoRedoIntegrationTest {
         assertRedoSuccess(afterEdit);
     }
 
+    @Test
+    public void multipleAddsThenUndos_removesContactsInReverseOrder() throws Exception {
+        assertAddSuccess(ADD_ALEX, ALEX, typicalPersonsWith(ALEX));
+        assertAddSuccess(ADD_BETH, BETH, typicalPersonsWith(ALEX, BETH));
+        assertAddSuccess(ADD_CHEN, CHEN, typicalPersonsWith(ALEX, BETH, CHEN));
+
+        assertUndoSuccess(typicalPersonsWith(ALEX, BETH));
+        assertUndoSuccess(typicalPersonsWith(ALEX));
+        assertUndoSuccess(getTypicalPersons());
+        assertCommandFailure(UndoCommand.COMMAND_WORD, CommandException.class, UndoCommand.MESSAGE_FAILURE);
+    }
+
+    @Test
+    public void multipleUndosThenRedos_reappliesChangesInOriginalOrder() throws Exception {
+        List<Person> afterAddAlex = typicalPersonsWith(ALEX);
+        List<Person> afterEditAlice = replace(afterAddAlex, ALICE, EDITED_ALICE);
+        List<Person> afterAddBeth = new ArrayList<>(afterEditAlice);
+        afterAddBeth.add(BETH);
+
+        assertAddSuccess(ADD_ALEX, ALEX, afterAddAlex);
+        assertEditSuccess(EDIT_ALICE, EDITED_ALICE, afterEditAlice);
+        assertAddSuccess(ADD_BETH, BETH, afterAddBeth);
+        assertUndoSuccess(afterEditAlice);
+        assertUndoSuccess(afterAddAlex);
+        assertUndoSuccess(getTypicalPersons());
+
+        assertRedoSuccess(afterAddAlex);
+        assertRedoSuccess(afterEditAlice);
+        assertRedoSuccess(afterAddBeth);
+        assertCommandFailure(RedoCommand.COMMAND_WORD, CommandException.class, RedoCommand.MESSAGE_FAILURE);
+    }
+
+    @Test
+    public void newAddAfterUndo_redoUnavailable() throws Exception {
+        assertAddSuccess(ADD_ALEX, ALEX, typicalPersonsWith(ALEX));
+        assertUndoSuccess(getTypicalPersons());
+        assertAddSuccess(ADD_BETH, BETH, typicalPersonsWith(BETH));
+
+        assertCommandFailure(RedoCommand.COMMAND_WORD, CommandException.class, RedoCommand.MESSAGE_FAILURE);
+        // The new add replaced the undone one as the latest change.
+        assertUndoSuccess(getTypicalPersons());
+    }
+
+    @Test
+    public void newEditAfterUndo_redoUnavailable() throws Exception {
+        List<Person> afterEdit = replace(getTypicalPersons(), ALICE, EDITED_ALICE);
+        assertAddSuccess(ADD_ALEX, ALEX, typicalPersonsWith(ALEX));
+        assertUndoSuccess(getTypicalPersons());
+        assertEditSuccess(EDIT_ALICE, EDITED_ALICE, afterEdit);
+
+        assertCommandFailure(RedoCommand.COMMAND_WORD, CommandException.class, RedoCommand.MESSAGE_FAILURE);
+        assertUndoSuccess(getTypicalPersons());
+    }
+
+    @Test
+    public void undoRedoUndo_movesConsistentlyBetweenStates() throws Exception {
+        List<Person> afterEdit = replace(getTypicalPersons(), ALICE, EDITED_ALICE);
+        assertEditSuccess(EDIT_ALICE, EDITED_ALICE, afterEdit);
+
+        assertUndoSuccess(getTypicalPersons());
+        assertRedoSuccess(afterEdit);
+        assertUndoSuccess(getTypicalPersons());
+        assertRedoSuccess(afterEdit);
+
+        assertTrue(model.canUndoAddressBook());
+        assertFalse(model.canRedoAddressBook());
+    }
+
     /**
      * Executes an add command and checks its feedback and the resulting contacts.
      */
@@ -148,6 +231,23 @@ public class UndoRedoIntegrationTest {
         CommandResult result = logic.execute(command);
         assertEquals(expectedMessage, result.getFeedbackToUser());
         assertContacts(expectedContacts);
+    }
+
+    /**
+     * Executes a command that is expected to fail, and checks that the contacts, the saved data and
+     * the availability of undo and redo are unchanged.
+     */
+    private void assertCommandFailure(String command, Class<? extends Throwable> expectedException,
+            String expectedMessage) throws Exception {
+        List<Person> contactsBefore = List.copyOf(model.getAddressBook().getPersonList());
+        boolean couldUndo = model.canUndoAddressBook();
+        boolean couldRedo = model.canRedoAddressBook();
+
+        assertThrows(expectedException, expectedMessage, () -> logic.execute(command));
+
+        assertContacts(contactsBefore);
+        assertEquals(couldUndo, model.canUndoAddressBook());
+        assertEquals(couldRedo, model.canRedoAddressBook());
     }
 
     /**
