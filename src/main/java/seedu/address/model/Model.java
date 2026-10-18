@@ -1,5 +1,6 @@
 package seedu.address.model;
 
+import java.util.Comparator;
 import java.util.function.Predicate;
 
 import javafx.collections.ObservableList;
@@ -93,7 +94,7 @@ public interface Model {
      */
     boolean redoAddressBook();
 
-    /** Returns an unmodifiable view of the filtered person list */
+    /** Returns an unmodifiable view of contacts in the current filtered and sorted display order. */
     ObservableList<Person> getFilteredPersonList();
 
     /**
@@ -101,4 +102,10 @@ public interface Model {
      * @throws NullPointerException if {@code predicate} is null.
      */
     void updateFilteredPersonList(Predicate<Person> predicate);
+
+    /**
+     * Updates the displayed sort order without changing the filter, saved data or undo/redo history.
+     * @throws NullPointerException if {@code comparator} is null.
+     */
+    void updateSortedPersonList(Comparator<Person> comparator);
 }
