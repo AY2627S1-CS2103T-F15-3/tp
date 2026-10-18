@@ -350,3 +350,8 @@
     -fx-background-radius: 2;
     -fx-font-size: 11;
 }
+
+#tags .label.system-tag {
+    -fx-background-color: #F4C542;
+    -fx-text-fill: #222222;
+}

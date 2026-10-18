@@ -1,5 +1,7 @@
 package seedu.address.storage;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -34,6 +36,7 @@ class JsonAdaptedPerson {
     private final String major;
     private final String graduationYear;
     private final String notes;
+    private final String lastUpdated;
     private final List<JsonAdaptedTag> tags = new ArrayList<>();
 
     /**
@@ -47,11 +50,20 @@ class JsonAdaptedPerson {
     /**
      * Constructs a {@code JsonAdaptedPerson}, including optional notes.
      */
+    public JsonAdaptedPerson(String name, String phone, String email, String address, String major,
+            String graduationYear, List<JsonAdaptedTag> tags, String notes) {
+        this(name, phone, email, address, major, graduationYear, tags, notes, null);
+    }
+
+    /**
+     * Reads an optional ISO profile modification date; older files omit it.
+     */
     @JsonCreator
     public JsonAdaptedPerson(@JsonProperty("name") String name, @JsonProperty("phone") String phone,
             @JsonProperty("email") String email, @JsonProperty("address") String address,
             @JsonProperty("major") String major, @JsonProperty("graduationYear") String graduationYear,
-            @JsonProperty("tags") List<JsonAdaptedTag> tags, @JsonProperty("notes") String notes) {
+            @JsonProperty("tags") List<JsonAdaptedTag> tags, @JsonProperty("notes") String notes,
+            @JsonProperty("lastUpdated") String lastUpdated) {
         this.name = name;
         this.phone = phone;
         this.email = email;
@@ -59,6 +71,7 @@ class JsonAdaptedPerson {
         this.major = major;
         this.graduationYear = graduationYear;
         this.notes = notes;
+        this.lastUpdated = lastUpdated;
         if (tags != null) {
             this.tags.addAll(tags);
         }
@@ -75,6 +88,7 @@ class JsonAdaptedPerson {
         major = source.getMajor().value;
         graduationYear = source.getGraduationYear().value;
         notes = source.getNotes().value;
+        lastUpdated = source.getLastUpdated().toString();
         tags.addAll(source.getTags().stream()
                 .map(JsonAdaptedTag::new)
                 .collect(Collectors.toList()));
@@ -143,8 +157,15 @@ class JsonAdaptedPerson {
         final Notes modelNotes = new Notes(storedNotes);
 
         final Set<Tag> modelTags = new HashSet<>(personTags);
+        LocalDate modelLastUpdated;
+        try {
+            // A missing date is a migration baseline, not a claim about the historical edit date.
+            modelLastUpdated = lastUpdated == null ? LocalDate.now() : LocalDate.parse(lastUpdated);
+        } catch (DateTimeParseException e) {
+            throw new IllegalValueException("Last updated date must be a valid ISO date (YYYY-MM-DD).", e);
+        }
         return new Person(modelName, modelPhone, modelEmail, modelAddress,
-                modelMajor, modelGraduationYear, modelTags, modelNotes);
+                modelMajor, modelGraduationYear, modelTags, modelNotes, modelLastUpdated);
     }
 
 }

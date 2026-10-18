@@ -10,6 +10,8 @@ import static seedu.address.logic.parser.CliSyntax.PREFIX_PHONE;
 import static seedu.address.logic.parser.CliSyntax.PREFIX_TAG;
 import static seedu.address.model.Model.PREDICATE_SHOW_ALL_PERSONS;
 
+import java.time.Clock;
+import java.time.LocalDate;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -62,17 +64,26 @@ public class EditCommand extends Command {
 
     private final Index index;
     private final EditPersonDescriptor editPersonDescriptor;
+    private final Clock clock;
 
     /**
      * @param index of the person in the filtered person list to edit
      * @param editPersonDescriptor details to edit the person with
      */
     public EditCommand(Index index, EditPersonDescriptor editPersonDescriptor) {
+        this(index, editPersonDescriptor, Clock.systemDefaultZone());
+    }
+
+    /**
+     * Creates an edit command using the supplied clock for profile modification dates.
+     */
+    public EditCommand(Index index, EditPersonDescriptor editPersonDescriptor, Clock clock) {
         requireNonNull(index);
         requireNonNull(editPersonDescriptor);
 
         this.index = index;
         this.editPersonDescriptor = new EditPersonDescriptor(editPersonDescriptor);
+        this.clock = requireNonNull(clock);
     }
 
     @Override
@@ -103,7 +114,7 @@ public class EditCommand extends Command {
      * Creates and returns a {@code Person} with the details of {@code personToEdit}
      * edited with {@code editPersonDescriptor}.
      */
-    private static Person createEditedPerson(Person personToEdit, EditPersonDescriptor editPersonDescriptor) {
+    private Person createEditedPerson(Person personToEdit, EditPersonDescriptor editPersonDescriptor) {
         assert personToEdit != null;
 
         Name updatedName = editPersonDescriptor.getName().orElse(personToEdit.getName());
@@ -115,8 +126,15 @@ public class EditCommand extends Command {
                 .orElse(personToEdit.getGraduationYear());
         Set<Tag> updatedTags = editPersonDescriptor.getTags().orElse(personToEdit.getTags());
 
+        boolean profileChanged = !updatedName.equals(personToEdit.getName())
+                || !updatedPhone.equals(personToEdit.getPhone())
+                || !updatedEmail.equals(personToEdit.getEmail())
+                || !updatedAddress.equals(personToEdit.getAddress())
+                || !updatedMajor.equals(personToEdit.getMajor())
+                || !updatedGraduationYear.equals(personToEdit.getGraduationYear());
+        LocalDate lastUpdated = profileChanged ? LocalDate.now(clock) : personToEdit.getLastUpdated();
         return new Person(updatedName, updatedPhone, updatedEmail, updatedAddress,
-                updatedMajor, updatedGraduationYear, updatedTags, personToEdit.getNotes());
+                updatedMajor, updatedGraduationYear, updatedTags, personToEdit.getNotes(), lastUpdated);
     }
 
     @Override
