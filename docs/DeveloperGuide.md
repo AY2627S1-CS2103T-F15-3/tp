@@ -298,6 +298,27 @@ For command formats and user-facing examples, see [Adding tags](UserGuide.md#add
 
 --------------------------------------------------------------------------------------------------------------------
 
+### Command history navigation
+
+`CommandBox` owns a session-local `CommandHistory`. A `KEY_PRESSED` event filter on its text field
+consumes Up/Down events, recalls the corresponding text and moves the caret to its end.
+Recalling text clears the error style through the existing text listener and does not execute a command.
+
+`CommandHistory` stores submissions in order, including duplicates and failed commands. `CommandBox`
+records non-empty input before calling the executor, so parse and execution errors remain recallable.
+Each submission resets the navigation position to the end. On the first Up from the end, history saves
+the current draft; Down past the newest entry restores it. Navigation stops at the oldest entry, and
+Down at the draft position leaves input unchanged. Editing recalled input does not change stored entries.
+History is held in memory and is not written to contact data or preferences.
+
+Automated boundary, draft and submission checks are in `CommandHistoryTest`. For manual UI verification:
+
+1. Submit `list`, then an invalid command. Press Up twice and verify both can be recalled in reverse order.
+2. Press Up again at the oldest entry; verify it stays displayed. Press Down to return to the newest entry.
+3. Return to the draft position, type a partial command, then press Up and Down; verify the draft is restored.
+4. Edit a recalled command and submit it; verify the new submission is the newest entry.
+5. Restart UniMate and verify Up/Down leave the input unchanged until a command is submitted.
+
 ## **Coming soon**
 
 The features in this section are not implemented in the MVP. The descriptions and diagrams below are proposals for future development.
