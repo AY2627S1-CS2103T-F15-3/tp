@@ -305,7 +305,7 @@ For command formats and user-facing examples, see [Adding tags](UserGuide.md#add
 
 #### Current implementation
 
-The model keeps an in-memory history of contact data states. Successful `add` and `edit` commands record the state from before their change, and the model can restore earlier or later states. The user-facing `undo` and `redo` commands are built on this history. The history lasts only for the current session: it is not saved to storage, and a newly launched app starts with no undo or redo history.
+The model keeps an in-memory history of contact data states. Successful `add` and `edit` commands record the state from before their change, and the model can restore earlier or later states. The user-facing `undo` and `redo` commands are built on this history (see [Undo and redo commands](#undo-and-redo-commands)). The history lasts only for the current session: it is not saved to storage, and a newly launched app starts with no undo or redo history.
 
 **Relevant classes:**
 
@@ -388,20 +388,82 @@ These commands therefore need no history code, and any future command that chang
   * Pros: Makes the behaviour visible in each command.
   * Cons: Every data-changing command must remember to do it, and `tag`, `untag` and `edit` all use `Model#setPerson`, so the model alone cannot tell them apart.
 
+### Undo and redo commands
+
+#### Current implementation
+
+The `undo` and `redo` commands let users revert and reapply `add` and `edit` changes using the history described in [Recording contact data history](#recording-contact-data-history).
+
+**Relevant classes:**
+
+| Class | Responsibility |
+|-------|----------------|
+| `AddressBookParser` | Recognises the `undo` and `redo` command words. Throws a `ParseException` with `MESSAGE_INVALID_COMMAND_FORMAT` and the command's usage if any arguments follow the command word. |
+| `UndoCommand` | Checks `Model#canUndoAddressBook()`, calls `Model#undoAddressBook()`, and shows all contacts. |
+| `RedoCommand` | Checks `Model#canRedoAddressBook()`, calls `Model#redoAddressBook()`, and shows all contacts. |
+
+Neither command has its own parser class, because neither takes any arguments.
+
+#### Execution flow
+
+Given below is the flow for `undo`:
+
+1. `LogicManager#execute` passes the input to `AddressBookParser#parseCommand`. If anything follows the command word, such as in `undo 1`, a `ParseException` is thrown and the model is never reached.
+1. The parser returns a new `UndoCommand`, and `LogicManager` calls `UndoCommand#execute(model)`.
+1. The command checks `Model#canUndoAddressBook()`. If it returns `false`, the command throws a `CommandException` with `UndoCommand.MESSAGE_FAILURE`. The exception propagates out of `LogicManager#execute` before the save step, so neither the data nor the data file changes.
+1. Otherwise, the command calls `Model#undoAddressBook()`, which restores the previous state in place. It then calls `Model#updateFilteredPersonList(PREDICATE_SHOW_ALL_PERSONS)` so that every restored contact is visible, even if a `find` filter was active, and returns a `CommandResult` with `UndoCommand.MESSAGE_SUCCESS`.
+1. `LogicManager` saves the restored contact data through `Storage#saveAddressBook`, as it does for every successful command.
+
+`redo` follows the same flow using `RedoCommand`, `Model#canRedoAddressBook()` and `Model#redoAddressBook()`.
+
+Neither command calls `Model#commitAddressBook`. Restoring a state moves it between the undo and redo stacks without adding a new entry. Repeated `undo` therefore keeps moving back through earlier states, and `redo` does not clear the remaining redo states.
+
+If saving fails after a successful undo or redo, the in-memory state has already been restored and `LogicManager` reports the file error, as it does for other commands. The history remains consistent with the in-memory data.
+
+**Feedback messages:**
+
+| Situation | Message |
+|-----------|---------|
+| `undo` succeeds | `Rollback to before the most recent change.` |
+| `redo` succeeds | `Restored the most recently undone change.` |
+| Nothing to undo, including stale history | `There is no change to undo. Only add and edit can be undone, and not after a delete, tag, untag or clear.` |
+| Nothing to redo, including stale history | `There is no change to redo. Only an undone add or edit can be redone, and not after another change has been made.` |
+| Arguments after `undo` or `redo` | `Invalid command format!`, followed by the command's usage |
+
+#### Design considerations
+
+**Aspect: Where the availability check happens**
+
+* **Alternative 1 (current choice):** The command checks `canUndoAddressBook()` or `canRedoAddressBook()` first and throws a `CommandException` if it returns `false`.
+  * Pros: The failure is reported through the usual command error path. The `boolean` returned by `undoAddressBook()` and `redoAddressBook()` only acts as a safety net.
+  * Cons: Each command makes two model calls.
+* **Alternative 2:** Call `undoAddressBook()` or `redoAddressBook()` directly and use the returned `boolean` to choose the message.
+  * Pros: One model call.
+  * Cons: The command's decision depends on the result of a call that may also discard stale history as a side effect, which is harder to follow.
+
+**Aspect: Handling extra arguments**
+
+* **Alternative 1 (current choice):** Reject input such as `undo 1` with a parse error.
+  * Pros: Users are not misled into thinking `undo 3` undoes three changes or a specific contact, and no history changes by accident.
+  * Cons: Inconsistent with `help`, `list`, `exit` and `clear`, which ignore extra parameters.
+* **Alternative 2:** Ignore extra parameters, as `help` does.
+  * Pros: Consistent with the other commands that take no parameters.
+  * Cons: `undo 3` would silently undo only one change.
+
+**Aspect: What is displayed after restoring**
+
+* **Alternative 1 (current choice):** Show all contacts after every undo or redo.
+  * Pros: The restored or removed contact is always visible, and indices from an earlier filtered list are not reused by mistake.
+  * Cons: The user loses the current `find` filter.
+* **Alternative 2:** Keep the current filter.
+  * Pros: The user keeps their search context.
+  * Cons: The restored change may be hidden by the filter, so it can look as if nothing happened.
+
 --------------------------------------------------------------------------------------------------------------------
 
 ## **Coming soon**
 
 The features in this section are not implemented in the MVP. The descriptions and diagrams below are proposals for future development.
-
-### \[Proposed\] Undo and redo commands
-
-The model-level history described in [Recording contact data history](#recording-contact-data-history) is implemented, but no `undo` or `redo` command is available to users yet. The planned commands would:
-
-* check `Model#canUndoAddressBook()` or `Model#canRedoAddressBook()` and show an error if it returns `false`;
-* otherwise call `Model#undoAddressBook()` or `Model#redoAddressBook()` and report the result.
-
-Only `add` and `edit` would be undoable at first. Running `delete`, `tag`, `untag` or `clear` would make any earlier undo and redo history unavailable.
 
 ### \[Proposed\] Data archiving
 
