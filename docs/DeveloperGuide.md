@@ -245,6 +245,10 @@ The existing observable list updates `PersonListPanel`, including the displayed 
 no additional controls or storage fields are needed. Commands that use displayed indices continue
 to obtain their targets from that same list.
 
+The following sequence summarises filter parsing and execution; routing and Model internals are omitted.
+
+<puml src="diagrams/FilterSequenceDiagram.puml" alt="Filter command parsing and execution" />
+
 A filter replaces the previous `find` or `filter` predicate. `list` restores all contacts;
 `add` and `edit` keep their existing behaviour of showing all contacts after success. Tag and untag
 preserve the predicate, so a contact can disappear from the results when its tags no longer match.

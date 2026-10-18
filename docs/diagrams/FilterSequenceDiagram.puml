@@ -1,0 +1,47 @@
+@startuml
+!include style.puml
+skinparam ArrowFontStyle plain
+
+box Logic LOGIC_COLOR_T1
+participant ":FilterCommandParser" as Parser LOGIC_COLOR
+participant "f:FilterCommand" as Command LOGIC_COLOR
+end box
+
+box Model MODEL_COLOR_T1
+participant "predicate:\nContactFilterPredicate" as Predicate MODEL_COLOR
+participant "m:Model" as Model MODEL_COLOR
+end box
+
+[-> Parser : parse(args)
+activate Parser
+
+create Predicate
+Parser -> Predicate : ContactFilterPredicate(major, year, tag)
+activate Predicate
+Predicate --> Parser : predicate
+deactivate Predicate
+
+create Command
+Parser -> Command : FilterCommand(predicate)
+activate Command
+Command --> Parser : f
+deactivate Command
+
+[<-- Parser : f
+deactivate Parser
+
+[-> Command : execute(m)
+activate Command
+Command -> Model : updateFilteredPersonList(predicate)
+activate Model
+Model --> Command
+deactivate Model
+
+Command -> Model : getFilteredPersonList()
+activate Model
+Model --> Command : displayedContacts
+deactivate Model
+[<-- Command : result
+deactivate Command
+
+@enduml
