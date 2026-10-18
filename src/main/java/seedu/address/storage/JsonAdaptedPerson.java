@@ -34,6 +34,7 @@ class JsonAdaptedPerson {
     private final String major;
     private final String graduationYear;
     private final String notes;
+    private final boolean favourite;
     private final List<JsonAdaptedTag> tags = new ArrayList<>();
 
     /**
@@ -41,17 +42,26 @@ class JsonAdaptedPerson {
      */
     public JsonAdaptedPerson(String name, String phone, String email, String address, String major,
             String graduationYear, List<JsonAdaptedTag> tags) {
-        this(name, phone, email, address, major, graduationYear, tags, null);
+        this(name, phone, email, address, major, graduationYear, tags, null, false);
     }
 
     /**
-     * Constructs a {@code JsonAdaptedPerson}, including optional notes.
+     * Constructs an adapted person with notes and no favourite status.
+     */
+    public JsonAdaptedPerson(String name, String phone, String email, String address, String major,
+            String graduationYear, List<JsonAdaptedTag> tags, String notes) {
+        this(name, phone, email, address, major, graduationYear, tags, notes, false);
+    }
+
+    /**
+     * Reads optional notes and favourite status, including legacy files missing either field.
      */
     @JsonCreator
     public JsonAdaptedPerson(@JsonProperty("name") String name, @JsonProperty("phone") String phone,
             @JsonProperty("email") String email, @JsonProperty("address") String address,
             @JsonProperty("major") String major, @JsonProperty("graduationYear") String graduationYear,
-            @JsonProperty("tags") List<JsonAdaptedTag> tags, @JsonProperty("notes") String notes) {
+            @JsonProperty("tags") List<JsonAdaptedTag> tags, @JsonProperty("notes") String notes,
+            @JsonProperty("favourite") Boolean favourite) {
         this.name = name;
         this.phone = phone;
         this.email = email;
@@ -59,6 +69,7 @@ class JsonAdaptedPerson {
         this.major = major;
         this.graduationYear = graduationYear;
         this.notes = notes;
+        this.favourite = Boolean.TRUE.equals(favourite);
         if (tags != null) {
             this.tags.addAll(tags);
         }
@@ -75,6 +86,7 @@ class JsonAdaptedPerson {
         major = source.getMajor().value;
         graduationYear = source.getGraduationYear().value;
         notes = source.getNotes().value;
+        favourite = source.isFavourite();
         tags.addAll(source.getTags().stream()
                 .map(JsonAdaptedTag::new)
                 .collect(Collectors.toList()));
@@ -144,7 +156,7 @@ class JsonAdaptedPerson {
 
         final Set<Tag> modelTags = new HashSet<>(personTags);
         return new Person(modelName, modelPhone, modelEmail, modelAddress,
-                modelMajor, modelGraduationYear, modelTags, modelNotes);
+                modelMajor, modelGraduationYear, modelTags, modelNotes, favourite);
     }
 
 }

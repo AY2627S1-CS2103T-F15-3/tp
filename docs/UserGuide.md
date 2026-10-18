@@ -8,6 +8,8 @@
 
 UniMate is a **desktop application for managing contacts, optimized for use through a Command Line Interface (CLI)** while retaining the benefits of a Graphical User Interface (GUI). If you type quickly, UniMate can help you manage contacts faster than traditional GUI applications.
 
+This guide describes the features available in v1.4.
+
 <!-- * Table of Contents -->
 <page-nav-print />
 
@@ -60,7 +62,7 @@ UniMate is a **desktop application for managing contacts, optimized for use thro
 * Items followed by `...` can appear zero or more times.<br>
   For example, `[t/TAG]... ` may be omitted, or written as `t/friend` or `t/friend t/family`.
 
-* Parameters can be in any order.<br>
+* Prefixed parameters can be in any order. For `sort`, the field must precede the direction.<br>
   For example, if the command specifies `n/NAME p/PHONE_NUMBER`, `p/PHONE_NUMBER n/NAME` is also acceptable.
 
 * Extraneous parameters for commands that take no parameters, such as `help`, `list`, `exit`, and `clear`, are ignored.<br>
@@ -196,6 +198,116 @@ For both commands, UniMate saves the updated data automatically. A saving failur
 
 Neither command can be undone. After `tag` or `untag` changes a person's tags, earlier `add` and `edit` changes can no longer be undone or redone either. See [`undo`](#undoing-a-change-undo).
 
+### Marking a favourite contact: `fav`
+
+Marks a person in the currently displayed list as a favourite.
+
+Format: `fav INDEX`
+
+* `INDEX` must be a positive integer from `1` to `2147483647` and refer to a person in the currently displayed list. Zero, negative numbers, a leading `+`, decimals and extra arguments are not accepted.
+* The person's other details, tags, major and class year are preserved, together with the current list filter.
+* A successful command shows `Added to favourites: ` followed by the updated person's details.
+* A favourited contact displays a solid heart (`♥`) inside a small circular border to the right of their name. Both the heart and border are red (`#e63946`), with a transparent background. The icon is a visual indicator and cannot be clicked.
+* Favourite status is saved automatically and retained after restarting UniMate. New contacts and contacts loaded from older files without favourite status start as not favourited.
+
+Example (assuming at least one person is displayed):
+
+* `fav 1` marks the first displayed person as a favourite and immediately shows the circular heart.
+
+**Error handling:**
+
+| Input or situation | Result message |
+|--------------------|----------------|
+| Missing or invalid index, or extra arguments (e.g., `fav`, `fav 0`, `fav 1 extra`) | `Invalid command format!`, followed by the `fav` usage instructions. |
+| Index exceeds the displayed list size | `The person index provided is invalid.` |
+| Person is already favourited | `This person is already a favourite.` |
+
+These errors leave contact data unchanged.
+
+### Removing favourite status: `unfav`
+
+Removes favourite status from a person in the currently displayed list.
+
+Format: `unfav INDEX`
+
+* `INDEX` follows the same rules as [`fav`](#marking-a-favourite-contact-fav).
+* A successful command shows `Removed from favourites: ` followed by the person's details, and the circular heart disappears immediately.
+* All other contact fields are preserved. The updated favourite status is saved automatically and remains removed after restarting UniMate.
+* When viewing favourites using `listfav`, the person immediately disappears from that filtered view. The contact remains stored and can be seen again using `list`.
+
+Example (assuming the first displayed person is favourited):
+
+* `unfav 1` removes favourite status from that person.
+
+**Error handling:**
+
+| Input or situation | Result message |
+|--------------------|----------------|
+| Missing or invalid index, or extra arguments (e.g., `unfav`, `unfav -1`, `unfav 1 extra`) | `Invalid command format!`, followed by the `unfav` usage instructions. |
+| Index exceeds the displayed list size | `The person index provided is invalid.` |
+| Person is not favourited | `This person is not a favourite.` |
+
+These errors leave contact data unchanged. After `unfav` removes a person from the favourite list, check the new displayed indices before entering another indexed command.
+
+### Listing favourite contacts: `listfav`
+
+Shows all favourited contacts in their existing order, with displayed indices starting at `1`. This replaces the previous search or list filter. Other contacts are hidden from the view, not deleted or modified.
+
+Format: `listfav`
+
+* No arguments are accepted. For example, `listfav 1` shows `Invalid command format!` followed by the `listfav` usage instructions, and leaves the current view unchanged.
+* When favourites exist, the result is `Listed N favourite contact(s).`, where `N` is the number shown. Contact details and circular heart icons remain visible.
+* If there are no favourites, the list is empty and the result is `No favourite contacts found.`
+
+**Switching between lists:**
+
+* The existing AB3 `list` command shows all contacts. The new `listfav` command shows only favourites. Both change the view without changing contact data or favourite status.
+* `fav INDEX` and `unfav INDEX` always use the indices in the current view, including search results and the favourite list. A displayed index is not a permanent contact identifier.
+* For example, run `list`, then `fav 1`, then `listfav`. Run `unfav 1` to remove the first person shown in the favourite list, then `list` to see all contacts again.
+* The existing `add` and `edit` commands restore the full list after success. Run `listfav` again to return to favourites. Tag and untag operations preserve the current filter and favourite status.
+
+### Adding or replacing a contact's note: `note`
+
+Saves a short note for an existing contact. Each contact has one note; saving another replaces the previous text.
+
+Format: `note INDEX TEXT`
+
+* `INDEX` is the positive index shown in the current contact list, including search results.
+* `TEXT` is required and must be a single line of up to 500 characters. Spaces, punctuation and Unicode text are allowed; control characters such as tabs are not.
+* Leading and trailing whitespace is trimmed. Spaces within the note are preserved.
+* Everything after the index is note text. No field prefix or quotation marks are needed; text such as `n/` or `t/` is saved literally.
+* The contact's other details and the current list filter are preserved.
+* Notes are saved automatically with contact data and remain available after restarting UniMate. New contacts have no note; use `note` after `add`.
+* Adding or replacing a note can be [undone](#undoing-a-change-undo) and [redone](#redoing-a-change-redo). Saving the same text again does not create an undo step or clear any available redo history, because the note has not changed.
+
+Example: `note 2 Met during CS2103T`
+
+The message area displays `Note saved for NAME.` A small note icon at the bottom right of the contact card indicates that a note is present. Use `shownote` to read it.
+
+### Viewing a contact's note: `shownote`
+
+Displays the contact's note in the message area.
+
+Format: `shownote INDEX`
+
+Example: `shownote 2`
+
+The message starts with `Note for NAME:`, followed by the saved text on the next line. If the contact has no note, it displays `No notes have been added to this contact.` Contact data, the current list filter, and undo/redo history are preserved.
+
+### Deleting a contact's note: `delnote`
+
+Removes the note from a contact while retaining the contact and all its other details.
+
+Format: `delnote INDEX`
+
+Example: `delnote 2`
+
+The message area displays `Note deleted for NAME.`, and the note icon disappears. The current list filter is preserved. If the contact already has no note, the message is `This contact has no note to delete.` and its data stays unchanged.
+
+Deleting an existing note can be undone and redone. Deleting an already empty note does not create an undo step or clear any available redo history.
+
+For all three note commands, an index outside the displayed list reports `The person index provided is invalid.` Missing or invalid index syntax produces a usage error. `note INDEX` without text is also a usage error; use `delnote INDEX` to clear a note. `shownote` and `delnote` reject extra arguments. Invalid note text is rejected without changing the existing note.
+
 ### Listing all persons: `list`
 
 Shows a list of all persons in UniMate. Each contact card includes the person's name, tags, phone number,
@@ -203,6 +315,8 @@ address, email address, major, and class year. Optional academic fields that hav
 `Major: Not specified` or `Class year: Not specified`.
 
 Format: `list`
+
+Clears any search or filter while retaining the active sort order.
 
 ### Editing a person: `edit`
 
@@ -265,11 +379,11 @@ Format: `filter [m/MAJOR] [c/CLASS_YEAR] [t/TAG]`
   error without changing the current results. Use `t/Friend` to filter a default tag; `d/` is not supported.
 * The result message shows the number of matching contacts. Zero matches displays an empty list;
   no contacts are deleted.
-* Each `filter` replaces the previous search or filter and retains the original contact order.
-  `find` replaces the filter; `list` shows all contacts again.
+* Each `filter` replaces the previous search or filter and retains the active sort order, or the saved
+  contact order if no sort has been chosen. `find` replaces the filter; `list` shows all contacts again.
 * Indices refer to the currently displayed list. For example, `delete 1` targets the first filtered result.
   Deleting or untagging a contact that no longer matches removes it from the results and renumbers the list.
-* Successful `add` and `edit` commands show the full list, following their existing behaviour.
+* Successful `add`, `edit`, `undo` and `redo` commands show the full list.
   Reapply the filter before using a filtered index again. Tag and untag retain the active filter.
 * Filters are temporary: restarting UniMate shows the full contact list. Filtering does not create
   an undoable data change or clear redo history.
@@ -282,6 +396,41 @@ Examples:
 
 Unlike `find Computer Science`, which searches for either word across names and academic fields,
 `filter m/Computer Science` checks only the complete major value.
+
+### Sorting contacts by name, major or class year: `sort`
+
+Orders the displayed contacts while keeping the current search or filter.
+
+Format: `sort FIELD DIRECTION`
+
+* Both arguments are required and must appear in this order, in lowercase.
+  Extra surrounding spaces and spaces between arguments are allowed.
+
+  | Argument | Accepted values | Meaning |
+  | --- | --- | --- |
+  | `FIELD` | `name`, `major`, `year` | Full name, full major or graduation year |
+  | `DIRECTION` | `asc`, `desc` | A–Z / earliest first, or Z–A / latest first |
+
+* Names and majors are compared case-insensitively. Class years are ordered chronologically.
+* Contacts with an unspecified major or class year appear **last** when sorting by that field,
+  for both directions. Equal academic values, including unspecified values, use ascending name order.
+  Names differing only in case compare equally.
+* Sorting an empty list or a single contact succeeds. Sorting does not add or remove contacts.
+* `filter`, `find` and `list` retain the chosen sort order. A successful `add`, `edit`, `undo` or `redo`
+  shows all contacts in that order; tag, untag and delete retain the current filter and sort.
+  Changing a sorted field can move a contact to a new position.
+* Numbered commands use the **currently displayed order**. Check the latest card numbers before
+  using `edit`, `delete`, `tag` or `untag`; sorting and contact changes can renumber the list.
+* Missing arguments, unsupported fields or directions, uppercase arguments and extra arguments produce
+  a usage error without changing the current results or saved data.
+* Sorting is temporary. It does not reorder saved contacts, create an undoable change or clear redo history.
+  Restarting restores the saved contact order and shows all contacts.
+
+Examples:
+* `sort name asc` displays names from A to Z.
+* `sort major desc` displays majors from Z to A, with unspecified majors last.
+* `filter t/Classmate`, then `sort year asc`, shows only classmates, earliest class year first.
+  `list` then shows all contacts in the same year order.
 
 ### Deleting a person: `delete`
 
@@ -414,10 +563,17 @@ Action     | Format, Examples
 **Edit**   | `edit INDEX [n/NAME] [p/PHONE_NUMBER] [e/EMAIL] [a/ADDRESS] [m/MAJOR] [c/CLASS_YEAR] [t/TAG]... `<br> e.g.,`edit 2 n/James Lee e/jameslee@example.com`
 **Find**   | `find KEYWORD [MORE_KEYWORDS]`<br> e.g., `find James Jake`, `find Computer Science`, `find 2027`
 **Filter** | `filter [m/MAJOR] [c/CLASS_YEAR] [t/TAG]` (at least one criterion)<br> e.g., `filter m/Computer Science c/2027 t/Classmate`
+**Sort**   | `sort FIELD DIRECTION`<br> e.g., `sort name asc`, `sort major desc`, `sort year asc`
 **List**   | `list`
+**Favourite** | `fav INDEX`<br> e.g., `fav 1`
+**Unfavourite** | `unfav INDEX`<br> e.g., `unfav 1`
+**List favourites** | `listfav`
 **Help**   | `help`
 **Tags**   | `tags`
 **Tag**    | `tag INDEX [d/DEFAULT_INDEX]... [t/TAG]...` (at least one tag)<br> e.g., `tag 1 d/2 t/NOC`
 **Untag**  | `untag INDEX t/TAG [t/TAG]...`<br> e.g., `untag 1 t/NOC`
+**Note**   | `note INDEX TEXT`<br> e.g., `note 2 Met during CS2103T`
+**Show note** | `shownote INDEX`<br> e.g., `shownote 2`
+**Delete note** | `delnote INDEX`<br> e.g., `delnote 2`
 **Undo**   | `undo`
 **Redo**   | `redo`

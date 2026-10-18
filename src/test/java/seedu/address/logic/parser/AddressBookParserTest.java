@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import seedu.address.logic.commands.AddCommand;
 import seedu.address.logic.commands.ClearCommand;
 import seedu.address.logic.commands.DeleteCommand;
+import seedu.address.logic.commands.DeleteNoteCommand;
 import seedu.address.logic.commands.EditCommand;
 import seedu.address.logic.commands.EditCommand.EditPersonDescriptor;
 import seedu.address.logic.commands.ExitCommand;
@@ -23,14 +24,20 @@ import seedu.address.logic.commands.FilterCommand;
 import seedu.address.logic.commands.FindCommand;
 import seedu.address.logic.commands.HelpCommand;
 import seedu.address.logic.commands.ListCommand;
+import seedu.address.logic.commands.NoteCommand;
 import seedu.address.logic.commands.RedoCommand;
+import seedu.address.logic.commands.ShowNoteCommand;
+import seedu.address.logic.commands.SortCommand;
 import seedu.address.logic.commands.UndoCommand;
 import seedu.address.logic.parser.exceptions.ParseException;
 import seedu.address.model.person.ContactFilterPredicate;
 import seedu.address.model.person.GraduationYear;
 import seedu.address.model.person.Major;
 import seedu.address.model.person.NameContainsKeywordsPredicate;
+import seedu.address.model.person.Notes;
 import seedu.address.model.person.Person;
+import seedu.address.model.person.PersonSortComparator.SortDirection;
+import seedu.address.model.person.PersonSortComparator.SortField;
 import seedu.address.model.tag.Tag;
 import seedu.address.testutil.EditPersonDescriptorBuilder;
 import seedu.address.testutil.PersonBuilder;
@@ -99,6 +106,23 @@ public class AddressBookParserTest {
     }
 
     @Test
+    public void parseCommand_sort_routesFieldAndDirection() throws Exception {
+        assertEquals(new SortCommand(SortField.NAME, SortDirection.ASC), parser.parseCommand("sort name asc"));
+        assertEquals(new SortCommand(SortField.MAJOR, SortDirection.DESC),
+                parser.parseCommand("  sort   major  desc  "));
+        assertEquals(new SortCommand(SortField.YEAR, SortDirection.ASC), parser.parseCommand("sort year asc"));
+    }
+
+    @Test
+    public void parseCommand_invalidSort_throwsParseException() {
+        String expectedMessage = String.format(MESSAGE_INVALID_COMMAND_FORMAT, SortCommand.MESSAGE_USAGE);
+        assertThrows(ParseException.class, expectedMessage, () -> parser.parseCommand("sort"));
+        assertThrows(ParseException.class, expectedMessage, () -> parser.parseCommand("sort name"));
+        assertThrows(ParseException.class, expectedMessage, () -> parser.parseCommand("sort name asc extra"));
+        assertThrows(ParseException.class, MESSAGE_UNKNOWN_COMMAND, () -> parser.parseCommand("SORT name asc"));
+    }
+
+    @Test
     public void parseCommand_help() throws Exception {
         assertTrue(parser.parseCommand(HelpCommand.COMMAND_WORD) instanceof HelpCommand);
         assertTrue(parser.parseCommand(HelpCommand.COMMAND_WORD + " 3") instanceof HelpCommand);
@@ -124,6 +148,14 @@ public class AddressBookParserTest {
                 + " all"));
         // The command word is case-sensitive, like other commands.
         assertThrows(ParseException.class, MESSAGE_UNKNOWN_COMMAND, () -> parser.parseCommand("UNDO"));
+    }
+
+    @Test
+    public void parseCommand_notes() throws Exception {
+        assertEquals(new NoteCommand(INDEX_FIRST_PERSON, new Notes("Met during CS2103T")),
+                parser.parseCommand("note 1 Met during CS2103T"));
+        assertEquals(new ShowNoteCommand(INDEX_FIRST_PERSON), parser.parseCommand("shownote 1"));
+        assertEquals(new DeleteNoteCommand(INDEX_FIRST_PERSON), parser.parseCommand("delnote 1"));
     }
 
     @Test
