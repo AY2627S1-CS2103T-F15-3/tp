@@ -233,6 +233,57 @@ after `list` as well as in filtered results produced by `find`.
 is rendered as `Not specified` instead of leaving an ambiguous blank line. This is a presentation-only change:
 `ListCommand`, the model, and the JSON storage format are unchanged.
 
+### Favourite contacts
+
+#### Design overview and relevant classes
+
+Favourite contacts use the existing command, model, storage and UI components. `Person` holds an immutable `boolean favourite`, exposed through `isFavourite()`. It defaults to `false` in the existing constructor; an overloaded constructor accepts an explicit state. Favourite status participates in `equals` and `hashCode`, while `isSamePerson` continues to identify contacts by name.
+
+| Class | Role in this feature |
+|-------|----------------------|
+| `AddressBookParser`, `FavCommandParser`, `UnfavCommandParser` | Dispatch commands and validate displayed indices using `ParserUtil.parseIndex`. `listfav` argument validation is handled directly in `AddressBookParser`; there is no separate `ListFavCommandParser`. |
+| `FavCommand`, `UnfavCommand` | Check the selected person's state and replace that person with a copy containing the new favourite value. |
+| `ListFavCommand`, `ListCommand` | Select the favourite predicate or restore the existing show-all predicate. |
+| `Model`, `ModelManager` | Expose the displayed list, replace stored persons, and apply predicates to the existing `FilteredList<Person>`. |
+| `LogicManager`, `JsonAdaptedPerson` | Save successful command results through the existing storage path and convert the favourite value between JSON and `Person`. |
+| `PersonCard`, `PersonListPanel` | Display the state and rebuild visible list-cell graphics when model contents change. |
+
+#### Command execution flow
+
+For `fav 1`, `AddressBookParser` selects `FavCommandParser`, which parses a one-based index using `ParserUtil.parseIndex` and constructs a `FavCommand`. During execution, the command reads `Model#getFilteredPersonList`, checks the list bounds, then checks `Person#isFavourite`. An already favourited person produces a `CommandException` rather than a replacement.
+
+For a valid state change, the command constructs a new `Person` from the original name, phone, email, address, major, graduation year and tags, with `favourite` set to `true`. `Model#setPerson` replaces the stored person, and the result starts with `Added to favourites: ` followed by `Messages.format` output. `unfav` follows the same path through `UnfavCommandParser` and `UnfavCommand`, requires an existing favourite, sets the value to `false`, and returns `Removed from favourites: `.
+
+Invalid index syntax is reported as a `ParseException` containing the corresponding command's usage. An index beyond the current view produces `The person index provided is invalid.` Repeated state changes produce `This person is already a favourite.` or `This person is not a favourite.` Neither command resets the current filter.
+
+`AddressBookParser` accepts `listfav` only when its argument string is blank. `ListFavCommand#execute` calls `Model#updateFilteredPersonList(Person::isFavourite)` and reports the resulting count, or `No favourite contacts found.` This replaces any previous predicate. The existing `ListCommand` restores `PREDICATE_SHOW_ALL_PERSONS`. Both commands reuse the same filtered view; neither edits or deletes a contact. The source list order is retained.
+
+Because `fav` and `unfav` resolve their targets from that view, `unfav 1` after `listfav` acts on the first displayed favourite. Replacing it with a non-favourite causes the `FilteredList` to remove it immediately and reindex the remaining results. Existing `add` and `edit` behaviour still restores the full list; `tag` and `untag` retain the current predicate.
+
+#### Data persistence
+
+`JsonAdaptedPerson` writes the `favourite` boolean alongside the existing contact fields. Its JSON creator accepts a nullable `Boolean` and uses `Boolean.TRUE.equals(favourite)`, so missing or null values in older data become `false`. Conversion back to the model uses the constructor accepting the favourite state. No favourite state is stored in ordinary tags.
+
+`LogicManager#execute` saves the address book after successful execution through the existing `Storage` API. As with other commands, a storage exception is reported after the in-memory model has changed; this path does not roll back the replacement.
+
+`EditCommand`, `TagCommand` and `UntagCommand` explicitly pass the original `person.isFavourite()` when reconstructing a person. This prevents unrelated updates from resetting the state. When adding future contact fields or commands that copy a `Person`, preserve both the favourite state and all other unaffected fields in that copy and in JSON conversion.
+
+#### GUI implementation
+
+`PersonListCard.fxml` defines a `favouriteIcon` label next to the name, containing the solid heart character (`♥`). `PersonCard` sets both its `visible` and `managed` properties from `person.isFavourite()`: ordinary contacts show no icon and reserve no icon space. The fixed 24-by-24 label is centred, with a small margin beside the name; it has no click handler.
+
+`DarkTheme.css` styles `#favouriteIcon` with `#e63946` for both text and the one-pixel circular border, a radius of 12, and a transparent background. The ID selector overrides the general list-cell label colour, including for selected cells. Ordinary tag styles are unaffected.
+
+The existing `PersonListPanel` observes the filtered list and creates a new `PersonCard` in `PersonListViewCell#updateItem`, using `getIndex() + 1` for numbering. Model replacement therefore updates the heart immediately; removing a person from the favourite filter updates the visible cards and indices without a separate favourite list or refresh command.
+
+#### Design considerations
+
+* **Separate state from tags:** A boolean gives favourite status one unambiguous value independent of tag names. Tag replacement or removal cannot accidentally remove favourite status, and no reserved custom tag name is needed.
+* **Filter instead of copying or deleting data:** Reusing `FilteredList` keeps one source of contact data, preserves ordering, and lets `list` restore hidden contacts. It also gives indexed commands the same selection rule in every view.
+* **Immutable replacement:** Commands reuse unchanged fields when constructing the replacement `Person`. This fits the existing observable model update path and avoids changes to unrelated contact attributes.
+
+For user-facing formats and list-switching examples, see [Marking a favourite contact](UserGuide.md#marking-a-favourite-contact-fav), [Removing favourite status](UserGuide.md#removing-favourite-status-unfav) and [Listing favourite contacts](UserGuide.md#listing-favourite-contacts-listfav).
+
 ### Tagging and untagging contacts
 
 #### Current implementation

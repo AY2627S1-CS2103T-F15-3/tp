@@ -190,6 +190,74 @@ These input errors leave all contacts unchanged. If any supplied tag is invalid,
 
 For both commands, UniMate saves the updated data automatically. A saving failure reports `Could not save data due to the following error: ...` or `Could not save data to file ... due to insufficient permissions to write to the file or the folder.` The in-memory change has already occurred in this case, so the error does not mean it was rolled back.
 
+### Marking a favourite contact: `fav`
+
+Marks a person in the currently displayed list as a favourite.
+
+Format: `fav INDEX`
+
+* `INDEX` must be a positive integer from `1` to `2147483647` and refer to a person in the currently displayed list. Zero, negative numbers, a leading `+`, decimals and extra arguments are not accepted.
+* The person's other details, tags, major and class year are preserved, together with the current list filter.
+* A successful command shows `Added to favourites: ` followed by the updated person's details.
+* A favourited contact displays a solid heart (`♥`) inside a small circular border to the right of their name. Both the heart and border are red (`#e63946`), with a transparent background. The icon is a visual indicator and cannot be clicked.
+* Favourite status is saved automatically and retained after restarting UniMate. New contacts and contacts loaded from older files without favourite status start as not favourited.
+
+Example (assuming at least one person is displayed):
+
+* `fav 1` marks the first displayed person as a favourite and immediately shows the circular heart.
+
+**Error handling:**
+
+| Input or situation | Result message |
+|--------------------|----------------|
+| Missing or invalid index, or extra arguments (e.g., `fav`, `fav 0`, `fav 1 extra`) | `Invalid command format!`, followed by the `fav` usage instructions. |
+| Index exceeds the displayed list size | `The person index provided is invalid.` |
+| Person is already favourited | `This person is already a favourite.` |
+
+These errors leave contact data unchanged.
+
+### Removing favourite status: `unfav`
+
+Removes favourite status from a person in the currently displayed list.
+
+Format: `unfav INDEX`
+
+* `INDEX` follows the same rules as [`fav`](#marking-a-favourite-contact-fav).
+* A successful command shows `Removed from favourites: ` followed by the person's details, and the circular heart disappears immediately.
+* All other contact fields are preserved. The updated favourite status is saved automatically and remains removed after restarting UniMate.
+* When viewing favourites using `listfav`, the person immediately disappears from that filtered view. The contact remains stored and can be seen again using `list`.
+
+Example (assuming the first displayed person is favourited):
+
+* `unfav 1` removes favourite status from that person.
+
+**Error handling:**
+
+| Input or situation | Result message |
+|--------------------|----------------|
+| Missing or invalid index, or extra arguments (e.g., `unfav`, `unfav -1`, `unfav 1 extra`) | `Invalid command format!`, followed by the `unfav` usage instructions. |
+| Index exceeds the displayed list size | `The person index provided is invalid.` |
+| Person is not favourited | `This person is not a favourite.` |
+
+These errors leave contact data unchanged. After `unfav` removes a person from the favourite list, check the new displayed indices before entering another indexed command.
+
+### Listing favourite contacts: `listfav`
+
+Shows all favourited contacts in their existing order, with displayed indices starting at `1`. This replaces the previous search or list filter. Other contacts are hidden from the view, not deleted or modified.
+
+Format: `listfav`
+
+* No arguments are accepted. For example, `listfav 1` shows `Invalid command format!` followed by the `listfav` usage instructions, and leaves the current view unchanged.
+* When favourites exist, the result is `Listed N favourite contact(s).`, where `N` is the number shown. Contact details and circular heart icons remain visible.
+* If there are no favourites, the list is empty and the result is `No favourite contacts found.`
+
+**Switching between lists:**
+
+* The existing AB3 `list` command shows all contacts. The new `listfav` command shows only favourites. Both change the view without changing contact data or favourite status.
+* `fav INDEX` and `unfav INDEX` always use the indices in the current view, including search results and the favourite list. A displayed index is not a permanent contact identifier.
+* For example, run `list`, then `fav 1`, then `listfav`. Run `unfav 1` to remove the first person shown in the favourite list, then `list` to see all contacts again.
+* The existing `add` and `edit` commands restore the full list after success. Run `listfav` again to return to favourites. Tag and untag operations preserve the current filter and favourite status.
+
 ### Listing all persons: `list`
 
 Shows a list of all persons in UniMate. Each contact card includes the person's name, tags, phone number,
@@ -325,6 +393,9 @@ Action     | Format, Examples
 **Edit**   | `edit INDEX [n/NAME] [p/PHONE_NUMBER] [e/EMAIL] [a/ADDRESS] [m/MAJOR] [c/CLASS_YEAR] [t/TAG]... `<br> e.g.,`edit 2 n/James Lee e/jameslee@example.com`
 **Find**   | `find KEYWORD [MORE_KEYWORDS]`<br> e.g., `find James Jake`, `find Computer Science`, `find 2027`
 **List**   | `list`
+**Favourite** | `fav INDEX`<br> e.g., `fav 1`
+**Unfavourite** | `unfav INDEX`<br> e.g., `unfav 1`
+**List favourites** | `listfav`
 **Help**   | `help`
 **Tags**   | `tags`
 **Tag**    | `tag INDEX [d/DEFAULT_INDEX]... [t/TAG]...` (at least one tag)<br> e.g., `tag 1 d/2 t/NOC`
