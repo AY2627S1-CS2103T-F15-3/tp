@@ -132,6 +132,10 @@
     -fx-text-fill: #010504;
 }
 
+.note-icon {
+    -fx-padding: 3;
+}
+
 .stack-pane {
      -fx-background-color: derive(#1d1d1d, 20%);
 }
