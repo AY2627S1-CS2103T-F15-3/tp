@@ -42,7 +42,7 @@ public class UnfavCommand extends Command {
             throw new CommandException(MESSAGE_NOT_FAVOURITE);
         }
         Person updatedPerson = new Person(person.getName(), person.getPhone(), person.getEmail(), person.getAddress(),
-                person.getMajor(), person.getGraduationYear(), person.getTags(), false);
+                person.getMajor(), person.getGraduationYear(), person.getTags(), person.getNotes(), false);
         model.setPerson(person, updatedPerson);
         return new CommandResult(String.format(MESSAGE_SUCCESS, Messages.format(updatedPerson)));
     }

@@ -15,6 +15,7 @@ import seedu.address.model.person.Email;
 import seedu.address.model.person.GraduationYear;
 import seedu.address.model.person.Major;
 import seedu.address.model.person.Name;
+import seedu.address.model.person.Notes;
 import seedu.address.model.person.Person;
 import seedu.address.model.person.Phone;
 import seedu.address.model.tag.Tag;
@@ -32,25 +33,34 @@ class JsonAdaptedPerson {
     private final String address;
     private final String major;
     private final String graduationYear;
+    private final String notes;
     private final boolean favourite;
     private final List<JsonAdaptedTag> tags = new ArrayList<>();
 
     /**
      * Constructs a {@code JsonAdaptedPerson} with the given person details.
      */
-    public JsonAdaptedPerson(String name, String phone, String email, String address,
-            String major, String graduationYear, List<JsonAdaptedTag> tags) {
-        this(name, phone, email, address, major, graduationYear, tags, false);
+    public JsonAdaptedPerson(String name, String phone, String email, String address, String major,
+            String graduationYear, List<JsonAdaptedTag> tags) {
+        this(name, phone, email, address, major, graduationYear, tags, null, false);
     }
 
     /**
-     * Reads favourite as false when loading older files without the field.
+     * Constructs an adapted person with notes and no favourite status.
+     */
+    public JsonAdaptedPerson(String name, String phone, String email, String address, String major,
+            String graduationYear, List<JsonAdaptedTag> tags, String notes) {
+        this(name, phone, email, address, major, graduationYear, tags, notes, false);
+    }
+
+    /**
+     * Reads optional notes and favourite status, including legacy files missing either field.
      */
     @JsonCreator
     public JsonAdaptedPerson(@JsonProperty("name") String name, @JsonProperty("phone") String phone,
             @JsonProperty("email") String email, @JsonProperty("address") String address,
             @JsonProperty("major") String major, @JsonProperty("graduationYear") String graduationYear,
-            @JsonProperty("tags") List<JsonAdaptedTag> tags,
+            @JsonProperty("tags") List<JsonAdaptedTag> tags, @JsonProperty("notes") String notes,
             @JsonProperty("favourite") Boolean favourite) {
         this.name = name;
         this.phone = phone;
@@ -58,6 +68,7 @@ class JsonAdaptedPerson {
         this.address = address;
         this.major = major;
         this.graduationYear = graduationYear;
+        this.notes = notes;
         this.favourite = Boolean.TRUE.equals(favourite);
         if (tags != null) {
             this.tags.addAll(tags);
@@ -74,6 +85,7 @@ class JsonAdaptedPerson {
         address = source.getAddress().value;
         major = source.getMajor().value;
         graduationYear = source.getGraduationYear().value;
+        notes = source.getNotes().value;
         favourite = source.isFavourite();
         tags.addAll(source.getTags().stream()
                 .map(JsonAdaptedTag::new)
@@ -136,9 +148,15 @@ class JsonAdaptedPerson {
         }
         final GraduationYear modelGraduationYear = new GraduationYear(storedYear);
 
+        String storedNotes = notes == null ? "" : notes;
+        if (!Notes.isValidNotes(storedNotes)) {
+            throw new IllegalValueException(Notes.MESSAGE_CONSTRAINTS);
+        }
+        final Notes modelNotes = new Notes(storedNotes);
+
         final Set<Tag> modelTags = new HashSet<>(personTags);
         return new Person(modelName, modelPhone, modelEmail, modelAddress,
-                modelMajor, modelGraduationYear, modelTags, favourite);
+                modelMajor, modelGraduationYear, modelTags, modelNotes, favourite);
     }
 
 }

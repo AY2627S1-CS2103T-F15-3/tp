@@ -8,6 +8,8 @@
 
 UniMate is a **desktop application for managing contacts, optimized for use through a Command Line Interface (CLI)** while retaining the benefits of a Graphical User Interface (GUI). If you type quickly, UniMate can help you manage contacts faster than traditional GUI applications.
 
+This guide describes the features available in v1.4.
+
 <!-- * Table of Contents -->
 <page-nav-print />
 
@@ -62,7 +64,7 @@ UniMate is a **desktop application for managing contacts, optimized for use thro
   For example, if the command specifies `n/NAME p/PHONE_NUMBER`, `p/PHONE_NUMBER n/NAME` is also acceptable.
 
 * Extraneous parameters for commands that take no parameters, such as `help`, `list`, `exit`, and `clear`, are ignored.<br>
-  For example, `help 123` is interpreted as `help`.
+  For example, `help 123` is interpreted as `help`. This does not apply to `undo` and `redo`, which reject extra arguments.
 
 * If you are using a PDF version of this document, be careful when copying and pasting commands that span multiple lines as space characters surrounding line-breaks may be omitted when copied over to the application.
 </box>
@@ -258,6 +260,48 @@ Format: `listfav`
 * For example, run `list`, then `fav 1`, then `listfav`. Run `unfav 1` to remove the first person shown in the favourite list, then `list` to see all contacts again.
 * The existing `add` and `edit` commands restore the full list after success. Run `listfav` again to return to favourites. Tag and untag operations preserve the current filter and favourite status.
 
+### Adding or replacing a contact's note: `note`
+
+Saves a short note for an existing contact. Each contact has one note; saving another replaces the previous text.
+
+Format: `note INDEX TEXT`
+
+* `INDEX` is the positive index shown in the current contact list, including search results.
+* `TEXT` is required and must be a single line of up to 500 characters. Spaces, punctuation and Unicode text are allowed; control characters such as tabs are not.
+* Leading and trailing whitespace is trimmed. Spaces within the note are preserved.
+* Everything after the index is note text. No field prefix or quotation marks are needed; text such as `n/` or `t/` is saved literally.
+* The contact's other details and the current list filter are preserved.
+* Notes are saved automatically with contact data and remain available after restarting UniMate. New contacts have no note; use `note` after `add`.
+* Adding or replacing a note can be [undone](#undoing-a-change-undo) and [redone](#redoing-a-change-redo). Saving the same text again does not create an undo step or clear any available redo history, because the note has not changed.
+
+Example: `note 2 Met during CS2103T`
+
+The message area displays `Note saved for NAME.` A small note icon at the bottom right of the contact card indicates that a note is present. Use `shownote` to read it.
+
+### Viewing a contact's note: `shownote`
+
+Displays the contact's note in the message area.
+
+Format: `shownote INDEX`
+
+Example: `shownote 2`
+
+The message starts with `Note for NAME:`, followed by the saved text on the next line. If the contact has no note, it displays `No notes have been added to this contact.` Contact data, the current list filter, and undo/redo history are preserved.
+
+### Deleting a contact's note: `delnote`
+
+Removes the note from a contact while retaining the contact and all its other details.
+
+Format: `delnote INDEX`
+
+Example: `delnote 2`
+
+The message area displays `Note deleted for NAME.`, and the note icon disappears. The current list filter is preserved. If the contact already has no note, the message is `This contact has no note to delete.` and its data stays unchanged.
+
+Deleting an existing note can be undone and redone. Deleting an already empty note does not create an undo step or clear any available redo history.
+
+For all three note commands, an index outside the displayed list reports `The person index provided is invalid.` Missing or invalid index syntax produces a usage error. `note INDEX` without text is also a usage error; use `delnote INDEX` to clear a note. `shownote` and `delnote` reject extra arguments. Invalid note text is rejected without changing the existing note.
+
 ### Listing all persons: `list`
 
 Shows a list of all persons in UniMate. Each contact card includes the person's name, tags, phone number,
@@ -309,6 +353,41 @@ Examples:
 * `find alex david` returns `Alex Yeoh`, `David Li`<br>
   ![result for 'find alex david'](images/findAlexDavidResult.png)
 
+### Filtering contacts by major, class year and tag: `filter`
+
+Shows contacts whose complete field values match **all** supplied criteria (AND matching).
+
+Format: `filter [m/MAJOR] [c/CLASS_YEAR] [t/TAG]`
+
+* Supply at least one criterion. Each prefix may appear only once, in any order, separated by spaces.
+* Major and tag matching ignore case but require the complete value: `m/Computer Science` matches
+  `Computer Science`, while `m/Computer` does not. A tag criterion matches any one of the contact's tags.
+* Class year matches exactly and must be four digits from `2000` to `2099`.
+* Omitted criteria leave those fields unrestricted. An unspecified academic field does not match a
+  supplied criterion for that field, but the contact can still match a criterion on another field.
+* Leading and trailing spaces around values are ignored; spaces within a major remain significant.
+* Blank values, repeated prefixes, unsupported single-letter prefixes and invalid values produce an
+  error without changing the current results. Use `t/Friend` to filter a default tag; `d/` is not supported.
+* The result message shows the number of matching contacts. Zero matches displays an empty list;
+  no contacts are deleted.
+* Each `filter` replaces the previous search or filter and retains the original contact order.
+  `find` replaces the filter; `list` shows all contacts again.
+* Indices refer to the currently displayed list. For example, `delete 1` targets the first filtered result.
+  Deleting or untagging a contact that no longer matches removes it from the results and renumbers the list.
+* Successful `add`, `edit`, `undo` and `redo` commands show the full list.
+  Reapply the filter before using a filtered index again. Tag and untag retain the active filter.
+* Filters are temporary: restarting UniMate shows the full contact list. Filtering does not create
+  an undoable data change or clear redo history.
+
+Examples:
+* `filter m/Computer Science c/2027 t/Classmate` shows contacts who match all three criteria.
+* `filter c/2027` shows all contacts with class year `2027`, regardless of their major or tags.
+* `filter t/friend` shows contacts with a complete tag matching `friend`, ignoring case.
+* `list` returns to the full contact list.
+
+Unlike `find Computer Science`, which searches for either word across names and academic fields,
+`filter m/Computer Science` checks only the complete major value.
+
 ### Deleting a person: `delete`
 
 Deletes the specified person from UniMate.
@@ -331,6 +410,40 @@ Examples:
 Clears all entries from UniMate.
 
 Format: `clear`
+
+### Undoing a change: `undo`
+
+Reverts the most recent undoable contact-data change. Available in v1.4.
+
+Format: `undo`
+
+* Changes made by `add`, `edit`, `note` and `delnote` can be undone. For notes, this includes adding a note, replacing its text, and deleting it.
+* Each `undo` restores one earlier data state. Repeat the command to undo further recorded changes; it does not target a contact index.
+* After a successful undo, the full contact list is shown. Reapply `find` or `filter` and check the displayed indices before targeting another contact.
+* Changes made by `delete`, `tag`, `untag` and `clear` are not undoable. If one changes contact data, earlier undo and redo history becomes unavailable.
+* Undo/redo history lasts only for the current app session. Restored contact data is saved automatically, but restarting the app clears the history.
+* If there is no available change to undo, an error is shown and contact data stays unchanged. Extra arguments, such as `undo 1`, are rejected.
+
+Example, with at least one contact in the full list:
+
+1. `note 1 First note`
+1. `note 1 Second note`
+1. `undo`
+1. `shownote 1` displays `First note`.
+
+### Redoing a change: `redo`
+
+Restores the most recently undone change. Available in v1.4.
+
+Format: `redo`
+
+* Redoes changes made by `add`, `edit`, `note` and `delnote`. Repeat `redo` to restore further undone changes in order.
+* Making a new data-changing `add`, `edit`, `note` or `delnote` clears the redo history. Changes made by non-undoable commands also make earlier history unavailable, as described under [`undo`](#undoing-a-change-undo).
+* Commands that leave contact data unchanged do not clear redo history. This includes `shownote`, `list`, `find`, `filter`, saving an unchanged note, and deleting an already empty note.
+* After a successful redo, the full contact list is shown. Reapply any search or filter before using its indices again.
+* If there is no available change to redo, an error is shown and contact data stays unchanged. Extra arguments, such as `redo 1`, are rejected.
+
+After the undo example above, the saved note is `First note` and `Second note` can be redone. Running `note 1 First note` again leaves redo available; `redo` followed by `shownote 1` then displays `Second note`. If you instead run `note 1 Replacement note` before redoing, the changed text clears the redo history.
 
 ### Exiting the program: `exit`
 
@@ -358,10 +471,6 @@ Furthermore, certain edits can cause UniMate to behave in unexpected ways (e.g.,
 ## Coming soon
 
 The following features are not available in the MVP.
-
-### Undo/redo
-
-Planned support for undoing a contact change and redoing an undone change. The `undo` and `redo` commands are not supported in the current release.
 
 ### Archiving data files `[coming in v2.0]`
 
@@ -392,6 +501,7 @@ Action     | Format, Examples
 **Delete** | `delete INDEX`<br> e.g., `delete 3`
 **Edit**   | `edit INDEX [n/NAME] [p/PHONE_NUMBER] [e/EMAIL] [a/ADDRESS] [m/MAJOR] [c/CLASS_YEAR] [t/TAG]... `<br> e.g.,`edit 2 n/James Lee e/jameslee@example.com`
 **Find**   | `find KEYWORD [MORE_KEYWORDS]`<br> e.g., `find James Jake`, `find Computer Science`, `find 2027`
+**Filter** | `filter [m/MAJOR] [c/CLASS_YEAR] [t/TAG]` (at least one criterion)<br> e.g., `filter m/Computer Science c/2027 t/Classmate`
 **List**   | `list`
 **Favourite** | `fav INDEX`<br> e.g., `fav 1`
 **Unfavourite** | `unfav INDEX`<br> e.g., `unfav 1`
@@ -400,3 +510,8 @@ Action     | Format, Examples
 **Tags**   | `tags`
 **Tag**    | `tag INDEX [d/DEFAULT_INDEX]... [t/TAG]...` (at least one tag)<br> e.g., `tag 1 d/2 t/NOC`
 **Untag**  | `untag INDEX t/TAG [t/TAG]...`<br> e.g., `untag 1 t/NOC`
+**Note**   | `note INDEX TEXT`<br> e.g., `note 2 Met during CS2103T`
+**Show note** | `shownote INDEX`<br> e.g., `shownote 2`
+**Delete note** | `delnote INDEX`<br> e.g., `delnote 2`
+**Undo**   | `undo`
+**Redo**   | `redo`

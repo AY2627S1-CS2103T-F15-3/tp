@@ -20,7 +20,7 @@ public class UnfavCommandTest {
 
     @Test
     public void execute_favourite_preservesOtherFieldsAndAllowsRefavourite() throws Exception {
-        Person original = new PersonBuilder().withFavourite(true).withMajor("Computing")
+        Person original = new PersonBuilder().withFavourite(true).withNotes("Preserve notes").withMajor("Computing")
                 .withGraduationYear("2027").withTags("NOC", "Friend").build();
         model.addPerson(original);
         Person expected = new PersonBuilder(original).withFavourite(false).build();

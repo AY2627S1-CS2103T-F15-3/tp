@@ -24,7 +24,7 @@ public class FavouriteStorageTest {
     @Test
     public void execute_unfav_savesFalseAndReloadsWithoutLosingOtherFields() throws Exception {
         Person original = new PersonBuilder().withFavourite(true).withTags("Friend")
-                .withMajor("Computing").withGraduationYear("2027").build();
+                .withMajor("Computing").withGraduationYear("2027").withNotes("Preserve notes").build();
         Model model = new ModelManager();
         model.addPerson(original);
         Path file = directory.resolve("unfav.json");
@@ -42,7 +42,7 @@ public class FavouriteStorageTest {
     @Test
     public void saveAndReload_favouriteAndOrdinaryContacts_preservesState() throws Exception {
         Person favourite = new PersonBuilder().withFavourite(true).withMajor("Computing")
-                .withGraduationYear("2027").withTags("NOC").build();
+                .withGraduationYear("2027").withTags("NOC").withNotes("Persistent notes").build();
         Person ordinary = new PersonBuilder().withName("Bob").build();
         AddressBook book = new AddressBook();
         book.addPerson(favourite);

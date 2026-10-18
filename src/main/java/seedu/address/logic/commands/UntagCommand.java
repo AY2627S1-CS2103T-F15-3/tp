@@ -48,7 +48,8 @@ public class UntagCommand extends Command {
         Set<Tag> updatedTags = new HashSet<>(person.getTags());
         updatedTags.removeAll(tags);
         Person updatedPerson = new Person(person.getName(), person.getPhone(), person.getEmail(),
-                person.getAddress(), person.getMajor(), person.getGraduationYear(), updatedTags, person.isFavourite());
+                person.getAddress(), person.getMajor(), person.getGraduationYear(), updatedTags,
+                person.getNotes(), person.isFavourite());
         model.setPerson(person, updatedPerson);
         return new CommandResult(String.format(MESSAGE_SUCCESS, Messages.format(updatedPerson)));
     }

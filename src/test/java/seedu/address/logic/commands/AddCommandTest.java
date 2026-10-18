@@ -44,6 +44,20 @@ public class AddCommandTest {
     }
 
     @Test
+    public void execute_personAcceptedByModel_commitsStateBeforeAdd() throws Exception {
+        ModelStubAcceptingPersonAdded modelStub = new ModelStubAcceptingPersonAdded();
+        Person firstPerson = new PersonBuilder().withName("Alice").build();
+        Person secondPerson = new PersonBuilder().withName("Bob").build();
+
+        new AddCommand(firstPerson).execute(modelStub);
+        new AddCommand(secondPerson).execute(modelStub);
+
+        AddressBook stateBeforeSecondAdd = new AddressBook();
+        stateBeforeSecondAdd.addPerson(firstPerson);
+        assertEquals(List.of(new AddressBook(), stateBeforeSecondAdd), modelStub.committedPreviousStates);
+    }
+
+    @Test
     public void execute_personWithAcademicFields_addSuccessfulMessageShowsAcademicFields() throws Exception {
         ModelStubAcceptingPersonAdded modelStub = new ModelStubAcceptingPersonAdded();
         Person validPerson = new PersonBuilder()
@@ -208,6 +222,31 @@ public class AddCommandTest {
         }
 
         @Override
+        public void commitAddressBook(ReadOnlyAddressBook previousState) {
+            throw new AssertionError("This method should not be called.");
+        }
+
+        @Override
+        public boolean canUndoAddressBook() {
+            throw new AssertionError("This method should not be called.");
+        }
+
+        @Override
+        public boolean canRedoAddressBook() {
+            throw new AssertionError("This method should not be called.");
+        }
+
+        @Override
+        public boolean undoAddressBook() {
+            throw new AssertionError("This method should not be called.");
+        }
+
+        @Override
+        public boolean redoAddressBook() {
+            throw new AssertionError("This method should not be called.");
+        }
+
+        @Override
         public ObservableList<Person> getFilteredPersonList() {
             throw new AssertionError("This method should not be called.");
         }
@@ -241,6 +280,7 @@ public class AddCommandTest {
      */
     private class ModelStubAcceptingPersonAdded extends ModelStub {
         final ArrayList<Person> personsAdded = new ArrayList<>();
+        final ArrayList<ReadOnlyAddressBook> committedPreviousStates = new ArrayList<>();
 
         @Override
         public boolean hasPerson(Person person) {
@@ -256,7 +296,15 @@ public class AddCommandTest {
 
         @Override
         public ReadOnlyAddressBook getAddressBook() {
-            return new AddressBook();
+            AddressBook addressBook = new AddressBook();
+            personsAdded.forEach(addressBook::addPerson);
+            return addressBook;
+        }
+
+        @Override
+        public void commitAddressBook(ReadOnlyAddressBook previousState) {
+            requireNonNull(previousState);
+            committedPreviousStates.add(previousState);
         }
     }
 

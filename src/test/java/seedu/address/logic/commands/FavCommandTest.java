@@ -22,7 +22,8 @@ public class FavCommandTest {
 
     @Test
     public void execute_validIndex_preservesAllOtherFields() throws Exception {
-        Person original = new PersonBuilder().withMajor("Computing").withGraduationYear("2027")
+        Person original = new PersonBuilder().withNotes("Preserve team notes")
+                .withMajor("Computing").withGraduationYear("2027")
                 .withTags("NOC", "Friend").build();
         assertFalse(original.isFavourite());
         model.addPerson(original);
@@ -75,5 +76,30 @@ public class FavCommandTest {
         }
         assertEquals("91234567", model.getFilteredPersonList().get(0).getPhone().value);
         assertTrue(model.getFilteredPersonList().get(0).getTags().isEmpty());
+    }
+
+    @Test
+    public void execute_teamNotesHistoryAndFilters_preserveFavouriteAndOtherFields() throws Exception {
+        Person original = new PersonBuilder().withFavourite(true).withNotes("Original note")
+                .withMajor("Computing").withGraduationYear("2027").withTags("Friend").build();
+        model.addPerson(original);
+        parser.parseCommand("note 1 Updated note").execute(model);
+        assertEquals(new PersonBuilder(original).withNotes("Updated note").build(),
+                model.getFilteredPersonList().get(0));
+        parser.parseCommand("undo").execute(model);
+        assertEquals(original, model.getFilteredPersonList().get(0));
+        parser.parseCommand("redo").execute(model);
+        assertTrue(model.getFilteredPersonList().get(0).isFavourite());
+        assertTrue(parser.parseCommand("shownote 1").execute(model).getFeedbackToUser().contains("Updated note"));
+        parser.parseCommand("filter m/Computing t/Friend").execute(model);
+        parser.parseCommand("listfav").execute(model);
+        parser.parseCommand("tag 1 t/NOC").execute(model);
+        parser.parseCommand("untag 1 t/NOC").execute(model);
+        parser.parseCommand("edit 1 p/91234567").execute(model);
+        assertEquals(new PersonBuilder(original).withNotes("Updated note").withPhone("91234567").build(),
+                model.getFilteredPersonList().get(0));
+        parser.parseCommand("delnote 1").execute(model);
+        assertTrue(model.getFilteredPersonList().get(0).isFavourite());
+        assertEquals("", model.getFilteredPersonList().get(0).getNotes().value);
     }
 }

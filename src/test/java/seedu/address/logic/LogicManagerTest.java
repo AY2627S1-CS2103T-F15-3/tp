@@ -21,8 +21,10 @@ import org.junit.jupiter.api.io.TempDir;
 import seedu.address.logic.commands.AddCommand;
 import seedu.address.logic.commands.CommandResult;
 import seedu.address.logic.commands.ListCommand;
+import seedu.address.logic.commands.UndoCommand;
 import seedu.address.logic.commands.exceptions.CommandException;
 import seedu.address.logic.parser.exceptions.ParseException;
+import seedu.address.model.AddressBook;
 import seedu.address.model.Model;
 import seedu.address.model.ModelManager;
 import seedu.address.model.ReadOnlyAddressBook;
@@ -68,6 +70,27 @@ public class LogicManagerTest {
     public void execute_validCommand_success() throws Exception {
         String listCommand = ListCommand.COMMAND_WORD;
         assertCommandSuccess(listCommand, ListCommand.MESSAGE_SUCCESS, model);
+    }
+
+    @Test
+    public void execute_undoAfterAdd_restoresDisplayedListAndSavesData() throws Exception {
+        Path addressBookPath = temporaryFolder.resolve("addressBook.json");
+        String addCommand = AddCommand.COMMAND_WORD + NAME_DESC_AMY + PHONE_DESC_AMY
+                + EMAIL_DESC_AMY + ADDRESS_DESC_AMY;
+        logic.execute(addCommand);
+        assertEquals(1, logic.getFilteredPersonList().size());
+
+        assertCommandSuccess(UndoCommand.COMMAND_WORD, UndoCommand.MESSAGE_SUCCESS, new ModelManager());
+
+        assertEquals(0, logic.getFilteredPersonList().size());
+        ReadOnlyAddressBook savedAddressBook = new JsonAddressBookStorage(addressBookPath).readAddressBook()
+                .orElseThrow();
+        assertEquals(new AddressBook(), new AddressBook(savedAddressBook));
+    }
+
+    @Test
+    public void execute_undoWithEmptyHistory_throwsCommandException() {
+        assertCommandException(UndoCommand.COMMAND_WORD, UndoCommand.MESSAGE_FAILURE);
     }
 
     @Test
