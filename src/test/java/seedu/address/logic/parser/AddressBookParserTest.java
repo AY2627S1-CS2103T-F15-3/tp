@@ -8,6 +8,7 @@ import static seedu.address.testutil.Assert.assertThrows;
 import static seedu.address.testutil.TypicalIndexes.INDEX_FIRST_PERSON;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
@@ -18,14 +19,19 @@ import seedu.address.logic.commands.DeleteCommand;
 import seedu.address.logic.commands.EditCommand;
 import seedu.address.logic.commands.EditCommand.EditPersonDescriptor;
 import seedu.address.logic.commands.ExitCommand;
+import seedu.address.logic.commands.FilterCommand;
 import seedu.address.logic.commands.FindCommand;
 import seedu.address.logic.commands.HelpCommand;
 import seedu.address.logic.commands.ListCommand;
 import seedu.address.logic.commands.RedoCommand;
 import seedu.address.logic.commands.UndoCommand;
 import seedu.address.logic.parser.exceptions.ParseException;
+import seedu.address.model.person.ContactFilterPredicate;
+import seedu.address.model.person.GraduationYear;
+import seedu.address.model.person.Major;
 import seedu.address.model.person.NameContainsKeywordsPredicate;
 import seedu.address.model.person.Person;
+import seedu.address.model.tag.Tag;
 import seedu.address.testutil.EditPersonDescriptorBuilder;
 import seedu.address.testutil.PersonBuilder;
 import seedu.address.testutil.PersonUtil;
@@ -75,6 +81,21 @@ public class AddressBookParserTest {
         FindCommand command = (FindCommand) parser.parseCommand(
                 FindCommand.COMMAND_WORD + " " + keywords.stream().collect(Collectors.joining(" ")));
         assertEquals(new FindCommand(new NameContainsKeywordsPredicate(keywords)), command);
+    }
+
+    @Test
+    public void parseCommand_filter_routesCriteriaToFilterCommand() throws Exception {
+        FilterCommand expected = new FilterCommand(new ContactFilterPredicate(
+                Optional.of(new Major("Computer Science")),
+                Optional.of(new GraduationYear("2027")), Optional.of(new Tag("Classmate"))));
+        assertEquals(expected, parser.parseCommand("filter m/Computer Science c/2027 t/Classmate"));
+        assertEquals(expected, parser.parseCommand("  filter   t/Classmate c/2027 m/Computer Science  "));
+    }
+
+    @Test
+    public void parseCommand_filterWithoutCriteria_throwsParseException() {
+        String expectedMessage = String.format(MESSAGE_INVALID_COMMAND_FORMAT, FilterCommand.MESSAGE_USAGE);
+        assertThrows(ParseException.class, expectedMessage, () -> parser.parseCommand("filter"));
     }
 
     @Test
