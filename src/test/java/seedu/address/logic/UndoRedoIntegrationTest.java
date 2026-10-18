@@ -3,6 +3,8 @@ package seedu.address.logic;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static seedu.address.logic.Messages.MESSAGE_INVALID_COMMAND_FORMAT;
+import static seedu.address.logic.Messages.MESSAGE_INVALID_PERSON_DISPLAYED_INDEX;
 import static seedu.address.testutil.Assert.assertThrows;
 import static seedu.address.testutil.TypicalPersons.ALICE;
 import static seedu.address.testutil.TypicalPersons.getTypicalAddressBook;
@@ -23,6 +25,7 @@ import seedu.address.logic.commands.EditCommand;
 import seedu.address.logic.commands.RedoCommand;
 import seedu.address.logic.commands.UndoCommand;
 import seedu.address.logic.commands.exceptions.CommandException;
+import seedu.address.logic.parser.exceptions.ParseException;
 import seedu.address.model.Model;
 import seedu.address.model.ModelManager;
 import seedu.address.model.UserPrefs;
@@ -191,6 +194,69 @@ public class UndoRedoIntegrationTest {
 
         assertTrue(model.canUndoAddressBook());
         assertFalse(model.canRedoAddressBook());
+    }
+
+    @Test
+    public void failedAddAfterUndo_redoStillAvailable() throws Exception {
+        assertAddSuccess(ADD_ALEX, ALEX, typicalPersonsWith(ALEX));
+        assertUndoSuccess(getTypicalPersons());
+
+        // Rejected while executing: a contact with this name already exists.
+        assertCommandFailure("add n/Alice Pauline p/99990000 e/other@example.com a/Clementi",
+                CommandException.class, AddCommand.MESSAGE_DUPLICATE_PERSON);
+        // Rejected while parsing: the phone, email and address are missing.
+        assertCommandFailure("add n/Beth Lim", ParseException.class,
+                String.format(MESSAGE_INVALID_COMMAND_FORMAT, AddCommand.MESSAGE_USAGE));
+
+        assertRedoSuccess(typicalPersonsWith(ALEX));
+    }
+
+    @Test
+    public void failedEditAfterUndo_redoStillAvailable() throws Exception {
+        List<Person> afterEdit = replace(getTypicalPersons(), ALICE, EDITED_ALICE);
+        assertEditSuccess(EDIT_ALICE, EDITED_ALICE, afterEdit);
+        assertUndoSuccess(getTypicalPersons());
+
+        assertCommandFailure("edit 2 n/Alice Pauline", CommandException.class,
+                EditCommand.MESSAGE_DUPLICATE_PERSON);
+        assertCommandFailure("edit 99 p/91234567", CommandException.class, MESSAGE_INVALID_PERSON_DISPLAYED_INDEX);
+        assertCommandFailure("edit 1", ParseException.class, EditCommand.MESSAGE_NOT_EDITED);
+
+        assertRedoSuccess(afterEdit);
+    }
+
+    @Test
+    public void undoWithEmptyHistory_failsAndLeavesContactsUnchanged() throws Exception {
+        assertCommandFailure(UndoCommand.COMMAND_WORD, CommandException.class, UndoCommand.MESSAGE_FAILURE);
+        assertFalse(model.canRedoAddressBook());
+    }
+
+    @Test
+    public void redoWithEmptyHistory_failsAndLeavesContactsUnchanged() throws Exception {
+        assertCommandFailure(RedoCommand.COMMAND_WORD, CommandException.class, RedoCommand.MESSAGE_FAILURE);
+
+        // A change that has not been undone cannot be redone either.
+        assertAddSuccess(ADD_ALEX, ALEX, typicalPersonsWith(ALEX));
+        assertCommandFailure(RedoCommand.COMMAND_WORD, CommandException.class, RedoCommand.MESSAGE_FAILURE);
+        assertUndoSuccess(getTypicalPersons());
+    }
+
+    @Test
+    public void undoRedoWithArguments_rejectedWithoutChangingHistory() throws Exception {
+        assertAddSuccess(ADD_ALEX, ALEX, typicalPersonsWith(ALEX));
+        assertAddSuccess(ADD_BETH, BETH, typicalPersonsWith(ALEX, BETH));
+        assertUndoSuccess(typicalPersonsWith(ALEX));
+
+        assertCommandFailure("undo 1", ParseException.class,
+                String.format(MESSAGE_INVALID_COMMAND_FORMAT, UndoCommand.MESSAGE_USAGE));
+        assertCommandFailure("redo 1", ParseException.class,
+                String.format(MESSAGE_INVALID_COMMAND_FORMAT, RedoCommand.MESSAGE_USAGE));
+
+        // Exactly one change is still undoable and exactly one is still redoable.
+        assertRedoSuccess(typicalPersonsWith(ALEX, BETH));
+        assertUndoSuccess(typicalPersonsWith(ALEX));
+        assertUndoSuccess(getTypicalPersons());
+        assertCommandFailure(UndoCommand.COMMAND_WORD, CommandException.class, UndoCommand.MESSAGE_FAILURE);
     }
 
     /**
