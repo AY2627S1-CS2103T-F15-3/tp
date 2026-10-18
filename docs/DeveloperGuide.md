@@ -133,7 +133,7 @@ The `Model` component,
   Each `Person` includes `Major` and `GraduationYear` value objects in addition to its existing contact details and tags.
 * stores the `Person` objects selected by the current filter, such as search results, in a separate _filtered_ list. It exposes this list as an unmodifiable `ObservableList<Person>` that the UI can observe and bind to, so the UI updates when the list changes.
 * stores a `UserPrefs` object that represents the user’s preferences (currently, just the GUI settings). This is exposed to the outside as a `ReadOnlyUserPrefs` object.
-* keeps an in-memory history of earlier contact data states in an `AddressBookHistory` object, so that successful `add` and `edit` changes can later be undone and redone. See [Recording contact data history](#recording-contact-data-history).
+* keeps an in-memory history of contact data states in an `AddressBookHistory` object. The `undo` and `redo` commands use it to revert and reapply successful `add` and `edit` changes. See [Recording contact data history](#recording-contact-data-history).
 * does not depend on any of the other three components (as the `Model` represents data entities of the domain, they should make sense on their own without depending on other components)
 
 
@@ -305,7 +305,7 @@ For command formats and user-facing examples, see [Adding tags](UserGuide.md#add
 
 #### Current implementation
 
-The model keeps an in-memory history of contact data states. Successful `add` and `edit` commands record the state from before their change, and the model can restore earlier or later states. This is the groundwork for undo and redo. The `undo` and `redo` commands themselves are not yet available (see [Undo and redo commands](#proposed-undo-and-redo-commands)).
+The model keeps an in-memory history of contact data states. Successful `add` and `edit` commands record the state from before their change, and the model can restore earlier or later states. The user-facing `undo` and `redo` commands are built on this history. The history lasts only for the current session: it is not saved to storage, and a newly launched app starts with no undo or redo history.
 
 **Relevant classes:**
 
@@ -354,6 +354,8 @@ To prevent this, `AddressBookHistory` compares `currentState` with the live cont
 * `canUndoAddressBook()` and `canRedoAddressBook()` return `false`.
 * `undoAddressBook()` and `redoAddressBook()` discard both stacks and return `false`, leaving the data unchanged.
 * The next commit discards the stale undo states before recording the new one.
+
+To the user, this means that after a `delete`, `tag`, `untag` or `clear` that changes contact data, `undo` reports that there is nothing to undo until another `add` or `edit` succeeds, and `redo` reports that there is nothing to redo until a later change is undone. A command that fails, or that leaves the data unchanged (such as `tag` with a tag the person already has), does not make the history stale.
 
 These commands therefore need no history code, and any future command that changes data without committing is handled the same way.
 
