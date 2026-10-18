@@ -201,17 +201,46 @@ public class NotesCommandIntegrationTest {
     @Test
     public void equals_comparesCommandTypeIndexAndNotes() {
         NoteCommand note = new NoteCommand(INDEX_FIRST_PERSON, new Notes("Text"));
+        assertTrue(note.equals(note));
+        assertFalse(note.equals(null));
         assertEquals(note, new NoteCommand(INDEX_FIRST_PERSON, new Notes("Text")));
         assertFalse(note.equals(new NoteCommand(INDEX_FIRST_PERSON, new Notes("Other"))));
         assertFalse(note.equals(new NoteCommand(INDEX_SECOND_PERSON, new Notes("Text"))));
         ShowNoteCommand show = new ShowNoteCommand(INDEX_FIRST_PERSON);
+        assertTrue(show.equals(show));
+        assertFalse(show.equals(null));
         assertEquals(show, new ShowNoteCommand(INDEX_FIRST_PERSON));
         assertFalse(show.equals(new ShowNoteCommand(INDEX_SECOND_PERSON)));
         DeleteNoteCommand delete = new DeleteNoteCommand(INDEX_FIRST_PERSON);
+        assertTrue(delete.equals(delete));
+        assertFalse(delete.equals(null));
         assertEquals(delete, new DeleteNoteCommand(INDEX_FIRST_PERSON));
         assertFalse(delete.equals(new DeleteNoteCommand(INDEX_SECOND_PERSON)));
         assertFalse(note.equals(show));
         assertFalse(show.equals(delete));
         assertFalse(delete.equals(note));
+    }
+
+    @Test
+    public void toString_noteCommand_includesIndexAndNotes() {
+        Notes notes = new Notes("Met during CS2103T");
+        NoteCommand command = new NoteCommand(INDEX_FIRST_PERSON, notes);
+        String expected = NoteCommand.class.getCanonicalName() + "{index=" + INDEX_FIRST_PERSON
+                + ", notes=" + notes + "}";
+        assertEquals(expected, command.toString());
+    }
+
+    @Test
+    public void toString_showNoteCommand_includesIndex() {
+        ShowNoteCommand command = new ShowNoteCommand(INDEX_SECOND_PERSON);
+        String expected = ShowNoteCommand.class.getCanonicalName() + "{index=" + INDEX_SECOND_PERSON + "}";
+        assertEquals(expected, command.toString());
+    }
+
+    @Test
+    public void toString_deleteNoteCommand_includesIndex() {
+        DeleteNoteCommand command = new DeleteNoteCommand(INDEX_SECOND_PERSON);
+        String expected = DeleteNoteCommand.class.getCanonicalName() + "{index=" + INDEX_SECOND_PERSON + "}";
+        assertEquals(expected, command.toString());
     }
 }

@@ -17,7 +17,7 @@ public class NoteCommandParser implements Parser<NoteCommand> {
     public NoteCommand parse(String args) throws ParseException {
         requireNonNull(args);
         String[] parts = args.strip().split("\\s+", 2);
-        if (parts.length != 2 || parts[1].isBlank()) {
+        if (parts.length != 2) {
             throw new ParseException(String.format(MESSAGE_INVALID_COMMAND_FORMAT, NoteCommand.MESSAGE_USAGE));
         }
 

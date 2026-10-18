@@ -35,6 +35,14 @@ public class NoteCommandParserTest {
     }
 
     @Test
+    public void parse_whitespaceOnlyNotes_throwsParseException() {
+        String expected = String.format(MESSAGE_INVALID_COMMAND_FORMAT, NoteCommand.MESSAGE_USAGE);
+        for (String whitespace : new String[]{" ", "\t", "\r\n", "\u2003", "\u3000", " \t\u2003\r\n "}) {
+            assertParseFailure(parser, "1 " + whitespace, expected);
+        }
+    }
+
+    @Test
     public void parse_invalidText_throwsParseException() {
         for (String text : new String[]{"\u00a0", "First\nSecond", "First\tSecond", "First\u2028Second",
             "a".repeat(Notes.MAX_LENGTH + 1)}) {
