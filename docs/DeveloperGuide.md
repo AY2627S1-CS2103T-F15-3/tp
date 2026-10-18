@@ -210,6 +210,33 @@ Despite its name, the predicate matches a `Person` if any keyword matches a full
 case-insensitive, whole-word and `OR`-based across all three fields. An empty `Major` or `GraduationYear`
 never matches a keyword. `FindCommand` applies the predicate through `Model#updateFilteredPersonList`;
 the model and storage format are unchanged.
+
+### Filtering contacts by academic fields and tags
+
+`FilterCommandParser` recognises the existing `m/`, `c/` and `t/` prefixes, requires at least one,
+and rejects repeated criteria, a non-empty preamble and unsupported single-letter prefixes.
+It uses `ParserUtil.parseMajor`, `parseGraduationYear` and `parseTag` to trim and validate supplied
+values. An omitted criterion is represented by an empty `Optional`; a supplied blank value is invalid.
+As with other prefixed commands, prefix-like tokens are reserved syntax rather than literal major text.
+
+`ContactFilterPredicate` holds the optional `Major`, `GraduationYear` and `Tag` criteria.
+Its `test(Person)` combines them using AND. Major and tag comparisons use full-value,
+case-insensitive matching; graduation years use exact equality. A tag criterion succeeds if any of
+that person's tags matches. This differs from `NameContainsKeywordsPredicate`, which uses OR
+matching over whole-word keywords in names, majors and graduation years.
+
+`AddressBookParser` routes `filter` to `FilterCommandParser`. `FilterCommand` then passes the predicate
+to `Model#updateFilteredPersonList` and reports the size of `Model#getFilteredPersonList`.
+The existing observable list updates `PersonListPanel`, including the displayed indices;
+no additional controls or storage fields are needed. Commands that use displayed indices continue
+to obtain their targets from that same list.
+
+A filter replaces the previous `find` or `filter` predicate. `list` restores all contacts;
+`add` and `edit` keep their existing behaviour of showing all contacts after success. Tag and untag
+preserve the predicate, so a contact can disappear from the results when its tags no longer match.
+Filtering changes no contact data and records no history entry, preserving undo and redo availability.
+Filters are not persisted and the full list is shown on restart.
+
 ### Formatting academic fields in command messages
 
 Commands that report a contact's full details use `Messages#format(Person)`. The formatter includes `Major` and
@@ -691,6 +718,52 @@ testers are expected to do more *exploratory* testing.
       Expected: Neither test contact appears; partial words do not match `Computer` or `SearchComputing`.
    1. Test case: `list`.<br>
       Expected: The full contact list is displayed again, including both test contacts and contacts without academic fields.
+
+### Filtering contacts
+
+1. Combined criteria, independent fields and full-value matching
+
+   1. Prerequisites: Use a disposable test copy of UniMate. Ensure no existing contact uses the names
+      or custom tag `FilterDemo` below. Add these contacts:
+
+      * `add n/FilterMath p/91234567 e/math@example.com a/Kent Ridge m/Mathematics c/2027 t/FilterDemo`
+      * `add n/FilterComputing p/92345678 e/computing@example.com a/Clementi m/Computer Science c/2027 t/FilterDemo`
+      * `add n/FilterLater p/93456789 e/later@example.com a/Dover m/Computer Science c/2028 t/FilterDemo`
+      * `add n/FilterUnknown p/94567890 e/unknown@example.com a/Buona Vista t/FilterDemo`
+
+   1. Run `filter m/computer science c/2027 t/filterdemo`.<br>
+      Expected: Only `FilterComputing` appears, numbered `1`, with `1 person(s) listed!`.
+      All three criteria must match, and major/tag case differences are ignored.
+   1. Run `filter c/2027 t/FilterDemo`.<br>
+      Expected: `FilterMath` and `FilterComputing` appear in that order. The previous major criterion
+      is replaced, and `FilterUnknown` is excluded because its class year is unspecified.
+   1. Run `filter m/Computer t/FilterDemo`.<br>
+      Expected: An empty displayed list and `0 person(s) listed!`; partial majors do not match.
+   1. Run `filter t/FilterDemo`, then `list`.<br>
+      Expected: All four demo contacts appear after the filter, including `FilterUnknown`.
+      `list` restores every contact, including those outside the demo group.
+
+1. Invalid input preserves the current view
+
+   1. Run `filter c/2027 t/FilterDemo` and note the two results.
+   1. Try each command separately: `filter`, `filter m/`, `filter c/2100`, `filter t/`,
+      `filter t/FilterDemo t/Friend`, `filter n/FilterMath`.<br>
+      Expected: A usage, value-validation or repeated-prefix error. The same two results remain,
+      and no saved contact changes.
+
+1. Displayed indices, changing membership and restarting
+
+   1. Run `filter c/2028 t/FilterDemo`, then `untag 1 t/FilterDemo`.<br>
+      Expected: `FilterLater` disappears from the results but remains saved. Run `find FilterLater`
+      to see it, then `tag 1 t/FilterDemo` to restore its tag.
+   1. Run `filter c/2028 t/FilterDemo`, then `delete 1`.<br>
+      Expected: Only `FilterLater` is deleted. Other contacts remain, even though the deleted contact
+      was not first in the complete address book.
+   1. Run `filter m/Computer Science t/FilterDemo`, then `edit 1 m/Mathematics`.<br>
+      Expected: `FilterComputing` changes major and the full list is shown, as for existing edits.
+      Reapply the same filter: no demo contact matches now.
+   1. Run `filter t/FilterDemo`, close and relaunch the app from the same folder.<br>
+      Expected: The full list is shown. Saved contacts and the changes above remain; the filter is temporary.
 
 ### Deleting a person
 
