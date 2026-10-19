@@ -468,6 +468,12 @@ Given below is the flow for a successful `add n/Alex Tan …​`:
    1. pushes a copy of `previousState` onto `undoStates`, clears `redoStates`, and sets `currentState` to a copy of the current data.
 1. `LogicManager` saves the contact data to storage as before. The history itself is not saved.
 
+The activity diagram below summarises what happens when a command commits:
+
+<puml src="diagrams/CommitActivityDiagram.puml" width="300" alt="CommitActivityDiagram" />
+
+A command that fails validation, such as a duplicate `add`, throws before copying the data and never reaches this flow.
+
 `EditCommand#execute` follows the same pattern. It checks the displayed index and duplicate persons first, copies the data, calls `Model#setPerson`, and then commits. An edit that supplies the person's current values still returns the usual success message. Its commit is ignored because the data did not change, preserving both history stacks. The bare command `edit 1` is invalid because at least one field is required.
 
 `NoteCommand` and `DeleteNoteCommand` use the same snapshot-and-commit flow for actual note changes. An unchanged note produces equal before/after data, so the commit is ignored and redo remains available. `DeleteNoteCommand` returns immediately for an empty note. A new data-changing commit clears redo states; merely viewing a note does not.
