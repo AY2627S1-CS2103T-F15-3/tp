@@ -18,6 +18,11 @@ import seedu.address.logic.commands.exceptions.CommandException;
 import seedu.address.logic.parser.AddressBookParser;
 import seedu.address.model.Model;
 import seedu.address.model.ModelManager;
+import seedu.address.model.person.Address;
+import seedu.address.model.person.Email;
+import seedu.address.model.person.GraduationYear;
+import seedu.address.model.person.Major;
+import seedu.address.model.person.Name;
 import seedu.address.model.person.Notes;
 import seedu.address.model.person.Person;
 import seedu.address.model.person.Phone;
@@ -32,7 +37,9 @@ public class UpdateReminderTest {
     @Test
     public void needsUpdate_calendarYearBoundaryAndLeapYear_areStrict() {
         for (LocalDate date : List.of(TODAY, TODAY.minusMonths(1), TODAY.minusYears(1), TODAY.plusDays(1))) {
-            assertFalse(new PersonBuilder().withLastUpdated(date).build().needsUpdate(TODAY));
+            Person person = new PersonBuilder().withLastUpdated(date).build();
+            assertFalse(person.needsUpdate(TODAY));
+            assertEquals(List.of(), SystemTag.forPerson(person, TODAY));
         }
         for (LocalDate date : List.of(TODAY.minusYears(1).minusDays(1), OLD_DATE)) {
             Person person = new PersonBuilder().withLastUpdated(date).build();
@@ -52,6 +59,22 @@ public class UpdateReminderTest {
         Person created = new Person(base.getName(), base.getPhone(), base.getEmail(), base.getAddress(),
                 base.getMajor(), base.getGraduationYear(), base.getTags());
         assertTrue(created.getLastUpdated().equals(before) || created.getLastUpdated().equals(LocalDate.now()));
+    }
+
+    @Test
+    public void constructors_preserveExplicitStateAndDefaultOnlyMissingDates() {
+        Person base = new PersonBuilder().withNotes("Existing note").build();
+        Person favourite = new Person(base.getName(), base.getPhone(), base.getEmail(), base.getAddress(),
+                base.getMajor(), base.getGraduationYear(), base.getTags(), true);
+        assertTrue(favourite.isFavourite());
+        assertEquals(LocalDate.now(), favourite.getLastUpdated());
+        Person withNotes = new Person(base.getName(), base.getPhone(), base.getEmail(), base.getAddress(),
+                base.getMajor(), base.getGraduationYear(), base.getTags(), base.getNotes());
+        assertEquals(base, withNotes);
+        Person dated = new Person(base.getName(), base.getPhone(), base.getEmail(), base.getAddress(),
+                base.getMajor(), base.getGraduationYear(), base.getTags(), base.getNotes(), OLD_DATE);
+        assertEquals(new PersonBuilder(base).withLastUpdated(OLD_DATE).build(), dated);
+        assertFalse(dated.isFavourite());
     }
 
     @Test
@@ -98,5 +121,56 @@ public class UpdateReminderTest {
         assertThrows(CommandException.class, () ->
                 new EditCommand(Index.fromOneBased(2), descriptor, CLOCK).execute(model));
         assertEquals(original, model.getFilteredPersonList().get(0));
+    }
+
+    @Test
+    public void execute_eachBasicFieldChange_refreshesDateAndPreservesFavourite() throws Exception {
+        Person original = new PersonBuilder().withLastUpdated(OLD_DATE).withFavourite(true)
+                .withNotes("Keep notes").withTags("Friend").build();
+        for (int field = 0; field < 6; field++) {
+            Model model = new ModelManager();
+            model.addPerson(original);
+            EditPersonDescriptor descriptor = new EditPersonDescriptor();
+            switch (field) {
+                case 0 -> descriptor.setName(new Name("New Name"));
+                case 1 -> descriptor.setPhone(new Phone("91234567"));
+                case 2 -> descriptor.setEmail(new Email("new@example.com"));
+                case 3 -> descriptor.setAddress(new Address("New address"));
+                case 4 -> descriptor.setMajor(new Major("Computing"));
+                default -> descriptor.setGraduationYear(new GraduationYear("2028"));
+            }
+            new EditCommand(Index.fromOneBased(1), descriptor, CLOCK).execute(model);
+            Person edited = model.getFilteredPersonList().get(0);
+            assertEquals(TODAY, edited.getLastUpdated());
+            assertFalse(edited.needsUpdate(TODAY));
+            assertTrue(edited.isFavourite());
+            assertEquals(original.getNotes(), edited.getNotes());
+            assertEquals(original.getTags(), edited.getTags());
+        }
+    }
+
+    @Test
+    public void execute_favouriteNotesAndListChanges_preserveProfileDate() throws Exception {
+        Model model = new ModelManager();
+        Person original = new PersonBuilder().withLastUpdated(OLD_DATE).withTags("Friend").build();
+        model.addPerson(original);
+        AddressBookParser parser = new AddressBookParser();
+        for (String command : new String[]{"fav 1", "listfav", "unfav 1", "list", "note 1 New note",
+            "shownote 1", "delnote 1", "tag 1 t/NOC", "untag 1 t/NOC"}) {
+            parser.parseCommand(command).execute(model);
+            assertEquals(OLD_DATE, model.getAddressBook().getPersonList().get(0).getLastUpdated(), command);
+        }
+        assertEquals(original, model.getAddressBook().getPersonList().get(0));
+    }
+
+    @Test
+    public void equality_dateOnlyChange_isObservableAndCopyPreservesState() {
+        Person original = new PersonBuilder().withLastUpdated(OLD_DATE).withFavourite(true).build();
+        Person refreshed = new PersonBuilder(original).withLastUpdated(TODAY).build();
+        assertFalse(original.equals(refreshed));
+        assertTrue(original.isSamePerson(refreshed));
+        assertEquals(refreshed, new PersonBuilder(refreshed).build());
+        assertEquals(refreshed.hashCode(), new PersonBuilder(refreshed).build().hashCode());
+        assertThrows(NullPointerException.class, () -> original.needsUpdate(null));
     }
 }

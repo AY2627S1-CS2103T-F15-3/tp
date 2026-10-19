@@ -49,7 +49,7 @@ public class TagCommand extends Command {
         updatedTags.addAll(tags);
         Person updatedPerson = new Person(person.getName(), person.getPhone(), person.getEmail(),
                 person.getAddress(), person.getMajor(), person.getGraduationYear(), updatedTags,
-                person.getNotes(), person.getLastUpdated());
+                person.getNotes(), person.isFavourite(), person.getLastUpdated());
         model.setPerson(person, updatedPerson);
         return new CommandResult(String.format(MESSAGE_SUCCESS, Messages.format(updatedPerson)));
     }

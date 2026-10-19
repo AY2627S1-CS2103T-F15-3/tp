@@ -23,7 +23,7 @@ public class LastUpdatedStorageTest {
     @Test
     public void saveAndReload_preservesDateAndUserUpdateTag() throws Exception {
         Person person = new PersonBuilder().withLastUpdated(LocalDate.of(2024, 6, 1))
-                .withTags("update", "Friend").withNotes("Keep notes").build();
+                .withTags("update", "Friend").withNotes("Keep notes").withFavourite(true).build();
         AddressBook book = new AddressBook();
         book.addPerson(person);
         Path file = directory.resolve("contacts.json");

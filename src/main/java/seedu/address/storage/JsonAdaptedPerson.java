@@ -37,33 +37,50 @@ class JsonAdaptedPerson {
     private final String graduationYear;
     private final String notes;
     private final String lastUpdated;
+    private final boolean favourite;
     private final List<JsonAdaptedTag> tags = new ArrayList<>();
 
     /**
-     * Constructs a {@code JsonAdaptedPerson} with the given person details.
+     * Constructs an adapted contact without notes or favourite status.
      */
     public JsonAdaptedPerson(String name, String phone, String email, String address, String major,
             String graduationYear, List<JsonAdaptedTag> tags) {
-        this(name, phone, email, address, major, graduationYear, tags, null);
+        this(name, phone, email, address, major, graduationYear, tags, null, false, null);
     }
 
     /**
-     * Constructs a {@code JsonAdaptedPerson}, including optional notes.
+     * Constructs an adapted contact with notes.
      */
     public JsonAdaptedPerson(String name, String phone, String email, String address, String major,
             String graduationYear, List<JsonAdaptedTag> tags, String notes) {
-        this(name, phone, email, address, major, graduationYear, tags, notes, null);
+        this(name, phone, email, address, major, graduationYear, tags, notes, false, null);
     }
 
     /**
-     * Reads an optional ISO profile modification date; older files omit it.
+     * Constructs an adapted contact with favourite status and a legacy missing date.
+     */
+    public JsonAdaptedPerson(String name, String phone, String email, String address, String major,
+            String graduationYear, List<JsonAdaptedTag> tags, String notes, Boolean favourite) {
+        this(name, phone, email, address, major, graduationYear, tags, notes, favourite, null);
+    }
+
+    /**
+     * Constructs an adapted contact with an explicit date and no favourite status.
+     */
+    public JsonAdaptedPerson(String name, String phone, String email, String address, String major,
+            String graduationYear, List<JsonAdaptedTag> tags, String notes, String lastUpdated) {
+        this(name, phone, email, address, major, graduationYear, tags, notes, false, lastUpdated);
+    }
+
+    /**
+     * Reads optional notes, favourite status and the ISO profile modification date.
      */
     @JsonCreator
     public JsonAdaptedPerson(@JsonProperty("name") String name, @JsonProperty("phone") String phone,
             @JsonProperty("email") String email, @JsonProperty("address") String address,
             @JsonProperty("major") String major, @JsonProperty("graduationYear") String graduationYear,
             @JsonProperty("tags") List<JsonAdaptedTag> tags, @JsonProperty("notes") String notes,
-            @JsonProperty("lastUpdated") String lastUpdated) {
+            @JsonProperty("favourite") Boolean favourite, @JsonProperty("lastUpdated") String lastUpdated) {
         this.name = name;
         this.phone = phone;
         this.email = email;
@@ -72,6 +89,7 @@ class JsonAdaptedPerson {
         this.graduationYear = graduationYear;
         this.notes = notes;
         this.lastUpdated = lastUpdated;
+        this.favourite = Boolean.TRUE.equals(favourite);
         if (tags != null) {
             this.tags.addAll(tags);
         }
@@ -89,6 +107,7 @@ class JsonAdaptedPerson {
         graduationYear = source.getGraduationYear().value;
         notes = source.getNotes().value;
         lastUpdated = source.getLastUpdated().toString();
+        favourite = source.isFavourite();
         tags.addAll(source.getTags().stream()
                 .map(JsonAdaptedTag::new)
                 .collect(Collectors.toList()));
@@ -165,7 +184,7 @@ class JsonAdaptedPerson {
             throw new IllegalValueException("Last updated date must be a valid ISO date (YYYY-MM-DD).", e);
         }
         return new Person(modelName, modelPhone, modelEmail, modelAddress,
-                modelMajor, modelGraduationYear, modelTags, modelNotes, modelLastUpdated);
+                modelMajor, modelGraduationYear, modelTags, modelNotes, favourite, modelLastUpdated);
     }
 
 }

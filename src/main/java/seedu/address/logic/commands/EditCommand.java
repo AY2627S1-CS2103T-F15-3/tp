@@ -134,7 +134,8 @@ public class EditCommand extends Command {
                 || !updatedGraduationYear.equals(personToEdit.getGraduationYear());
         LocalDate lastUpdated = profileChanged ? LocalDate.now(clock) : personToEdit.getLastUpdated();
         return new Person(updatedName, updatedPhone, updatedEmail, updatedAddress,
-                updatedMajor, updatedGraduationYear, updatedTags, personToEdit.getNotes(), lastUpdated);
+                updatedMajor, updatedGraduationYear, updatedTags, personToEdit.getNotes(),
+                personToEdit.isFavourite(), lastUpdated);
     }
 
     @Override

@@ -34,6 +34,7 @@ public class PersonBuilder {
     private Notes notes;
     private Set<Tag> tags;
     private LocalDate lastUpdated = LocalDate.now();
+    private boolean favourite;
 
     /**
      * Creates a {@code PersonBuilder} with the default details.
@@ -54,6 +55,7 @@ public class PersonBuilder {
      */
     public PersonBuilder(Person personToCopy) {
         lastUpdated = personToCopy.getLastUpdated();
+        favourite = personToCopy.isFavourite();
         name = personToCopy.getName();
         phone = personToCopy.getPhone();
         email = personToCopy.getEmail();
@@ -129,7 +131,7 @@ public class PersonBuilder {
     }
 
     public Person build() {
-        return new Person(name, phone, email, address, major, graduationYear, tags, notes, lastUpdated);
+        return new Person(name, phone, email, address, major, graduationYear, tags, notes, favourite, lastUpdated);
     }
 
     /**
@@ -137,6 +139,14 @@ public class PersonBuilder {
      */
     public PersonBuilder withLastUpdated(LocalDate lastUpdated) {
         this.lastUpdated = lastUpdated;
+        return this;
+    }
+
+    /**
+     * Sets the favourite state of the person being built.
+     */
+    public PersonBuilder withFavourite(boolean favourite) {
+        this.favourite = favourite;
         return this;
     }
 

@@ -132,6 +132,10 @@
     -fx-text-fill: #010504;
 }
 
+.note-icon {
+    -fx-padding: 3;
+}
+
 .stack-pane {
      -fx-background-color: derive(#1d1d1d, 20%);
 }
@@ -354,4 +358,17 @@
 #tags .label.system-tag {
     -fx-background-color: #F4C542;
     -fx-text-fill: #222222;
+}
+
+#favouriteIcon {
+    -fx-text-fill: #e63946;
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-alignment: center;
+    -fx-padding: 0;
+    -fx-border-color: #e63946;
+    -fx-background-color: transparent;
+    -fx-border-width: 1;
+    -fx-border-radius: 12;
+    -fx-background-radius: 12;
 }

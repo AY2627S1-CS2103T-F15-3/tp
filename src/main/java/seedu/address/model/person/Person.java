@@ -29,28 +29,53 @@ public class Person {
     private final Notes notes;
     private final LocalDate lastUpdated;
     private final Set<Tag> tags = new HashSet<>();
+    private final boolean favourite;
 
     /**
      * Every field must be present and not null.
      */
     public Person(Name name, Phone phone, Email email, Address address, Major major,
             GraduationYear graduationYear, Set<Tag> tags) {
-        this(name, phone, email, address, major, graduationYear, tags, Notes.EMPTY);
+        this(name, phone, email, address, major, graduationYear, tags, Notes.EMPTY, false);
     }
 
     /**
-     * Creates a person with optional notes. Every field must be present and not null.
+     * Creates a person with the specified favourite state and empty notes.
+     */
+    public Person(Name name, Phone phone, Email email, Address address, Major major,
+            GraduationYear graduationYear, Set<Tag> tags, boolean favourite) {
+        this(name, phone, email, address, major, graduationYear, tags, Notes.EMPTY, favourite);
+    }
+
+    /**
+     * Creates a person with optional notes and no favourite status.
      */
     public Person(Name name, Phone phone, Email email, Address address, Major major,
             GraduationYear graduationYear, Set<Tag> tags, Notes notes) {
-        this(name, phone, email, address, major, graduationYear, tags, notes, LocalDate.now());
+        this(name, phone, email, address, major, graduationYear, tags, notes, false, LocalDate.now());
     }
 
     /**
-     * Creates a person with a recorded basic-profile modification date.
+     * Creates a person with an explicit date and no favourite status.
      */
     public Person(Name name, Phone phone, Email email, Address address, Major major,
             GraduationYear graduationYear, Set<Tag> tags, Notes notes, LocalDate lastUpdated) {
+        this(name, phone, email, address, major, graduationYear, tags, notes, false, lastUpdated);
+    }
+
+    /**
+     * Creates a person preserving notes and favourite status, initially updated today.
+     */
+    public Person(Name name, Phone phone, Email email, Address address, Major major,
+            GraduationYear graduationYear, Set<Tag> tags, Notes notes, boolean favourite) {
+        this(name, phone, email, address, major, graduationYear, tags, notes, favourite, LocalDate.now());
+    }
+
+    /**
+     * Creates a person preserving all contact state and the basic-profile date.
+     */
+    public Person(Name name, Phone phone, Email email, Address address, Major major,
+            GraduationYear graduationYear, Set<Tag> tags, Notes notes, boolean favourite, LocalDate lastUpdated) {
         requireAllNonNull(name, phone, email, address, major, graduationYear, tags, notes, lastUpdated);
         this.name = name;
         this.phone = phone;
@@ -61,6 +86,14 @@ public class Person {
         this.notes = notes;
         this.lastUpdated = lastUpdated;
         this.tags.addAll(tags);
+        this.favourite = favourite;
+    }
+
+    /**
+     * Returns whether this person is a favourite.
+     */
+    public boolean isFavourite() {
+        return favourite;
     }
 
     public Name getName() {
@@ -107,7 +140,8 @@ public class Person {
      * Returns a copy with the given notes, preserving all other contact details.
      */
     public Person withNotes(Notes updatedNotes) {
-        return new Person(name, phone, email, address, major, graduationYear, tags, updatedNotes, lastUpdated);
+        return new Person(name, phone, email, address, major, graduationYear, tags, updatedNotes,
+                favourite, lastUpdated);
     }
 
     /**
@@ -154,13 +188,14 @@ public class Person {
                 && graduationYear.equals(otherPerson.graduationYear)
                 && notes.equals(otherPerson.notes)
                 && tags.equals(otherPerson.tags)
-                && lastUpdated.equals(otherPerson.lastUpdated);
+                && lastUpdated.equals(otherPerson.lastUpdated)
+                && favourite == otherPerson.favourite;
     }
 
     @Override
     public int hashCode() {
         // use this method for custom fields hashing instead of implementing your own
-        return Objects.hash(name, phone, email, address, major, graduationYear, tags, notes, lastUpdated);
+        return Objects.hash(name, phone, email, address, major, graduationYear, tags, notes, favourite, lastUpdated);
     }
 
     @Override
@@ -174,6 +209,7 @@ public class Person {
                 .add("graduationYear", graduationYear)
                 .add("tags", tags)
                 .add("notes", notes)
+                .add("favourite", favourite)
                 .add("lastUpdated", lastUpdated)
                 .toString();
     }
