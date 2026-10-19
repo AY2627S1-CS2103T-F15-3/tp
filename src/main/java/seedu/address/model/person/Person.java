@@ -129,6 +129,13 @@ public class Person {
     }
 
     /**
+     * Returns whether both ways to contact this person are unspecified.
+     */
+    public boolean isIncomplete() {
+        return phone.value.isEmpty() && email.value.isEmpty();
+    }
+
+    /**
      * Returns whether the basic profile is strictly more than one calendar year old on the given date.
      */
     public boolean needsUpdate(LocalDate today) {

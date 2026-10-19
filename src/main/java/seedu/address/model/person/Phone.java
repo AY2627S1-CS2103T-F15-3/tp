@@ -8,7 +8,7 @@ import static seedu.address.commons.util.AppUtil.checkArgument;
  * Guarantees: immutable; is valid as declared in {@link #isValidPhone(String)}
  */
 public class Phone {
-
+    public static final Phone EMPTY = new Phone("");
 
     public static final String MESSAGE_CONSTRAINTS =
             "Phone numbers should only contain digits, and should be at least 3 digits long";
@@ -27,10 +27,10 @@ public class Phone {
     }
 
     /**
-     * Returns true if a given string is a valid phone number.
+     * Returns true if a string is empty (unspecified) or a valid phone number.
      */
     public static boolean isValidPhone(String test) {
-        return test.matches(VALIDATION_REGEX);
+        return test.isEmpty() || test.matches(VALIDATION_REGEX);
     }
 
     @Override
