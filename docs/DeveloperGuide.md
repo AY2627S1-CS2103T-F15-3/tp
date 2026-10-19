@@ -479,6 +479,36 @@ Given below is the flow for a successful `add n/Alex Tan …​`:
 
 Both methods return `true` if a state was restored. They return `false` and leave the data unchanged if there is nothing to restore.
 
+#### Example usage scenario
+
+The diagrams below show how the history changes as a user enters a sequence of commands. Each `abN` is an `AddressBook` snapshot, and each stack is drawn with its top entry first.
+
+Step 1. The user launches UniMate. `currentState` is a copy of the loaded contacts, `ab0`, and both stacks are empty.
+
+<puml src="diagrams/UndoRedoState0.puml" alt="UndoRedoState0" />
+
+Step 2. The user runs `add n/Alex Tan …​`. `AddCommand` commits `ab0`, the state before the add, so `ab0` is pushed onto `undoStates` and `currentState` becomes the new data, `ab1`.
+
+<puml src="diagrams/UndoRedoState1.puml" alt="UndoRedoState1" />
+
+Step 3. The user runs `edit 1 p/91234567`. `EditCommand` commits in the same way, pushing `ab1` onto `undoStates`. `currentState` becomes `ab2`.
+
+<puml src="diagrams/UndoRedoState2.puml" alt="UndoRedoState2" />
+
+Step 4. The user runs `undo`. `currentState`, `ab2`, is pushed onto `redoStates`, and `ab1` is popped from `undoStates` and restored.
+
+<puml src="diagrams/UndoRedoState3.puml" alt="UndoRedoState3" />
+
+Step 5. The user runs `redo`. This reverses the previous step: `ab1` is pushed back onto `undoStates`, and `ab2` is popped from `redoStates` and restored.
+
+<puml src="diagrams/UndoRedoState4.puml" alt="UndoRedoState4" />
+
+Step 6. The user runs `undo` again, returning to the state in Step 4, and then runs `add n/Beth Lim …​`. The new commit pushes `ab1` and clears `redoStates`, so the undone edit, `ab2`, can no longer be redone. `currentState` becomes `ab3`.
+
+<puml src="diagrams/UndoRedoState5.puml" alt="UndoRedoState5" />
+
+Commands that do not change contact data, such as `list` and `find`, and commands that fail before changing anything, record nothing and leave all three parts of the history unchanged.
+
 #### Commands that are not undoable
 
 `delete`, `tag`, `untag` and `clear` change contact data but do not call `Model#commitAddressBook`. If an old snapshot were restored after one of them, it would silently reverse that change as well. For example, after `add` and then `delete 1`, undoing the add would also bring back the deleted contact.
@@ -488,6 +518,10 @@ To prevent this, `AddressBookHistory` compares `currentState` with the live cont
 * `canUndoAddressBook()` and `canRedoAddressBook()` return `false`.
 * `undoAddressBook()` and `redoAddressBook()` discard both stacks and return `false`, leaving the data unchanged.
 * The next data-changing commit discards the stale undo states before recording the new one.
+
+Continuing the example above, suppose the user now runs `delete 1`. `DeleteCommand` changes the contacts in the model to `ab4` without committing, so they no longer match `currentState`, `ab3`. The history is now stale: a following `undo` would discard both stacks and report that there is no change to undo, rather than restoring `ab1` and bringing the deleted contact back.
+
+<puml src="diagrams/UndoRedoState6.puml" alt="UndoRedoState6" />
 
 To the user, this means that after a `delete`, `tag`, `untag` or `clear` that changes contact data, `undo` reports that there is nothing to undo until another `add` or `edit` succeeds, and `redo` reports that there is nothing to redo until a later change is undone. A command that fails, or that leaves the data unchanged (such as `tag` with a tag the person already has), does not make the history stale.
 
