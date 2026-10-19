@@ -532,6 +532,18 @@ Exits the program.
 
 Format: `exit`
 
+### Navigating command history
+
+With the command box focused, press **↑** to recall the most recently submitted command.
+Press **↑** again to browse older commands, or **↓** to browse newer commands.
+After the newest command, **↓** restores the draft you were typing before browsing.
+At the oldest command, further **↑** presses keep that command displayed.
+
+Commands are recorded when you press Enter, including unsuccessful commands and repeated submissions.
+Empty input is not recorded. You can edit a recalled command and press Enter to submit it again;
+browsing alone does not execute commands. Edits made while browsing are not saved in the history.
+History is cleared when you close UniMate.
+
 ### Saving the data
 
 UniMate automatically saves data after every command. You do not need to save manually.
