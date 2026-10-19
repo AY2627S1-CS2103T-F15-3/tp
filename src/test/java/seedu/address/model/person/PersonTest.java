@@ -125,7 +125,7 @@ public class PersonTest {
                 + ", email=" + ALICE.getEmail() + ", address=" + ALICE.getAddress()
                 + ", major=" + ALICE.getMajor() + ", graduationYear=" + ALICE.getGraduationYear()
                 + ", tags=" + ALICE.getTags() + ", notes=" + ALICE.getNotes()
-                + ", favourite=" + ALICE.isFavourite() + "}";
+                + ", favourite=" + ALICE.isFavourite() + ", lastUpdated=" + ALICE.getLastUpdated() + "}";
         assertEquals(expected, ALICE.toString());
     }
 }

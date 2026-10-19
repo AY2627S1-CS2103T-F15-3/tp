@@ -41,7 +41,8 @@ public class FavCommand extends Command {
             throw new CommandException(MESSAGE_ALREADY_FAVOURITE);
         }
         Person favourite = new Person(person.getName(), person.getPhone(), person.getEmail(), person.getAddress(),
-                person.getMajor(), person.getGraduationYear(), person.getTags(), person.getNotes(), true);
+                person.getMajor(), person.getGraduationYear(), person.getTags(), person.getNotes(), true,
+                person.getLastUpdated());
         model.setPerson(person, favourite);
         return new CommandResult(String.format(MESSAGE_SUCCESS, Messages.format(favourite)));
     }

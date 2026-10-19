@@ -316,6 +316,50 @@ after `list` as well as in filtered results produced by `find`.
 is rendered as `Not specified` instead of leaving an ambiguous blank line. This is a presentation-only change:
 `ListCommand`, the model, and the JSON storage format are unchanged.
 
+### Automatic update reminders
+
+#### Design overview and relevant classes
+
+The reminder is derived from a contact's basic-profile modification date rather than stored as a user tag. This keeps reminders consistent with the current date without requiring a new command or background scheduler.
+
+| Class | Responsibility |
+|-------|----------------|
+| `Person` | Stores immutable `LocalDate lastUpdated`, exposes `getLastUpdated()`, and evaluates `needsUpdate(LocalDate)`. |
+| `SystemTag` | Returns applicable derived reminders through `forPerson(Person, LocalDate)`; currently only `UPDATE` is implemented. |
+| `EditCommand` | Detects actual basic-field changes and obtains today's date from an injectable `Clock`. |
+| `TagCommand`, `UntagCommand`, `FavCommand`, `UnfavCommand` | Carry the previous date through contact replacement. |
+| `JsonAdaptedPerson` | Stores an ISO date string and converts it back to `LocalDate`, including legacy-data handling. |
+| `PersonCard` | Rebuilds ordinary labels and system reminders using its injectable clock. |
+| `PersonListPanel`, `MainWindow` | Refresh visible cards after successful command execution, including commands that leave model data unchanged. |
+
+#### Date tracking and persistence
+
+The existing `Person` constructor overloads initialize unspecified dates using `LocalDate.now()`. The full constructor accepts notes, favourite status and an explicit date, allowing immutable copies to retain all independent contact state. The date participates in equality, hashing and contact history snapshots. `Person#withNotes` preserves it.
+
+`EditCommand#createEditedPerson` compares the resulting name, phone, email, address, major and graduation year with the original values. If at least one differs, it uses `LocalDate.now(clock)`; otherwise it retains the existing date. Tag-only edits and unsuccessful edits do not reset the date. Date injection makes anniversary tests reproducible. Tag, note and favourite changes retain the previous date, while read-only commands only change the view or feedback. Existing undo/redo restores the full recorded person, including the date.
+
+`JsonAdaptedPerson` serializes `lastUpdated` as an ISO string such as `2026-10-18` and parses it with `LocalDate.parse` on loading. Missing or null dates use the current loading date as a migration baseline, not a historical claim. Normal saving persists that baseline for subsequent loads. Invalid supplied dates raise `IllegalValueException`, which the existing storage loading path reports as invalid data. Notes, favourite status and ordinary tags retain their existing JSON properties and validation.
+
+#### Reminder logic
+
+`Person#needsUpdate(today)` requires the saved date to precede today and its one-year anniversary to be strictly before today. Exactly one year produces no reminder. Calendar-year arithmetic uses `lastUpdated.plusYears(1)`, so a leap-day anniversary follows Java's calendar rule: `2024-02-29` reaches its anniversary on `2025-02-28`, with a reminder starting on `2025-03-01`.
+
+`SystemTag.forPerson` returns either an empty list or one `UPDATE` reminder. It does not mutate `Person#getTags` or write automatic labels to JSON. This representation can accommodate other system reminders later; no incomplete-profile reminder is implemented here.
+
+#### GUI implementation
+
+`PersonCard#refreshTags` clears the tag pane, recreates the sorted user labels and appends the current `SystemTag` labels. Each system label has the `system-tag` style class and a tooltip showing the recorded date. `#tags .label.system-tag` in `DarkTheme.css` overrides only background (`#F4C542`) and text (`#222222`), inheriting ordinary tag padding, font size and corner radii. Favourite and note icons remain independent.
+
+An ordinary tag whose exact stored name is `update` is rendered as blue `update (custom)`, with a tooltip explaining that it is managed using `t/update`. The underlying name, validation, filtering and storage remain unchanged. Rebuilding the pane prevents duplicate system labels and lets a custom tag coexist with the reminder.
+
+After `LogicManager#execute` succeeds, `MainWindow` calls `PersonListPanel#refresh`, which calls `ListView#refresh`. Recreated cards evaluate the current date again even when the contact data did not change. An actual basic-profile edit both replaces the model person and triggers this refresh, removing an outdated reminder immediately. No timer refreshes an idle window.
+
+#### Design considerations and verification
+
+Dynamic reminders avoid stale stored tags, prevent user tag removal from disabling a date-based reminder, and preserve legacy custom tags without silently deleting data. Dates remain separate from favourite state and notes; future commands that reconstruct a person must carry all three forward unless intentionally updating one.
+
+Tests cover calendar boundaries, profile edits and no-op edits, JSON round trips and migration, note/tag/favourite interactions, undo/redo and actual command-box rendering. GUI tests run on the JavaFX application thread; the existing Linux CI virtual display ensures they execute when coverage is collected. See [Automatic update reminders](UserGuide.md#automatic-update-reminders) for user-facing behaviour.
+
 ### Favourite contacts
 
 #### Design overview and relevant classes
