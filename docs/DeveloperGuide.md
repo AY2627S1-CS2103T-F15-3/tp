@@ -485,6 +485,12 @@ A command that fails validation, such as a duplicate `add`, throws before copyin
 
 Both methods return `true` if a state was restored. They return `false` and leave the data unchanged if there is nothing to restore.
 
+The sequence diagram below shows how `Model#undoAddressBook()` works within the `Model` component:
+
+<puml src="diagrams/UndoSequenceDiagram-Model.puml" alt="UndoSequenceDiagram-Model" />
+
+`Model#redoAddressBook()` follows the same sequence through `AddressBookHistory#redo()`, with the two stacks swapped: `currentState` is pushed onto `undoStates`, and the top of `redoStates` is popped and restored.
+
 #### Example usage scenario
 
 The diagrams below show how the history changes as a user enters a sequence of commands. Each `abN` is an `AddressBook` snapshot, and each stack is drawn with its top entry first.
