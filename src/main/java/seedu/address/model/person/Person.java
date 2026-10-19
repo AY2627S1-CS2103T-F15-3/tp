@@ -2,6 +2,7 @@ package seedu.address.model.person;
 
 import static seedu.address.commons.util.CollectionUtil.requireAllNonNull;
 
+import java.time.LocalDate;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Objects;
@@ -26,6 +27,7 @@ public class Person {
     private final Major major;
     private final GraduationYear graduationYear;
     private final Notes notes;
+    private final LocalDate lastUpdated;
     private final Set<Tag> tags = new HashSet<>();
     private final boolean favourite;
 
@@ -50,15 +52,31 @@ public class Person {
      */
     public Person(Name name, Phone phone, Email email, Address address, Major major,
             GraduationYear graduationYear, Set<Tag> tags, Notes notes) {
-        this(name, phone, email, address, major, graduationYear, tags, notes, false);
+        this(name, phone, email, address, major, graduationYear, tags, notes, false, LocalDate.now());
     }
 
     /**
-     * Creates a person preserving both notes and favourite status.
+     * Creates a person with an explicit date and no favourite status.
+     */
+    public Person(Name name, Phone phone, Email email, Address address, Major major,
+            GraduationYear graduationYear, Set<Tag> tags, Notes notes, LocalDate lastUpdated) {
+        this(name, phone, email, address, major, graduationYear, tags, notes, false, lastUpdated);
+    }
+
+    /**
+     * Creates a person preserving notes and favourite status, initially updated today.
      */
     public Person(Name name, Phone phone, Email email, Address address, Major major,
             GraduationYear graduationYear, Set<Tag> tags, Notes notes, boolean favourite) {
-        requireAllNonNull(name, phone, email, address, major, graduationYear, tags, notes);
+        this(name, phone, email, address, major, graduationYear, tags, notes, favourite, LocalDate.now());
+    }
+
+    /**
+     * Creates a person preserving all contact state and the basic-profile date.
+     */
+    public Person(Name name, Phone phone, Email email, Address address, Major major,
+            GraduationYear graduationYear, Set<Tag> tags, Notes notes, boolean favourite, LocalDate lastUpdated) {
+        requireAllNonNull(name, phone, email, address, major, graduationYear, tags, notes, lastUpdated);
         this.name = name;
         this.phone = phone;
         this.email = email;
@@ -66,6 +84,7 @@ public class Person {
         this.major = major;
         this.graduationYear = graduationYear;
         this.notes = notes;
+        this.lastUpdated = lastUpdated;
         this.tags.addAll(tags);
         this.favourite = favourite;
     }
@@ -105,11 +124,24 @@ public class Person {
         return notes;
     }
 
+    public LocalDate getLastUpdated() {
+        return lastUpdated;
+    }
+
+    /**
+     * Returns whether the basic profile is strictly more than one calendar year old on the given date.
+     */
+    public boolean needsUpdate(LocalDate today) {
+        java.util.Objects.requireNonNull(today);
+        return lastUpdated.isBefore(today) && lastUpdated.plusYears(1).isBefore(today);
+    }
+
     /**
      * Returns a copy with the given notes, preserving all other contact details.
      */
     public Person withNotes(Notes updatedNotes) {
-        return new Person(name, phone, email, address, major, graduationYear, tags, updatedNotes, favourite);
+        return new Person(name, phone, email, address, major, graduationYear, tags, updatedNotes,
+                favourite, lastUpdated);
     }
 
     /**
@@ -156,13 +188,14 @@ public class Person {
                 && graduationYear.equals(otherPerson.graduationYear)
                 && notes.equals(otherPerson.notes)
                 && tags.equals(otherPerson.tags)
+                && lastUpdated.equals(otherPerson.lastUpdated)
                 && favourite == otherPerson.favourite;
     }
 
     @Override
     public int hashCode() {
         // use this method for custom fields hashing instead of implementing your own
-        return Objects.hash(name, phone, email, address, major, graduationYear, tags, notes, favourite);
+        return Objects.hash(name, phone, email, address, major, graduationYear, tags, notes, favourite, lastUpdated);
     }
 
     @Override
@@ -177,6 +210,7 @@ public class Person {
                 .add("tags", tags)
                 .add("notes", notes)
                 .add("favourite", favourite)
+                .add("lastUpdated", lastUpdated)
                 .toString();
     }
 

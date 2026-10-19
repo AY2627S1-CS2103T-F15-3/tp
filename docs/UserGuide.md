@@ -106,6 +106,26 @@ Examples:
 * `add n/John Doe p/98765432 e/johnd@example.com a/John street, block 123, #01-01`
 * `add n/Betsy Crowe t/friend e/betsycrowe@example.com a/Newgate Prison p/1234567 t/criminal`
 
+### Automatic update reminders
+
+UniMate automatically reminds you to check a contact whose basic information has not been updated for **more than one calendar year**. No new command or manual tag is required.
+
+* A yellow rectangular `update` label appears beside the contact's ordinary tags. Its background is `#F4C542` and its text is `#222222`, with the same size and shape as ordinary tags. Existing tags remain blue, and favourite heart icons are unchanged.
+* The reminder is calculated from the contact's saved `lastUpdated` date. Exactly one year does not trigger it: if today is `2026-10-18`, a date of `2025-10-18` has no reminder, while `2025-10-17` does.
+* New contacts start with today's date. Successfully changing the name, phone, email, address, major or class year through `edit` records today's date and removes the reminder. For example, `edit 1 p/98765432` clears the reminder if it changes the first displayed contact's phone number.
+* Entering the same basic values again, editing only tags, changing notes, or using `tag`, `untag`, `fav`, `unfav`, `list`, `listfav` or `find` does not reset the date.
+* Reminders are checked when cards are loaded or refreshed. Successful commands refresh the list; no background timer runs while the app is idle. The date is saved with the contact and retained across restarts. Undo and redo restore the recorded contact state, including its date.
+
+**System reminders and custom tags:**
+
+The yellow `update` reminder is generated from the date and is never added to your ordinary tag collection. You cannot permanently remove it with `untag`; update the contact's basic information instead.
+
+A custom tag named `update` is still supported and saved unchanged. It appears in blue as `update (custom)` to distinguish it from the yellow system reminder. Use `t/update` to manage that custom tag as before. Adding or removing it does not create, overwrite or clear the system reminder. Both can be displayed together without duplicate system reminders.
+
+**Older data files:**
+
+When loading a file without `lastUpdated`, UniMate uses the loading date as a compatibility baseline. This is not the contact's true historical modification date. The baseline is retained when the data is saved normally. A supplied invalid date is rejected rather than silently replaced.
+
 ### Listing default tags: `tags`
 
 Displays the available default tags and their fixed indices:

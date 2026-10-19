@@ -1,5 +1,6 @@
 package seedu.address.testutil;
 
+import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -32,6 +33,7 @@ public class PersonBuilder {
     private GraduationYear graduationYear;
     private Notes notes;
     private Set<Tag> tags;
+    private LocalDate lastUpdated = LocalDate.now();
     private boolean favourite;
 
     /**
@@ -52,6 +54,7 @@ public class PersonBuilder {
      * Initializes the PersonBuilder with the data of {@code personToCopy}.
      */
     public PersonBuilder(Person personToCopy) {
+        lastUpdated = personToCopy.getLastUpdated();
         favourite = personToCopy.isFavourite();
         name = personToCopy.getName();
         phone = personToCopy.getPhone();
@@ -128,7 +131,15 @@ public class PersonBuilder {
     }
 
     public Person build() {
-        return new Person(name, phone, email, address, major, graduationYear, tags, notes, favourite);
+        return new Person(name, phone, email, address, major, graduationYear, tags, notes, favourite, lastUpdated);
+    }
+
+    /**
+     * Sets the basic-profile modification date of the person being built.
+     */
+    public PersonBuilder withLastUpdated(LocalDate lastUpdated) {
+        this.lastUpdated = lastUpdated;
+        return this;
     }
 
     /**
