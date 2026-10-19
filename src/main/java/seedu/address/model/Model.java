@@ -1,5 +1,6 @@
 package seedu.address.model;
 
+import java.util.Comparator;
 import java.util.function.Predicate;
 
 import javafx.collections.ObservableList;
@@ -60,7 +61,40 @@ public interface Model {
      */
     void setPerson(Person target, Person editedPerson);
 
-    /** Returns an unmodifiable view of the filtered person list */
+    /**
+     * Records a completed change from {@code previousState} to the current address book state,
+     * so that the change can be undone. Clears any redo history.
+     * Does nothing if the change did not modify the address book data.
+     */
+    void commitAddressBook(ReadOnlyAddressBook previousState);
+
+    /**
+     * Returns true if there is a recorded address book state to undo to.
+     * Returns false if the address book was changed without being recorded since the last recorded state.
+     */
+    boolean canUndoAddressBook();
+
+    /**
+     * Returns true if there is an undone address book state to redo to.
+     * Returns false if the address book was changed without being recorded since the last undo.
+     */
+    boolean canRedoAddressBook();
+
+    /**
+     * Restores the address book to its state before the most recent recorded change.
+     *
+     * @return true if a state was restored, or false (leaving the address book unchanged) if there is none.
+     */
+    boolean undoAddressBook();
+
+    /**
+     * Restores the address book to its state before the most recent undo.
+     *
+     * @return true if a state was restored, or false (leaving the address book unchanged) if there is none.
+     */
+    boolean redoAddressBook();
+
+    /** Returns an unmodifiable view of contacts in the current filtered and sorted display order. */
     ObservableList<Person> getFilteredPersonList();
 
     /**
@@ -68,4 +102,10 @@ public interface Model {
      * @throws NullPointerException if {@code predicate} is null.
      */
     void updateFilteredPersonList(Predicate<Person> predicate);
+
+    /**
+     * Updates the displayed sort order without changing the filter, saved data or undo/redo history.
+     * @throws NullPointerException if {@code comparator} is null.
+     */
+    void updateSortedPersonList(Comparator<Person> comparator);
 }

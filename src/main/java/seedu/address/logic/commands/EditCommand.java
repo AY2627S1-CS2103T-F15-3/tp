@@ -10,6 +10,8 @@ import static seedu.address.logic.parser.CliSyntax.PREFIX_PHONE;
 import static seedu.address.logic.parser.CliSyntax.PREFIX_TAG;
 import static seedu.address.model.Model.PREDICATE_SHOW_ALL_PERSONS;
 
+import java.time.Clock;
+import java.time.LocalDate;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -22,7 +24,9 @@ import seedu.address.commons.util.CollectionUtil;
 import seedu.address.commons.util.ToStringBuilder;
 import seedu.address.logic.Messages;
 import seedu.address.logic.commands.exceptions.CommandException;
+import seedu.address.model.AddressBook;
 import seedu.address.model.Model;
+import seedu.address.model.ReadOnlyAddressBook;
 import seedu.address.model.person.Address;
 import seedu.address.model.person.Email;
 import seedu.address.model.person.GraduationYear;
@@ -60,17 +64,26 @@ public class EditCommand extends Command {
 
     private final Index index;
     private final EditPersonDescriptor editPersonDescriptor;
+    private final Clock clock;
 
     /**
      * @param index of the person in the filtered person list to edit
      * @param editPersonDescriptor details to edit the person with
      */
     public EditCommand(Index index, EditPersonDescriptor editPersonDescriptor) {
+        this(index, editPersonDescriptor, Clock.systemDefaultZone());
+    }
+
+    /**
+     * Creates an edit command using the supplied clock for profile modification dates.
+     */
+    public EditCommand(Index index, EditPersonDescriptor editPersonDescriptor, Clock clock) {
         requireNonNull(index);
         requireNonNull(editPersonDescriptor);
 
         this.index = index;
         this.editPersonDescriptor = new EditPersonDescriptor(editPersonDescriptor);
+        this.clock = requireNonNull(clock);
     }
 
     @Override
@@ -89,8 +102,11 @@ public class EditCommand extends Command {
             throw new CommandException(MESSAGE_DUPLICATE_PERSON);
         }
 
+        ReadOnlyAddressBook previousState = new AddressBook(model.getAddressBook());
         model.setPerson(personToEdit, editedPerson);
         model.updateFilteredPersonList(PREDICATE_SHOW_ALL_PERSONS);
+        // An edit that leaves the person unchanged is not recorded by the model.
+        model.commitAddressBook(previousState);
         return new CommandResult(String.format(MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(editedPerson)));
     }
 
@@ -98,7 +114,7 @@ public class EditCommand extends Command {
      * Creates and returns a {@code Person} with the details of {@code personToEdit}
      * edited with {@code editPersonDescriptor}.
      */
-    private static Person createEditedPerson(Person personToEdit, EditPersonDescriptor editPersonDescriptor) {
+    private Person createEditedPerson(Person personToEdit, EditPersonDescriptor editPersonDescriptor) {
         assert personToEdit != null;
 
         Name updatedName = editPersonDescriptor.getName().orElse(personToEdit.getName());
@@ -110,8 +126,16 @@ public class EditCommand extends Command {
                 .orElse(personToEdit.getGraduationYear());
         Set<Tag> updatedTags = editPersonDescriptor.getTags().orElse(personToEdit.getTags());
 
+        boolean profileChanged = !updatedName.equals(personToEdit.getName())
+                || !updatedPhone.equals(personToEdit.getPhone())
+                || !updatedEmail.equals(personToEdit.getEmail())
+                || !updatedAddress.equals(personToEdit.getAddress())
+                || !updatedMajor.equals(personToEdit.getMajor())
+                || !updatedGraduationYear.equals(personToEdit.getGraduationYear());
+        LocalDate lastUpdated = profileChanged ? LocalDate.now(clock) : personToEdit.getLastUpdated();
         return new Person(updatedName, updatedPhone, updatedEmail, updatedAddress,
-                updatedMajor, updatedGraduationYear, updatedTags);
+                updatedMajor, updatedGraduationYear, updatedTags, personToEdit.getNotes(),
+                personToEdit.isFavourite(), lastUpdated);
     }
 
     @Override

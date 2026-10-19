@@ -2,6 +2,8 @@
 
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.ColumnConstraints?>
 <?import javafx.scene.layout.FlowPane?>
 <?import javafx.scene.layout.GridPane?>
@@ -9,7 +11,8 @@
 <?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.VBox?>
 
-<HBox id="cardPane" fx:id="cardPane" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1">
+<HBox id="cardPane" fx:id="cardPane" alignment="BOTTOM_LEFT"
+      xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1">
   <GridPane HBox.hgrow="ALWAYS">
     <columnConstraints>
       <ColumnConstraints hgrow="SOMETIMES" minWidth="10" prefWidth="150" />
@@ -26,6 +29,13 @@
           </minWidth>
         </Label>
         <Label fx:id="name" text="\$first" styleClass="cell_big_label" />
+        <Label fx:id="favouriteIcon" text="&#9829;" styleClass="favourite-icon" alignment="CENTER"
+               minWidth="24" prefWidth="24" maxWidth="24" minHeight="24" prefHeight="24" maxHeight="24"
+               visible="false" managed="false" accessibleText="Favourite contact">
+          <HBox.margin>
+            <Insets left="6" />
+          </HBox.margin>
+        </Label>
       </HBox>
       <FlowPane fx:id="tags" />
       <Label fx:id="phone" styleClass="cell_small_label" text="\$phone" />
@@ -35,4 +45,17 @@
       <Label fx:id="graduationYear" styleClass="cell_small_label" text="\$graduationYear" />
     </VBox>
   </GridPane>
+  <Label fx:id="noteIcon" styleClass="note-icon" contentDisplay="GRAPHIC_ONLY"
+         accessibleText="This contact has a note" minWidth="30" minHeight="30" visible="false" managed="false">
+    <HBox.margin>
+      <Insets top="5" right="10" bottom="8" left="5" />
+    </HBox.margin>
+    <graphic>
+      <ImageView fitWidth="24" fitHeight="24" preserveRatio="true" smooth="true">
+        <image>
+          <Image url="@/images/noteicon.png" />
+        </image>
+      </ImageView>
+    </graphic>
+  </Label>
 </HBox>

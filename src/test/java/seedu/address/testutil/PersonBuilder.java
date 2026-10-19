@@ -1,5 +1,6 @@
 package seedu.address.testutil;
 
+import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -8,6 +9,7 @@ import seedu.address.model.person.Email;
 import seedu.address.model.person.GraduationYear;
 import seedu.address.model.person.Major;
 import seedu.address.model.person.Name;
+import seedu.address.model.person.Notes;
 import seedu.address.model.person.Person;
 import seedu.address.model.person.Phone;
 import seedu.address.model.tag.Tag;
@@ -29,7 +31,10 @@ public class PersonBuilder {
     private Address address;
     private Major major;
     private GraduationYear graduationYear;
+    private Notes notes;
     private Set<Tag> tags;
+    private LocalDate lastUpdated = LocalDate.now();
+    private boolean favourite;
 
     /**
      * Creates a {@code PersonBuilder} with the default details.
@@ -41,6 +46,7 @@ public class PersonBuilder {
         address = new Address(DEFAULT_ADDRESS);
         major = Major.EMPTY;
         graduationYear = GraduationYear.EMPTY;
+        notes = Notes.EMPTY;
         tags = new HashSet<>();
     }
 
@@ -48,12 +54,15 @@ public class PersonBuilder {
      * Initializes the PersonBuilder with the data of {@code personToCopy}.
      */
     public PersonBuilder(Person personToCopy) {
+        lastUpdated = personToCopy.getLastUpdated();
+        favourite = personToCopy.isFavourite();
         name = personToCopy.getName();
         phone = personToCopy.getPhone();
         email = personToCopy.getEmail();
         address = personToCopy.getAddress();
         major = personToCopy.getMajor();
         graduationYear = personToCopy.getGraduationYear();
+        notes = personToCopy.getNotes();
         tags = new HashSet<>(personToCopy.getTags());
     }
 
@@ -113,8 +122,32 @@ public class PersonBuilder {
         return this;
     }
 
+    /**
+     * Sets the notes of the person being built.
+     */
+    public PersonBuilder withNotes(String notes) {
+        this.notes = new Notes(notes);
+        return this;
+    }
+
     public Person build() {
-        return new Person(name, phone, email, address, major, graduationYear, tags);
+        return new Person(name, phone, email, address, major, graduationYear, tags, notes, favourite, lastUpdated);
+    }
+
+    /**
+     * Sets the basic-profile modification date of the person being built.
+     */
+    public PersonBuilder withLastUpdated(LocalDate lastUpdated) {
+        this.lastUpdated = lastUpdated;
+        return this;
+    }
+
+    /**
+     * Sets the favourite state of the person being built.
+     */
+    public PersonBuilder withFavourite(boolean favourite) {
+        this.favourite = favourite;
+        return this;
     }
 
 }

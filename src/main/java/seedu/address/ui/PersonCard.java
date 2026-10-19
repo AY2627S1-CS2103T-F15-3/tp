@@ -1,16 +1,20 @@
 package seedu.address.ui;
 
+import java.time.Clock;
+import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.function.Consumer;
 
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
+import javafx.scene.control.Tooltip;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Region;
 import seedu.address.model.person.GraduationYear;
 import seedu.address.model.person.Major;
 import seedu.address.model.person.Person;
+import seedu.address.model.tag.SystemTag;
 
 /**
  * A UI component that displays information of a {@code Person}.
@@ -28,11 +32,14 @@ public class PersonCard extends UiPart<Region> {
      */
 
     public final Person person;
+    private final Clock clock;
 
     @FXML
     private HBox cardPane;
     @FXML
     private Label name;
+    @FXML
+    private Label favouriteIcon;
     @FXML
     private Label id;
     @FXML
@@ -47,22 +54,59 @@ public class PersonCard extends UiPart<Region> {
     private Label graduationYear;
     @FXML
     private FlowPane tags;
+    @FXML
+    private Label noteIcon;
 
     /**
      * Creates a {@code PersonCard} with the given {@code Person} and index to display.
      */
     public PersonCard(Person person, int displayedIndex) {
+        this(person, displayedIndex, Clock.systemDefaultZone());
+    }
+
+    /**
+     * Creates a card with a clock used to recalculate date-based reminders.
+     */
+    public PersonCard(Person person, int displayedIndex, Clock clock) {
         super(FXML);
         this.person = person;
+        this.clock = java.util.Objects.requireNonNull(clock);
         id.setText(displayedIndex + ". ");
         name.setText(person.getName().fullName);
+        favouriteIcon.setVisible(person.isFavourite());
+        favouriteIcon.setManaged(person.isFavourite());
         phone.setText(person.getPhone().value);
         address.setText(person.getAddress().value);
         email.setText(person.getEmail().value);
         setAcademicFieldTexts(person, major::setText, graduationYear::setText);
+        boolean hasNotes = !person.getNotes().isEmpty();
+        noteIcon.setVisible(hasNotes);
+        noteIcon.setManaged(hasNotes);
+        noteIcon.setTooltip(new Tooltip("Use shownote " + displayedIndex + " to view this note."));
+        refreshTags();
+    }
+
+    /**
+     * Rebuilds user tags and current system reminders without changing stored contact data.
+     */
+    public void refreshTags() {
+        tags.getChildren().clear();
         person.getTags().stream()
                 .sorted(Comparator.comparing(tag -> tag.tagName))
-                .forEach(tag -> tags.getChildren().add(new Label(tag.tagName)));
+                .forEach(tag -> {
+                    boolean conflictsWithReminder = tag.tagName.equals(SystemTag.UPDATE.label);
+                    Label label = new Label(conflictsWithReminder ? "update (custom)" : tag.tagName);
+                    if (conflictsWithReminder) {
+                        label.setTooltip(new Tooltip("Custom tag: update. Use t/update to manage this tag."));
+                    }
+                    tags.getChildren().add(label);
+                });
+        for (SystemTag reminder : SystemTag.forPerson(person, LocalDate.now(clock))) {
+            Label label = new Label(reminder.label);
+            label.getStyleClass().add("system-tag");
+            label.setTooltip(new Tooltip("Basic profile last updated: " + person.getLastUpdated()));
+            tags.getChildren().add(label);
+        }
     }
 
     static void setAcademicFieldTexts(Person person, Consumer<String> majorTextSetter,

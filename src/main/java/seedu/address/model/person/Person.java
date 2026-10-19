@@ -2,6 +2,7 @@ package seedu.address.model.person;
 
 import static seedu.address.commons.util.CollectionUtil.requireAllNonNull;
 
+import java.time.LocalDate;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Objects;
@@ -25,21 +26,74 @@ public class Person {
     private final Address address;
     private final Major major;
     private final GraduationYear graduationYear;
+    private final Notes notes;
+    private final LocalDate lastUpdated;
     private final Set<Tag> tags = new HashSet<>();
+    private final boolean favourite;
 
     /**
      * Every field must be present and not null.
      */
     public Person(Name name, Phone phone, Email email, Address address, Major major,
             GraduationYear graduationYear, Set<Tag> tags) {
-        requireAllNonNull(name, phone, email, address, major, graduationYear, tags);
+        this(name, phone, email, address, major, graduationYear, tags, Notes.EMPTY, false);
+    }
+
+    /**
+     * Creates a person with the specified favourite state and empty notes.
+     */
+    public Person(Name name, Phone phone, Email email, Address address, Major major,
+            GraduationYear graduationYear, Set<Tag> tags, boolean favourite) {
+        this(name, phone, email, address, major, graduationYear, tags, Notes.EMPTY, favourite);
+    }
+
+    /**
+     * Creates a person with optional notes and no favourite status.
+     */
+    public Person(Name name, Phone phone, Email email, Address address, Major major,
+            GraduationYear graduationYear, Set<Tag> tags, Notes notes) {
+        this(name, phone, email, address, major, graduationYear, tags, notes, false, LocalDate.now());
+    }
+
+    /**
+     * Creates a person with an explicit date and no favourite status.
+     */
+    public Person(Name name, Phone phone, Email email, Address address, Major major,
+            GraduationYear graduationYear, Set<Tag> tags, Notes notes, LocalDate lastUpdated) {
+        this(name, phone, email, address, major, graduationYear, tags, notes, false, lastUpdated);
+    }
+
+    /**
+     * Creates a person preserving notes and favourite status, initially updated today.
+     */
+    public Person(Name name, Phone phone, Email email, Address address, Major major,
+            GraduationYear graduationYear, Set<Tag> tags, Notes notes, boolean favourite) {
+        this(name, phone, email, address, major, graduationYear, tags, notes, favourite, LocalDate.now());
+    }
+
+    /**
+     * Creates a person preserving all contact state and the basic-profile date.
+     */
+    public Person(Name name, Phone phone, Email email, Address address, Major major,
+            GraduationYear graduationYear, Set<Tag> tags, Notes notes, boolean favourite, LocalDate lastUpdated) {
+        requireAllNonNull(name, phone, email, address, major, graduationYear, tags, notes, lastUpdated);
         this.name = name;
         this.phone = phone;
         this.email = email;
         this.address = address;
         this.major = major;
         this.graduationYear = graduationYear;
+        this.notes = notes;
+        this.lastUpdated = lastUpdated;
         this.tags.addAll(tags);
+        this.favourite = favourite;
+    }
+
+    /**
+     * Returns whether this person is a favourite.
+     */
+    public boolean isFavourite() {
+        return favourite;
     }
 
     public Name getName() {
@@ -64,6 +118,30 @@ public class Person {
 
     public GraduationYear getGraduationYear() {
         return graduationYear;
+    }
+
+    public Notes getNotes() {
+        return notes;
+    }
+
+    public LocalDate getLastUpdated() {
+        return lastUpdated;
+    }
+
+    /**
+     * Returns whether the basic profile is strictly more than one calendar year old on the given date.
+     */
+    public boolean needsUpdate(LocalDate today) {
+        java.util.Objects.requireNonNull(today);
+        return lastUpdated.isBefore(today) && lastUpdated.plusYears(1).isBefore(today);
+    }
+
+    /**
+     * Returns a copy with the given notes, preserving all other contact details.
+     */
+    public Person withNotes(Notes updatedNotes) {
+        return new Person(name, phone, email, address, major, graduationYear, tags, updatedNotes,
+                favourite, lastUpdated);
     }
 
     /**
@@ -108,13 +186,16 @@ public class Person {
                 && address.equals(otherPerson.address)
                 && major.equals(otherPerson.major)
                 && graduationYear.equals(otherPerson.graduationYear)
-                && tags.equals(otherPerson.tags);
+                && notes.equals(otherPerson.notes)
+                && tags.equals(otherPerson.tags)
+                && lastUpdated.equals(otherPerson.lastUpdated)
+                && favourite == otherPerson.favourite;
     }
 
     @Override
     public int hashCode() {
         // use this method for custom fields hashing instead of implementing your own
-        return Objects.hash(name, phone, email, address, major, graduationYear, tags);
+        return Objects.hash(name, phone, email, address, major, graduationYear, tags, notes, favourite, lastUpdated);
     }
 
     @Override
@@ -127,6 +208,9 @@ public class Person {
                 .add("major", major)
                 .add("graduationYear", graduationYear)
                 .add("tags", tags)
+                .add("notes", notes)
+                .add("favourite", favourite)
+                .add("lastUpdated", lastUpdated)
                 .toString();
     }
 
