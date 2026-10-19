@@ -316,6 +316,44 @@ after `list` as well as in filtered results produced by `find`.
 is rendered as `Not specified` instead of leaving an ambiguous blank line. This is a presentation-only change:
 `ListCommand`, the model, and the JSON storage format are unchanged.
 
+### Automatic incomplete reminders
+
+#### Design overview and responsibilities
+
+Incomplete reminders reuse the dynamic system-tag pipeline without adding a stored tag or a command. `Person#isIncomplete` returns true only when both `getPhone().value` and `getEmail().value` are empty. Address, academic fields, user tags, notes and favourite status are irrelevant to this predicate.
+
+| Class | Responsibility |
+|-------|----------------|
+| `Phone`, `Email` | Represent unspecified contact methods using immutable `EMPTY` values containing an empty string. Existing regexes still validate every non-empty value. |
+| `Person` | Evaluates contact completeness without modifying contact state. |
+| `AddCommandParser`, `ParserUtil` | Allow omitted phone/email prefixes, but reject explicitly blank or malformed supplied values in `add`. |
+| `EditCommandParser`, `EditCommand` | Map empty `p/` and `e/` values to `EMPTY`, preserve omitted fields, and apply the existing basic-profile date rules. |
+| `SystemTag` | Independently appends `UPDATE` and `INCOMPLETE` in `forPerson`, and identifies custom-name collisions using `isSystemLabel`. |
+| `JsonAdaptedPerson` | Converts absent/null phone and email fields to empty values while retaining validation of supplied non-empty values. |
+| `PersonCard`, `PersonListPanel`, `MainWindow` | Render and refresh system labels using the existing observable contact list and successful-command refresh path. |
+
+#### Add/edit behaviour and validation
+
+Phone and email objects remain non-null throughout the model. `Phone.isValidPhone` and `Email.isValidEmail` accept exactly the empty string in addition to their previous valid values; whitespace-only values remain invalid at the model layer. `ParserUtil.parsePhone` and `parseEmail` still reject a trimmed empty value, preserving malformed-input feedback when an optional prefix is explicitly supplied to `add`.
+
+`AddCommandParser` requires name and address, maps omitted phone/email prefixes to `Phone.EMPTY` and `Email.EMPTY`, and continues to reject repeated single-valued prefixes. `EditCommandParser` uses the same clearing convention as major/class year: an empty prefix supplies `EMPTY`, while an omitted prefix leaves the descriptor field unset. All non-empty values still pass through `ParserUtil` and the original regex validation. An invalid value rejects the whole command before mutation.
+
+`EditCommand` already compares phone/email as basic fields, so filling or clearing either changes `lastUpdated` only when its value changes. Existing person replacement preserves favourite status, tags, notes and academic fields. Notes, favourite and tag commands retain the date. Sorting, searching and list commands retain their existing view-only behaviour.
+
+#### System tags, rendering and refresh
+
+`SystemTag.forPerson` evaluates the age and completeness predicates independently and returns at most one of each reminder. A profile may therefore have both labels. `PersonCard#refreshTags` clears and rebuilds the pane, preserving ordinary blue labels, and appends each derived reminder with the existing `system-tag` CSS class. The existing yellow background (`#F4C542`), dark text (`#222222`), padding, font and corner radii are reused without changing favourite or note icons. Missing phone/email display as `Not specified`.
+
+`SystemTag.isSystemLabel` distinguishes both reserved display names. A user's stored `incomplete` tag is shown as blue `incomplete (custom)` with a tooltip explaining `t/incomplete`; it is neither renamed nor removed from JSON. Tag commands still operate only on user tags. The incomplete reminder has a contact-detail tooltip rather than the date tooltip used by `UPDATE`.
+
+Successful commands use the existing `MainWindow` to `PersonListPanel.refresh` path, and model replacements update the observable list. Filling either contact method removes `INCOMPLETE`; clearing the last one adds it. A successful actual basic-field edit also refreshes the profile date and can independently remove `UPDATE`. If the edit leaves both methods empty, `INCOMPLETE` remains applicable.
+
+#### JSON compatibility and design considerations
+
+The JSON shape is unchanged: phone and email remain strings and empty strings represent unspecified values. Missing/null values load as unspecified; malformed non-empty strings still fail validation. Older complete contacts load as before, and name/address and other field validation are unchanged. Favourite, notes, tags and `lastUpdated` retain their existing serialization and copy rules.
+
+Derived reminders require no migration flag or synchronization with a stored system-tag collection. Reusing the existing value objects avoids nullable fields throughout commands and UI. Keeping custom tags separate preserves user data and prevents `untag` from permanently disabling a reminder. Tests cover all four combinations, fill/clear transitions, failed input atomicity, legacy JSON, both reminders together and actual JavaFX command-box rendering. See [Automatic incomplete reminders](UserGuide.md#automatic-incomplete-reminders).
+
 ### Automatic update reminders
 
 #### Design overview and relevant classes
@@ -325,7 +363,7 @@ The reminder is derived from a contact's basic-profile modification date rather 
 | Class | Responsibility |
 |-------|----------------|
 | `Person` | Stores immutable `LocalDate lastUpdated`, exposes `getLastUpdated()`, and evaluates `needsUpdate(LocalDate)`. |
-| `SystemTag` | Returns applicable derived reminders through `forPerson(Person, LocalDate)`; currently only `UPDATE` is implemented. |
+| `SystemTag` | Returns applicable derived reminders through `forPerson(Person, LocalDate)`, including `UPDATE` and `INCOMPLETE`. |
 | `EditCommand` | Detects actual basic-field changes and obtains today's date from an injectable `Clock`. |
 | `TagCommand`, `UntagCommand`, `FavCommand`, `UnfavCommand` | Carry the previous date through contact replacement. |
 | `JsonAdaptedPerson` | Stores an ISO date string and converts it back to `LocalDate`, including legacy-data handling. |
@@ -344,7 +382,7 @@ The existing `Person` constructor overloads initialize unspecified dates using `
 
 `Person#needsUpdate(today)` requires the saved date to precede today and its one-year anniversary to be strictly before today. Exactly one year produces no reminder. Calendar-year arithmetic uses `lastUpdated.plusYears(1)`, so a leap-day anniversary follows Java's calendar rule: `2024-02-29` reaches its anniversary on `2025-02-28`, with a reminder starting on `2025-03-01`.
 
-`SystemTag.forPerson` returns either an empty list or one `UPDATE` reminder. It does not mutate `Person#getTags` or write automatic labels to JSON. This representation can accommodate other system reminders later; no incomplete-profile reminder is implemented here.
+`SystemTag.forPerson` appends one `UPDATE` reminder when the age condition applies, independently of `INCOMPLETE`. It does not mutate `Person#getTags` or write automatic labels to JSON. This representation can accommodate other system reminders later.
 
 #### GUI implementation
 
@@ -707,6 +745,27 @@ Undo and redo are tested at each layer:
 `UndoRedoIntegrationTest` starts each test from the typical contacts saved to a temporary data file. After every command, it checks the full contact list in the model, the contacts read back from the data file, and the feedback message. For failing commands, it also checks that `canUndoAddressBook()` and `canRedoAddressBook()` are unchanged. Its scenarios include chains of adds and edits, redo invalidation by a new change, failed commands between undo and redo, interaction with `list`, `find`, `tags` and `help`, and reopening the saved data with no history.
 
 --------------------------------------------------------------------------------------------------------------------
+
+### Command history navigation
+
+`CommandBox` owns a session-local `CommandHistory`. A `KEY_PRESSED` event filter on its text field
+consumes Up/Down events, recalls the corresponding text and moves the caret to its end.
+Recalling text clears the error style through the existing text listener and does not execute a command.
+
+`CommandHistory` stores submissions in order, including duplicates and failed commands. `CommandBox`
+records non-empty input before calling the executor, so parse and execution errors remain recallable.
+Each submission resets the navigation position to the end. On the first Up from the end, history saves
+the current draft; Down past the newest entry restores it. Navigation stops at the oldest entry, and
+Down at the draft position leaves input unchanged. Editing recalled input does not change stored entries.
+History is held in memory and is not written to contact data or preferences.
+
+Automated boundary, draft and submission checks are in `CommandHistoryTest`. For manual UI verification:
+
+1. Submit `list`, then an invalid command. Press Up twice and verify both can be recalled in reverse order.
+2. Press Up again at the oldest entry; verify it stays displayed. Press Down to return to the newest entry.
+3. Return to the draft position, type a partial command, then press Up and Down; verify the draft is restored.
+4. Edit a recalled command and submit it; verify the new submission is the newest entry.
+5. Restart UniMate and verify Up/Down leave the input unchanged until a command is submitted.
 
 ## **Coming soon**
 

@@ -19,8 +19,10 @@ import seedu.address.commons.core.index.Index;
 import seedu.address.logic.commands.EditCommand;
 import seedu.address.logic.commands.EditCommand.EditPersonDescriptor;
 import seedu.address.logic.parser.exceptions.ParseException;
+import seedu.address.model.person.Email;
 import seedu.address.model.person.GraduationYear;
 import seedu.address.model.person.Major;
+import seedu.address.model.person.Phone;
 import seedu.address.model.tag.Tag;
 
 /**
@@ -56,10 +58,12 @@ public class EditCommandParser implements Parser<EditCommand> {
             editPersonDescriptor.setName(ParserUtil.parseName(argMultimap.getValue(PREFIX_NAME).get()));
         }
         if (argMultimap.getValue(PREFIX_PHONE).isPresent()) {
-            editPersonDescriptor.setPhone(ParserUtil.parsePhone(argMultimap.getValue(PREFIX_PHONE).get()));
+            String phone = argMultimap.getValue(PREFIX_PHONE).get();
+            editPersonDescriptor.setPhone(phone.isEmpty() ? Phone.EMPTY : ParserUtil.parsePhone(phone));
         }
         if (argMultimap.getValue(PREFIX_EMAIL).isPresent()) {
-            editPersonDescriptor.setEmail(ParserUtil.parseEmail(argMultimap.getValue(PREFIX_EMAIL).get()));
+            String email = argMultimap.getValue(PREFIX_EMAIL).get();
+            editPersonDescriptor.setEmail(email.isEmpty() ? Email.EMPTY : ParserUtil.parseEmail(email));
         }
         if (argMultimap.getValue(PREFIX_ADDRESS).isPresent()) {
             editPersonDescriptor.setAddress(ParserUtil.parseAddress(argMultimap.getValue(PREFIX_ADDRESS).get()));
