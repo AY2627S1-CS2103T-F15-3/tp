@@ -75,9 +75,9 @@ public class PersonCard extends UiPart<Region> {
         name.setText(person.getName().fullName);
         favouriteIcon.setVisible(person.isFavourite());
         favouriteIcon.setManaged(person.isFavourite());
-        phone.setText(person.getPhone().value);
+        phone.setText(getValueOrFallback(person.getPhone().value));
         address.setText(person.getAddress().value);
-        email.setText(person.getEmail().value);
+        email.setText(getValueOrFallback(person.getEmail().value));
         setAcademicFieldTexts(person, major::setText, graduationYear::setText);
         boolean hasNotes = !person.getNotes().isEmpty();
         noteIcon.setVisible(hasNotes);
@@ -94,17 +94,20 @@ public class PersonCard extends UiPart<Region> {
         person.getTags().stream()
                 .sorted(Comparator.comparing(tag -> tag.tagName))
                 .forEach(tag -> {
-                    boolean conflictsWithReminder = tag.tagName.equals(SystemTag.UPDATE.label);
-                    Label label = new Label(conflictsWithReminder ? "update (custom)" : tag.tagName);
+                    boolean conflictsWithReminder = SystemTag.isSystemLabel(tag.tagName);
+                    Label label = new Label(conflictsWithReminder ? tag.tagName + " (custom)" : tag.tagName);
                     if (conflictsWithReminder) {
-                        label.setTooltip(new Tooltip("Custom tag: update. Use t/update to manage this tag."));
+                        label.setTooltip(new Tooltip("Custom tag: " + tag.tagName + ". Use t/" + tag.tagName
+                                + " to manage this tag."));
                     }
                     tags.getChildren().add(label);
                 });
         for (SystemTag reminder : SystemTag.forPerson(person, LocalDate.now(clock))) {
             Label label = new Label(reminder.label);
             label.getStyleClass().add("system-tag");
-            label.setTooltip(new Tooltip("Basic profile last updated: " + person.getLastUpdated()));
+            label.setTooltip(new Tooltip(reminder == SystemTag.INCOMPLETE
+                    ? "Add a phone number or email address to complete this contact."
+                    : "Basic profile last updated: " + person.getLastUpdated()));
             tags.getChildren().add(label);
         }
     }
