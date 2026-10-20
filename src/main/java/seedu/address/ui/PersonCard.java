@@ -83,7 +83,9 @@ public class PersonCard extends UiPart<Region> {
         setAcademicFieldTexts(person, major::setText, graduationYear::setText);
         lastUpdated.setText("Last updated: " + person.getLastUpdated());
         lastUpdated.setTooltip(new Tooltip("Date added or last change to name, phone, email, address, "
-                + "major or class year. Tags, notes and favourites do not change this date."));
+                + "major or class year. Tags, notes and favourites do not change this date. "
+                + "For older contacts without a saved date, the loading date is used as a baseline, "
+                + "not a known historical add or edit date."));
         boolean hasNotes = !person.getNotes().isEmpty();
         noteIcon.setVisible(hasNotes);
         noteIcon.setManaged(hasNotes);

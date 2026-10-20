@@ -15,6 +15,7 @@ import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -46,6 +47,13 @@ public class LastUpdatedDisplayTest {
     @TempDir
     public Path directory;
 
+    private Person alice;
+    private Person bob;
+    private Model model;
+    private LogicManager logic;
+    private JsonAddressBookStorage storage;
+    private Scene scene;
+
     @BeforeAll
     public static void startToolkit() throws Exception {
         assumeTrue(!System.getProperty("os.name").startsWith("Linux") || System.getenv("DISPLAY") != null,
@@ -60,6 +68,22 @@ public class LastUpdatedDisplayTest {
             Platform.runLater(started);
         }
         started.get(10, TimeUnit.SECONDS);
+    }
+
+    @BeforeEach
+    public void setUp() throws Exception {
+        runOnFxThread(() -> {
+            alice = new PersonBuilder().withName("Alice").withLastUpdated(OLD_DATE).build();
+            bob = new PersonBuilder().withName("Bob").withLastUpdated(TODAY).build();
+            model = new ModelManager();
+            model.addPerson(alice);
+            model.addPerson(bob);
+            storage = new JsonAddressBookStorage(directory.resolve("contacts.json"));
+            logic = new LogicManager(model, new StorageManager(storage,
+                    new JsonUserPrefsStorage(directory.resolve("prefs.json"))));
+            scene = listScene(model);
+            return null;
+        });
     }
 
     @Test
@@ -82,52 +106,107 @@ public class LastUpdatedDisplayTest {
     }
 
     @Test
-    public void list_editUndoRedoAndRestart_displaysPersistedDates() throws Exception {
+    public void constructor_tooltip_explainsLegacyDateBaseline() throws Exception {
         runOnFxThread(() -> {
-            Person alice = new PersonBuilder().withName("Alice").withLastUpdated(OLD_DATE).build();
-            Person bob = new PersonBuilder().withName("Bob").withLastUpdated(TODAY).build();
-            Model model = new ModelManager();
-            model.addPerson(alice);
-            model.addPerson(bob);
-            Path file = directory.resolve("contacts.json");
-            LogicManager logic = new LogicManager(model, new StorageManager(new JsonAddressBookStorage(file),
-                    new JsonUserPrefsStorage(directory.resolve("prefs.json"))));
-            Scene scene = listScene(model);
-            assertDate(scene, alice);
-            assertDate(scene, bob);
+            PersonCard card = new PersonCard(alice, 1, CLOCK);
+            String tooltip = dateLabel(card.getRoot()).getTooltip().getText();
 
+            assertTrue(tooltip.contains("For older contacts without a saved date"));
+            assertTrue(tooltip.contains("the loading date is used as a baseline"));
+            assertTrue(tooltip.contains("not a known historical add or edit date"));
+            return null;
+        });
+    }
+
+    @Test
+    public void list_afterSearch_preservesDisplayedDates() throws Exception {
+        runOnFxThread(() -> {
             logic.execute("find Alice");
             assertDate(scene, alice);
             logic.execute("list");
+
+            assertDate(scene, alice);
             assertDate(scene, bob);
+            assertEquals(List.of(alice, bob), model.getAddressBook().getPersonList());
+            return null;
+        });
+    }
+
+    @Test
+    public void annotationsAndSort_preserveDisplayedProfileDate() throws Exception {
+        runOnFxThread(() -> {
             for (String command : List.of("note 1 Follow up", "fav 1", "tag 1 t/Friend", "sort name asc")) {
                 logic.execute(command);
                 Person current = model.getFilteredPersonList().get(0);
                 assertEquals(OLD_DATE, current.getLastUpdated());
                 assertDate(scene, current);
             }
+            return null;
+        });
+    }
 
-            Person beforeEdit = model.getFilteredPersonList().get(0);
+    @Test
+    public void edit_refreshesDisplayedDate() throws Exception {
+        runOnFxThread(() -> {
             LocalDate before = LocalDate.now();
-            logic.execute("edit 1 p/91234567");
-            Person edited = model.getFilteredPersonList().get(0);
-            assertTrue(edited.getLastUpdated().equals(before) || edited.getLastUpdated().equals(LocalDate.now()));
-            assertDate(scene, edited);
-            logic.execute("undo");
-            assertDate(scene, beforeEdit);
-            assertEquals(beforeEdit, new JsonAddressBookStorage(file).readAddressBook().orElseThrow()
-                    .getPersonList().get(0));
-            logic.execute("redo");
-            assertDate(scene, edited);
+            Person edited = editAlice();
 
-            AddressBook saved = new AddressBook(new JsonAddressBookStorage(file).readAddressBook().orElseThrow());
+            assertTrue(edited.getLastUpdated().equals(before) || edited.getLastUpdated().equals(LocalDate.now()));
+            assertEquals(new PersonBuilder(alice).withPhone("91234567")
+                    .withLastUpdated(edited.getLastUpdated()).build(), edited);
+            assertDate(scene, edited);
+            assertDate(scene, bob);
+            return null;
+        });
+    }
+
+    @Test
+    public void undo_restoresOriginalDisplayedAndSavedDate() throws Exception {
+        runOnFxThread(() -> {
+            editAlice();
+
+            logic.execute("undo");
+
+            assertDate(scene, alice);
+            assertEquals(alice, storage.readAddressBook().orElseThrow().getPersonList().get(0));
+            return null;
+        });
+    }
+
+    @Test
+    public void redo_restoresEditedDisplayedAndSavedDate() throws Exception {
+        runOnFxThread(() -> {
+            Person edited = editAlice();
+            logic.execute("undo");
+
+            logic.execute("redo");
+
+            assertDate(scene, edited);
+            assertEquals(edited, storage.readAddressBook().orElseThrow().getPersonList().get(0));
+            return null;
+        });
+    }
+
+    @Test
+    public void restart_preservesSavedDates() throws Exception {
+        runOnFxThread(() -> {
+            Person edited = editAlice();
+
+            AddressBook saved = new AddressBook(new JsonAddressBookStorage(storage.getAddressBookFilePath())
+                    .readAddressBook().orElseThrow());
             Model reopened = new ModelManager(saved, new UserPrefs());
             Scene reopenedScene = listScene(reopened);
+
             assertEquals(edited, reopened.getFilteredPersonList().get(0));
             assertDate(reopenedScene, edited);
             assertDate(reopenedScene, bob);
             return null;
         });
+    }
+
+    private Person editAlice() throws Exception {
+        logic.execute("edit 1 p/91234567");
+        return model.getFilteredPersonList().get(0);
     }
 
     private Scene listScene(Model model) {
