@@ -12,6 +12,11 @@ top to bottom direction
 abstract class Command LOGIC_COLOR {
   {abstract} +execute(model: Model): CommandResult
 }
+class AddCommand LOGIC_COLOR {
+  -clock: Clock
+  -toAdd: Person
+  +execute(model: Model): CommandResult
+}
 class EditCommand LOGIC_COLOR {
   -clock: Clock
   -editPersonDescriptor: EditPersonDescriptor
@@ -25,6 +30,7 @@ interface Model <<interface>> {
 class Person {
   -lastUpdated: LocalDate
   +getLastUpdated(): LocalDate
+  +withLastUpdated(updatedDate: LocalDate): Person
   +needsUpdate(today: LocalDate): boolean
 }
 enum SystemTag <<enumeration>> {
@@ -36,6 +42,7 @@ enum SystemTag <<enumeration>> {
 class PersonCard UI_COLOR {
   +person: Person
   -clock: Clock
+  -lastUpdated: Label
   +refreshTags(): void
 }
 class JsonAdaptedPerson STORAGE_COLOR {
@@ -44,6 +51,9 @@ class JsonAdaptedPerson STORAGE_COLOR {
   +toModelType(): Person
 }
 
+AddCommand -up-|> Command
+AddCommand ..> Model : adds dated person
+AddCommand ..> Person : copies with execution date
 EditCommand -up-|> Command
 EditCommand --> "1" EditPersonDescriptor : editPersonDescriptor
 EditCommand ..> Model : replaces edited person
@@ -55,9 +65,14 @@ PersonCard ..> SystemTag : renders derived labels
 JsonAdaptedPerson ..> Person : converts ISO date
 
 note bottom of Person
+  New contacts receive the date when add succeeds.
   UPDATE applies only after the one-year anniversary.
   Actual basic-field edits refresh the date using Clock.
   Tag, note and favourite changes retain the date.
+end note
+note right of PersonCard
+  Last updated is always shown on each contact card.
+  The date label is independent of system reminders.
 end note
 note bottom of SystemTag
   forPerson() derives reminders without adding ordinary tags.

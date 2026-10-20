@@ -391,6 +391,42 @@ The JSON shape is unchanged: phone and email remain strings and empty strings re
 
 Derived reminders require no migration flag or synchronization with a stored system-tag collection. Reusing the existing value objects avoids nullable fields throughout commands and UI. Keeping custom tags separate preserves user data and prevents `untag` from permanently disabling a reminder. Tests cover all four combinations, fill/clear transitions, failed input atomicity, legacy JSON, both reminders together and actual JavaFX command-box rendering. See [Automatic incomplete reminders](UserGuide.md#automatic-incomplete-reminders).
 
+### Tracking and displaying contact update dates
+
+`Person#getLastUpdated()` exposes an immutable `LocalDate` representing creation or the most recent
+actual change to the basic profile: name, phone, email, address, major and graduation year. Tags,
+notes and favourite status retain the original date. Date values participate in full equality,
+hashing and history snapshots, but do not affect name-based contact identity.
+
+`AddCommand` obtains `LocalDate.now(clock)` during successful execution, rather than relying on the
+date from when its `Person` was constructed. `Person#withLastUpdated` creates a dated copy preserving
+all other fields. This handles a command prepared before midnight but executed afterwards. The
+default clock uses the computer's time zone; tests can supply a fixed clock. Duplicate detection
+still occurs before mutation or history recording.
+
+`EditCommand#createEditedPerson` compares the resulting six basic fields with the original values.
+An actual change, including clearing a specified optional field, refreshes the date using its clock.
+An unchanged edit or tag-only edit retains the previous date. Failed parsing, an invalid index and
+duplicate-name rejection leave the stored contact unchanged. Undo and redo restore the recorded
+date, rather than calculating a new date when restoring a snapshot.
+
+`PersonCard` binds `Person#getLastUpdated()` to the always-visible `lastUpdated` label in
+`PersonListCard.fxml`, producing `Last updated: YYYY-MM-DD` for ordinary four-digit years. Its tooltip
+explains the scope of the date. Replacing a person updates the observable list cell, so edits,
+undo/redo and reloaded data all display the corresponding date. The label is independent of the
+derived `update` reminder and appears on recent contacts too.
+
+The existing JSON `lastUpdated` string and `LocalDate.parse` validation are reused. Missing/null
+dates receive the loading date as a migration baseline; this baseline becomes persistent after
+the next successful command saves the address book. Invalid supplied dates fail data loading.
+No new JSON property or user-supplied date prefix is introduced.
+
+`LastUpdatedDisplayTest` exercises actual JavaFX cards and list cells for recent and older dates,
+search/list transitions, annotation changes, edits, undo/redo, persistence and reopening saved data.
+`UpdateReminderTest` additionally checks execution-time add dates, time-zone boundaries, failed
+duplicate adds and the existing profile-edit rules. `LastUpdatedStorageTest` covers stored dates,
+legacy files and invalid date rejection.
+
 ### Automatic update reminders
 
 #### Class structure
@@ -406,6 +442,7 @@ The reminder is derived from a contact's basic-profile modification date rather 
 | Class | Responsibility |
 |-------|----------------|
 | `Person` | Stores immutable `LocalDate lastUpdated`, exposes `getLastUpdated()`, and evaluates `needsUpdate(LocalDate)`. |
+| `AddCommand` | Assigns the execution date using its clock while preserving the new contact's other fields. |
 | `SystemTag` | Returns applicable derived reminders through `forPerson(Person, LocalDate)`, including `UPDATE` and `INCOMPLETE`. |
 | `EditCommand` | Detects actual basic-field changes and obtains today's date from an injectable `Clock`. |
 | `TagCommand`, `UntagCommand`, `FavCommand`, `UnfavCommand` | Carry the previous date through contact replacement. |
@@ -1486,6 +1523,25 @@ Use test contacts and run `list` before each scenario. The examples below use th
       Expected: Usage errors; contact data and history remain unchanged.
    1. Restart UniMate, check `shownote 1`, then try `undo` and `redo` before changing any data.<br>
       Expected: `After undo` is still saved, but neither command can restore a state because history does not persist across sessions.
+
+### Tracking contact update dates
+
+1. Add a test contact using `add n/DateCheck a/NUS p/93456789`, run `find DateCheck` and inspect its card.<br>
+   Expected: `Last updated: YYYY-MM-DD` shows your computer's current date even without an `update` reminder.
+1. Close the app, back up `data/unimate.json`, and set only that test contact's `lastUpdated` to `2024-02-29`.
+   Relaunch and run `find DateCheck`.<br>
+   Expected: The saved date is displayed exactly; the `update` reminder appears if it is over one calendar year old.
+1. Run `edit 1 p/93456789`, then `note 1 Follow up`, `fav 1` and `tag 1 t/DateDemo`.<br>
+   Expected: The date remains `2024-02-29`. Re-entering the same phone and changing annotations do not refresh it.
+1. Run `edit 1 p/94567890`, then `find DateCheck`.<br>
+   Expected: The card shows today's date, the phone changes, and an outdated `update` reminder disappears.
+1. Run `undo`, then `find DateCheck`.<br>
+   Expected: The original phone and `2024-02-29` return. Run `redo` and `find DateCheck`:
+   the new phone and the edit date return.
+1. Run `edit 1 p/94567890` again and try `edit 0 p/95678901`.<br>
+   Expected: The unchanged edit and failed input leave the saved date unchanged.
+1. Restart the app from the same folder and run `find DateCheck`.<br>
+   Expected: The edited phone and saved date remain. Remove the test contact or restore the backup afterwards.
 
 ### Saving data
 

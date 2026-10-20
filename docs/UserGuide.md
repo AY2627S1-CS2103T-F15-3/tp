@@ -136,6 +136,31 @@ System reminders are not saved as ordinary tags. Removing a user tag with `untag
 
 Phone/email values are saved normally. Older JSON files with valid contact details remain compatible; absent, null or empty phone/email fields are treated as unspecified. Other required fields and non-empty contact-value validation remain unchanged.
 
+### Tracking a contact's latest update date
+
+Every contact card shows `Last updated: YYYY-MM-DD` below the academic fields, including contacts
+without an `update` reminder. For example, `Last updated: 2026-10-20` means the contact was added
+or its basic information last changed on 20 October 2026. Use `list` to view all saved contacts and
+their dates, or `find` and `filter` to narrow the displayed contacts. No separate date command is needed.
+
+* A new contact receives the date when `add` succeeds, using your computer's local date.
+* A successful `edit` that changes the name, phone, email, address, major or class year records
+  the current date. Clearing a previously specified optional field also counts as a change.
+* Re-entering unchanged values, commands rejected before changing a contact, tag-only edits, notes,
+  favourites and commands that only change the displayed list keep the previous date. The date measures maintenance of
+  the contact's basic information, rather than changes to your personal annotations.
+* Dates are saved automatically with the contacts and remain visible after restarting UniMate once saving succeeds.
+  `undo` and `redo` restore the saved date belonging to the restored contact state.
+* The date has day precision: several changes on the same day show the same date.
+
+Example: run `list`, identify the displayed index of the contact, then enter `edit 1 p/91234567`.
+If the first contact's phone changes, its card immediately shows today's date. If that phone was
+already `91234567`, the previous date remains.
+
+For files that predate date tracking, a missing or null date starts at the day the file is first
+loaded. This is a compatibility baseline, not a recovered historical edit date. It is written to
+the file after the next successful command; see [Older data files](#automatic-update-reminders).
+
 ### Automatic update reminders
 
 UniMate automatically reminds you to check a contact whose basic information has not been updated for **more than one calendar year**. No new command or manual tag is required.
@@ -362,7 +387,8 @@ For all three note commands, an index outside the displayed list reports `The pe
 
 View every previously added contact currently saved in UniMate, including contacts loaded when you reopen the app.
 Each contact card includes the person's name, tags, phone number,
-address, email address, major, and class year. Optional academic fields that have no saved value are displayed as
+address, email address, major, class year and [latest update date](#tracking-a-contacts-latest-update-date).
+Optional academic fields that have no saved value are displayed as
 `Major: Not specified` or `Class year: Not specified`.
 
 Format: `list`

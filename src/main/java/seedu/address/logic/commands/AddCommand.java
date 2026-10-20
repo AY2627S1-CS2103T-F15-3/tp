@@ -10,6 +10,9 @@ import static seedu.address.logic.parser.CliSyntax.PREFIX_NAME;
 import static seedu.address.logic.parser.CliSyntax.PREFIX_PHONE;
 import static seedu.address.logic.parser.CliSyntax.PREFIX_TAG;
 
+import java.time.Clock;
+import java.time.LocalDate;
+
 import seedu.address.commons.util.ToStringBuilder;
 import seedu.address.logic.Messages;
 import seedu.address.logic.commands.exceptions.CommandException;
@@ -49,13 +52,21 @@ public class AddCommand extends Command {
     public static final String MESSAGE_DUPLICATE_PERSON = "This person already exists in the address book.";
 
     private final Person toAdd;
+    private final Clock clock;
 
     /**
      * Creates an AddCommand to add the specified {@code Person}
      */
     public AddCommand(Person person) {
-        requireNonNull(person);
-        toAdd = person;
+        this(person, Clock.systemDefaultZone());
+    }
+
+    /**
+     * Creates an add command using the supplied clock for the contact's initial update date.
+     */
+    public AddCommand(Person person, Clock clock) {
+        toAdd = requireNonNull(person);
+        this.clock = requireNonNull(clock);
     }
 
     @Override
@@ -67,9 +78,10 @@ public class AddCommand extends Command {
         }
 
         ReadOnlyAddressBook previousState = new AddressBook(model.getAddressBook());
-        model.addPerson(toAdd);
+        Person addedPerson = toAdd.withLastUpdated(LocalDate.now(clock));
+        model.addPerson(addedPerson);
         model.commitAddressBook(previousState);
-        return new CommandResult(String.format(MESSAGE_SUCCESS, Messages.format(toAdd)));
+        return new CommandResult(String.format(MESSAGE_SUCCESS, Messages.format(addedPerson)));
     }
 
     @Override
