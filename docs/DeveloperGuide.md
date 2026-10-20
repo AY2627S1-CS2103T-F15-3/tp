@@ -95,7 +95,9 @@ Here's a (partial) class diagram of the `Logic` component:
 
 <puml src="diagrams/LogicClassDiagram.puml" width="550"/>
 
-The sequence diagram below illustrates the interactions within the `Logic` component, taking `execute("delete 1")` API call as an example.
+The sequence diagram below illustrates a successful `execute("delete 1")` call within the `Logic`
+component, including displayed-index resolution and feedback formatting. Detailed validation and
+storage interactions are omitted.
 
 <puml src="diagrams/DeleteSequenceDiagram.puml" alt="Interactions Inside the Logic Component for the `delete 1` Command" />
 
@@ -109,9 +111,13 @@ How the `Logic` component works:
 
 1. When `Logic` is called upon to execute a command, the command is passed to an `AddressBookParser` object, which in turn creates a parser that matches the command (e.g., `DeleteCommandParser`) and uses it to parse the command.
 1. This results in a `Command` object (more precisely, an object of one of its subclasses e.g., `DeleteCommand`) which is executed by the `LogicManager`.
-1. The command can communicate with the `Model` when it is executed (e.g. to delete a person).<br>
-   Note that although this is shown as a single step in the diagram above for simplicity, the code can require several interactions between the command object and the `Model` to complete the operation.
-1. The result of the command execution is encapsulated as a `CommandResult` object which is returned from `Logic`.
+1. The command can communicate with the `Model` when it is executed. For deletion, it obtains the
+   filtered and sorted displayed list, checks the index, and passes the selected `Person` to
+   `Model#deletePerson`, not the index itself.
+1. `Messages#format` formats the deleted contact's details, including major and class year only when
+   specified. The command adds the `Deleted person: ` prefix and returns a `CommandResult`.
+   `LogicManager` saves the updated address book through `Storage` before returning that result to
+   its caller; the storage interactions are not shown in this diagram.
 
 Here are the other classes in `Logic` (omitted from the class diagram above) that are used for parsing a user command:
 
