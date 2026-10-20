@@ -69,7 +69,29 @@ public class LogicManagerTest {
     @Test
     public void execute_validCommand_success() throws Exception {
         String listCommand = ListCommand.COMMAND_WORD;
-        assertCommandSuccess(listCommand, ListCommand.MESSAGE_SUCCESS, model);
+        assertCommandSuccess(listCommand, ListCommand.MESSAGE_SUCCESS + "\n"
+                + String.format(Messages.MESSAGE_PERSONS_LISTED_OVERVIEW, 0), model);
+    }
+
+    @Test
+    public void execute_listAfterReopeningSavedContacts_restoresEveryContact() throws Exception {
+        logic.execute("add n/StoredAlice a/NUS m/Computing");
+        logic.execute("add n/StoredBob a/Clementi");
+        AddressBook savedContacts = new AddressBook(model.getAddressBook());
+        JsonAddressBookStorage addressBookStorage =
+                new JsonAddressBookStorage(temporaryFolder.resolve("addressBook.json"));
+        model = new ModelManager(addressBookStorage.readAddressBook().orElseThrow(), new UserPrefs());
+        logic = new LogicManager(model, new StorageManager(addressBookStorage,
+                new JsonUserPrefsStorage(temporaryFolder.resolve("userPrefs.json"))));
+
+        logic.execute("find StoredAlice");
+        assertEquals(1, logic.getFilteredPersonList().size());
+        CommandResult result = logic.execute("list");
+
+        assertEquals(ListCommand.MESSAGE_SUCCESS + "\n"
+                + String.format(Messages.MESSAGE_PERSONS_LISTED_OVERVIEW, 2), result.getFeedbackToUser());
+        assertEquals(savedContacts.getPersonList(), logic.getFilteredPersonList());
+        assertEquals(savedContacts, addressBookStorage.readAddressBook().orElseThrow());
     }
 
     @Test

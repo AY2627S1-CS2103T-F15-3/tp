@@ -305,6 +305,37 @@ the stored `Major`, `GraduationYear`, and tags.
 
 After deletion, `DeleteCommand` uses `Messages#format(Person)` to include the deleted contact's details in the
 command result.
+
+### Viewing previously added contacts
+
+The `list` command exposes all contacts in the current address book, including persons loaded by
+`JsonAddressBookStorage` on startup. It reuses the existing observable view rather than loading a second copy or
+maintaining a separate list of earlier additions. Deleted contacts are absent from that address book and are not restored.
+
+`AddressBookParser` dispatches `list` only when its argument string is blank; additional input raises a
+`ParseException` with `Messages.MESSAGE_INVALID_COMMAND_FORMAT` and `ListCommand.MESSAGE_USAGE` before execution.
+Surrounding whitespace is accepted, and the command word remains case-sensitive.
+
+`ListCommand#execute` applies `Model.PREDICATE_SHOW_ALL_PERSONS` through `Model#updateFilteredPersonList`, replacing
+the predicate established by `find`, `filter` or `listfav`. It then reads the restored view's size and returns
+`ListCommand.MESSAGE_SUCCESS` followed by a newline and `Messages.MESSAGE_PERSONS_LISTED_OVERVIEW`. Calculating the
+count after replacing the predicate ensures feedback describes every restored contact, even when the previous view
+was empty. An empty address book reports zero successfully.
+
+`ModelManager` exposes a `SortedList<Person>` over its `FilteredList<Person>`, so changing only the predicate retains
+the active comparator. The saved contact order is untouched. `PersonListPanel` observes this final view and creates
+cards with one-based display indices. Existing cards provide contact details and reminders; listing does not replace
+persons or alter their update dates.
+
+The command does not commit contact history, consume undo steps or discard redo states. `LogicManager` still uses its
+existing save-after-success path, retaining the same contact data on disk. On reopening, storage reconstructs the saved
+contacts and a new model starts without temporary filters or sort choices.
+
+`ListCommandTest` covers empty and populated lists, restoring search/filter/favourite results, active sort preservation,
+unchanged data and undo/redo availability. `AddressBookParserTest` checks whitespace and extra-argument rejection.
+`LogicManagerTest` saves contacts, reopens their JSON through a fresh model, searches and lists them again, then verifies
+both displayed and persisted contacts. See [Listing all persons](UserGuide.md#listing-all-persons-list).
+
 ### Displaying academic fields in the contact list
 
 `ListCommand` resets the model's filtered person list to `PREDICATE_SHOW_ALL_PERSONS`. `PersonListPanel` observes
@@ -740,7 +771,7 @@ If saving fails after a successful undo or redo, the in-memory state has already
 
 * **Alternative 1 (current choice):** Reject input such as `undo 1` with a parse error.
   * Pros: Users are not misled into thinking `undo 3` undoes three changes or a specific contact, and no history changes by accident.
-  * Cons: Inconsistent with `help`, `list`, `exit` and `clear`, which ignore extra parameters.
+  * Cons: Inconsistent with `help`, `exit` and `clear`, which ignore extra parameters.
 * **Alternative 2:** Ignore extra parameters, as `help` does.
   * Pros: Consistent with the other commands that take no parameters.
   * Cons: `undo 3` would silently undo only one change.
@@ -1064,6 +1095,42 @@ testers are expected to do more *exploratory* testing.
 
    1. Relaunch the app from the same test folder with `java -jar unimate.jar`.<br>
        Expected: The most recent window size and location are retained.
+
+### Viewing previously added contacts
+
+1. Restoring all saved contacts from other views
+
+   1. Prerequisites: Use a disposable test copy. Add `add n/ListAlice a/NUS m/Computing` and
+      `add n/ListBob a/Clementi m/Business`. Run `find ListAlice`, then `fav 1`.
+   1. Run `find ListAlice`, then `list`.<br>
+      Expected: Every saved contact appears, including both test contacts. Feedback starts with `Listed all persons.`
+      and the next line reports `N person(s) listed!`, where `N` equals the full displayed count.
+   1. Run `filter m/Computing`, then `list`; repeat with `listfav`, then `list`.<br>
+      Expected: Each `list` restores all contacts and their current details. Favourite hearts and update dates remain unchanged.
+   1. Run `find NoSuchListContact`, then `list`.<br>
+      Expected: The search has no results, but `list` still restores every saved contact and reports the full count.
+
+1. Sorting, persistence and history
+
+   1. Run `sort name desc`, then `find ListAlice`, then `list`.<br>
+      Expected: Every contact returns in descending name order, numbered consecutively from `1`.
+   1. Close and relaunch the app from the same folder, then run `list`.<br>
+      Expected: Both test contacts and all other saved details remain available. The temporary sort is reset to saved order.
+   1. Run `add n/ListUndo a/NUS`, then `undo`, then `list`, then `redo`.<br>
+      Expected: `ListUndo` is absent after undo and list, and returns after redo; listing does not clear redo history.
+   1. Run `list`, then `undo`.<br>
+      Expected: The add of `ListUndo` is undone; listing did not create an undo step.
+
+1. Empty address books and invalid input
+
+   1. In the disposable test copy only, run `clear`, then `list`.<br>
+      Expected: An empty list with `Listed all persons.` and `0 person(s) listed!`.
+   1. Add `add n/ListValidation a/NUS`, then run `find NoSuchListContact`. Try `list all`, `list 1` and
+      `list t/Friend`.<br>
+      Expected: Each shows `Invalid command format!` with `list` usage instructions. The empty filtered view and
+      saved `ListValidation` contact remain unchanged.
+   1. Run `  list  ` with surrounding spaces.<br>
+      Expected: `ListValidation` is displayed and the count is `1 person(s) listed!`.
 
 ### Adding academic fields
 
