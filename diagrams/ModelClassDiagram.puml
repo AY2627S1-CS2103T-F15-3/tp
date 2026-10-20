@@ -10,6 +10,7 @@ Class "<<interface>>\nReadOnlyUserPrefs" as ReadOnlyUserPrefs
 Class "<<interface>>\nModel" as Model
 Class AddressBook
 Class ModelManager
+Class AddressBookHistory
 Class UserPrefs
 
 Class UniquePersonList
@@ -34,6 +35,8 @@ ModelManager .up.|> Model
 Model .right.> ReadOnlyUserPrefs
 Model .left.> ReadOnlyAddressBook
 ModelManager -left-> "1" AddressBook
+ModelManager -down-> "1" AddressBookHistory
+AddressBookHistory -left-> "1" AddressBook : tracks >
 ModelManager -right-> "1" UserPrefs
 UserPrefs .up.|> ReadOnlyUserPrefs
 
