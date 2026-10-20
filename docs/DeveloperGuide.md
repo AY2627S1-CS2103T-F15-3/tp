@@ -305,6 +305,39 @@ the stored `Major`, `GraduationYear`, and tags.
 
 After deletion, `DeleteCommand` uses `Messages#format(Person)` to include the deleted contact's details in the
 command result.
+
+### Listing all saved contacts
+
+The `list` command exposes all contacts in the current address book, including persons loaded by
+`JsonAddressBookStorage` on startup. It reuses the existing observable view rather than loading a second copy or
+maintaining a separate list of earlier additions. Deleted contacts are absent from that address book and are not restored.
+There is no separate creation timestamp or recently added view; `lastUpdated` tracks basic-profile maintenance
+and cannot be used to reconstruct each contact's original creation date.
+
+`AddressBookParser` dispatches `list` only when its argument string is blank; additional input raises a
+`ParseException` with `Messages.MESSAGE_INVALID_COMMAND_FORMAT` and `ListCommand.MESSAGE_USAGE` before execution.
+Surrounding whitespace is accepted, and the command word remains case-sensitive.
+
+`ListCommand#execute` applies `Model.PREDICATE_SHOW_ALL_PERSONS` through `Model#updateFilteredPersonList`, replacing
+the predicate established by `find`, `filter` or `listfav`. It then reads the restored view's size and returns
+`ListCommand.MESSAGE_SUCCESS` followed by a newline and `Messages.MESSAGE_PERSONS_LISTED_OVERVIEW`. Calculating the
+count after replacing the predicate ensures feedback describes every restored contact, even when the previous view
+was empty. An empty address book reports zero successfully.
+
+`ModelManager` exposes a `SortedList<Person>` over its `FilteredList<Person>`, so changing only the predicate retains
+the active comparator. The saved contact order is untouched. `PersonListPanel` observes this final view and creates
+cards with one-based display indices. Existing cards provide contact details and reminders; listing does not replace
+persons or alter their update dates.
+
+The command does not commit contact history, consume undo steps or discard redo states. `LogicManager` still uses its
+existing save-after-success path, retaining the same contact data on disk. On reopening, storage reconstructs the saved
+contacts and a new model starts without temporary filters or sort choices.
+
+`ListCommandTest` covers empty and populated lists, restoring search/filter/favourite results, active sort preservation,
+unchanged data and undo/redo availability. `AddressBookParserTest` checks whitespace and extra-argument rejection.
+`LogicManagerTest` saves contacts, reopens their JSON through a fresh model, searches and lists them again, then verifies
+both displayed and persisted contacts. See [Listing all persons](UserGuide.md#listing-all-persons-list).
+
 ### Displaying academic fields in the contact list
 
 `ListCommand` resets the model's filtered person list to `PREDICATE_SHOW_ALL_PERSONS`. `PersonListPanel` observes
@@ -360,6 +393,42 @@ The JSON shape is unchanged: phone and email remain strings and empty strings re
 
 Derived reminders require no migration flag or synchronization with a stored system-tag collection. Reusing the existing value objects avoids nullable fields throughout commands and UI. Keeping custom tags separate preserves user data and prevents `untag` from permanently disabling a reminder. Tests cover all four combinations, fill/clear transitions, failed input atomicity, legacy JSON, both reminders together and actual JavaFX command-box rendering. See [Automatic incomplete reminders](UserGuide.md#automatic-incomplete-reminders).
 
+### Tracking and displaying contact update dates
+
+`Person#getLastUpdated()` exposes an immutable `LocalDate` representing creation or the most recent
+actual change to the basic profile: name, phone, email, address, major and graduation year. Tags,
+notes and favourite status retain the original date. Date values participate in full equality,
+hashing and history snapshots, but do not affect name-based contact identity.
+
+`AddCommand` obtains `LocalDate.now(clock)` during successful execution, rather than relying on the
+date from when its `Person` was constructed. `Person#withLastUpdated` creates a dated copy preserving
+all other fields. This handles a command prepared before midnight but executed afterwards. The
+default clock uses the computer's time zone; tests can supply a fixed clock. Duplicate detection
+still occurs before mutation or history recording.
+
+`EditCommand#createEditedPerson` compares the resulting six basic fields with the original values.
+An actual change, including clearing a specified optional field, refreshes the date using its clock.
+An unchanged edit or tag-only edit retains the previous date. Failed parsing, an invalid index and
+duplicate-name rejection leave the stored contact unchanged. Undo and redo restore the recorded
+date, rather than calculating a new date when restoring a snapshot.
+
+`PersonCard` sets the always-visible `lastUpdated` label from `Person#getLastUpdated()` in
+`PersonListCard.fxml`, producing `Last updated: YYYY-MM-DD` for ordinary four-digit years. Its tooltip
+explains the scope of the date. Replacing a person updates the observable list cell, so edits,
+undo/redo and reloaded data all display the corresponding date. The label is independent of the
+derived `update` reminder and appears on recent contacts too.
+
+The existing JSON `lastUpdated` string and `LocalDate.parse` validation are reused. Missing/null
+dates receive the loading date as a migration baseline; this baseline becomes persistent after
+the next successful command saves the address book. Invalid supplied dates fail data loading.
+No new JSON property or user-supplied date prefix is introduced.
+
+`LastUpdatedDisplayTest` exercises actual JavaFX cards and list cells for recent and older dates,
+search/list transitions, annotation changes, edits, undo/redo, persistence and reopening saved data.
+`UpdateReminderTest` additionally checks execution-time add dates, time-zone boundaries, failed
+duplicate adds and the existing profile-edit rules. `LastUpdatedStorageTest` covers stored dates,
+legacy files and invalid date rejection.
+
 ### Automatic update reminders
 
 #### Class structure
@@ -375,6 +444,7 @@ The reminder is derived from a contact's basic-profile modification date rather 
 | Class | Responsibility |
 |-------|----------------|
 | `Person` | Stores immutable `LocalDate lastUpdated`, exposes `getLastUpdated()`, and evaluates `needsUpdate(LocalDate)`. |
+| `AddCommand` | Assigns the execution date using its clock while preserving the new contact's other fields. |
 | `SystemTag` | Returns applicable derived reminders through `forPerson(Person, LocalDate)`, including `UPDATE` and `INCOMPLETE`. |
 | `EditCommand` | Detects actual basic-field changes and obtains today's date from an injectable `Clock`. |
 | `TagCommand`, `UntagCommand`, `FavCommand`, `UnfavCommand` | Carry the previous date through contact replacement. |
@@ -740,7 +810,7 @@ If saving fails after a successful undo or redo, the in-memory state has already
 
 * **Alternative 1 (current choice):** Reject input such as `undo 1` with a parse error.
   * Pros: Users are not misled into thinking `undo 3` undoes three changes or a specific contact, and no history changes by accident.
-  * Cons: Inconsistent with `help`, `list`, `exit` and `clear`, which ignore extra parameters.
+  * Cons: Inconsistent with `help`, `exit` and `clear`, which ignore extra parameters.
 * **Alternative 2:** Ignore extra parameters, as `help` does.
   * Pros: Consistent with the other commands that take no parameters.
   * Cons: `undo 3` would silently undo only one change.
@@ -1064,6 +1134,42 @@ testers are expected to do more *exploratory* testing.
 
    1. Relaunch the app from the same test folder with `java -jar unimate.jar`.<br>
        Expected: The most recent window size and location are retained.
+
+### Testing the saved-contact listing
+
+1. Restoring all saved contacts from other views
+
+   1. Prerequisites: Use a disposable test copy. Add `add n/ListAlice a/NUS m/Computing` and
+      `add n/ListBob a/Clementi m/Business`. Run `find ListAlice`, then `fav 1`.
+   1. Run `find ListAlice`, then `list`.<br>
+      Expected: Every saved contact appears, including both test contacts. Feedback starts with `Listed all persons.`
+      and the next line reports `N person(s) listed!`, where `N` equals the full displayed count.
+   1. Run `filter m/Computing`, then `list`; repeat with `listfav`, then `list`.<br>
+      Expected: Each `list` restores all contacts and their current details. Favourite hearts and update dates remain unchanged.
+   1. Run `find NoSuchListContact`, then `list`.<br>
+      Expected: The search has no results, but `list` still restores every saved contact and reports the full count.
+
+1. Sorting, persistence and history
+
+   1. Run `sort name desc`, then `find ListAlice`, then `list`.<br>
+      Expected: Every contact returns in descending name order, numbered consecutively from `1`.
+   1. Close and relaunch the app from the same folder, then run `list`.<br>
+      Expected: Both test contacts and all other saved details remain available. The temporary sort is reset to saved order.
+   1. Run `add n/ListUndo a/NUS`, then `undo`, then `list`, then `redo`.<br>
+      Expected: `ListUndo` is absent after undo and list, and returns after redo; listing does not clear redo history.
+   1. Run `list`, then `undo`.<br>
+      Expected: The add of `ListUndo` is undone; listing did not create an undo step.
+
+1. Empty address books and invalid input
+
+   1. In the disposable test copy only, run `clear`, then `list`.<br>
+      Expected: An empty list with `Listed all persons.` and `0 person(s) listed!`.
+   1. Add `add n/ListValidation a/NUS`, then run `find NoSuchListContact`. Try `list all`, `list 1` and
+      `list t/Friend`.<br>
+      Expected: Each shows `Invalid command format!` with `list` usage instructions. The empty filtered view and
+      saved `ListValidation` contact remain unchanged.
+   1. Run `  list  ` with surrounding spaces.<br>
+      Expected: `ListValidation` is displayed and the count is `1 person(s) listed!`.
 
 ### Adding academic fields
 
@@ -1419,6 +1525,29 @@ Use test contacts and run `list` before each scenario. The examples below use th
       Expected: Usage errors; contact data and history remain unchanged.
    1. Restart UniMate, check `shownote 1`, then try `undo` and `redo` before changing any data.<br>
       Expected: `After undo` is still saved, but neither command can restore a state because history does not persist across sessions.
+
+### Tracking contact update dates
+
+Before each indexed `edit`, `note`, `fav` or `tag` command below, run `find DateCheck` and confirm
+the test contact is the only result. An `edit` returns to the full list even when its values are unchanged,
+so repeat the search before the next indexed command.
+
+1. Add a test contact using `add n/DateCheck a/NUS p/93456789`, run `find DateCheck` and inspect its card.<br>
+   Expected: `Last updated: YYYY-MM-DD` shows your computer's current date even without an `update` reminder.
+1. Close the app, back up `data/unimate.json`, and set only that test contact's `lastUpdated` to `2024-02-29`.
+   Relaunch and run `find DateCheck`.<br>
+   Expected: The saved date is displayed exactly; the `update` reminder appears if it is over one calendar year old.
+1. Run `edit 1 p/93456789`, then `note 1 Follow up`, `fav 1` and `tag 1 t/DateDemo`.<br>
+   Expected: The date remains `2024-02-29`. Re-entering the same phone and changing annotations do not refresh it.
+1. Run `edit 1 p/94567890`, then `find DateCheck`.<br>
+   Expected: The card shows today's date, the phone changes, and an outdated `update` reminder disappears.
+1. Run `undo`, then `find DateCheck`.<br>
+   Expected: The original phone and `2024-02-29` return. Run `redo` and `find DateCheck`:
+   the new phone and the edit date return.
+1. Run `edit 1 p/94567890` again and try `edit 0 p/95678901`.<br>
+   Expected: The unchanged edit and failed input leave the saved date unchanged.
+1. Restart the app from the same folder and run `find DateCheck`.<br>
+   Expected: The edited phone and saved date remain. Remove the test contact or restore the backup afterwards.
 
 ### Saving data
 
