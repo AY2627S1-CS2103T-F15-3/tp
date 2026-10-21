@@ -24,7 +24,6 @@ deactivate Predicate
 create Command
 Parser -> Command : FilterCommand(predicate)
 activate Command
-Command --> Parser : f
 deactivate Command
 
 [<-- Parser : f

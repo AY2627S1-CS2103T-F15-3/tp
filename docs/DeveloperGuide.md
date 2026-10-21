@@ -132,8 +132,9 @@ The `Model` component,
 * stores UniMate contact data i.e., all `Person` objects (which are contained in a `UniquePersonList` object).
   Each `Person` includes `Major`, `GraduationYear` and 'Notes' value objects in addition to its existing contact details and tags.
 * selects contacts using a `FilteredList<Person>` and orders that view using a `SortedList<Person>`.
-  It exposes the sorted view as an unmodifiable `ObservableList<Person>` shared by the UI and numbered
-  commands. Both transformations observe the saved contact list, so data changes update the display.
+  `getFilteredPersonList()` returns `sortedPersons` as an unmodifiable `ObservableList<Person>`,
+  so the UI and numbered commands use the same displayed order. Both transformations observe the saved
+  contact list, so data changes update the display.
 * stores a `UserPrefs` object that represents the user’s preferences (currently, just the GUI settings). This is exposed to the outside as a `ReadOnlyUserPrefs` object.
 * keeps an in-memory history of contact data states in an `AddressBookHistory` object. The `undo` and `redo` commands use it to revert and reapply successful `add` and `edit` changes. See [Recording contact data history](#recording-contact-data-history).
 * does not depend on any of the other three components (as the `Model` represents data entities of the domain, they should make sense on their own without depending on other components)
