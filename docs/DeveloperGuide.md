@@ -130,7 +130,7 @@ How the parsing works:
 ### Model component
 **API** : [`Model.java`](https://github.com/AY2627S1-CS2103T-F15-3/tp/tree/master/src/main/java/seedu/address/model/Model.java)
 
-<puml src="diagrams/ModelClassDiagram.puml" width="450" />
+<puml src="diagrams/ModelClassDiagram.puml" width="600" alt="Model structure with academic fields and filtered and sorted contact views" />
 
 
 The `Model` component,
@@ -138,8 +138,9 @@ The `Model` component,
 * stores UniMate contact data i.e., all `Person` objects (which are contained in a `UniquePersonList` object).
   Each `Person` includes `Major`, `GraduationYear` and 'Notes' value objects in addition to its existing contact details and tags.
 * selects contacts using a `FilteredList<Person>` and orders that view using a `SortedList<Person>`.
-  It exposes the sorted view as an unmodifiable `ObservableList<Person>` shared by the UI and numbered
-  commands. Both transformations observe the saved contact list, so data changes update the display.
+  `getFilteredPersonList()` returns `sortedPersons` as an unmodifiable `ObservableList<Person>`,
+  so the UI and numbered commands use the same displayed order. Both transformations observe the saved
+  contact list, so data changes update the display.
 * stores a `UserPrefs` object that represents the user’s preferences (currently, just the GUI settings). This is exposed to the outside as a `ReadOnlyUserPrefs` object.
 * keeps an in-memory history of contact data states in an `AddressBookHistory` object. The `undo` and `redo` commands use it to revert and reapply successful `add` and `edit` changes. See [Recording contact data history](#recording-contact-data-history).
 * does not depend on any of the other three components (as the `Model` represents data entities of the domain, they should make sense on their own without depending on other components)
@@ -300,6 +301,10 @@ The existing observable list updates `PersonListPanel`, including the displayed 
 no additional controls or storage fields are needed. Commands that use displayed indices continue
 to obtain their targets from that same list.
 
+The following sequence summarises filter parsing and execution; routing and Model internals are omitted.
+
+<puml src="diagrams/FilterSequenceDiagram.puml" alt="Filter command parsing and execution" />
+
 A filter replaces the previous `find` or `filter` predicate. `list` restores all contacts;
 `add` and `edit` keep their existing behaviour of showing all contacts after success. Tag and untag
 preserve the predicate, so a contact can disappear from the results when its tags no longer match.
@@ -313,6 +318,10 @@ is shown on restart.
 tokens: a field (`name`, `major`, `year`) and a direction (`asc`, `desc`). It constructs `SortCommand`
 with `PersonSortComparator.SortField` and `SortDirection` values. Invalid input raises a `ParseException`
 with usage instructions before any view or data change.
+
+The following sequence summarises `sort year desc`; routing and Model internals are omitted.
+
+<puml src="diagrams/SortSequenceDiagram.puml" alt="Sort command parsing and execution" />
 
 `SortCommand#execute` supplies a `PersonSortComparator` to `Model#updateSortedPersonList`.
 `ModelManager` maintains this observable transformation chain:
