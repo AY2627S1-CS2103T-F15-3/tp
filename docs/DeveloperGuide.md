@@ -216,6 +216,32 @@ The existing model update and JSON storage path save the edited values without a
 After a successful edit that changes the contact, `EditCommand` records the previous contact data state in the
 model's history (see [Recording contact data history](#recording-contact-data-history)).
 
+#### Editing existing contacts: GUI and execution flow
+
+The following sequence follows `edit 1 m/Mathematics c/` from the actual command box to JSON storage
+and back to GUI feedback. Index `1` refers to the currently displayed list, including `find`, `filter`,
+`listfav` and sorted views. `EditCommand` checks the index and duplicate name before changing the model.
+
+<puml src="diagrams/EditContactSequenceDiagram.puml" alt="Sequence diagram for editing a displayed contact and refreshing the GUI" />
+
+After replacing the person, `EditCommand` resets the filter to `PREDICATE_SHOW_ALL_PERSONS` and commits
+the previous state for undo (unchanged data does not create another history entry). Any current sorting
+still applies. `LogicManager` saves the updated address book before returning the result.
+`MainWindow#executeCommand` refreshes the list and writes the feedback to `ResultDisplay`;
+`CommandBox` then clears its text. `PersonListPanel` observes the model's list and builds `PersonCard`s
+with the current indices. Cleared academic fields render as `Major: Not specified` and
+`Class year: Not specified`.
+
+The replacement `Person` retains notes and favourite status. Changes to name, phone, email, address,
+major or graduation year update `lastUpdated`; a tag-only edit retains the previous date.
+Parser and command validation failures show feedback and preserve input with the error style, without
+changing the contact list or filter. A storage failure occurs after mutation and is reported as an error;
+it does not roll back the in-memory edit.
+
+GUI regression coverage is in `EditContactUiTest`: submissions through `MainWindow`, rendered fields,
+filtered indices, clearing fields, preserved notes/favourite status, invalid edits and saved JSON.
+`EditCommandTest` and `EditCommandParserTest` cover command and parser boundaries.
+
 ### Searching by academic fields
 
 `FindCommandParser` splits the input into keywords and passes them to `NameContainsKeywordsPredicate`.
@@ -657,7 +683,9 @@ Undo and redo are tested at each layer:
 
 `CommandBox` owns a session-local `CommandHistory`. A `KEY_PRESSED` event filter on its text field
 consumes Up/Down events, recalls the corresponding text and moves the caret to its end.
-Recalling text clears the error style through the existing text listener and does not execute a command.
+When recalled text differs from the current input, the existing text listener clears the error style.
+Recalling an identical string does not trigger that listener. Browsing does not execute a command or
+change the result display or contact list.
 
 `CommandHistory` stores submissions in order, including duplicates and failed commands. `CommandBox`
 records non-empty input before calling the executor, so parse and execution errors remain recallable.
@@ -666,7 +694,12 @@ the current draft; Down past the newest entry restores it. Navigation stops at t
 Down at the draft position leaves input unchanged. Editing recalled input does not change stored entries.
 History is held in memory and is not written to contact data or preferences.
 
-Automated boundary, draft and submission checks are in `CommandHistoryTest`. For manual UI verification:
+<puml src="diagrams/CommandHistorySequenceDiagram.puml" alt="Sequence diagram for recording submissions and browsing command history in the GUI" />
+
+`CommandHistoryTest` covers boundaries, duplicates and draft state. `CommandBoxTest` exercises the real
+FXML text field on the JavaFX thread: Up/Down event consumption, caret placement, draft restoration,
+failed submissions, error styling and the absence of executor calls during browsing.
+For manual UI verification:
 
 1. Submit `list`, then an invalid command. Press Up twice and verify both can be recalled in reverse order.
 2. Press Up again at the oldest entry; verify it stays displayed. Press Down to return to the newest entry.
