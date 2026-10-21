@@ -95,7 +95,9 @@ Here's a (partial) class diagram of the `Logic` component:
 
 <puml src="diagrams/LogicClassDiagram.puml" width="550"/>
 
-The sequence diagram below illustrates the interactions within the `Logic` component, taking `execute("delete 1")` API call as an example.
+The sequence diagram below illustrates a successful `execute("delete 1")` call within the `Logic`
+component, including displayed-index resolution and feedback formatting. Detailed validation and
+storage interactions are omitted.
 
 <puml src="diagrams/DeleteSequenceDiagram.puml" alt="Interactions Inside the Logic Component for the `delete 1` Command" />
 
@@ -109,9 +111,13 @@ How the `Logic` component works:
 
 1. When `Logic` is called upon to execute a command, the command is passed to an `AddressBookParser` object, which in turn creates a parser that matches the command (e.g., `DeleteCommandParser`) and uses it to parse the command.
 1. This results in a `Command` object (more precisely, an object of one of its subclasses e.g., `DeleteCommand`) which is executed by the `LogicManager`.
-1. The command can communicate with the `Model` when it is executed (e.g. to delete a person).<br>
-   Note that although this is shown as a single step in the diagram above for simplicity, the code can require several interactions between the command object and the `Model` to complete the operation.
-1. The result of the command execution is encapsulated as a `CommandResult` object which is returned from `Logic`.
+1. The command can communicate with the `Model` when it is executed. For deletion, it obtains the
+   filtered and sorted displayed list, checks the index, and passes the selected `Person` to
+   `Model#deletePerson`, not the index itself.
+1. `Messages#format` formats the deleted contact's details, including major and class year only when
+   specified. The command adds the `Deleted person: ` prefix and returns a `CommandResult`.
+   `LogicManager` saves the updated address book through `Storage` before returning that result to
+   its caller; the storage interactions are not shown in this diagram.
 
 Here are the other classes in `Logic` (omitted from the class diagram above) that are used for parsing a user command:
 
@@ -175,15 +181,64 @@ This section describes some noteworthy details on how certain features are imple
 
 ### Contact notes
 
+#### Structure and responsibilities
+
+The following class diagram shows the notes-related members and dependencies. Unrelated contact
+fields, parser classes and history internals are omitted to keep the feature view focused.
+
+<puml src="diagrams/NotesClassDiagram.puml" alt="Classes supporting contact notes, persistence and the note indicator" />
+
 `Person` stores an immutable `Notes` value. `Notes.EMPTY` represents an absent note, and existing constructors default to it. Supplied notes contain non-whitespace text on a single line, with no control characters and at most 500 Unicode code points. `Person#withNotes` returns a new contact while preserving all other fields. Notes participate in full equality and hashing, but not in contact identity. Existing `edit`, `tag` and `untag` replacement paths preserve them.
+
+The `Person` to `Notes` association has multiplicity `1`: even a contact without note text has a
+non-null value object. It is an association rather than composition because immutable notes can be
+shared between contacts and history snapshots. `NoteCommand` also holds the validated `Notes` value
+that it will apply; all three note commands override `Command#execute(Model)` and use the model.
 
 `JsonAdaptedPerson` saves the text under `notes`. Missing or null values in older files become empty notes. Invalid stored note text produces the usual data-loading failure. The UI's presence indicator derives from `Person#getNotes().isEmpty()` and updates when the observable contact list replaces a person; note text is displayed through ordinary command feedback.
 
+`PersonCard` holds the displayed contact and its `noteIcon` label. The label is an indicator, not a
+control that opens or expands the note. Its tooltip uses the card's current displayed index to suggest
+the corresponding `shownote` command.
+
+#### Adding or replacing a note
+
 `AddressBookParser` routes `note`, `shownote` and `delnote` to their respective parsers. `NoteCommandParser` splits the first index from the remaining text and validates that text without interpreting field prefixes. `ShowNoteCommandParser` and `DeleteNoteCommandParser` accept only an index. Each command resolves the index against `Model#getFilteredPersonList()` and preserves the current filter.
+
+The sequence below traces `note 1 Met during CS2103T` when at least one contact is displayed and
+saving succeeds. The same flow creates a first note or replaces an existing note. `m:Model` is the
+interface implemented by `ModelManager`; its displayed list includes both filtering and sorting.
+The diagram omits validation internals, the snapshot and result constructors, and JavaFX list-change
+notifications. Notes on the diagram identify the snapshot copy and the displayed contact selection.
+
+<puml src="diagrams/NoteSequenceDiagram.puml" alt="Successful note command from parsing through contact replacement, history commit and saving" />
+
+1. `LogicManager` asks `AddressBookParser` to parse the command. `NoteCommandParser` validates the
+   index and text, creates a `Notes` value, and returns a `NoteCommand`.
+1. The command checks the index against the displayed list and obtains that contact. It copies the
+   current address book before making any change.
+1. `Person#withNotes` creates a replacement contact while retaining all other fields, including
+   favourite status and `lastUpdated`. `Model#setPerson` installs the replacement without resetting
+   the filter or sort order.
+1. `Model#commitAddressBook` delegates to the existing history mechanism. The command then returns
+   feedback; it does not save the data or call the UI directly.
+1. `LogicManager` saves the resulting address book through `Storage` before returning the feedback
+   to its caller. The observable list supplies the updated contact to the UI's card rendering.
+
+Malformed input fails during parsing; an index beyond the displayed list fails before the snapshot
+or replacement. Neither case changes contact data or history. If saving fails after execution,
+`LogicManager` reports a command error; it does not roll back the in-memory contact or history change.
+
+#### Viewing, deleting and history behaviour
 
 `NoteCommand` overwrites the contact's note. `DeleteNoteCommand` replaces it with `Notes.EMPTY`; deleting an already empty note reports an informational message. Both record actual data changes through the existing model history. `ShowNoteCommand` returns the note, or an empty-note message, in a standard `CommandResult`; it does not mutate contact data or history. `LogicManager` retains its normal save-after-success behaviour for all commands.
 
 Note creation, replacement and deletion are supported by the implemented [`undo` and `redo` commands](#undo-and-redo-commands). Saving identical note text is a no-op for history: `AddressBookHistory#commit` compares the previous and resulting data and returns without adding an undo state or clearing redo states. Deleting an already empty note returns before changing the model or committing. Saving unchanged note text, deleting an already empty note, and viewing a note with `shownote` preserve any available redo history.
+
+`delnote` follows the same snapshot, replacement and commit sequence when a note exists, using
+`Notes.EMPTY` instead of supplied text. `shownote` only reads the displayed contact and builds its
+feedback, so these variations are described here rather than repeated in separate sequence diagrams.
+The history checks themselves are described under [Recording contact data history](#recording-contact-data-history).
 
 ### Adding academic fields
 
@@ -324,7 +379,107 @@ after `list` as well as in filtered results produced by `find`.
 is rendered as `Not specified` instead of leaving an ambiguous blank line. This is a presentation-only change:
 `ListCommand`, the model, and the JSON storage format are unchanged.
 
+### Automatic incomplete reminders
+
+#### Class structure
+
+<puml src="diagrams/IncompleteReminderClassDiagram.puml" alt="Class structure of automatic incomplete reminders" />
+
+`Person` references one non-null `Phone` and one non-null `Email`; an empty value represents an unspecified contact method. The parsers implement the generic `Parser` interface and map omitted add fields or cleared edit fields to the corresponding `EMPTY` constants. `SystemTag` depends on `Person#isIncomplete`, while `PersonCard` uses the derived result for rendering. The JSON adapter reconstructs contact values rather than storing system reminders. The `Phone` and `Email` associations are not compositions because immutable values, including `EMPTY`, can be shared between contacts.
+
+#### Design overview and responsibilities
+
+Incomplete reminders reuse the dynamic system-tag pipeline without adding a stored tag or a command. `Person#isIncomplete` returns true only when both `getPhone().value` and `getEmail().value` are empty. Address, academic fields, user tags, notes and favourite status are irrelevant to this predicate.
+
+| Class | Responsibility |
+|-------|----------------|
+| `Phone`, `Email` | Represent unspecified contact methods using immutable `EMPTY` values containing an empty string. Existing regexes still validate every non-empty value. |
+| `Person` | Evaluates contact completeness without modifying contact state. |
+| `AddCommandParser`, `ParserUtil` | Allow omitted phone/email prefixes, but reject explicitly blank or malformed supplied values in `add`. |
+| `EditCommandParser`, `EditCommand` | Map empty `p/` and `e/` values to `EMPTY`, preserve omitted fields, and apply the existing basic-profile date rules. |
+| `SystemTag` | Independently appends `UPDATE` and `INCOMPLETE` in `forPerson`, and identifies custom-name collisions using `isSystemLabel`. |
+| `JsonAdaptedPerson` | Converts absent/null phone and email fields to empty values while retaining validation of supplied non-empty values. |
+| `PersonCard`, `PersonListPanel`, `MainWindow` | Render and refresh system labels using the existing observable contact list and successful-command refresh path. |
+
+#### Add/edit behaviour and validation
+
+Phone and email objects remain non-null throughout the model. `Phone.isValidPhone` and `Email.isValidEmail` accept exactly the empty string in addition to their previous valid values; whitespace-only values remain invalid at the model layer. `ParserUtil.parsePhone` and `parseEmail` still reject a trimmed empty value, preserving malformed-input feedback when an optional prefix is explicitly supplied to `add`.
+
+`AddCommandParser` requires name and address, maps omitted phone/email prefixes to `Phone.EMPTY` and `Email.EMPTY`, and continues to reject repeated single-valued prefixes. `EditCommandParser` uses the same clearing convention as major/class year: an empty prefix supplies `EMPTY`, while an omitted prefix leaves the descriptor field unset. All non-empty values still pass through `ParserUtil` and the original regex validation. An invalid value rejects the whole command before mutation.
+
+`EditCommand` already compares phone/email as basic fields, so filling or clearing either changes `lastUpdated` only when its value changes. Existing person replacement preserves favourite status, tags, notes and academic fields. Notes, favourite and tag commands retain the date. Sorting, searching and list commands retain their existing view-only behaviour.
+
+#### System tags, rendering and refresh
+
+`SystemTag.forPerson` evaluates the age and completeness predicates independently and returns at most one of each reminder. A profile may therefore have both labels. `PersonCard#refreshTags` clears and rebuilds the pane, preserving ordinary blue labels, and appends each derived reminder with the existing `system-tag` CSS class. The existing yellow background (`#F4C542`), dark text (`#222222`), padding, font and corner radii are reused without changing favourite or note icons. Missing phone/email display as `Not specified`.
+
+`SystemTag.isSystemLabel` distinguishes both reserved display names. A user's stored `incomplete` tag is shown as blue `incomplete (custom)` with a tooltip explaining `t/incomplete`; it is neither renamed nor removed from JSON. Tag commands still operate only on user tags. The incomplete reminder has a contact-detail tooltip rather than the date tooltip used by `UPDATE`.
+
+Successful commands use the existing `MainWindow` to `PersonListPanel.refresh` path, and model replacements update the observable list. Filling either contact method removes `INCOMPLETE`; clearing the last one adds it. A successful actual basic-field edit also refreshes the profile date and can independently remove `UPDATE`. If the edit leaves both methods empty, `INCOMPLETE` remains applicable.
+
+#### JSON compatibility and design considerations
+
+The JSON shape is unchanged: phone and email remain strings and empty strings represent unspecified values. Missing/null values load as unspecified; malformed non-empty strings still fail validation. Older complete contacts load as before, and name/address and other field validation are unchanged. Favourite, notes, tags and `lastUpdated` retain their existing serialization and copy rules.
+
+Derived reminders require no migration flag or synchronization with a stored system-tag collection. Reusing the existing value objects avoids nullable fields throughout commands and UI. Keeping custom tags separate preserves user data and prevents `untag` from permanently disabling a reminder. Tests cover all four combinations, fill/clear transitions, failed input atomicity, legacy JSON, both reminders together and actual JavaFX command-box rendering. See [Automatic incomplete reminders](UserGuide.md#automatic-incomplete-reminders).
+
+### Automatic update reminders
+
+#### Class structure
+
+<puml src="diagrams/UpdateReminderClassDiagram.puml" alt="Class structure of automatic update reminders" />
+
+`EditCommand` extends `Command`, holds a copied `EditPersonDescriptor` and a `Clock`, and replaces a person through the `Model` interface. The private `createEditedPerson` method determines whether a basic field actually changed. `Person` stores the date; `SystemTag` queries that date through `needsUpdate`; `PersonCard` renders the resulting label. `JsonAdaptedPerson` converts between the model date and its JSON string. The dashed dependencies on `SystemTag` do not imply a stored collection of reminders in `Person`.
+
+#### Design overview and relevant classes
+
+The reminder is derived from a contact's basic-profile modification date rather than stored as a user tag. This keeps reminders consistent with the current date without requiring a new command or background scheduler.
+
+| Class | Responsibility |
+|-------|----------------|
+| `Person` | Stores immutable `LocalDate lastUpdated`, exposes `getLastUpdated()`, and evaluates `needsUpdate(LocalDate)`. |
+| `SystemTag` | Returns applicable derived reminders through `forPerson(Person, LocalDate)`, including `UPDATE` and `INCOMPLETE`. |
+| `EditCommand` | Detects actual basic-field changes and obtains today's date from an injectable `Clock`. |
+| `TagCommand`, `UntagCommand`, `FavCommand`, `UnfavCommand` | Carry the previous date through contact replacement. |
+| `JsonAdaptedPerson` | Stores an ISO date string and converts it back to `LocalDate`, including legacy-data handling. |
+| `PersonCard` | Rebuilds ordinary labels and system reminders using its injectable clock. |
+| `PersonListPanel`, `MainWindow` | Refresh visible cards after successful command execution, including commands that leave model data unchanged. |
+
+#### Date tracking and persistence
+
+The existing `Person` constructor overloads initialize unspecified dates using `LocalDate.now()`. The full constructor accepts notes, favourite status and an explicit date, allowing immutable copies to retain all independent contact state. The date participates in equality, hashing and contact history snapshots. `Person#withNotes` preserves it.
+
+`EditCommand#createEditedPerson` compares the resulting name, phone, email, address, major and graduation year with the original values. If at least one differs, it uses `LocalDate.now(clock)`; otherwise it retains the existing date. Tag-only edits and unsuccessful edits do not reset the date. Date injection makes anniversary tests reproducible. Tag, note and favourite changes retain the previous date, while read-only commands only change the view or feedback. Existing undo/redo restores the full recorded person, including the date.
+
+`JsonAdaptedPerson` serializes `lastUpdated` as an ISO string such as `2026-10-18` and parses it with `LocalDate.parse` on loading. Missing or null dates use the current loading date as a migration baseline, not a historical claim. Normal saving persists that baseline for subsequent loads. Invalid supplied dates raise `IllegalValueException`, which the existing storage loading path reports as invalid data. Notes, favourite status and ordinary tags retain their existing JSON properties and validation.
+
+#### Reminder logic
+
+`Person#needsUpdate(today)` requires the saved date to precede today and its one-year anniversary to be strictly before today. Exactly one year produces no reminder. Calendar-year arithmetic uses `lastUpdated.plusYears(1)`, so a leap-day anniversary follows Java's calendar rule: `2024-02-29` reaches its anniversary on `2025-02-28`, with a reminder starting on `2025-03-01`.
+
+`SystemTag.forPerson` appends one `UPDATE` reminder when the age condition applies, independently of `INCOMPLETE`. It does not mutate `Person#getTags` or write automatic labels to JSON. This representation can accommodate other system reminders later.
+
+#### GUI implementation
+
+`PersonCard#refreshTags` clears the tag pane, recreates the sorted user labels and appends the current `SystemTag` labels. Each system label has the `system-tag` style class and a tooltip showing the recorded date. `#tags .label.system-tag` in `DarkTheme.css` overrides only background (`#F4C542`) and text (`#222222`), inheriting ordinary tag padding, font size and corner radii. Favourite and note icons remain independent.
+
+An ordinary tag whose exact stored name is `update` is rendered as blue `update (custom)`, with a tooltip explaining that it is managed using `t/update`. The underlying name, validation, filtering and storage remain unchanged. Rebuilding the pane prevents duplicate system labels and lets a custom tag coexist with the reminder.
+
+After `LogicManager#execute` succeeds, `MainWindow` calls `PersonListPanel#refresh`, which calls `ListView#refresh`. Recreated cards evaluate the current date again even when the contact data did not change. An actual basic-profile edit both replaces the model person and triggers this refresh, removing an outdated reminder immediately. No timer refreshes an idle window.
+
+#### Design considerations and verification
+
+Dynamic reminders avoid stale stored tags, prevent user tag removal from disabling a date-based reminder, and preserve legacy custom tags without silently deleting data. Dates remain separate from favourite state and notes; future commands that reconstruct a person must carry all three forward unless intentionally updating one.
+
+Tests cover calendar boundaries, profile edits and no-op edits, JSON round trips and migration, note/tag/favourite interactions, undo/redo and actual command-box rendering. GUI tests run on the JavaFX application thread; the existing Linux CI virtual display ensures they execute when coverage is collected. See [Automatic update reminders](UserGuide.md#automatic-update-reminders) for user-facing behaviour.
+
 ### Favourite contacts
+
+#### Class structure
+
+<puml src="diagrams/FavouriteContactsClassDiagram.puml" alt="Class structure of favourite contacts and list filtering" />
+
+The four commands inherit from `Command` and use the `Model` interface. `FavCommand` and `UnfavCommand` replace immutable persons with a changed favourite flag; `ListFavCommand` and the existing `ListCommand` change only the view predicate. `ModelManager` implements `Model` and owns the filtered and sorted views: the sorted view uses the filtered view as its source, and displayed indices follow that final view. `JsonAdaptedPerson` converts the favourite flag, and each `PersonCard` references the person whose heart it displays. Unrelated person fields and model services are omitted from this feature view.
 
 #### Design overview and relevant classes
 
@@ -378,6 +533,12 @@ The existing `PersonListPanel` observes the filtered list and creates a new `Per
 For user-facing formats and list-switching examples, see [Marking a favourite contact](UserGuide.md#marking-a-favourite-contact-fav), [Removing favourite status](UserGuide.md#removing-favourite-status-unfav) and [Listing favourite contacts](UserGuide.md#listing-favourite-contacts-listfav).
 
 ### Tagging and untagging contacts
+
+#### Class structure
+
+<puml src="diagrams/TagManagementClassDiagram.puml" alt="Class structure of tag and untag commands" />
+
+The two parsers implement `Parser<T>` with different command types and create the corresponding `Command` subclasses. Both commands use `Model` to locate and replace the displayed person. Their requested tag sets, the person's stored tag set, and the five ordered default choices all reference the same ordinary `Tag` type. `ParserUtil` resolves default indices and validates custom names; dynamic `SystemTag` reminders are deliberately outside this structure. Navigable associations describe retained references, dashed arrows describe dependencies, and hollow triangles denote inheritance or interface realization. Static members are underlined; only feature-relevant members are shown in these four diagrams.
 
 #### Current implementation
 
@@ -476,6 +637,12 @@ Given below is the flow for a successful `add n/Alex Tan …​`:
    1. pushes a copy of `previousState` onto `undoStates`, clears `redoStates`, and sets `currentState` to a copy of the current data.
 1. `LogicManager` saves the contact data to storage as before. The history itself is not saved.
 
+The activity diagram below summarises what happens when a command commits:
+
+<puml src="diagrams/CommitActivityDiagram.puml" width="300" alt="CommitActivityDiagram" />
+
+A command that fails validation, such as a duplicate `add`, throws before copying the data and never reaches this flow.
+
 `EditCommand#execute` follows the same pattern. It checks the displayed index and duplicate persons first, copies the data, calls `Model#setPerson`, and then commits. An edit that supplies the person's current values still returns the usual success message. Its commit is ignored because the data did not change, preserving both history stacks. The bare command `edit 1` is invalid because at least one field is required.
 
 `NoteCommand` and `DeleteNoteCommand` use the same snapshot-and-commit flow for actual note changes. An unchanged note produces equal before/after data, so the commit is ignored and redo remains available. `DeleteNoteCommand` returns immediately for an empty note. A new data-changing commit clears redo states; merely viewing a note does not.
@@ -487,6 +654,42 @@ Given below is the flow for a successful `add n/Alex Tan …​`:
 
 Both methods return `true` if a state was restored. They return `false` and leave the data unchanged if there is nothing to restore.
 
+The sequence diagram below shows how `Model#undoAddressBook()` works within the `Model` component:
+
+<puml src="diagrams/UndoSequenceDiagram-Model.puml" alt="UndoSequenceDiagram-Model" />
+
+`Model#redoAddressBook()` follows the same sequence through `AddressBookHistory#redo()`, with the two stacks swapped: `currentState` is pushed onto `undoStates`, and the top of `redoStates` is popped and restored.
+
+#### Example usage scenario
+
+The diagrams below show how the history changes as a user enters a sequence of commands. Each `abN` is an `AddressBook` snapshot, and each stack is drawn with its top entry first.
+
+Step 1. The user launches UniMate. `currentState` is a copy of the loaded contacts, `ab0`, and both stacks are empty.
+
+<puml src="diagrams/UndoRedoState0.puml" alt="UndoRedoState0" />
+
+Step 2. The user runs `add n/Alex Tan …​`. `AddCommand` commits `ab0`, the state before the add, so `ab0` is pushed onto `undoStates` and `currentState` becomes the new data, `ab1`.
+
+<puml src="diagrams/UndoRedoState1.puml" alt="UndoRedoState1" />
+
+Step 3. The user runs `edit 1 p/91234567`. `EditCommand` commits in the same way, pushing `ab1` onto `undoStates`. `currentState` becomes `ab2`.
+
+<puml src="diagrams/UndoRedoState2.puml" alt="UndoRedoState2" />
+
+Step 4. The user runs `undo`. `currentState`, `ab2`, is pushed onto `redoStates`, and `ab1` is popped from `undoStates` and restored.
+
+<puml src="diagrams/UndoRedoState3.puml" alt="UndoRedoState3" />
+
+Step 5. The user runs `redo`. This reverses the previous step: `ab1` is pushed back onto `undoStates`, and `ab2` is popped from `redoStates` and restored.
+
+<puml src="diagrams/UndoRedoState4.puml" alt="UndoRedoState4" />
+
+Step 6. The user runs `undo` again, returning to the state in Step 4, and then runs `add n/Beth Lim …​`. The new commit pushes `ab1` and clears `redoStates`, so the undone edit, `ab2`, can no longer be redone. `currentState` becomes `ab3`.
+
+<puml src="diagrams/UndoRedoState5.puml" alt="UndoRedoState5" />
+
+Commands that do not change contact data, such as `list` and `find`, and commands that fail before changing anything, record nothing and leave all three parts of the history unchanged.
+
 #### Commands that are not undoable
 
 `delete`, `tag`, `untag` and `clear` change contact data but do not call `Model#commitAddressBook`. If an old snapshot were restored after one of them, it would silently reverse that change as well. For example, after `add` and then `delete 1`, undoing the add would also bring back the deleted contact.
@@ -496,6 +699,10 @@ To prevent this, `AddressBookHistory` compares `currentState` with the live cont
 * `canUndoAddressBook()` and `canRedoAddressBook()` return `false`.
 * `undoAddressBook()` and `redoAddressBook()` discard both stacks and return `false`, leaving the data unchanged.
 * The next data-changing commit discards the stale undo states before recording the new one.
+
+Continuing the example above, suppose the user now runs `delete 1`. `DeleteCommand` changes the contacts in the model to `ab4` without committing, so they no longer match `currentState`, `ab3`. The history is now stale: a following `undo` would discard both stacks and report that there is no change to undo, rather than restoring `ab1` and bringing the deleted contact back.
+
+<puml src="diagrams/UndoRedoState6.puml" alt="UndoRedoState6" />
 
 To the user, this means that after a `delete`, `tag`, `untag` or `clear` that changes contact data, `undo` reports that there is nothing to undo until another `add` or `edit` succeeds, and `redo` reports that there is nothing to redo until a later change is undone. A command that fails, or that leaves the data unchanged (such as `tag` with a tag the person already has), does not make the history stale.
 
@@ -555,6 +762,15 @@ Given below is the flow for `undo`:
 1. The command checks `Model#canUndoAddressBook()`. If it returns `false`, the command throws a `CommandException` with `UndoCommand.MESSAGE_FAILURE`. The exception propagates out of `LogicManager#execute` before the save step, so neither the data nor the data file changes.
 1. Otherwise, the command calls `Model#undoAddressBook()`, which restores the previous state in place. It then calls `Model#updateFilteredPersonList(PREDICATE_SHOW_ALL_PERSONS)` so that every restored contact is visible, even if a `find` filter was active, and returns a `CommandResult` with `UndoCommand.MESSAGE_SUCCESS`.
 1. `LogicManager` saves the restored contact data through `Storage#saveAddressBook`, as it does for every successful command.
+
+The sequence diagram below shows these steps for `execute("undo")`, including the failure path when there is nothing to undo:
+
+<puml src="diagrams/UndoSequenceDiagram-Logic.puml" alt="Interactions inside the Logic component for the `undo` command" />
+
+<box type="info" seamless>
+
+**Note:** The lifeline for `UndoCommand` should end at the destroy marker (X), but due to a limitation of PlantUML, the lifeline continues till the end of diagram.
+</box>
 
 `redo` follows the same flow using `RedoCommand`, `Model#canRedoAddressBook()` and `Model#redoAddressBook()`.
 
@@ -616,6 +832,27 @@ Undo and redo are tested at each layer:
 `UndoRedoIntegrationTest` starts each test from the typical contacts saved to a temporary data file. After every command, it checks the full contact list in the model, the contacts read back from the data file, and the feedback message. For failing commands, it also checks that `canUndoAddressBook()` and `canRedoAddressBook()` are unchanged. Its scenarios include chains of adds and edits, redo invalidation by a new change, failed commands between undo and redo, interaction with `list`, `find`, `tags` and `help`, and reopening the saved data with no history.
 
 --------------------------------------------------------------------------------------------------------------------
+
+### Command history navigation
+
+`CommandBox` owns a session-local `CommandHistory`. A `KEY_PRESSED` event filter on its text field
+consumes Up/Down events, recalls the corresponding text and moves the caret to its end.
+Recalling text clears the error style through the existing text listener and does not execute a command.
+
+`CommandHistory` stores submissions in order, including duplicates and failed commands. `CommandBox`
+records non-empty input before calling the executor, so parse and execution errors remain recallable.
+Each submission resets the navigation position to the end. On the first Up from the end, history saves
+the current draft; Down past the newest entry restores it. Navigation stops at the oldest entry, and
+Down at the draft position leaves input unchanged. Editing recalled input does not change stored entries.
+History is held in memory and is not written to contact data or preferences.
+
+Automated boundary, draft and submission checks are in `CommandHistoryTest`. For manual UI verification:
+
+1. Submit `list`, then an invalid command. Press Up twice and verify both can be recalled in reverse order.
+2. Press Up again at the oldest entry; verify it stays displayed. Press Down to return to the newest entry.
+3. Return to the draft position, type a partial command, then press Up and Down; verify the draft is restored.
+4. Edit a recalled command and submit it; verify the new submission is the newest entry.
+5. Restart UniMate and verify Up/Down leave the input unchanged until a command is submitted.
 
 ## **Coming soon**
 

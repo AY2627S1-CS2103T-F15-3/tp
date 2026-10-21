@@ -30,6 +30,13 @@ public class PersonListPanel extends UiPart<Region> {
     }
 
     /**
+     * Refreshes visible cards so date-based reminders are recalculated, even if the list is unchanged.
+     */
+    public void refresh() {
+        personListView.refresh();
+    }
+
+    /**
      * Custom {@code ListCell} that displays the graphics of a {@code Person} using a {@code PersonCard}.
      */
     class PersonListViewCell extends ListCell<Person> {
