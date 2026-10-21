@@ -8,7 +8,7 @@ plugins {
 
 application {
     mainClass = 'seedu.address.Main'
-    applicationDefaultJvmArgs = ['--enable-native-access=ALL-UNNAMED']
+    applicationDefaultJvmArgs = ['--enable-native-access=ALL-UNNAMED', '-ea']
 }
 
 java {
@@ -34,6 +34,7 @@ processResources {
 
 test {
     useJUnitPlatform()
+    enableAssertions = true
     jvmArgs '--enable-native-access=ALL-UNNAMED'
     finalizedBy jacocoTestReport
 }
