@@ -1,5 +1,7 @@
 package seedu.address.storage;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -34,34 +36,51 @@ class JsonAdaptedPerson {
     private final String major;
     private final String graduationYear;
     private final String notes;
+    private final String lastUpdated;
     private final boolean favourite;
     private final List<JsonAdaptedTag> tags = new ArrayList<>();
 
     /**
-     * Constructs a {@code JsonAdaptedPerson} with the given person details.
+     * Constructs an adapted contact without notes or favourite status.
      */
     public JsonAdaptedPerson(String name, String phone, String email, String address, String major,
             String graduationYear, List<JsonAdaptedTag> tags) {
-        this(name, phone, email, address, major, graduationYear, tags, null, false);
+        this(name, phone, email, address, major, graduationYear, tags, null, false, null);
     }
 
     /**
-     * Constructs an adapted person with notes and no favourite status.
+     * Constructs an adapted contact with notes.
      */
     public JsonAdaptedPerson(String name, String phone, String email, String address, String major,
             String graduationYear, List<JsonAdaptedTag> tags, String notes) {
-        this(name, phone, email, address, major, graduationYear, tags, notes, false);
+        this(name, phone, email, address, major, graduationYear, tags, notes, false, null);
     }
 
     /**
-     * Reads optional notes and favourite status, including legacy files missing either field.
+     * Constructs an adapted contact with favourite status and a legacy missing date.
+     */
+    public JsonAdaptedPerson(String name, String phone, String email, String address, String major,
+            String graduationYear, List<JsonAdaptedTag> tags, String notes, Boolean favourite) {
+        this(name, phone, email, address, major, graduationYear, tags, notes, favourite, null);
+    }
+
+    /**
+     * Constructs an adapted contact with an explicit date and no favourite status.
+     */
+    public JsonAdaptedPerson(String name, String phone, String email, String address, String major,
+            String graduationYear, List<JsonAdaptedTag> tags, String notes, String lastUpdated) {
+        this(name, phone, email, address, major, graduationYear, tags, notes, false, lastUpdated);
+    }
+
+    /**
+     * Reads optional notes, favourite status and the ISO profile modification date.
      */
     @JsonCreator
     public JsonAdaptedPerson(@JsonProperty("name") String name, @JsonProperty("phone") String phone,
             @JsonProperty("email") String email, @JsonProperty("address") String address,
             @JsonProperty("major") String major, @JsonProperty("graduationYear") String graduationYear,
             @JsonProperty("tags") List<JsonAdaptedTag> tags, @JsonProperty("notes") String notes,
-            @JsonProperty("favourite") Boolean favourite) {
+            @JsonProperty("favourite") Boolean favourite, @JsonProperty("lastUpdated") String lastUpdated) {
         this.name = name;
         this.phone = phone;
         this.email = email;
@@ -69,6 +88,7 @@ class JsonAdaptedPerson {
         this.major = major;
         this.graduationYear = graduationYear;
         this.notes = notes;
+        this.lastUpdated = lastUpdated;
         this.favourite = Boolean.TRUE.equals(favourite);
         if (tags != null) {
             this.tags.addAll(tags);
@@ -86,6 +106,7 @@ class JsonAdaptedPerson {
         major = source.getMajor().value;
         graduationYear = source.getGraduationYear().value;
         notes = source.getNotes().value;
+        lastUpdated = source.getLastUpdated().toString();
         favourite = source.isFavourite();
         tags.addAll(source.getTags().stream()
                 .map(JsonAdaptedTag::new)
@@ -111,21 +132,17 @@ class JsonAdaptedPerson {
         }
         final Name modelName = new Name(name);
 
-        if (phone == null) {
-            throw new IllegalValueException(String.format(MISSING_FIELD_MESSAGE_FORMAT, Phone.class.getSimpleName()));
-        }
-        if (!Phone.isValidPhone(phone)) {
+        String storedPhone = phone == null ? "" : phone;
+        if (!Phone.isValidPhone(storedPhone)) {
             throw new IllegalValueException(Phone.MESSAGE_CONSTRAINTS);
         }
-        final Phone modelPhone = new Phone(phone);
+        final Phone modelPhone = new Phone(storedPhone);
 
-        if (email == null) {
-            throw new IllegalValueException(String.format(MISSING_FIELD_MESSAGE_FORMAT, Email.class.getSimpleName()));
-        }
-        if (!Email.isValidEmail(email)) {
+        String storedEmail = email == null ? "" : email;
+        if (!Email.isValidEmail(storedEmail)) {
             throw new IllegalValueException(Email.MESSAGE_CONSTRAINTS);
         }
-        final Email modelEmail = new Email(email);
+        final Email modelEmail = new Email(storedEmail);
 
         if (address == null) {
             throw new IllegalValueException(String.format(MISSING_FIELD_MESSAGE_FORMAT, Address.class.getSimpleName()));
@@ -155,8 +172,15 @@ class JsonAdaptedPerson {
         final Notes modelNotes = new Notes(storedNotes);
 
         final Set<Tag> modelTags = new HashSet<>(personTags);
+        LocalDate modelLastUpdated;
+        try {
+            // A missing date is a migration baseline, not a claim about the historical edit date.
+            modelLastUpdated = lastUpdated == null ? LocalDate.now() : LocalDate.parse(lastUpdated);
+        } catch (DateTimeParseException e) {
+            throw new IllegalValueException("Last updated date must be a valid ISO date (YYYY-MM-DD).", e);
+        }
         return new Person(modelName, modelPhone, modelEmail, modelAddress,
-                modelMajor, modelGraduationYear, modelTags, modelNotes, favourite);
+                modelMajor, modelGraduationYear, modelTags, modelNotes, favourite, modelLastUpdated);
     }
 
 }
