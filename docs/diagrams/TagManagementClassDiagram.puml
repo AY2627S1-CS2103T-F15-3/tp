@@ -1,0 +1,83 @@
+@startuml
+!include style.puml
+show members
+skinparam classAttributeIconSize 0
+skinparam classAttributeFontColor #FFFFFF
+skinparam genericDisplay old
+skinparam arrowThickness 1.1
+skinparam arrowColor LOGIC_COLOR_T4
+skinparam classBackgroundColor LOGIC_COLOR
+top to bottom direction
+
+interface "Parser<T>" as Parser <<interface>> {
+  +parse(userInput: String): T
+}
+class TagCommandParser {
+  +parse(args: String): TagCommand
+}
+class UntagCommandParser {
+  +parse(args: String): UntagCommand
+}
+abstract class Command {
+  {abstract} +execute(model: Model): CommandResult
+}
+class TagCommand {
+  {static} +COMMAND_WORD: String = "tag"
+  -index: Index
+  -tags: Set<Tag>
+  +execute(model: Model): CommandResult
+}
+class UntagCommand {
+  {static} +COMMAND_WORD: String = "untag"
+  -index: Index
+  -tags: Set<Tag>
+  +execute(model: Model): CommandResult
+}
+class ParserUtil {
+  {static} +parseTags(tags: Collection<String>): Set<Tag>
+  {static} +parseDefaultTags(indices: Collection<String>): Set<Tag>
+}
+interface Model <<interface>> MODEL_COLOR {
+  +getFilteredPersonList(): ObservableList<Person>
+  +setPerson(target: Person, editedPerson: Person): void
+}
+class Person MODEL_COLOR {
+  -tags: Set<Tag>
+  +getTags(): Set<Tag>
+}
+class Tag MODEL_COLOR {
+  +tagName: String
+  {static} +isValidTagName(test: String): boolean
+}
+class DefaultTags MODEL_COLOR {
+  {static} +TAGS: List<Tag>
+}
+
+TagCommandParser .up.|> Parser : T = TagCommand
+UntagCommandParser .up.|> Parser : T = UntagCommand
+TagCommandParser ..> TagCommand : creates
+UntagCommandParser ..> UntagCommand : creates
+TagCommandParser ..> ParserUtil
+UntagCommandParser ..> ParserUtil
+TagCommand -up-|> Command
+UntagCommand -up-|> Command
+TagCommand ..> Model : reads / replaces person
+UntagCommand ..> Model : reads / replaces person
+TagCommand --> "0..*" Tag : tags
+UntagCommand --> "0..*" Tag : tags
+Model ..> Person
+Person --> "0..*" Tag : tags
+ParserUtil ..> DefaultTags : resolves d/index
+ParserUtil ..> Tag : validates / creates
+DefaultTags --> "5" Tag : TAGS {ordered}
+
+note bottom of Person
+  getTags() exposes an unmodifiable set.
+  Commands replace the person using a copied set:
+  tag adds; untag removes. Other fields are preserved.
+end note
+note bottom of DefaultTags
+  Default and custom inputs resolve to the same Tag type.
+  Dynamic SystemTag reminders are outside this collection.
+end note
+@enduml

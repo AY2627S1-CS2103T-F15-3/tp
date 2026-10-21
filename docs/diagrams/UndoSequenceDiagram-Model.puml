@@ -3,21 +3,46 @@
 skinparam ArrowFontStyle plain
 
 box Model MODEL_COLOR_T1
-participant ":Model" as Model MODEL_COLOR
-participant ":VersionedAddressBook" as VersionedAddressBook MODEL_COLOR
+participant ":ModelManager" as ModelManager MODEL_COLOR
+participant ":AddressBookHistory" as AddressBookHistory MODEL_COLOR
+participant ":AddressBook" as AddressBook MODEL_COLOR
 end box
 
-[-> Model : undoAddressBook()
-activate Model
+[-> ModelManager : undoAddressBook()
+activate ModelManager
 
-Model -> VersionedAddressBook : undo()
-activate VersionedAddressBook
+ModelManager -> AddressBookHistory : undo()
+activate AddressBookHistory
 
-VersionedAddressBook -> VersionedAddressBook :resetData(ReadOnlyAddressBook)
-VersionedAddressBook --> Model :
-deactivate VersionedAddressBook
+AddressBookHistory -> AddressBookHistory : discardIfStale()
+activate AddressBookHistory
+AddressBookHistory --> AddressBookHistory
+deactivate AddressBookHistory
 
-[<-- Model
-deactivate Model
+alt undoStates is empty
+    AddressBookHistory --> ModelManager : false
+else else
+    AddressBookHistory -> AddressBookHistory : push currentState\nonto redoStates
+    activate AddressBookHistory
+    AddressBookHistory --> AddressBookHistory
+    deactivate AddressBookHistory
+
+    AddressBookHistory -> AddressBookHistory : restore(undoStates.pop())
+    activate AddressBookHistory
+
+    AddressBookHistory -> AddressBook : resetData(state)
+    activate AddressBook
+    AddressBook --> AddressBookHistory
+    deactivate AddressBook
+
+    AddressBookHistory --> AddressBookHistory
+    deactivate AddressBookHistory
+
+    AddressBookHistory --> ModelManager : true
+end
+deactivate AddressBookHistory
+
+[<-- ModelManager
+deactivate ModelManager
 
 @enduml
