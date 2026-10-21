@@ -3,7 +3,9 @@ package seedu.address.logic.commands;
 import static java.util.Objects.requireNonNull;
 
 import java.util.Locale;
+import java.util.logging.Logger;
 
+import seedu.address.commons.core.LogsCenter;
 import seedu.address.commons.util.ToStringBuilder;
 import seedu.address.model.Model;
 import seedu.address.model.person.PersonSortComparator;
@@ -20,6 +22,8 @@ public class SortCommand extends Command {
             + "Unspecified academic values stay last. Example: " + COMMAND_WORD + " year desc";
     public static final String MESSAGE_SUCCESS = "Sorted contacts by %s (%s).";
 
+    private static final Logger logger = LogsCenter.getLogger(SortCommand.class);
+
     private final SortField field;
     private final SortDirection direction;
 
@@ -35,6 +39,8 @@ public class SortCommand extends Command {
     public CommandResult execute(Model model) {
         requireNonNull(model);
         model.updateSortedPersonList(new PersonSortComparator(field, direction));
+        logger.info("Sort applied: field=" + field + ", direction=" + direction
+                + ", displayed contacts=" + model.getFilteredPersonList().size() + ".");
         return new CommandResult(String.format(MESSAGE_SUCCESS, field.name().toLowerCase(Locale.ROOT),
                 direction.name().toLowerCase(Locale.ROOT)));
     }
