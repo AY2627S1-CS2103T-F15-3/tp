@@ -124,8 +124,19 @@ public class Person {
         return notes;
     }
 
+    /**
+     * Returns the date added or last actual change to the basic profile, excluding tags, notes and favourites.
+     */
     public LocalDate getLastUpdated() {
         return lastUpdated;
+    }
+
+    /**
+     * Returns a copy with the specified basic-profile date, preserving all other contact state.
+     */
+    public Person withLastUpdated(LocalDate updatedDate) {
+        return new Person(name, phone, email, address, major, graduationYear, tags, notes,
+                favourite, updatedDate);
     }
 
     /**

@@ -43,6 +43,7 @@
       <Label fx:id="email" styleClass="cell_small_label" text="\$email" />
       <Label fx:id="major" styleClass="cell_small_label" text="\$major" />
       <Label fx:id="graduationYear" styleClass="cell_small_label" text="\$graduationYear" />
+      <Label fx:id="lastUpdated" styleClass="cell_small_label" text="\$lastUpdated" wrapText="true" />
     </VBox>
   </GridPane>
   <Label fx:id="noteIcon" styleClass="note-icon" contentDisplay="GRAPHIC_ONLY"

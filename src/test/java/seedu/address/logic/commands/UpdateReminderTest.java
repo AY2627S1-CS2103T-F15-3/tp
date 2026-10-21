@@ -62,6 +62,48 @@ public class UpdateReminderTest {
     }
 
     @Test
+    public void execute_addPreparedOnEarlierDate_recordsExecutionDateAndRestoresItOnRedo() throws Exception {
+        Person prepared = new PersonBuilder().withLastUpdated(OLD_DATE).withFavourite(true)
+                .withNotes("Keep notes").withTags("Friend").withMajor("Computing")
+                .withGraduationYear("2028").build();
+        Model model = new ModelManager();
+
+        new AddCommand(prepared, CLOCK).execute(model);
+
+        Person added = new PersonBuilder(prepared).withLastUpdated(TODAY).build();
+        assertEquals(List.of(added), model.getAddressBook().getPersonList());
+        assertEquals(OLD_DATE, prepared.getLastUpdated());
+        assertTrue(model.undoAddressBook());
+        assertTrue(model.getAddressBook().getPersonList().isEmpty());
+        assertTrue(model.redoAddressBook());
+        assertEquals(List.of(added), model.getAddressBook().getPersonList());
+    }
+
+    @Test
+    public void execute_duplicateAdd_preservesOriginalDateAndHistory() throws Exception {
+        Person original = new PersonBuilder().withLastUpdated(OLD_DATE).build();
+        Model model = new ModelManager();
+        model.addPerson(original);
+
+        assertThrows(CommandException.class, () -> new AddCommand(original, CLOCK).execute(model));
+
+        assertEquals(List.of(original), model.getAddressBook().getPersonList());
+        assertFalse(model.canUndoAddressBook());
+        assertFalse(model.canRedoAddressBook());
+    }
+
+    @Test
+    public void execute_addUsesClockZoneForCalendarDate() throws Exception {
+        Clock singaporeClock = Clock.fixed(java.time.Instant.parse("2026-10-19T17:00:00Z"),
+                java.time.ZoneId.of("Asia/Singapore"));
+        Model model = new ModelManager();
+
+        new AddCommand(new PersonBuilder().withLastUpdated(OLD_DATE).build(), singaporeClock).execute(model);
+
+        assertEquals(LocalDate.of(2026, 10, 20), model.getAddressBook().getPersonList().get(0).getLastUpdated());
+    }
+
+    @Test
     public void constructors_preserveExplicitStateAndDefaultOnlyMissingDates() {
         Person base = new PersonBuilder().withNotes("Existing note").build();
         Person favourite = new Person(base.getName(), base.getPhone(), base.getEmail(), base.getAddress(),

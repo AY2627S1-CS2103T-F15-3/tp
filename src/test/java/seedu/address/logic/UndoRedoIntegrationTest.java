@@ -322,7 +322,8 @@ public class UndoRedoIntegrationTest {
         assertAddSuccess(ADD_ALEX, ALEX, typicalPersonsWith(ALEX));
 
         CommandResult listResult = logic.execute(ListCommand.COMMAND_WORD);
-        assertEquals(ListCommand.MESSAGE_SUCCESS, listResult.getFeedbackToUser());
+        assertEquals(ListCommand.MESSAGE_SUCCESS + "\n" + String.format(Messages.MESSAGE_PERSONS_LISTED_OVERVIEW,
+                typicalPersonsWith(ALEX).size()), listResult.getFeedbackToUser());
         logic.execute("tags");
         logic.execute("help");
         CommandResult findResult = logic.execute("find Meier");
