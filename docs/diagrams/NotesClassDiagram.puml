@@ -1,0 +1,77 @@
+@startuml
+!include style.puml
+show members
+skinparam classAttributeIconSize 0
+skinparam classAttributeFontColor #FFFFFF
+skinparam genericDisplay old
+skinparam arrowThickness 1.1
+skinparam arrowColor LOGIC_COLOR_T4
+skinparam classBackgroundColor LOGIC_COLOR
+top to bottom direction
+
+abstract class Command {
+  {abstract} +execute(model: Model): CommandResult
+}
+class NoteCommand {
+  -index: Index
+  -notes: Notes
+  +execute(model: Model): CommandResult
+}
+class ShowNoteCommand {
+  -index: Index
+  +execute(model: Model): CommandResult
+}
+class DeleteNoteCommand {
+  -index: Index
+  +execute(model: Model): CommandResult
+}
+interface Model <<interface>> MODEL_COLOR {
+  +getFilteredPersonList(): ObservableList<Person>
+  +setPerson(target: Person, editedPerson: Person): void
+  +commitAddressBook(previousState: ReadOnlyAddressBook): void
+}
+class Person MODEL_COLOR {
+  -notes: Notes
+  +getNotes(): Notes
+  +withNotes(updatedNotes: Notes): Person
+}
+class Notes MODEL_COLOR {
+  {static} +EMPTY: Notes
+  {static} +MAX_LENGTH: int = 500
+  +value: String
+  +isEmpty(): boolean
+  {static} +isValidNotes(test: String): boolean
+}
+class JsonAdaptedPerson STORAGE_COLOR {
+  -notes: String
+  +JsonAdaptedPerson(source: Person)
+  +toModelType(): Person
+}
+class PersonCard UI_COLOR {
+  +person: Person
+  -noteIcon: Label
+  +PersonCard(person: Person, displayedIndex: int)
+}
+
+NoteCommand -up-|> Command
+ShowNoteCommand -up-|> Command
+DeleteNoteCommand -up-|> Command
+NoteCommand -[hidden]right-> ShowNoteCommand
+ShowNoteCommand -[hidden]right-> DeleteNoteCommand
+ShowNoteCommand -[hidden]down-> Model
+Model -[hidden]down-> JsonAdaptedPerson
+JsonAdaptedPerson -[hidden]right-> PersonCard
+Command ..> Model : uses
+Model ..> Person : reads / replaces
+NoteCommand --> "1" Notes : notes
+Person --> "1" Notes : notes
+JsonAdaptedPerson ..> Person : converts
+JsonAdaptedPerson ..> Notes : validates / creates
+PersonCard --> "1" Person : person
+
+note bottom of Notes
+  Immutable and non-null; an empty value means no note.
+  Notes.EMPTY is shared, so associations do not imply
+  exclusive ownership of a Notes object.
+end note
+@enduml
