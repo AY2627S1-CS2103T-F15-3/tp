@@ -324,6 +324,12 @@ is rendered as `Not specified` instead of leaving an ambiguous blank line. This 
 
 ### Automatic incomplete reminders
 
+#### Class structure
+
+<puml src="diagrams/IncompleteReminderClassDiagram.puml" alt="Class structure of automatic incomplete reminders" />
+
+`Person` references one non-null `Phone` and one non-null `Email`; an empty value represents an unspecified contact method. The parsers implement the generic `Parser` interface and map omitted add fields or cleared edit fields to the corresponding `EMPTY` constants. `SystemTag` depends on `Person#isIncomplete`, while `PersonCard` uses the derived result for rendering. The JSON adapter reconstructs contact values rather than storing system reminders. The `Phone` and `Email` associations are not compositions because immutable values, including `EMPTY`, can be shared between contacts.
+
 #### Design overview and responsibilities
 
 Incomplete reminders reuse the dynamic system-tag pipeline without adding a stored tag or a command. `Person#isIncomplete` returns true only when both `getPhone().value` and `getEmail().value` are empty. Address, academic fields, user tags, notes and favourite status are irrelevant to this predicate.
@@ -361,6 +367,12 @@ The JSON shape is unchanged: phone and email remain strings and empty strings re
 Derived reminders require no migration flag or synchronization with a stored system-tag collection. Reusing the existing value objects avoids nullable fields throughout commands and UI. Keeping custom tags separate preserves user data and prevents `untag` from permanently disabling a reminder. Tests cover all four combinations, fill/clear transitions, failed input atomicity, legacy JSON, both reminders together and actual JavaFX command-box rendering. See [Automatic incomplete reminders](UserGuide.md#automatic-incomplete-reminders).
 
 ### Automatic update reminders
+
+#### Class structure
+
+<puml src="diagrams/UpdateReminderClassDiagram.puml" alt="Class structure of automatic update reminders" />
+
+`EditCommand` extends `Command`, holds a copied `EditPersonDescriptor` and a `Clock`, and replaces a person through the `Model` interface. The private `createEditedPerson` method determines whether a basic field actually changed. `Person` stores the date; `SystemTag` queries that date through `needsUpdate`; `PersonCard` renders the resulting label. `JsonAdaptedPerson` converts between the model date and its JSON string. The dashed dependencies on `SystemTag` do not imply a stored collection of reminders in `Person`.
 
 #### Design overview and relevant classes
 
@@ -405,6 +417,12 @@ Dynamic reminders avoid stale stored tags, prevent user tag removal from disabli
 Tests cover calendar boundaries, profile edits and no-op edits, JSON round trips and migration, note/tag/favourite interactions, undo/redo and actual command-box rendering. GUI tests run on the JavaFX application thread; the existing Linux CI virtual display ensures they execute when coverage is collected. See [Automatic update reminders](UserGuide.md#automatic-update-reminders) for user-facing behaviour.
 
 ### Favourite contacts
+
+#### Class structure
+
+<puml src="diagrams/FavouriteContactsClassDiagram.puml" alt="Class structure of favourite contacts and list filtering" />
+
+The four commands inherit from `Command` and use the `Model` interface. `FavCommand` and `UnfavCommand` replace immutable persons with a changed favourite flag; `ListFavCommand` and the existing `ListCommand` change only the view predicate. `ModelManager` implements `Model` and owns the filtered and sorted views: the sorted view uses the filtered view as its source, and displayed indices follow that final view. `JsonAdaptedPerson` converts the favourite flag, and each `PersonCard` references the person whose heart it displays. Unrelated person fields and model services are omitted from this feature view.
 
 #### Design overview and relevant classes
 
@@ -458,6 +476,12 @@ The existing `PersonListPanel` observes the filtered list and creates a new `Per
 For user-facing formats and list-switching examples, see [Marking a favourite contact](UserGuide.md#marking-a-favourite-contact-fav), [Removing favourite status](UserGuide.md#removing-favourite-status-unfav) and [Listing favourite contacts](UserGuide.md#listing-favourite-contacts-listfav).
 
 ### Tagging and untagging contacts
+
+#### Class structure
+
+<puml src="diagrams/TagManagementClassDiagram.puml" alt="Class structure of tag and untag commands" />
+
+The two parsers implement `Parser<T>` with different command types and create the corresponding `Command` subclasses. Both commands use `Model` to locate and replace the displayed person. Their requested tag sets, the person's stored tag set, and the five ordered default choices all reference the same ordinary `Tag` type. `ParserUtil` resolves default indices and validates custom names; dynamic `SystemTag` reminders are deliberately outside this structure. Navigable associations describe retained references, dashed arrows describe dependencies, and hollow triangles denote inheritance or interface realization. Static members are underlined; only feature-relevant members are shown in these four diagrams.
 
 #### Current implementation
 
@@ -556,6 +580,12 @@ Given below is the flow for a successful `add n/Alex Tan …​`:
    1. pushes a copy of `previousState` onto `undoStates`, clears `redoStates`, and sets `currentState` to a copy of the current data.
 1. `LogicManager` saves the contact data to storage as before. The history itself is not saved.
 
+The activity diagram below summarises what happens when a command commits:
+
+<puml src="diagrams/CommitActivityDiagram.puml" width="300" alt="CommitActivityDiagram" />
+
+A command that fails validation, such as a duplicate `add`, throws before copying the data and never reaches this flow.
+
 `EditCommand#execute` follows the same pattern. It checks the displayed index and duplicate persons first, copies the data, calls `Model#setPerson`, and then commits. An edit that supplies the person's current values still returns the usual success message. Its commit is ignored because the data did not change, preserving both history stacks. The bare command `edit 1` is invalid because at least one field is required.
 
 `NoteCommand` and `DeleteNoteCommand` use the same snapshot-and-commit flow for actual note changes. An unchanged note produces equal before/after data, so the commit is ignored and redo remains available. `DeleteNoteCommand` returns immediately for an empty note. A new data-changing commit clears redo states; merely viewing a note does not.
@@ -567,6 +597,42 @@ Given below is the flow for a successful `add n/Alex Tan …​`:
 
 Both methods return `true` if a state was restored. They return `false` and leave the data unchanged if there is nothing to restore.
 
+The sequence diagram below shows how `Model#undoAddressBook()` works within the `Model` component:
+
+<puml src="diagrams/UndoSequenceDiagram-Model.puml" alt="UndoSequenceDiagram-Model" />
+
+`Model#redoAddressBook()` follows the same sequence through `AddressBookHistory#redo()`, with the two stacks swapped: `currentState` is pushed onto `undoStates`, and the top of `redoStates` is popped and restored.
+
+#### Example usage scenario
+
+The diagrams below show how the history changes as a user enters a sequence of commands. Each `abN` is an `AddressBook` snapshot, and each stack is drawn with its top entry first.
+
+Step 1. The user launches UniMate. `currentState` is a copy of the loaded contacts, `ab0`, and both stacks are empty.
+
+<puml src="diagrams/UndoRedoState0.puml" alt="UndoRedoState0" />
+
+Step 2. The user runs `add n/Alex Tan …​`. `AddCommand` commits `ab0`, the state before the add, so `ab0` is pushed onto `undoStates` and `currentState` becomes the new data, `ab1`.
+
+<puml src="diagrams/UndoRedoState1.puml" alt="UndoRedoState1" />
+
+Step 3. The user runs `edit 1 p/91234567`. `EditCommand` commits in the same way, pushing `ab1` onto `undoStates`. `currentState` becomes `ab2`.
+
+<puml src="diagrams/UndoRedoState2.puml" alt="UndoRedoState2" />
+
+Step 4. The user runs `undo`. `currentState`, `ab2`, is pushed onto `redoStates`, and `ab1` is popped from `undoStates` and restored.
+
+<puml src="diagrams/UndoRedoState3.puml" alt="UndoRedoState3" />
+
+Step 5. The user runs `redo`. This reverses the previous step: `ab1` is pushed back onto `undoStates`, and `ab2` is popped from `redoStates` and restored.
+
+<puml src="diagrams/UndoRedoState4.puml" alt="UndoRedoState4" />
+
+Step 6. The user runs `undo` again, returning to the state in Step 4, and then runs `add n/Beth Lim …​`. The new commit pushes `ab1` and clears `redoStates`, so the undone edit, `ab2`, can no longer be redone. `currentState` becomes `ab3`.
+
+<puml src="diagrams/UndoRedoState5.puml" alt="UndoRedoState5" />
+
+Commands that do not change contact data, such as `list` and `find`, and commands that fail before changing anything, record nothing and leave all three parts of the history unchanged.
+
 #### Commands that are not undoable
 
 `delete`, `tag`, `untag` and `clear` change contact data but do not call `Model#commitAddressBook`. If an old snapshot were restored after one of them, it would silently reverse that change as well. For example, after `add` and then `delete 1`, undoing the add would also bring back the deleted contact.
@@ -576,6 +642,10 @@ To prevent this, `AddressBookHistory` compares `currentState` with the live cont
 * `canUndoAddressBook()` and `canRedoAddressBook()` return `false`.
 * `undoAddressBook()` and `redoAddressBook()` discard both stacks and return `false`, leaving the data unchanged.
 * The next data-changing commit discards the stale undo states before recording the new one.
+
+Continuing the example above, suppose the user now runs `delete 1`. `DeleteCommand` changes the contacts in the model to `ab4` without committing, so they no longer match `currentState`, `ab3`. The history is now stale: a following `undo` would discard both stacks and report that there is no change to undo, rather than restoring `ab1` and bringing the deleted contact back.
+
+<puml src="diagrams/UndoRedoState6.puml" alt="UndoRedoState6" />
 
 To the user, this means that after a `delete`, `tag`, `untag` or `clear` that changes contact data, `undo` reports that there is nothing to undo until another `add` or `edit` succeeds, and `redo` reports that there is nothing to redo until a later change is undone. A command that fails, or that leaves the data unchanged (such as `tag` with a tag the person already has), does not make the history stale.
 
@@ -635,6 +705,15 @@ Given below is the flow for `undo`:
 1. The command checks `Model#canUndoAddressBook()`. If it returns `false`, the command throws a `CommandException` with `UndoCommand.MESSAGE_FAILURE`. The exception propagates out of `LogicManager#execute` before the save step, so neither the data nor the data file changes.
 1. Otherwise, the command calls `Model#undoAddressBook()`, which restores the previous state in place. It then calls `Model#updateFilteredPersonList(PREDICATE_SHOW_ALL_PERSONS)` so that every restored contact is visible, even if a `find` filter was active, and returns a `CommandResult` with `UndoCommand.MESSAGE_SUCCESS`.
 1. `LogicManager` saves the restored contact data through `Storage#saveAddressBook`, as it does for every successful command.
+
+The sequence diagram below shows these steps for `execute("undo")`, including the failure path when there is nothing to undo:
+
+<puml src="diagrams/UndoSequenceDiagram-Logic.puml" alt="Interactions inside the Logic component for the `undo` command" />
+
+<box type="info" seamless>
+
+**Note:** The lifeline for `UndoCommand` should end at the destroy marker (X), but due to a limitation of PlantUML, the lifeline continues till the end of diagram.
+</box>
 
 `redo` follows the same flow using `RedoCommand`, `Model#canRedoAddressBook()` and `Model#redoAddressBook()`.
 
