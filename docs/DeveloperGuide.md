@@ -95,7 +95,9 @@ Here's a (partial) class diagram of the `Logic` component:
 
 <puml src="diagrams/LogicClassDiagram.puml" width="550"/>
 
-The sequence diagram below illustrates the interactions within the `Logic` component, taking `execute("delete 1")` API call as an example.
+The sequence diagram below illustrates a successful `execute("delete 1")` call within the `Logic`
+component, including displayed-index resolution and feedback formatting. Detailed validation and
+storage interactions are omitted.
 
 <puml src="diagrams/DeleteSequenceDiagram.puml" alt="Interactions Inside the Logic Component for the `delete 1` Command" />
 
@@ -109,9 +111,13 @@ How the `Logic` component works:
 
 1. When `Logic` is called upon to execute a command, the command is passed to an `AddressBookParser` object, which in turn creates a parser that matches the command (e.g., `DeleteCommandParser`) and uses it to parse the command.
 1. This results in a `Command` object (more precisely, an object of one of its subclasses e.g., `DeleteCommand`) which is executed by the `LogicManager`.
-1. The command can communicate with the `Model` when it is executed (e.g. to delete a person).<br>
-   Note that although this is shown as a single step in the diagram above for simplicity, the code can require several interactions between the command object and the `Model` to complete the operation.
-1. The result of the command execution is encapsulated as a `CommandResult` object which is returned from `Logic`.
+1. The command can communicate with the `Model` when it is executed. For deletion, it obtains the
+   filtered and sorted displayed list, checks the index, and passes the selected `Person` to
+   `Model#deletePerson`, not the index itself.
+1. `Messages#format` formats the deleted contact's details, including major and class year only when
+   specified. The command adds the `Deleted person: ` prefix and returns a `CommandResult`.
+   `LogicManager` saves the updated address book through `Storage` before returning that result to
+   its caller; the storage interactions are not shown in this diagram.
 
 Here are the other classes in `Logic` (omitted from the class diagram above) that are used for parsing a user command:
 
@@ -175,15 +181,64 @@ This section describes some noteworthy details on how certain features are imple
 
 ### Contact notes
 
+#### Structure and responsibilities
+
+The following class diagram shows the notes-related members and dependencies. Unrelated contact
+fields, parser classes and history internals are omitted to keep the feature view focused.
+
+<puml src="diagrams/NotesClassDiagram.puml" alt="Classes supporting contact notes, persistence and the note indicator" />
+
 `Person` stores an immutable `Notes` value. `Notes.EMPTY` represents an absent note, and existing constructors default to it. Supplied notes contain non-whitespace text on a single line, with no control characters and at most 500 Unicode code points. `Person#withNotes` returns a new contact while preserving all other fields. Notes participate in full equality and hashing, but not in contact identity. Existing `edit`, `tag` and `untag` replacement paths preserve them.
+
+The `Person` to `Notes` association has multiplicity `1`: even a contact without note text has a
+non-null value object. It is an association rather than composition because immutable notes can be
+shared between contacts and history snapshots. `NoteCommand` also holds the validated `Notes` value
+that it will apply; all three note commands override `Command#execute(Model)` and use the model.
 
 `JsonAdaptedPerson` saves the text under `notes`. Missing or null values in older files become empty notes. Invalid stored note text produces the usual data-loading failure. The UI's presence indicator derives from `Person#getNotes().isEmpty()` and updates when the observable contact list replaces a person; note text is displayed through ordinary command feedback.
 
+`PersonCard` holds the displayed contact and its `noteIcon` label. The label is an indicator, not a
+control that opens or expands the note. Its tooltip uses the card's current displayed index to suggest
+the corresponding `shownote` command.
+
+#### Adding or replacing a note
+
 `AddressBookParser` routes `note`, `shownote` and `delnote` to their respective parsers. `NoteCommandParser` splits the first index from the remaining text and validates that text without interpreting field prefixes. `ShowNoteCommandParser` and `DeleteNoteCommandParser` accept only an index. Each command resolves the index against `Model#getFilteredPersonList()` and preserves the current filter.
+
+The sequence below traces `note 1 Met during CS2103T` when at least one contact is displayed and
+saving succeeds. The same flow creates a first note or replaces an existing note. `m:Model` is the
+interface implemented by `ModelManager`; its displayed list includes both filtering and sorting.
+The diagram omits validation internals, the snapshot and result constructors, and JavaFX list-change
+notifications. Notes on the diagram identify the snapshot copy and the displayed contact selection.
+
+<puml src="diagrams/NoteSequenceDiagram.puml" alt="Successful note command from parsing through contact replacement, history commit and saving" />
+
+1. `LogicManager` asks `AddressBookParser` to parse the command. `NoteCommandParser` validates the
+   index and text, creates a `Notes` value, and returns a `NoteCommand`.
+1. The command checks the index against the displayed list and obtains that contact. It copies the
+   current address book before making any change.
+1. `Person#withNotes` creates a replacement contact while retaining all other fields, including
+   favourite status and `lastUpdated`. `Model#setPerson` installs the replacement without resetting
+   the filter or sort order.
+1. `Model#commitAddressBook` delegates to the existing history mechanism. The command then returns
+   feedback; it does not save the data or call the UI directly.
+1. `LogicManager` saves the resulting address book through `Storage` before returning the feedback
+   to its caller. The observable list supplies the updated contact to the UI's card rendering.
+
+Malformed input fails during parsing; an index beyond the displayed list fails before the snapshot
+or replacement. Neither case changes contact data or history. If saving fails after execution,
+`LogicManager` reports a command error; it does not roll back the in-memory contact or history change.
+
+#### Viewing, deleting and history behaviour
 
 `NoteCommand` overwrites the contact's note. `DeleteNoteCommand` replaces it with `Notes.EMPTY`; deleting an already empty note reports an informational message. Both record actual data changes through the existing model history. `ShowNoteCommand` returns the note, or an empty-note message, in a standard `CommandResult`; it does not mutate contact data or history. `LogicManager` retains its normal save-after-success behaviour for all commands.
 
 Note creation, replacement and deletion are supported by the implemented [`undo` and `redo` commands](#undo-and-redo-commands). Saving identical note text is a no-op for history: `AddressBookHistory#commit` compares the previous and resulting data and returns without adding an undo state or clearing redo states. Deleting an already empty note returns before changing the model or committing. Saving unchanged note text, deleting an already empty note, and viewing a note with `shownote` preserve any available redo history.
+
+`delnote` follows the same snapshot, replacement and commit sequence when a note exists, using
+`Notes.EMPTY` instead of supplied text. `shownote` only reads the displayed contact and builds its
+feedback, so these variations are described here rather than repeated in separate sequence diagrams.
+The history checks themselves are described under [Recording contact data history](#recording-contact-data-history).
 
 ### Adding academic fields
 
