@@ -24,6 +24,7 @@ import seedu.address.model.tag.SystemTag;
 public class PersonCard extends UiPart<Region> {
 
     private static final String FXML = "PersonListCard.fxml";
+    private static final int MAX_DISPLAYED_TAG_CHARACTERS = 20;
 
     /**
      * Note: Certain keywords such as "location" and "resources" are reserved keywords in JavaFX.
@@ -105,7 +106,8 @@ public class PersonCard extends UiPart<Region> {
                 .sorted(Comparator.comparing(tag -> tag.tagName))
                 .forEach(tag -> {
                     boolean conflictsWithReminder = SystemTag.isSystemLabel(tag.tagName);
-                    Label label = new Label(conflictsWithReminder ? tag.tagName + " (custom)" : tag.tagName);
+                    String displayedName = formatTagName(tag.tagName);
+                    Label label = new Label(conflictsWithReminder ? displayedName + " (custom)" : displayedName);
                     label.setMinWidth(0);
                     label.setTextOverrun(OverrunStyle.ELLIPSIS);
                     label.setEllipsisString("...");
@@ -114,13 +116,11 @@ public class PersonCard extends UiPart<Region> {
                                     - tags.getInsets().getRight()),
                             tags.widthProperty(), tags.insetsProperty()));
                     Tooltip tooltip = new Tooltip(tag.tagName);
-                    tooltip.setWrapText(true);
-                    tooltip.setMaxWidth(400);
-                    label.setTooltip(tooltip);
                     if (conflictsWithReminder) {
-                        label.setTooltip(new Tooltip("Custom tag: " + tag.tagName + ". Use t/" + tag.tagName
-                                + " to manage this tag."));
+                        tooltip.setText("Custom tag: " + tag.tagName + ". Use t/" + tag.tagName
+                                + " to manage this tag.");
                     }
+                    installTagTooltip(label, tooltip);
                     tags.getChildren().add(label);
                 });
         for (SystemTag reminder : SystemTag.forPerson(person, LocalDate.now(clock))) {
@@ -131,6 +131,30 @@ public class PersonCard extends UiPart<Region> {
                     : "Basic profile last updated: " + person.getLastUpdated()));
             tags.getChildren().add(label);
         }
+    }
+
+    /**
+     * Abbreviates only the displayed tag name; the model and tooltip retain the original value.
+     */
+    private static String formatTagName(String name) {
+        return name.length() > MAX_DISPLAYED_TAG_CHARACTERS
+                ? name.substring(0, MAX_DISPLAYED_TAG_CHARACTERS) + "..." : name;
+    }
+
+    /**
+     * Shows the complete tag immediately on hover and hides it when the pointer leaves.
+     */
+    private static void installTagTooltip(Label label, Tooltip tooltip) {
+        tooltip.setWrapText(true);
+        tooltip.setMaxWidth(400);
+        label.setMouseTransparent(false);
+        label.setPickOnBounds(true);
+        label.setTooltip(tooltip);
+        // Keep the accessible tooltip property, but replace its delayed mouse behaviour.
+        Tooltip.uninstall(label, tooltip);
+        label.setOnMouseEntered(event -> tooltip.show(label, event.getScreenX() + 10, event.getScreenY() + 10));
+        label.setOnMouseExited(event -> tooltip.hide());
+        label.setOnMousePressed(event -> tooltip.hide());
     }
 
     static void setAcademicFieldTexts(Person person, Consumer<String> majorTextSetter,
