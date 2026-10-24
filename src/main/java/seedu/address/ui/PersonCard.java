@@ -5,8 +5,10 @@ import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.function.Consumer;
 
+import javafx.beans.binding.Bindings;
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
+import javafx.scene.control.OverrunStyle;
 import javafx.scene.control.Tooltip;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
@@ -90,6 +92,7 @@ public class PersonCard extends UiPart<Region> {
         noteIcon.setVisible(hasNotes);
         noteIcon.setManaged(hasNotes);
         noteIcon.setTooltip(new Tooltip("Use shownote " + displayedIndex + " to view this note."));
+        tags.setMinWidth(0);
         refreshTags();
     }
 
@@ -103,6 +106,17 @@ public class PersonCard extends UiPart<Region> {
                 .forEach(tag -> {
                     boolean conflictsWithReminder = SystemTag.isSystemLabel(tag.tagName);
                     Label label = new Label(conflictsWithReminder ? tag.tagName + " (custom)" : tag.tagName);
+                    label.setMinWidth(0);
+                    label.setTextOverrun(OverrunStyle.ELLIPSIS);
+                    label.setEllipsisString("...");
+                    label.maxWidthProperty().bind(Bindings.createDoubleBinding(() ->
+                            Math.max(0, tags.getWidth() - tags.getInsets().getLeft()
+                                    - tags.getInsets().getRight()),
+                            tags.widthProperty(), tags.insetsProperty()));
+                    Tooltip tooltip = new Tooltip(tag.tagName);
+                    tooltip.setWrapText(true);
+                    tooltip.setMaxWidth(400);
+                    label.setTooltip(tooltip);
                     if (conflictsWithReminder) {
                         label.setTooltip(new Tooltip("Custom tag: " + tag.tagName + ". Use t/" + tag.tagName
                                 + " to manage this tag."));
