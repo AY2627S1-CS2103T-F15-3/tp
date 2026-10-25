@@ -1,5 +1,6 @@
 package seedu.address.commons.util;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static seedu.address.testutil.Assert.assertThrows;
@@ -121,6 +122,35 @@ public class StringUtilTest {
 
         // Matches multiple words in sentence
         assertTrue(StringUtil.containsWordIgnoreCase("AAA bBb ccc  bbb", "bbB"));
+
+        // Unicode spaces separate words
+        assertTrue(StringUtil.containsWordIgnoreCase("Computer Science", "Science"));
+        assertTrue(StringUtil.containsWordIgnoreCase("Computer Science", "computer"));
+        assertTrue(StringUtil.containsWordIgnoreCase("aaa bbb", "　bbb "));
+    }
+
+    @Test
+    public void containsWordIgnoreCase_unicodeSpaceInWord_throwsIllegalArgumentException() {
+        assertThrows(IllegalArgumentException.class, "Word parameter should be a single word", ()
+            -> StringUtil.containsWordIgnoreCase("typical sentence", "aaa BBB"));
+    }
+
+    //---------------- Tests for normalizeWhitespace / stripWhitespace ------------------------
+
+    @Test
+    public void normalizeWhitespace_unicodeSpaces_replacedWithAsciiSpaces() {
+        assertEquals("", StringUtil.normalizeWhitespace(""));
+        assertEquals("a b", StringUtil.normalizeWhitespace("a b"));
+        assertEquals("a b  c d", StringUtil.normalizeWhitespace("a b 　c\td"));
+        assertEquals(" a ", StringUtil.normalizeWhitespace(" a "));
+        assertThrows(NullPointerException.class, () -> StringUtil.normalizeWhitespace(null));
+    }
+
+    @Test
+    public void stripWhitespace_unicodeSpaces_strippedFromEndsOnly() {
+        assertEquals("", StringUtil.stripWhitespace("   "));
+        assertEquals("a b", StringUtil.stripWhitespace("　 a b \t"));
+        assertThrows(NullPointerException.class, () -> StringUtil.stripWhitespace(null));
     }
 
     //---------------- Tests for getDetails --------------------------------------
