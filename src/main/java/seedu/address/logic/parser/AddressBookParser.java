@@ -43,6 +43,12 @@ public class AddressBookParser {
      */
     private static final Pattern BASIC_COMMAND_FORMAT = Pattern.compile(
             "(?<commandWord>(?:(?!" + StringUtil.WHITESPACE_REGEX + ").)+)(?<arguments>.*)", Pattern.DOTALL);
+
+    /**
+     * Characters stripped from both ends of the input: Unicode whitespace, plus the ASCII control
+     * characters that {@link String#trim()} removes.
+     */
+    private static final String TRIMMABLE_REGEX = "[\\x00-\\x20\\p{javaWhitespace}\\p{Z}]";
     private static final Logger logger = LogsCenter.getLogger(AddressBookParser.class);
 
     /**
@@ -53,7 +59,8 @@ public class AddressBookParser {
      * @throws ParseException if the user input does not conform to the expected format
      */
     public Command parseCommand(String userInput) throws ParseException {
-        final Matcher matcher = BASIC_COMMAND_FORMAT.matcher(StringUtil.stripWhitespace(userInput));
+        final String trimmedInput = userInput.replaceAll("^" + TRIMMABLE_REGEX + "+|" + TRIMMABLE_REGEX + "+$", "");
+        final Matcher matcher = BASIC_COMMAND_FORMAT.matcher(trimmedInput);
         if (!matcher.matches()) {
             throw new ParseException(String.format(MESSAGE_INVALID_COMMAND_FORMAT, HelpCommand.MESSAGE_USAGE));
         }
