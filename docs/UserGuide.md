@@ -53,6 +53,10 @@ This guide describes the features available in v1.4.
 
 **Notes about the command format:**<br>
 
+* Command words are case-insensitive: `tag`, `TAG` and `Tag` select the same command. This applies to all commands.<br>
+  Parameter prefixes remain case-sensitive: use `t/`, not `T/`. Command arguments retain their original capitalization;
+  Fixed sorting keywords also ignore case: `SORT Name ASC` works like `sort name asc`.
+
 * Words in `UPPER_CASE` are the parameters to be supplied by the user.<br>
   For example, in `add n/NAME`, replace `NAME` with a value such as `John Doe`.
 
@@ -98,7 +102,8 @@ Major and class year are optional and can be supplied independently.
 * Omit `m/` or `c/` if the value is unknown or does not apply; an empty supplied value is rejected.
 * Each of these prefixes may appear only once. Leading and trailing spaces around their values are ignored.
 * The fields are saved with the contact, can be edited using `edit`, are shown in the displayed contact list and appear in command messages when specified.
-* A contact with exactly the same name as an existing contact is rejected as a duplicate, even if their major, class year or other details differ. Name comparison is case-sensitive.
+* A contact with the same name as an existing contact, ignoring case, is rejected as a duplicate, even if their major, class year or other details differ. For example, `John Doe` and `john doe` identify the same contact. Names retain their original capitalization for display and storage. Editing a contact's own name capitalization is allowed.
+* Before opening an older data file, back it up and give any contacts whose names differ only in case distinct names. Such files fail duplicate validation; contacts are not automatically merged, renamed or deleted. The existing startup error handling opens an empty list after a loading error. Close the app without making changes and fix a copy of the backed-up file before retrying, as subsequent successful data-changing commands could overwrite the data file.
 * A successful `add` can be reverted with [`undo`](#undoing-a-change-undo).
 * Phone and email are independently optional. Omit `p/` or `e/` when unknown; do not supply an empty prefix in `add`. Non-empty values must satisfy the existing phone and email format rules. A contact without either receives the [automatic incomplete reminder](#automatic-incomplete-reminders).
 
@@ -218,7 +223,7 @@ Examples (assuming at least one person is displayed):
 * The selected person's tags are updated; their other details and the current list filter are preserved.
 * The result message starts with `Tagged person: `, followed by the person's name, phone, email, address, any specified major and class year, and updated tags. Tag display order is not guaranteed.
 * Repeated tags and tags already attached to the person are stored only once. Adding an existing tag still returns the success message.
-* Names are case-sensitive: `NOC` and `noc` are different tags. Default tags are stored by name in the same collection as custom tags: `d/1` and `t/Friend` select the same tag, whereas `t/friend` is different.
+* Tag names retain their original capitalization and are case-sensitive: `NOC` and `noc` are different tags, even though command words are case-insensitive. This preserves existing user-defined categories without merging or changing stored tags. Default tags are stored by name in the same collection as custom tags: `d/1` and `t/Friend` select the same tag, whereas `t/friend` is different.
 * Custom tags still use `t/` in `add` and `edit`. Unlike `tag`, `edit INDEX t/TAG` replaces the entire tag set.
 
 **Error handling:**
@@ -497,7 +502,7 @@ Orders the displayed contacts while keeping the current search or filter.
 
 Format: `sort FIELD DIRECTION`
 
-* Both arguments are required and must appear in this order, in lowercase.
+* Both arguments are required and must appear in this order. Field and direction keywords are case-insensitive; for example, `sort Name ASC` is accepted.
   Extra surrounding spaces and spaces between arguments are allowed.
 
   | Argument | Accepted values | Meaning |
@@ -515,7 +520,7 @@ Format: `sort FIELD DIRECTION`
   Changing a sorted field can move a contact to a new position.
 * Numbered commands use the **currently displayed order**. Check the latest card numbers before
   using `edit`, `delete`, `tag` or `untag`; sorting and contact changes can renumber the list.
-* Missing arguments, unsupported fields or directions, uppercase arguments and extra arguments produce
+* Missing arguments, unsupported fields or directions and extra arguments produce
   a usage error without changing the current results or saved data.
 * Sorting is temporary. It does not reorder saved contacts, create an undoable change or clear redo history.
   Restarting restores the saved contact order and shows all contacts.
