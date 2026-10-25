@@ -352,6 +352,26 @@ Format: `listfav`
 * For example, run `list`, then `fav 1`, then `listfav`. Run `unfav 1` to remove the first person shown in the favourite list, then `list` to see all contacts again.
 * The existing `add` and `edit` commands restore the full list after success. Run `listfav` again to return to favourites. Tag and untag operations preserve the current filter and favourite status.
 
+### Listing contacts with automatic reminders: `listreminders`
+
+Shows contacts whose basic information needs checking or whose phone and email are both missing.
+
+Format: `listreminders [update|incomplete]`
+
+* `listreminders` shows contacts with either automatic reminder. A contact with both reminders appears only once.
+* `listreminders update` shows contacts with the yellow date-based `update` reminder: their basic information was last changed more than one calendar year ago.
+* `listreminders incomplete` shows contacts with the yellow `incomplete` reminder: both phone and email are unspecified.
+* The optional keyword is case-insensitive, so `listreminders UPDATE` also works. Supply at most one keyword; unknown or extra arguments, such as `listreminders update incomplete`, are rejected without changing the current view.
+* Only automatic reminders are matched. A blue custom tag named `update` or `incomplete` does not make a contact match by itself. Custom tags and automatic reminders remain separate.
+* This replaces the previous `find`, `filter` or `listfav` view, preserves the current sort order, and numbers the displayed contacts from `1`. Subsequent indexed commands use these displayed indices. Run `list` to show all contacts again.
+* The result is `Listed N contact(s) with matching automatic reminders.`, or `No contacts with matching automatic reminders found.` when the list is empty.
+* Contact details, favourites, tags, saved dates and undo/redo history are unchanged. Reminders are evaluated using your computer's local date when the command runs; run it again to refresh the date used by the filter after midnight. Successful `add` and `edit` commands restore the full list, as they do for other filtered views.
+
+Examples:
+
+* Run `listreminders incomplete` to find contacts without a recorded way to reach them, then `edit 1 p/91234567` to add a phone number to the first displayed contact. Run `listreminders incomplete` again to see those still missing contact details.
+* Run `listreminders update` to find profiles that need checking, or `listreminders` to see all contacts with either reminder.
+
 ### Adding or replacing a contact's note: `note`
 
 Saves a short note for an existing contact. Each contact has one note; saving another replaces the previous text.
@@ -685,6 +705,7 @@ Action     | Format, Examples
 **Favourite** | `fav INDEX`<br> e.g., `fav 1`
 **Unfavourite** | `unfav INDEX`<br> e.g., `unfav 1`
 **List favourites** | `listfav`
+**List automatic reminders** | `listreminders [update\|incomplete]`<br> e.g., `listreminders incomplete`
 **Help**   | `help`
 **Tags**   | `tags`
 **Tag**    | `tag INDEX [d/DEFAULT_INDEX]... [t/TAG]...` (at least one tag)<br> e.g., `tag 1 d/2 t/NOC`

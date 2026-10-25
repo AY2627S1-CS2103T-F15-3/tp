@@ -23,6 +23,7 @@ import seedu.address.logic.commands.FindCommand;
 import seedu.address.logic.commands.HelpCommand;
 import seedu.address.logic.commands.ListCommand;
 import seedu.address.logic.commands.ListFavCommand;
+import seedu.address.logic.commands.ListRemindersCommand;
 import seedu.address.logic.commands.NoteCommand;
 import seedu.address.logic.commands.RedoCommand;
 import seedu.address.logic.commands.ShowNoteCommand;
@@ -114,6 +115,7 @@ public class AddressBookParser {
                 }
                 yield new ListFavCommand();
             }
+            case ListRemindersCommand.COMMAND_WORD -> new ListRemindersCommandParser().parse(arguments);
             case UndoCommand.COMMAND_WORD -> {
                 if (!arguments.isBlank()) {
                     throw new ParseException(String.format(MESSAGE_INVALID_COMMAND_FORMAT, UndoCommand.MESSAGE_USAGE));
