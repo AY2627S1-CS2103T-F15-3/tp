@@ -48,7 +48,7 @@ import seedu.address.storage.StorageManager;
 import seedu.address.testutil.PersonBuilder;
 
 /**
- * Checks that {@code add}, {@code edit}, {@code undo} and {@code redo} work together through command parsing,
+ * Checks that data-changing commands, {@code undo} and {@code redo} work together through command parsing,
  * the model's history and persistence.
  */
 public class UndoRedoIntegrationTest {
@@ -347,6 +347,56 @@ public class UndoRedoIntegrationTest {
         assertEditSuccess("edit 2 p/81112222", editedDaniel, replace(getTypicalPersons(), DANIEL, editedDaniel));
         assertUndoSuccess(getTypicalPersons());
         assertRedoSuccess(replace(getTypicalPersons(), DANIEL, editedDaniel));
+    }
+
+    @Test
+    public void editThenFav_undoRevertsFavThenEdit() throws Exception {
+        // Steps from issue #134: undo after fav used to fail.
+        logic.execute("clear");
+        logic.execute("add n/Alice a/NUS p/91234567");
+        List<Person> afterAdd = currentContacts();
+        logic.execute("edit 1 p/92345678");
+        List<Person> afterEdit = currentContacts();
+        logic.execute("fav 1");
+        List<Person> afterFav = currentContacts();
+
+        assertUndoSuccess(afterEdit);
+        assertFalse(model.getFilteredPersonList().get(0).isFavourite());
+        assertEquals("92345678", model.getFilteredPersonList().get(0).getPhone().value);
+
+        assertUndoSuccess(afterAdd);
+        assertEquals("91234567", model.getFilteredPersonList().get(0).getPhone().value);
+
+        assertRedoSuccess(afterEdit);
+        assertRedoSuccess(afterFav);
+        assertTrue(model.getFilteredPersonList().get(0).isFavourite());
+    }
+
+    @Test
+    public void tagThenUntagAfterUndo_redoStaysUnavailable() throws Exception {
+        // Steps from issue #135: reversing the tag change used to make the discarded redo available again.
+        logic.execute("clear");
+        logic.execute("add n/Alice a/NUS p/91234567");
+        logic.execute("edit 1 p/92345678");
+        logic.execute("undo");
+        List<Person> afterUndo = currentContacts();
+
+        logic.execute("tag 1 t/Project");
+        List<Person> afterTag = currentContacts();
+        assertCommandFailure(RedoCommand.COMMAND_WORD, CommandException.class, RedoCommand.MESSAGE_FAILURE);
+
+        logic.execute("untag 1 t/Project");
+        assertEquals(afterUndo, currentContacts());
+        assertCommandFailure(RedoCommand.COMMAND_WORD, CommandException.class, RedoCommand.MESSAGE_FAILURE);
+        assertEquals("91234567", model.getFilteredPersonList().get(0).getPhone().value);
+
+        // The tag and untag are recorded in the history instead, so undo reverts them in turn.
+        assertUndoSuccess(afterTag);
+        assertUndoSuccess(afterUndo);
+    }
+
+    private List<Person> currentContacts() {
+        return List.copyOf(model.getAddressBook().getPersonList());
     }
 
     /**
