@@ -2,6 +2,7 @@ package seedu.address.logic;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static seedu.address.logic.Messages.MESSAGE_INVALID_COMMAND_FORMAT;
 import static seedu.address.logic.Messages.MESSAGE_INVALID_PERSON_DISPLAYED_INDEX;
@@ -393,6 +394,65 @@ public class UndoRedoIntegrationTest {
         // The tag and untag are recorded in the history instead, so undo reverts them in turn.
         assertUndoSuccess(afterTag);
         assertUndoSuccess(afterUndo);
+    }
+
+    @Test
+    public void mixedFavTagAddEdit_undoAllThenRedoAll_correctContactsAfterEveryStep() throws Exception {
+        List<List<Person>> states = runMixedChanges();
+
+        // Undo walks back through every change, and then the clear, to the start of the history.
+        for (int i = states.size() - 2; i >= 0; i--) {
+            assertUndoSuccess(states.get(i));
+        }
+        assertUndoSuccess(getTypicalPersons());
+        assertCommandFailure(UndoCommand.COMMAND_WORD, CommandException.class, UndoCommand.MESSAGE_FAILURE);
+
+        // Redo reapplies the clear and every change in the original order, then fails at the latest change.
+        for (int i = 0; i < states.size(); i++) {
+            assertRedoSuccess(states.get(i));
+        }
+        assertCommandFailure(RedoCommand.COMMAND_WORD, CommandException.class, RedoCommand.MESSAGE_FAILURE);
+    }
+
+    @Test
+    public void mixedFavTagAddEdit_interleavedUndoRedo_correctContactsAfterEveryStep() throws Exception {
+        List<List<Person>> states = runMixedChanges();
+        int last = states.size() - 1;
+
+        assertUndoSuccess(states.get(last - 1)); // reverts edit
+        assertUndoSuccess(states.get(last - 2)); // reverts unfav
+        assertTrue(model.getAddressBook().getPersonList().get(0).isFavourite());
+        assertRedoSuccess(states.get(last - 1)); // reapplies unfav
+        assertFalse(model.getAddressBook().getPersonList().get(0).isFavourite());
+        assertUndoSuccess(states.get(last - 2)); // reverts unfav again
+        assertUndoSuccess(states.get(last - 3)); // reverts untag
+        assertEquals(Set.of(new Tag("Project")), model.getAddressBook().getPersonList().get(0).getTags());
+
+        // A new fav, tag or untag after an undo discards the undone changes.
+        logic.execute("tag 2 t/Club");
+        List<Person> afterNewTag = currentContacts();
+        assertCommandFailure(RedoCommand.COMMAND_WORD, CommandException.class, RedoCommand.MESSAGE_FAILURE);
+        assertUndoSuccess(states.get(last - 3));
+        assertRedoSuccess(afterNewTag);
+        assertCommandFailure(RedoCommand.COMMAND_WORD, CommandException.class, RedoCommand.MESSAGE_FAILURE);
+    }
+
+    /**
+     * Runs a mix of add, edit, fav, unfav, tag and untag commands from an empty contact list,
+     * and returns the contacts before the first command and after each one.
+     */
+    private List<List<Person>> runMixedChanges() throws Exception {
+        logic.execute("clear");
+        List<List<Person>> states = new ArrayList<>();
+        states.add(currentContacts());
+        for (String command : List.of("add n/Alice a/NUS p/91234567", "tag 1 t/Project", "edit 1 p/92345678",
+                "fav 1", "add n/Bob a/SMU p/93456789", "untag 1 t/Project", "unfav 1", "edit 2 a/NTU")) {
+            logic.execute(command);
+            List<Person> afterCommand = currentContacts();
+            assertNotEquals(states.get(states.size() - 1), afterCommand, command + " should change the contacts");
+            states.add(afterCommand);
+        }
+        return states;
     }
 
     private List<Person> currentContacts() {
