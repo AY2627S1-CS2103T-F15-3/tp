@@ -108,4 +108,7 @@ public interface Model {
      * @throws NullPointerException if {@code comparator} is null.
      */
     void updateSortedPersonList(Comparator<Person> comparator);
+
+    /** Restores saved contact order without changing the filter, contact data or history. */
+    void resetSortedPersonList();
 }

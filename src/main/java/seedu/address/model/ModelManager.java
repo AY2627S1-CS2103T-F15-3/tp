@@ -146,6 +146,11 @@ public class ModelManager implements Model {
     }
 
     @Override
+    public void resetSortedPersonList() {
+        sortedPersons.setComparator(null);
+    }
+
+    @Override
     public boolean equals(Object other) {
         if (other == this) {
             return true;
