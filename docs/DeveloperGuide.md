@@ -324,7 +324,7 @@ is shown on restart.
 ### Sorting the displayed contacts
 
 `AddressBookParser` routes `sort` to `SortCommandParser`. The parser requires exactly two
-tokens: a field (`name`, `major`, `year`) and a direction (`asc`, `desc`). Each keyword is matched using
+tokens: a field (`name`, `major`, `year`, `updated`) and a direction (`asc`, `desc`). Each keyword is matched using
 `toLowerCase(Locale.ROOT)`, without changing contact data or prefix rules. It constructs `SortCommand`
 with `PersonSortComparator.SortField` and `SortDirection` values. Invalid input raises a `ParseException`
 with usage instructions before any view or data change.
@@ -351,6 +351,12 @@ sorting keys. Direction is applied to the value comparator **before** `Comparato
 that descending order does not move unspecified values to the front. Equal primary values use ascending
 case-insensitive name order; names differing only in case compare equally.
 
+`SortField.UPDATED` compares `Person#getLastUpdated()` directly as `LocalDate` values. Ascending means
+oldest first and descending means newest first; neither direction reverses the ascending name tie-break.
+Dates are always present in the model, including the compatibility baseline for older JSON files.
+The existing observable transformations recalculate positions after an actual basic-profile edit,
+and undo/redo restore the saved date and corresponding position without changing the active comparator.
+
 Sorting the view rather than `UniquePersonList` preserves storage order and history snapshots. As with
 other successful commands, `LogicManager` still invokes storage, but the saved contacts remain in their
 underlying order. Sort commands do not call `commitAddressBook`, so undo and redo availability is preserved.
@@ -359,8 +365,9 @@ Replacing, adding or removing source contacts automatically updates their sorted
 Restarting constructs a view without a comparator or predicate, restoring saved order and all contacts.
 
 Comparator, model, command and parser unit tests cover ordering and validation. `SortCommandIntegrationTest`
-checks command interactions, notes preservation and JSON persistence; `SortUiTest` checks the real command
-box, rendered card numbering and feedback. See [Sorting contacts](#sorting-contacts) for manual checks.
+checks command interactions, notes preservation and JSON persistence; `UpdatedSortIntegrationTest` checks
+update-date ordering, filtered index targets, date restoration through undo/redo and unchanged saved order.
+`SortUiTest` checks the real command box, rendered card numbering and feedback. See [Sorting contacts](#sorting-contacts) for manual checks.
 
 ### Formatting academic fields in command messages
 
@@ -1416,7 +1423,7 @@ testers are expected to do more *exploratory* testing.
 1. Rejected input and displayed indices
 
    1. Run `sort name asc`. Try `sort`, `sort name`, `sort phone asc`, `sort year ascending`,
-      `sort NAME asc` and `sort major asc desc` separately.<br>
+      `sort updated newest` and `sort major asc desc` separately.<br>
       Expected: Usage errors; the same four demo contacts remain in ascending name order.
    1. Run `edit 2 c/2029`.<br>
       Expected: `SortBeta` changes year, even though it was third in the saved demo order.

@@ -502,7 +502,7 @@ Examples:
 Unlike `find Computer Science`, which searches for either word across names and academic fields,
 `filter m/Computer Science` checks only the complete major value.
 
-### Sorting contacts by name, major or class year: `sort`
+### Sorting contacts by name, major, class year or update date: `sort`
 
 Orders the displayed contacts while keeping the current search or filter.
 
@@ -513,10 +513,13 @@ Format: `sort FIELD DIRECTION`
 
   | Argument | Accepted values | Meaning |
   | --- | --- | --- |
-  | `FIELD` | `name`, `major`, `year` | Full name, full major or graduation year |
+  | `FIELD` | `name`, `major`, `year`, `updated` | Full name, full major, graduation year or last update date |
   | `DIRECTION` | `asc`, `desc` | A–Z / earliest first, or Z–A / latest first |
 
-* Names and majors are compared case-insensitively. Class years are ordered chronologically.
+* Names and majors are compared case-insensitively. Class years and update dates are ordered chronologically.
+* `sort updated asc` shows the oldest `Last updated` dates first; `sort updated desc` shows the newest first.
+  Contacts with the same date use ascending, case-insensitive name order in both directions.
+  Editing basic information can move a contact in this order; undo and redo restore its previous date and position.
 * Contacts with an unspecified major or class year appear **last** when sorting by that field,
   for both directions. Equal academic values, including unspecified values, use ascending name order.
   Names differing only in case compare equally.
@@ -533,6 +536,8 @@ Format: `sort FIELD DIRECTION`
 
 Examples:
 * `sort name asc` displays names from A to Z.
+* `sort updated asc` brings contacts that have gone longest without a basic-information update to the top.
+* `sort updated desc` shows recently updated contacts first.
 * `sort major desc` displays majors from Z to A, with unspecified majors last.
 * `filter t/Classmate`, then `sort year asc`, shows only classmates, earliest class year first.
   `list` then shows all contacts in the same year order.

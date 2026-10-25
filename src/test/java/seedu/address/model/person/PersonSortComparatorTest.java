@@ -7,9 +7,11 @@ import static seedu.address.model.person.PersonSortComparator.SortDirection.ASC;
 import static seedu.address.model.person.PersonSortComparator.SortDirection.DESC;
 import static seedu.address.model.person.PersonSortComparator.SortField.MAJOR;
 import static seedu.address.model.person.PersonSortComparator.SortField.NAME;
+import static seedu.address.model.person.PersonSortComparator.SortField.UPDATED;
 import static seedu.address.model.person.PersonSortComparator.SortField.YEAR;
 import static seedu.address.testutil.Assert.assertThrows;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -53,6 +55,28 @@ public class PersonSortComparatorTest {
         Person latest = new PersonBuilder(charlie).withGraduationYear("2099").build();
         assertEquals(List.of(earliest, latest, alice), sorted(YEAR, ASC, alice, latest, earliest));
         assertEquals(List.of(latest, earliest, alice), sorted(YEAR, DESC, earliest, alice, latest));
+    }
+
+    @Test
+    public void compare_updated_ordersDatesChronologicallyInBothDirections() {
+        Person earliest = new PersonBuilder(bob).withLastUpdated(LocalDate.MIN).build();
+        Person middle = new PersonBuilder(alice).withLastUpdated(LocalDate.of(2024, 2, 29)).build();
+        Person latest = new PersonBuilder(charlie).withLastUpdated(LocalDate.MAX).build();
+        assertEquals(List.of(earliest, middle, latest), sorted(UPDATED, ASC, latest, earliest, middle));
+        assertEquals(List.of(latest, middle, earliest), sorted(UPDATED, DESC, earliest, latest, middle));
+    }
+
+    @Test
+    public void compare_equalUpdateDates_usesAscendingNamesInBothDirections() {
+        LocalDate date = LocalDate.of(2020, 1, 1);
+        Person datedAlice = new PersonBuilder(alice).withLastUpdated(date).build();
+        Person datedBob = new PersonBuilder(bob).withLastUpdated(date).build();
+        Person sameName = new PersonBuilder(datedAlice).withName("ALICE TAN").build();
+        for (var direction : PersonSortComparator.SortDirection.values()) {
+            assertEquals(List.of(datedAlice, datedBob), sorted(UPDATED, direction, datedBob, datedAlice));
+            assertEquals(List.of(sameName, datedAlice), sorted(UPDATED, direction, sameName, datedAlice));
+            assertEquals(0, new PersonSortComparator(UPDATED, direction).compare(datedAlice, sameName));
+        }
     }
 
     @Test

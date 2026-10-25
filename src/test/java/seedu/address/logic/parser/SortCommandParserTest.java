@@ -33,6 +33,7 @@ public class SortCommandParserTest {
 
     @Test
     public void parse_surroundingAndSeparatingWhitespace_acceptsInput() {
+        assertParseSuccess(parser, "  UpDaTeD   DeSc  ", new SortCommand(SortField.UPDATED, SortDirection.DESC));
         assertParseSuccess(parser, "  name   asc  ", new SortCommand(SortField.NAME, SortDirection.ASC));
         assertParseSuccess(parser, "\tmajor\tdesc\t", new SortCommand(SortField.MAJOR, SortDirection.DESC));
     }
@@ -41,7 +42,8 @@ public class SortCommandParserTest {
     public void parse_missingUnsupportedRepeatedOrExtraArguments_showsUsage() {
         for (String input : new String[]{"", "   ", "name", "asc", "name asc extra", "name asc desc",
             "name name asc", "phone asc", "tag desc", "year ascending", "name 1", "asc name", "n/asc",
-            "name asc m/Computing", "graduationYear asc", "class year asc"}) {
+            "name asc m/Computing", "graduationYear asc", "class year asc", "updated", "updated asc desc",
+            "lastUpdated asc", "updated newest", "updated asc 1"}) {
             assertParseFailure(parser, input,
                     String.format(MESSAGE_INVALID_COMMAND_FORMAT, SortCommand.MESSAGE_USAGE));
         }

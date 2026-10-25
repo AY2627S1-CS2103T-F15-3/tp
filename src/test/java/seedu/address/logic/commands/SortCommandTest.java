@@ -7,9 +7,11 @@ import static seedu.address.model.person.PersonSortComparator.SortDirection.ASC;
 import static seedu.address.model.person.PersonSortComparator.SortDirection.DESC;
 import static seedu.address.model.person.PersonSortComparator.SortField.MAJOR;
 import static seedu.address.model.person.PersonSortComparator.SortField.NAME;
+import static seedu.address.model.person.PersonSortComparator.SortField.UPDATED;
 import static seedu.address.model.person.PersonSortComparator.SortField.YEAR;
 import static seedu.address.testutil.Assert.assertThrows;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
@@ -22,9 +24,9 @@ import seedu.address.testutil.PersonBuilder;
 public class SortCommandTest {
     private final ModelManager model = new ModelManager();
     private final Person alice = new PersonBuilder().withName("Alice").withMajor("Zoology")
-            .withGraduationYear("2028").build();
+            .withGraduationYear("2028").withLastUpdated(LocalDate.of(2021, 1, 1)).build();
     private final Person bob = new PersonBuilder().withName("Bob").withMajor("Business")
-            .withGraduationYear("2027").build();
+            .withGraduationYear("2027").withLastUpdated(LocalDate.of(2018, 1, 1)).build();
 
     @Test
     public void execute_allSortOptions_ordersContactsAndReportsOptions() {
@@ -34,7 +36,7 @@ public class SortCommandTest {
         assertEquals(List.of(alice, bob), model.getFilteredPersonList());
         assertEquals("Sorted contacts by name (desc).", new SortCommand(NAME, DESC).execute(model).getFeedbackToUser());
         assertEquals(List.of(bob, alice), model.getFilteredPersonList());
-        for (var field : List.of(MAJOR, YEAR)) {
+        for (var field : List.of(MAJOR, YEAR, UPDATED)) {
             new SortCommand(field, ASC).execute(model);
             assertEquals(List.of(bob, alice), model.getFilteredPersonList());
             new SortCommand(field, DESC).execute(model);
