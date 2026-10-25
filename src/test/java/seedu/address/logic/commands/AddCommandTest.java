@@ -20,12 +20,27 @@ import seedu.address.logic.Messages;
 import seedu.address.logic.commands.exceptions.CommandException;
 import seedu.address.model.AddressBook;
 import seedu.address.model.Model;
+import seedu.address.model.ModelManager;
 import seedu.address.model.ReadOnlyAddressBook;
 import seedu.address.model.ReadOnlyUserPrefs;
+import seedu.address.model.UserPrefs;
 import seedu.address.model.person.Person;
 import seedu.address.testutil.PersonBuilder;
 
 public class AddCommandTest {
+
+    @Test
+    public void execute_caseOnlyDuplicateName_rejectedWithoutChangingData() {
+        Person original = new PersonBuilder().withName("John Doe").build();
+        AddressBook addressBook = new AddressBook();
+        addressBook.addPerson(original);
+        Model model = new ModelManager(addressBook, new UserPrefs());
+        Person duplicate = new PersonBuilder(original).withName("john doe").withPhone("98765432").build();
+        assertThrows(CommandException.class, AddCommand.MESSAGE_DUPLICATE_PERSON, () ->
+                new AddCommand(duplicate).execute(model));
+        assertEquals(List.of(original), model.getAddressBook().getPersonList());
+        assertFalse(model.canUndoAddressBook());
+    }
 
     @Test
     public void constructor_nullPerson_throwsNullPointerException() {

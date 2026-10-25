@@ -13,6 +13,29 @@ import java.util.Arrays;
 public class StringUtil {
 
     /**
+     * Matches a single whitespace character of any kind, including Unicode space separators
+     * such as EM SPACE (U+2003) and NO-BREAK SPACE (U+00A0) that {@code \s} does not match.
+     */
+    public static final String WHITESPACE_REGEX = "[\\p{javaWhitespace}\\p{Z}]";
+
+    /**
+     * Returns {@code s} with every whitespace character (as defined by {@link #WHITESPACE_REGEX})
+     * replaced by an ASCII space. The length and the number of spaces are preserved.
+     */
+    public static String normalizeWhitespace(String s) {
+        requireNonNull(s);
+        return s.replaceAll(WHITESPACE_REGEX, " ");
+    }
+
+    /**
+     * Returns {@code s} with leading and trailing whitespace (as defined by {@link #WHITESPACE_REGEX}) removed.
+     */
+    public static String stripWhitespace(String s) {
+        requireNonNull(s);
+        return s.replaceAll("^" + WHITESPACE_REGEX + "+|" + WHITESPACE_REGEX + "+$", "");
+    }
+
+    /**
      * Returns true if the {@code sentence} contains the {@code word}.
      *   Ignores case, but a full word match is required.
      *   <br>examples:<pre>
@@ -27,12 +50,12 @@ public class StringUtil {
         requireNonNull(sentence);
         requireNonNull(word);
 
-        String preppedWord = word.trim();
+        String preppedWord = stripWhitespace(word);
         checkArgument(!preppedWord.isEmpty(), "Word parameter cannot be empty");
-        checkArgument(preppedWord.split("\\s+").length == 1, "Word parameter should be a single word");
+        checkArgument(preppedWord.split(WHITESPACE_REGEX + "+").length == 1, "Word parameter should be a single word");
 
         String preppedSentence = sentence;
-        String[] wordsInPreppedSentence = preppedSentence.split("\\s+");
+        String[] wordsInPreppedSentence = preppedSentence.split(WHITESPACE_REGEX + "+");
 
         return Arrays.stream(wordsInPreppedSentence)
                 .anyMatch(preppedWord::equalsIgnoreCase);

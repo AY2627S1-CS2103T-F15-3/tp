@@ -3,11 +3,13 @@ package seedu.address.logic.parser;
 import static seedu.address.logic.Messages.MESSAGE_INVALID_COMMAND_FORMAT;
 import static seedu.address.logic.Messages.MESSAGE_UNKNOWN_COMMAND;
 
+import java.util.Locale;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import seedu.address.commons.core.LogsCenter;
+import seedu.address.commons.util.StringUtil;
 import seedu.address.logic.commands.AddCommand;
 import seedu.address.logic.commands.ClearCommand;
 import seedu.address.logic.commands.Command;
@@ -38,9 +40,16 @@ import seedu.address.logic.parser.exceptions.ParseException;
 public class AddressBookParser {
 
     /**
-     * Used for initial separation of command word and args.
+     * Used for initial separation of command word and args. Any kind of whitespace ends the command word.
      */
-    private static final Pattern BASIC_COMMAND_FORMAT = Pattern.compile("(?<commandWord>\\S+)(?<arguments>.*)");
+    private static final Pattern BASIC_COMMAND_FORMAT = Pattern.compile(
+            "(?<commandWord>(?:(?!" + StringUtil.WHITESPACE_REGEX + ").)+)(?<arguments>.*)", Pattern.DOTALL);
+
+    /**
+     * Characters stripped from both ends of the input: Unicode whitespace, plus the ASCII control
+     * characters that {@link String#trim()} removes.
+     */
+    private static final String TRIMMABLE_REGEX = "[\\x00-\\x20\\p{javaWhitespace}\\p{Z}]";
     private static final Logger logger = LogsCenter.getLogger(AddressBookParser.class);
 
     /**
@@ -51,20 +60,27 @@ public class AddressBookParser {
      * @throws ParseException if the user input does not conform to the expected format
      */
     public Command parseCommand(String userInput) throws ParseException {
-        final Matcher matcher = BASIC_COMMAND_FORMAT.matcher(userInput.trim());
+        final String trimmedInput = userInput.replaceAll("^" + TRIMMABLE_REGEX + "+|" + TRIMMABLE_REGEX + "+$", "");
+        final Matcher matcher = BASIC_COMMAND_FORMAT.matcher(trimmedInput);
         if (!matcher.matches()) {
             throw new ParseException(String.format(MESSAGE_INVALID_COMMAND_FORMAT, HelpCommand.MESSAGE_USAGE));
         }
 
         final String commandWord = matcher.group("commandWord");
-        final String arguments = matcher.group("arguments");
+        final String rawArguments = matcher.group("arguments");
+        // Unicode spaces become ASCII spaces so that downstream tokenizing and splitting treat them as separators.
+        // Note text is free-form, so it is passed through unchanged and validated by NoteCommandParser instead.
+        // The check ignores case to match the case-insensitive command words from #130.
+        final String arguments = commandWord.equalsIgnoreCase(NoteCommand.COMMAND_WORD)
+                ? rawArguments
+                : StringUtil.normalizeWhitespace(rawArguments);
 
         // Note to developers: Change LOG_LEVEL in LogsCenter to enable lower level (i.e., FINE, FINER and lower)
         // log messages such as the one below.
         // Lower level log messages are used sparingly to minimize noise in the code.
         logger.fine("Command word: " + commandWord + "; Arguments: " + arguments);
 
-        return switch (commandWord) {
+        return switch (commandWord.toLowerCase(Locale.ROOT)) {
             case AddCommand.COMMAND_WORD -> new AddCommandParser().parse(arguments);
             case FavCommand.COMMAND_WORD -> new FavCommandParser().parse(arguments);
             case UnfavCommand.COMMAND_WORD -> new UnfavCommandParser().parse(arguments);
