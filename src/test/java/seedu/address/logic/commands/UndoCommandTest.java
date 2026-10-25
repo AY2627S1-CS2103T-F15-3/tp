@@ -12,14 +12,20 @@ import static seedu.address.testutil.TypicalIndexes.INDEX_FIRST_PERSON;
 import static seedu.address.testutil.TypicalIndexes.INDEX_SECOND_PERSON;
 import static seedu.address.testutil.TypicalPersons.getTypicalAddressBook;
 
+import java.util.List;
+import java.util.Set;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import seedu.address.commons.core.index.Index;
 import seedu.address.model.AddressBook;
 import seedu.address.model.Model;
 import seedu.address.model.ModelManager;
 import seedu.address.model.UserPrefs;
+import seedu.address.model.person.Notes;
 import seedu.address.model.person.Person;
+import seedu.address.model.tag.Tag;
 import seedu.address.testutil.EditPersonDescriptorBuilder;
 import seedu.address.testutil.PersonBuilder;
 
@@ -155,9 +161,80 @@ public class UndoCommandTest {
     }
 
     @Test
-    public void execute_afterUnrecordedDelete_failure() throws Exception {
+    public void execute_afterUnrecordedChange_failure() throws Exception {
         new AddCommand(new PersonBuilder().withName("Alex Tan").build()).execute(model);
-        new DeleteCommand(INDEX_FIRST_PERSON).execute(model);
+        // A change made directly through the model is not recorded, so the earlier history is stale.
+        model.deletePerson(model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased()));
+
+        assertCommandFailure(new UndoCommand(), model, UndoCommand.MESSAGE_FAILURE);
+    }
+
+    @Test
+    public void execute_afterEachDataChangingCommand_undoAndRedoRestoreStates() throws Exception {
+        Set<Tag> newTag = Set.of(new Tag("cca"));
+        Set<Tag> existingTag = Set.of(new Tag("friends"));
+        List<Command> commands = List.of(new DeleteCommand(INDEX_FIRST_PERSON), new ClearCommand(),
+                new TagCommand(INDEX_FIRST_PERSON, newTag), new UntagCommand(INDEX_FIRST_PERSON, existingTag),
+                new FavCommand(INDEX_FIRST_PERSON), new NoteCommand(INDEX_FIRST_PERSON, new Notes("Met in class")));
+
+        for (Command command : commands) {
+            model = new ModelManager(getTypicalAddressBook(), new UserPrefs());
+            AddressBook stateBefore = new AddressBook(model.getAddressBook());
+            command.execute(model);
+            AddressBook stateAfter = new AddressBook(model.getAddressBook());
+
+            assertCommandSuccess(new UndoCommand(), model, UndoCommand.MESSAGE_SUCCESS,
+                    new ModelManager(stateBefore, new UserPrefs()));
+            assertCommandSuccess(new RedoCommand(), model, RedoCommand.MESSAGE_SUCCESS,
+                    new ModelManager(stateAfter, new UserPrefs()));
+        }
+    }
+
+    @Test
+    public void execute_afterUnfav_restoresFavourite() throws Exception {
+        new FavCommand(INDEX_FIRST_PERSON).execute(model);
+        AddressBook favouriteState = new AddressBook(model.getAddressBook());
+        new UnfavCommand(INDEX_FIRST_PERSON).execute(model);
+        AddressBook unfavouriteState = new AddressBook(model.getAddressBook());
+
+        assertCommandSuccess(new UndoCommand(), model, UndoCommand.MESSAGE_SUCCESS,
+                new ModelManager(favouriteState, new UserPrefs()));
+        assertTrue(model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased()).isFavourite());
+        assertCommandSuccess(new RedoCommand(), model, RedoCommand.MESSAGE_SUCCESS,
+                new ModelManager(unfavouriteState, new UserPrefs()));
+    }
+
+    @Test
+    public void execute_editThenFav_undoesEachInTurn() throws Exception {
+        // Scenario from issue #134: undo after fav also reaches the earlier edit.
+        AddressBook originalState = new AddressBook(model.getAddressBook());
+        new EditCommand(INDEX_FIRST_PERSON,
+                new EditPersonDescriptorBuilder().withPhone(VALID_PHONE_BOB).build()).execute(model);
+        AddressBook stateAfterEdit = new AddressBook(model.getAddressBook());
+        new FavCommand(INDEX_FIRST_PERSON).execute(model);
+
+        assertCommandSuccess(new UndoCommand(), model, UndoCommand.MESSAGE_SUCCESS,
+                new ModelManager(stateAfterEdit, new UserPrefs()));
+        assertCommandSuccess(new UndoCommand(), model, UndoCommand.MESSAGE_SUCCESS,
+                new ModelManager(originalState, new UserPrefs()));
+    }
+
+    @Test
+    public void execute_afterNoOpChange_undoesEarlierChange() throws Exception {
+        Person newPerson = new PersonBuilder().withName("Alex Tan").build();
+        new AddCommand(newPerson).execute(model);
+        // Tagging with a tag the person already has changes nothing, so no undo step is recorded.
+        Index alexIndex = Index.fromZeroBased(model.getFilteredPersonList().indexOf(newPerson));
+        new TagCommand(alexIndex, newPerson.getTags()).execute(model);
+
+        assertCommandSuccess(new UndoCommand(), model, UndoCommand.MESSAGE_SUCCESS,
+                new ModelManager(getTypicalAddressBook(), new UserPrefs()));
+    }
+
+    @Test
+    public void execute_clearOnEmptyAddressBook_recordsNoChange() throws Exception {
+        model = new ModelManager(new AddressBook(), new UserPrefs());
+        new ClearCommand().execute(model);
 
         assertCommandFailure(new UndoCommand(), model, UndoCommand.MESSAGE_FAILURE);
     }
