@@ -70,7 +70,8 @@ public class AddressBookParser {
         final String rawArguments = matcher.group("arguments");
         // Unicode spaces become ASCII spaces so that downstream tokenizing and splitting treat them as separators.
         // Note text is free-form, so it is passed through unchanged and validated by NoteCommandParser instead.
-        final String arguments = commandWord.equals(NoteCommand.COMMAND_WORD)
+        // The check ignores case to match the case-insensitive command words from #130.
+        final String arguments = commandWord.equalsIgnoreCase(NoteCommand.COMMAND_WORD)
                 ? rawArguments
                 : StringUtil.normalizeWhitespace(rawArguments);
 
