@@ -26,9 +26,19 @@ public class NoteCommandParserTest {
     }
 
     @Test
+    public void parse_unicodeSpaceSeparators_parsesIndexAndKeepsText() {
+        NoteCommand expected = new NoteCommand(INDEX_FIRST_PERSON, new Notes("Met at CS2103T"));
+        assertParseSuccess(parser, " 1 Met at CS2103T", expected);
+        assertParseSuccess(parser, " 1 Met at CS2103T", expected);
+        assertParseSuccess(parser, "　 1   Met at CS2103T",
+                new NoteCommand(INDEX_FIRST_PERSON, new Notes("  Met at CS2103T")));
+    }
+
+    @Test
     public void parse_missingTextOrInvalidIndex_throwsParseException() {
         String expected = String.format(MESSAGE_INVALID_COMMAND_FORMAT, NoteCommand.MESSAGE_USAGE);
-        for (String args : new String[]{"", " ", "1", "1  ", "1 \u2003", "Text only", "0 Text", "-1 Text",
+        for (String args : new String[]{"", " ", "1", "1  ", "1 \u2003", "1\u00a0", "\u00a01\u00a0",
+            "Text only", "0 Text", "-1 Text",
             "+1 Text", "1.5 Text", "2147483648 Text", "1Text"}) {
             assertParseFailure(parser, args, expected);
         }
