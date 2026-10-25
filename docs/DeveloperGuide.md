@@ -670,6 +670,14 @@ Both kinds use the same `Person.tags` field (`Set<Tag>`). Default indices are in
 
 The current `EditCommand` still supports replacing the entire tag set through `edit INDEX t/TAG`, and clearing it with `edit INDEX t/`. These operations have not been removed. `tag` and `untag` provide incremental changes; an empty `t/` is rejected by both.
 
+#### Long tag display and hover access
+
+`PersonCard#refreshTags` abbreviates ordinary tag names longer than `MAX_DISPLAYED_TAG_CHARACTERS` (20) before constructing their JavaFX `Label`: the first 20 characters are followed by `...`. The full value remains in `Person#getTags`; custom/system name collisions retain their `(custom)` display suffix. This explicit character threshold keeps display behaviour consistent despite platform font metrics. The tag pane and labels can shrink, and each label's maximum width is bound to the pane's content width (excluding its insets). `OverrunStyle.ELLIPSIS` supplies a further layout safeguard if even the abbreviated text cannot fit.
+
+`PersonCard#installTagTooltip` retains the complete original name in a wrapping tooltip with a maximum popup width of 400 logical pixels. It keeps the Label's tooltip property for accessibility, uninstalls the default delayed mouse behaviour, and uses mouse-enter/exit/press handlers to show immediately and hide on exit or press. Labels participate in mouse picking. Existing explanatory tooltips for custom names that match system reminders are retained. `Tag` and its validation, equality and JSON representation are unchanged; only the presentation is abbreviated.
+
+Cross-platform rendering tests use actual JavaFX CSS, skins and layout at content widths of 560, 740 and 1100 logical pixels. They check the visible rendered text and relative bounds rather than hard-coded glyph widths. Resizing the content container directly avoids assumptions about native window decorations, usable monitor size or asynchronous window-manager resize timing. Separate tests retain real-window command/refresh/storage checks and verify that mouse-enter opens the tooltip and mouse-exit closes it. No platform is excluded from these checks when a display is available.
+
 For command formats and user-facing examples, see [Adding tags](UserGuide.md#adding-tags-to-a-person-tag) and [Removing tags](UserGuide.md#removing-tags-from-a-person-untag). Manual checks are listed under [Tagging and untagging a person](#tagging-and-untagging-a-person).
 
 ### Recording contact data history
