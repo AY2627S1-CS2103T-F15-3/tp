@@ -138,6 +138,7 @@ public class NotesCommandIntegrationTest {
         execute("note 1 Second note");
         assertTrue(model.undoAddressBook());
         execute("note 1 First note");
+        execute("note 1 \u00A0First note\u00A0");
         assertEquals("Note for Alice:\nFirst note", execute("shownote 1").getFeedbackToUser());
         assertTrue(model.redoAddressBook());
         assertEquals(new Notes("Second note"), model.getFilteredPersonList().get(0).getNotes());
@@ -167,6 +168,22 @@ public class NotesCommandIntegrationTest {
         assertFalse(model.canRedoAddressBook());
         assertTrue(model.undoAddressBook());
         assertEquals(new Notes("First note"), model.getFilteredPersonList().get(0).getNotes());
+    }
+
+    @Test
+    public void execute_unicodeBoundaryWhitespace_savesTrimmedNoteAndPreservesInternalSpaces() throws Exception {
+        StorageManager storage = new StorageManager(new JsonAddressBookStorage(testFolder.resolve("contacts.json")),
+                new JsonUserPrefsStorage(testFolder.resolve("preferences.json")));
+        Logic logic = new LogicManager(model, storage);
+        String expectedText = "Hello\u00A0World";
+
+        logic.execute("note 1 \u00A0Hello\u00A0World\u202F");
+
+        assertEquals(expectedText, model.getFilteredPersonList().get(0).getNotes().value);
+        Model reloaded = new ModelManager(storage.readAddressBook().orElseThrow(), new UserPrefs());
+        assertEquals(expectedText, reloaded.getFilteredPersonList().get(0).getNotes().value);
+        assertEquals("Note for Alice:\n" + expectedText,
+                new LogicManager(reloaded, storage).execute("shownote 1").getFeedbackToUser());
     }
 
     @Test

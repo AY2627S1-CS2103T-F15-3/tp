@@ -360,7 +360,8 @@ Format: `note INDEX TEXT`
 
 * `INDEX` is the positive index shown in the current contact list, including search results.
 * `TEXT` is required and must be a single line of up to 500 characters. Spaces, punctuation and Unicode text are allowed; control characters such as tabs are not.
-* Leading and trailing whitespace is trimmed. Spaces within the note are preserved.
+* Leading and trailing whitespace, including non-breaking spaces (U+00A0), is trimmed before the
+  500-character limit is checked. Spaces within the note, including Unicode spaces, are preserved.
 * Everything after the index is note text. No field prefix or quotation marks are needed; text such as `n/` or `t/` is saved literally.
 * The contact's other details and the current list filter are preserved.
 * Notes are saved automatically with contact data and remain available after restarting UniMate. New contacts have no note; use `note` after `add`.

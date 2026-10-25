@@ -27,11 +27,28 @@ public class NoteCommandParserTest {
 
     @Test
     public void parse_unicodeSpaceSeparators_parsesIndexAndKeepsText() {
-        NoteCommand expected = new NoteCommand(INDEX_FIRST_PERSON, new Notes("Met at CS2103T"));
-        assertParseSuccess(parser, " 1 Met at CS2103T", expected);
-        assertParseSuccess(parser, " 1 Met at CS2103T", expected);
-        assertParseSuccess(parser, "　 1   Met at CS2103T",
-                new NoteCommand(INDEX_FIRST_PERSON, new Notes("  Met at CS2103T")));
+        NoteCommand expected = new NoteCommand(INDEX_FIRST_PERSON, new Notes("Met at\u00A0CS2103T"));
+        assertParseSuccess(parser, "\u00A01\u00A0Met at\u00A0CS2103T", expected);
+        assertParseSuccess(parser, "\u20031\u2003Met at\u00A0CS2103T", expected);
+        assertParseSuccess(parser, "\u3000 1 \u00A0\u00A0Met at\u00A0CS2103T", expected);
+    }
+
+    @Test
+    public void parse_surroundingUnicodeWhitespace_trimsEdgesAndPreservesInternalSpaces() {
+        String text = "Hello\u00A0  World\u2003again";
+        NoteCommand expected = new NoteCommand(INDEX_FIRST_PERSON, new Notes(text));
+        for (String whitespace : new String[]{"\u00A0", "\u2007", "\u202F", "\u2003", "\u3000",
+            " \t\u00A0\u2003\u202F "}) {
+            assertParseSuccess(parser, whitespace + "1 " + whitespace + text + whitespace, expected);
+        }
+    }
+
+    @Test
+    public void parse_maximumLengthTextWithBoundaryWhitespace_success() {
+        String text = "a".repeat(Notes.MAX_LENGTH);
+
+        assertParseSuccess(parser, "1 \u00A0" + text + "\u202F",
+                new NoteCommand(INDEX_FIRST_PERSON, new Notes(text)));
     }
 
     @Test
@@ -47,14 +64,15 @@ public class NoteCommandParserTest {
     @Test
     public void parse_whitespaceOnlyNotes_throwsParseException() {
         String expected = String.format(MESSAGE_INVALID_COMMAND_FORMAT, NoteCommand.MESSAGE_USAGE);
-        for (String whitespace : new String[]{" ", "\t", "\r\n", "\u2003", "\u3000", " \t\u2003\r\n "}) {
+        for (String whitespace : new String[]{" ", "\t", "\r\n", "\u00A0", "\u2007", "\u202F", "\u2003",
+            "\u3000", " \t\u00A0\u2003\u202F\r\n "}) {
             assertParseFailure(parser, "1 " + whitespace, expected);
         }
     }
 
     @Test
     public void parse_invalidText_throwsParseException() {
-        for (String text : new String[]{"\u00a0", "First\nSecond", "First\tSecond", "First\u2028Second",
+        for (String text : new String[]{"First\nSecond", "First\tSecond", "First\u2028Second",
             "a".repeat(Notes.MAX_LENGTH + 1)}) {
             assertParseFailure(parser, "1 " + text, Notes.MESSAGE_CONSTRAINTS);
         }
