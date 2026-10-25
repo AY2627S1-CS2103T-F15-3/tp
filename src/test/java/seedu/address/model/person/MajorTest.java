@@ -35,6 +35,7 @@ public class MajorTest {
         assertFalse(Major.isValidMajor(" ")); // no-break space only
         assertFalse(Major.isValidMajor("​")); // zero-width space only
         assertFalse(Major.isValidMajor("﻿")); // byte order mark only
+        assertFalse(Major.isValidMajor("\u200d\u200c")); // zero width joiner and non-joiner only
         assertFalse(Major.isValidMajor("⁠​")); // several invisible characters
         assertFalse(Major.isValidMajor(" ​ ")); // Unicode spaces and invisible characters
 
@@ -45,6 +46,9 @@ public class MajorTest {
         assertTrue(Major.isValidMajor("Computing (Information Systems)")); // parentheses
         assertTrue(Major.isValidMajor("Computer​Science")); // invisible character within visible text
         assertTrue(Major.isValidMajor("Computer Science")); // Unicode space within visible text
+        assertTrue(Major.isValidMajor("\u0645\u06cc\u200c\u0634\u0648\u062f")); // zero width non-joiner
+        assertTrue(Major.isValidMajor("\u0915\u094d\u200d\u0937")); // zero width joiner
+        assertTrue(Major.isValidMajor("\ud83d\udc68\u200d\ud83d\udcbb")); // emoji sequence
     }
 
     @Test
