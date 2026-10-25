@@ -374,8 +374,14 @@ optional behavior of major and class year.
 ### Deleting contacts with academic fields
 
 `DeleteCommand` identifies the target `Person` from `Model#getFilteredPersonList()` using the displayed index.
-It then calls `Model#deletePerson`, which removes the entire `Person` object from the `AddressBook`, including
-the stored `Major`, `GraduationYear`, and tags.
+Before deletion, it rejects an index outside that view with the supplied one-based index and the valid range,
+`1` to the displayed list size. An empty view reports that no contacts are displayed and suggests `list` when
+saved contacts exist; an empty address book instead suggests adding a contact. These checks throw a
+`CommandException` before any model mutation, preserving contacts, the current view and undo/redo history.
+Invalid index syntax still produces the parser's existing usage error.
+
+For a valid index, it calls `Model#deletePerson`, which removes the entire `Person` object from the `AddressBook`,
+including the stored `Major`, `GraduationYear`, and tags.
 
 After deletion, `DeleteCommand` uses `Messages#format(Person)` to include the deleted contact's details in the
 command result.
@@ -1457,7 +1463,16 @@ testers are expected to do more *exploratory* testing.
    1. Test cases: `delete 0`, `delete`, `delete x`.<br>
       Expected: An invalid-command-format error is shown and no contact is deleted.
    1. Run `delete` with a numeric index greater than the displayed list size.<br>
-      Expected: `The person index provided is invalid.` No contact is deleted.
+      Expected: `Index X is outside the current displayed list. Choose an index from 1 to N.`, where `X` is the
+      supplied index and `N` is the displayed list size. No contact is deleted.
+   1. Run `find DeleteIndexCheckNoMatch`, ensuring no saved contact matches, then `delete 1`.<br>
+      Expected: `No contacts are currently displayed to delete. Use list to view all saved contacts.`
+      Saved contacts and the empty displayed list remain unchanged.
+   1. Run `list`, then `find` with a keyword matching exactly one saved contact. Run `delete 2`.<br>
+      Expected: `Index 2 is outside the current displayed list. Choose an index from 1 to 1.`
+      The matching contact remains displayed and no contact is deleted.
+   1. In an empty disposable address book, run `delete 1`.<br>
+      Expected: `There are no saved contacts to delete. Add a contact before using delete.`
 
 ### Tagging and untagging a person
 

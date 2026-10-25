@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 
 import seedu.address.commons.core.index.Index;
 import seedu.address.logic.Messages;
+import seedu.address.model.AddressBook;
 import seedu.address.model.Model;
 import seedu.address.model.ModelManager;
 import seedu.address.model.UserPrefs;
@@ -77,7 +78,9 @@ public class DeleteCommandTest {
         Index outOfBoundIndex = Index.fromOneBased(model.getFilteredPersonList().size() + 1);
         DeleteCommand deleteCommand = new DeleteCommand(outOfBoundIndex);
 
-        assertCommandFailure(deleteCommand, model, Messages.MESSAGE_INVALID_PERSON_DISPLAYED_INDEX);
+        String expectedMessage = String.format(DeleteCommand.MESSAGE_INVALID_INDEX,
+                outOfBoundIndex.getOneBased(), model.getFilteredPersonList().size());
+        assertCommandFailure(deleteCommand, model, expectedMessage);
     }
 
     @Test
@@ -107,7 +110,53 @@ public class DeleteCommandTest {
 
         DeleteCommand deleteCommand = new DeleteCommand(outOfBoundIndex);
 
-        assertCommandFailure(deleteCommand, model, Messages.MESSAGE_INVALID_PERSON_DISPLAYED_INDEX);
+        assertCommandFailure(deleteCommand, model,
+                "Index 2 is outside the current displayed list. Choose an index from 1 to 1.");
+    }
+
+    @Test
+    public void execute_emptyAddressBook_suggestsAddingContact() {
+        Model emptyModel = new ModelManager();
+
+        assertCommandFailure(new DeleteCommand(INDEX_FIRST_PERSON), emptyModel, DeleteCommand.MESSAGE_NO_CONTACTS);
+    }
+
+    @Test
+    public void execute_emptyFilteredList_suggestsListingSavedContacts() {
+        showNoPerson(model);
+
+        assertCommandFailure(new DeleteCommand(INDEX_FIRST_PERSON), model,
+                DeleteCommand.MESSAGE_NO_DISPLAYED_CONTACTS);
+    }
+
+    @Test
+    public void execute_largeInvalidIndex_reportsSuppliedIndexAndDisplayedRange() {
+        showPersonAtIndex(model, INDEX_FIRST_PERSON);
+
+        assertCommandFailure(new DeleteCommand(Index.fromOneBased(Integer.MAX_VALUE)), model,
+                "Index 2147483647 is outside the current displayed list. Choose an index from 1 to 1.");
+    }
+
+    @Test
+    public void execute_invalidIndex_preservesUndoAndRedoHistory() throws Exception {
+        new AddCommand(new PersonBuilder().withName("HistoryFirst").build()).execute(model);
+        AddressBook beforeSecondAdd = new AddressBook(model.getAddressBook());
+        new AddCommand(new PersonBuilder().withName("HistorySecond").build()).execute(model);
+        AddressBook afterSecondAdd = new AddressBook(model.getAddressBook());
+        assertTrue(model.undoAddressBook());
+        assertTrue(model.canUndoAddressBook());
+        assertTrue(model.canRedoAddressBook());
+        showPersonAtIndex(model, INDEX_FIRST_PERSON);
+
+        assertCommandFailure(new DeleteCommand(INDEX_SECOND_PERSON), model,
+                "Index 2 is outside the current displayed list. Choose an index from 1 to 1.");
+
+        assertTrue(model.canUndoAddressBook());
+        assertTrue(model.canRedoAddressBook());
+        assertTrue(model.redoAddressBook());
+        assertEquals(afterSecondAdd, model.getAddressBook());
+        assertTrue(model.undoAddressBook());
+        assertEquals(beforeSecondAdd, model.getAddressBook());
     }
 
     @Test
