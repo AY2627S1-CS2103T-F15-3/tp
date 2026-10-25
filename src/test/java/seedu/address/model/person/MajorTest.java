@@ -32,12 +32,19 @@ public class MajorTest {
         assertFalse(Major.isValidMajor("Computer\rScience")); // carriage return
         assertFalse(Major.isValidMajor("\u2003")); // Unicode whitespace only
         assertFalse(Major.isValidMajor("Computer\u0085Science")); // Unicode control character
+        assertFalse(Major.isValidMajor(" ")); // no-break space only
+        assertFalse(Major.isValidMajor("​")); // zero-width space only
+        assertFalse(Major.isValidMajor("﻿")); // byte order mark only
+        assertFalse(Major.isValidMajor("⁠​")); // several invisible characters
+        assertFalse(Major.isValidMajor(" ​ ")); // Unicode spaces and invisible characters
 
         // valid major
         assertTrue(Major.isValidMajor("")); // unspecified optional field
         assertTrue(Major.isValidMajor("Computer Science")); // words separated by spaces
         assertTrue(Major.isValidMajor("Philosophy, Politics & Economics")); // punctuation
         assertTrue(Major.isValidMajor("Computing (Information Systems)")); // parentheses
+        assertTrue(Major.isValidMajor("Computer​Science")); // invisible character within visible text
+        assertTrue(Major.isValidMajor("Computer Science")); // Unicode space within visible text
     }
 
     @Test

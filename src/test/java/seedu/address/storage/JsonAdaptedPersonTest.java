@@ -118,6 +118,20 @@ public class JsonAdaptedPersonTest {
     }
 
     @Test
+    public void toModelType_invisibleOnlyAddressOrMajor_throwsIllegalValueException() {
+        for (String invisible : new String[]{"​", "﻿", " ", " "}) {
+            JsonAdaptedPerson invalidAddress =
+                    new JsonAdaptedPerson(VALID_NAME, VALID_PHONE, VALID_EMAIL, invisible, null, null, VALID_TAGS);
+            assertThrows(IllegalValueException.class, Address.MESSAGE_CONSTRAINTS, invalidAddress::toModelType);
+
+            JsonAdaptedPerson invalidMajor =
+                    new JsonAdaptedPerson(VALID_NAME, VALID_PHONE, VALID_EMAIL, VALID_ADDRESS, invisible, null,
+                            VALID_TAGS);
+            assertThrows(IllegalValueException.class, Major.MESSAGE_CONSTRAINTS, invalidMajor::toModelType);
+        }
+    }
+
+    @Test
     public void toModelType_invalidAddress_throwsIllegalValueException() {
         JsonAdaptedPerson person =
                 new JsonAdaptedPerson(VALID_NAME, VALID_PHONE, VALID_EMAIL, INVALID_ADDRESS, null, null, VALID_TAGS);

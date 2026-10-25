@@ -13,7 +13,7 @@ public class Notes {
     public static final String MESSAGE_CONSTRAINTS = "Notes must be a non-blank, single line of text with at most "
             + MAX_LENGTH + " characters when supplied.";
     public static final String VALIDATION_REGEX =
-            "(?=.*[^\\p{javaWhitespace}\\p{Z}])[^\\p{javaISOControl}\\p{Zl}\\p{Zp}]+";
+            "(?=.*[^\\p{javaWhitespace}\\p{Z}\\p{Cf}])[^\\p{javaISOControl}\\p{Zl}\\p{Zp}]+";
     public static final Notes EMPTY = new Notes("");
 
     public final String value;

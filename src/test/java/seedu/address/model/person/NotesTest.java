@@ -17,7 +17,8 @@ public class NotesTest {
 
     @Test
     public void constructor_invalidNotes_throwsIllegalArgumentException() {
-        for (String text : new String[]{" ", "\u2003", "\u00a0", "First\nSecond", "First\rSecond",
+        for (String text : new String[]{" ", "\u2003", "\u00a0", "\u200b", "\ufeff", "\u2060\u200b\u00a0",
+            "First\nSecond", "First\rSecond",
             "First\tSecond", "First\u0085Second", "First\u2028Second", "First\u2029Second",
             "a".repeat(Notes.MAX_LENGTH + 1)}) {
             assertFalse(Notes.isValidNotes(text));
@@ -28,7 +29,7 @@ public class NotesTest {
     @Test
     public void constructor_validNotes_preservesText() {
         for (String text : new String[]{"", "Met in CS2103T; project partner!", "Discuss n/ and t/ prefixes",
-            "  Keep  spacing  ", "\u674e\u540c\u5b66", "a".repeat(Notes.MAX_LENGTH),
+            "  Keep  spacing  ", "\u674e\u540c\u5b66", "Met\u200bin class", "a".repeat(Notes.MAX_LENGTH),
             "\ud83d\udcdd".repeat(Notes.MAX_LENGTH)}) {
             assertTrue(Notes.isValidNotes(text));
             assertEquals(text, new Notes(text).value);

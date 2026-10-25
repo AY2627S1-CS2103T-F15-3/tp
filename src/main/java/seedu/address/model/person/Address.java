@@ -14,8 +14,10 @@ public class Address {
     /*
      * The first character of the address must not be a whitespace,
      * otherwise " " (a blank string) becomes a valid input.
+     * The address must also contain a visible character, so values made only of Unicode spaces
+     * or invisible format characters (such as U+200B) are treated as blank.
      */
-    public static final String VALIDATION_REGEX = "[^\\s].*";
+    public static final String VALIDATION_REGEX = "(?=.*[^\\p{javaWhitespace}\\p{Z}\\p{Cf}])[^\\s].*";
 
     public final String value;
 

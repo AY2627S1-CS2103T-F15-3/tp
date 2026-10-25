@@ -113,6 +113,13 @@ public class ParserUtilTest {
     }
 
     @Test
+    public void parseAddress_invisibleCharactersOnly_throwsParseException() {
+        for (String address : new String[]{"​", "﻿", "⁠​", " ", " ​ "}) {
+            assertThrows(ParseException.class, Address.MESSAGE_CONSTRAINTS, () -> ParserUtil.parseAddress(address));
+        }
+    }
+
+    @Test
     public void parseAddress_validValueWithoutWhitespace_returnsAddress() throws Exception {
         Address expectedAddress = new Address(VALID_ADDRESS);
         assertEquals(expectedAddress, ParserUtil.parseAddress(VALID_ADDRESS));
@@ -199,6 +206,13 @@ public class ParserUtilTest {
         assertThrows(NullPointerException.class, () -> ParserUtil.parseMajor(null));
         assertThrows(ParseException.class, Major.MESSAGE_CONSTRAINTS, () -> ParserUtil.parseMajor(""));
         assertThrows(ParseException.class, Major.MESSAGE_CONSTRAINTS, () -> ParserUtil.parseMajor(WHITESPACE));
+    }
+
+    @Test
+    public void parseMajor_invisibleCharactersOnly_throwsParseException() {
+        for (String major : new String[]{"​", "﻿", "⁠​", " ", " ​ "}) {
+            assertThrows(ParseException.class, Major.MESSAGE_CONSTRAINTS, () -> ParserUtil.parseMajor(major));
+        }
     }
 
     @Test

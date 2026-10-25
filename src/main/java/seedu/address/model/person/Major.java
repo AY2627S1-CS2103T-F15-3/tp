@@ -13,10 +13,12 @@ public class Major {
     public static final String MESSAGE_CONSTRAINTS = "Major must be a non-blank, single line of text when supplied.";
 
     /*
-     * A supplied major must contain a non-whitespace character and no control characters.
+     * A supplied major must contain a visible character (not whitespace, a Unicode space or an invisible
+     * format character such as U+200B) and no control characters.
      * Spaces and punctuation are allowed, as in "Philosophy, Politics & Economics".
      */
-    public static final String VALIDATION_REGEX = "(?=.*[^\\p{javaWhitespace}])[^\\p{javaISOControl}]+";
+    public static final String VALIDATION_REGEX =
+            "(?=.*[^\\p{javaWhitespace}\\p{Z}\\p{Cf}])[^\\p{javaISOControl}]+";
 
     public static final Major EMPTY = new Major("");
 
