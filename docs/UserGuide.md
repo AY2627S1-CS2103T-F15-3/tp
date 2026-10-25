@@ -280,7 +280,7 @@ Examples (assuming at least one person is displayed):
 
 These input errors leave all contacts unchanged. If any supplied tag is invalid, none of the tags in that command are removed. Unlike `edit 1 t/`, `untag 1 t/` does not clear the tag collection.
 
-For both commands, UniMate saves the updated data automatically. A saving failure reports `Could not save data due to the following error: ...` or `Could not save data to file ... due to insufficient permissions to write to the file or the folder.` The in-memory change has already occurred in this case, so the error does not mean it was rolled back.
+For both commands, UniMate saves the updated data automatically. A saving failure reports `Could not save data due to the following error: ...` or `Could not save data to file ... due to insufficient permissions to write to the file or the folder.` The attempted change is rolled back, including the previous contact list and undo/redo history.
 
 Neither command can be undone. After `tag` or `untag` changes a person's tags, earlier `add` and `edit` changes can no longer be undone or redone either. See [`undo`](#undoing-a-change-undo).
 
@@ -632,6 +632,14 @@ History is cleared when you close UniMate.
 ### Saving the data
 
 UniMate automatically saves data after every command. You do not need to save manually.
+
+#### If saving fails
+
+A file error or insufficient write permission produces a saving error message. UniMate restores the
+contacts, displayed filter and sort order, and undo/redo history from before that command. For example,
+a failed `delete 1` leaves the original contact at index `1`; retrying after fixing the saving problem
+will still target that contact. A failed `undo` or `redo` also leaves the same history step available.
+The command remains in the input box so you can retry it after resolving the file error.
 
 ### Editing the data file
 

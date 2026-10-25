@@ -105,6 +105,42 @@ public class AddressBookHistory {
         return true;
     }
 
+    /** Captures the complete history, including a possibly stale current state. */
+    Snapshot createSnapshot() {
+        return new Snapshot(currentState, undoStates, redoStates);
+    }
+
+    /** Restores history without modifying the tracked address book. */
+    void restoreSnapshot(Snapshot snapshot) {
+        requireNonNull(snapshot);
+        currentState = new AddressBook(snapshot.currentState);
+        undoStates.clear();
+        undoStates.addAll(copyStates(snapshot.undoStates));
+        redoStates.clear();
+        redoStates.addAll(copyStates(snapshot.redoStates));
+    }
+
+    private static Deque<AddressBook> copyStates(Deque<AddressBook> states) {
+        Deque<AddressBook> copies = new ArrayDeque<>();
+        for (AddressBook state : states) {
+            copies.addLast(new AddressBook(state));
+        }
+        return copies;
+    }
+
+    /** A defensive copy of both history stacks and their expected current state. */
+    static final class Snapshot {
+        private final AddressBook currentState;
+        private final Deque<AddressBook> undoStates;
+        private final Deque<AddressBook> redoStates;
+
+        private Snapshot(AddressBook currentState, Deque<AddressBook> undoStates, Deque<AddressBook> redoStates) {
+            this.currentState = new AddressBook(currentState);
+            this.undoStates = copyStates(undoStates);
+            this.redoStates = copyStates(redoStates);
+        }
+    }
+
     private void restore(AddressBook state) {
         currentState = state;
         trackedAddressBook.resetData(state);

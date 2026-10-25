@@ -34,6 +34,21 @@ public interface Model {
      */
     void setAddressBook(ReadOnlyAddressBook addressBook);
 
+    /**
+     * Captures contact data, history and the displayed view before a command executes.
+     * Restoring the checkpoint must leave all three as they were when captured.
+     * Implementations that do not support checkpoints fail before a command can mutate them.
+     */
+    default Checkpoint createCheckpoint() {
+        throw new UnsupportedOperationException("This model does not support command checkpoints.");
+    }
+
+    /** A captured model state that can be restored after a failed save. */
+    @FunctionalInterface
+    interface Checkpoint {
+        void restore();
+    }
+
     /** Returns the AddressBook */
     ReadOnlyAddressBook getAddressBook();
 

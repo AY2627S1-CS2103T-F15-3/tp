@@ -71,6 +71,20 @@ public class ModelManager implements Model {
     }
 
     @Override
+    public Checkpoint createCheckpoint() {
+        AddressBook previousData = new AddressBook(addressBook);
+        AddressBookHistory.Snapshot previousHistory = addressBookHistory.createSnapshot();
+        Predicate<? super Person> previousFilter = filteredPersons.getPredicate();
+        Comparator<? super Person> previousSort = sortedPersons.getComparator();
+        return () -> {
+            addressBook.resetData(previousData);
+            addressBookHistory.restoreSnapshot(previousHistory);
+            filteredPersons.setPredicate(previousFilter);
+            sortedPersons.setComparator(previousSort);
+        };
+    }
+
+    @Override
     public ReadOnlyAddressBook getAddressBook() {
         return addressBook;
     }

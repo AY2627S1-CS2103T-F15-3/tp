@@ -229,7 +229,7 @@ notifications. Notes on the diagram identify the snapshot copy and the displayed
 
 Malformed input fails during parsing; an index beyond the displayed list fails before the snapshot
 or replacement. Neither case changes contact data or history. If saving fails after execution,
-`LogicManager` reports a command error; it does not roll back the in-memory contact or history change.
+`LogicManager` restores its pre-command checkpoint, including contact data, history and the displayed view, then reports a command error.
 
 #### Viewing, deleting and history behaviour
 
@@ -591,7 +591,7 @@ Because `fav` and `unfav` resolve their targets from that view, `unfav 1` after 
 
 `JsonAdaptedPerson` writes the `favourite` boolean alongside the existing contact fields. Its JSON creator accepts a nullable `Boolean` and uses `Boolean.TRUE.equals(favourite)`, so missing or null values in older data become `false`. Conversion back to the model uses the constructor accepting the favourite state. No favourite state is stored in ordinary tags.
 
-`LogicManager#execute` saves the address book after successful execution through the existing `Storage` API. As with other commands, a storage exception is reported after the in-memory model has changed; this path does not roll back the replacement.
+`LogicManager#execute` saves the address book after successful execution through the existing `Storage` API. As with other commands, a storage exception restores the pre-command contact data, history and displayed view before the file error is reported.
 
 `EditCommand`, `TagCommand` and `UntagCommand` explicitly pass the original `person.isFavourite()` when reconstructing a person. This prevents unrelated updates from resetting the state. When adding future contact fields or commands that copy a `Person`, preserve both the favourite state and all other unaffected fields in that copy and in JSON conversion.
 
@@ -664,7 +664,7 @@ Neither command calls `Model#updateFilteredPersonList`, so the current filter pr
 * All tag values are parsed before a command is executed. An invalid value prevents the whole command from modifying the model. In `TagCommandParser`, default tag validation occurs before custom tag validation, regardless of their input order.
 * A parsed person index beyond the filtered list size produces a `CommandException` with `The person index provided is invalid.` before any replacement. This also covers an empty displayed list.
 * Unsupported prefixes are not separately classified: `ArgumentTokenizer` only recognizes the supplied prefixes. For example, `untag 1 d/1` fails index parsing, whereas `untag 1 t/NOC d/1` fails tag-name validation.
-* Saving occurs after model mutation. `LogicManager` converts an `AccessDeniedException` or other `IOException` into a saving-related `CommandException`; it does not roll back the updated person.
+* Saving occurs after model mutation. `LogicManager` converts an `AccessDeniedException` or other `IOException` into a saving-related `CommandException`; it first rolls back the contact data, history and displayed view to the pre-command checkpoint.
 
 #### Design considerations
 
@@ -865,7 +865,7 @@ The sequence diagram below shows these steps for `execute("undo")`, including th
 
 Neither command calls `Model#commitAddressBook`. Restoring a state moves it between the undo and redo stacks without adding a new entry. Repeated `undo` therefore keeps moving back through earlier states, and `redo` does not clear the remaining redo states.
 
-If saving fails after a successful undo or redo, the in-memory state has already been restored and `LogicManager` reports the file error, as it does for other commands. The history remains consistent with the in-memory data.
+If saving fails after an undo or redo, `LogicManager` restores its pre-command checkpoint and reports the file error. Both history stacks, their expected current state, the contact data, and the displayed filter and sort order are restored, so the same undo or redo can be retried.
 
 **Feedback messages:**
 
