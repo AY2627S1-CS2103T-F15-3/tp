@@ -132,6 +132,33 @@ public class JsonAdaptedPersonTest {
     }
 
     @Test
+    public void toModelType_unicodeSpacesInAddressAndMajor_normalisedLikeCommandInput() throws Exception {
+        for (String space : new String[]{"\u00a0", "\u2003", "\u202f", "\u3000", "\t"}) {
+            JsonAdaptedPerson person = new JsonAdaptedPerson(VALID_NAME, VALID_PHONE, VALID_EMAIL,
+                    space + "Blk" + space + "456" + space, space + "Computer" + space + "Science" + space, null,
+                    VALID_TAGS);
+            Person loaded = person.toModelType();
+            assertEquals("Blk 456", loaded.getAddress().value);
+            assertEquals("Computer Science", loaded.getMajor().value);
+        }
+    }
+
+    @Test
+    public void toModelType_unicodeSpacesInNotes_preserved() throws Exception {
+        String notes = "Met\u00a0at\u2003orientation";
+        JsonAdaptedPerson person = new JsonAdaptedPerson(VALID_NAME, VALID_PHONE, VALID_EMAIL, VALID_ADDRESS,
+                null, null, VALID_TAGS, notes);
+        assertEquals(notes, person.toModelType().getNotes().value);
+    }
+
+    @Test
+    public void toModelType_emptyMajor_returnsUnspecifiedMajor() throws Exception {
+        JsonAdaptedPerson person =
+                new JsonAdaptedPerson(VALID_NAME, VALID_PHONE, VALID_EMAIL, VALID_ADDRESS, "", null, VALID_TAGS);
+        assertEquals("", person.toModelType().getMajor().value);
+    }
+
+    @Test
     public void toModelType_invalidAddress_throwsIllegalValueException() {
         JsonAdaptedPerson person =
                 new JsonAdaptedPerson(VALID_NAME, VALID_PHONE, VALID_EMAIL, INVALID_ADDRESS, null, null, VALID_TAGS);

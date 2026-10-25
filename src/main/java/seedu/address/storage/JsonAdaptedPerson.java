@@ -12,6 +12,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import seedu.address.commons.exceptions.IllegalValueException;
+import seedu.address.commons.util.StringUtil;
 import seedu.address.model.person.Address;
 import seedu.address.model.person.Email;
 import seedu.address.model.person.GraduationYear;
@@ -147,14 +148,17 @@ class JsonAdaptedPerson {
         if (address == null) {
             throw new IllegalValueException(String.format(MISSING_FIELD_MESSAGE_FORMAT, Address.class.getSimpleName()));
         }
-        if (!Address.isValidAddress(address)) {
+        String storedAddress = normalizeStoredText(address);
+        if (!Address.isValidAddress(storedAddress)) {
             throw new IllegalValueException(Address.MESSAGE_CONSTRAINTS);
         }
-        final Address modelAddress = new Address(address);
+        final Address modelAddress = new Address(storedAddress);
 
         // Older AB3 files do not contain these optional fields.
-        String storedMajor = major == null ? "" : major;
-        if (!Major.isValidMajor(storedMajor)) {
+        String storedMajor = major == null ? "" : normalizeStoredText(major);
+        // Only an absent or empty major means unspecified, as a whitespace-only m/ is rejected by commands too.
+        boolean isBlankMajor = storedMajor.isEmpty() && major != null && !major.isEmpty();
+        if (isBlankMajor || !Major.isValidMajor(storedMajor)) {
             throw new IllegalValueException(Major.MESSAGE_CONSTRAINTS);
         }
         final Major modelMajor = new Major(storedMajor);
@@ -181,6 +185,14 @@ class JsonAdaptedPerson {
         }
         return new Person(modelName, modelPhone, modelEmail, modelAddress,
                 modelMajor, modelGraduationYear, modelTags, modelNotes, favourite, modelLastUpdated);
+    }
+
+    /**
+     * Returns {@code value} as a command would store it: Unicode spaces become ASCII spaces and the ends are trimmed.
+     * Data files saved before command input was normalised (#141) may still contain Unicode spaces.
+     */
+    private static String normalizeStoredText(String value) {
+        return StringUtil.normalizeWhitespace(value).trim();
     }
 
 }
