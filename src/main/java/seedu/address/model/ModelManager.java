@@ -7,12 +7,17 @@ import java.util.Comparator;
 import java.util.function.Predicate;
 import java.util.logging.Logger;
 
+import javafx.beans.binding.Bindings;
+import javafx.beans.property.ReadOnlyStringProperty;
+import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.collections.transformation.SortedList;
 import seedu.address.commons.core.GuiSettings;
 import seedu.address.commons.core.LogsCenter;
 import seedu.address.model.person.Person;
+import seedu.address.model.person.PersonFilter;
+import seedu.address.model.person.PersonSortComparator;
 
 /**
  * Represents the in-memory model of the address book data.
@@ -25,6 +30,7 @@ public class ModelManager implements Model {
     private final FilteredList<Person> filteredPersons;
     private final SortedList<Person> sortedPersons;
     private final AddressBookHistory addressBookHistory;
+    private final ReadOnlyStringWrapper viewStatus = new ReadOnlyStringWrapper();
 
     /**
      * Initializes a ModelManager with the given addressBook and userPrefs.
@@ -39,6 +45,8 @@ public class ModelManager implements Model {
         filteredPersons = new FilteredList<>(this.addressBook.getPersonList());
         sortedPersons = new SortedList<>(filteredPersons);
         addressBookHistory = new AddressBookHistory(this.addressBook);
+        viewStatus.bind(Bindings.createStringBinding(this::describeView, this.addressBook.getPersonList(),
+                sortedPersons, filteredPersons.predicateProperty(), sortedPersons.comparatorProperty()));
     }
 
     public ModelManager() {
@@ -131,6 +139,26 @@ public class ModelManager implements Model {
     @Override
     public ObservableList<Person> getFilteredPersonList() {
         return sortedPersons;
+    }
+
+    @Override
+    public ReadOnlyStringProperty viewStatusProperty() {
+        return viewStatus.getReadOnlyProperty();
+    }
+
+    private String describeView() {
+        Predicate<? super Person> predicate = filteredPersons.getPredicate();
+        String filter = predicate == null || predicate == PREDICATE_SHOW_ALL_PERSONS ? "All contacts" : "Custom filter";
+        if (predicate instanceof PersonFilter personFilter) {
+            filter = personFilter.getDescription();
+        }
+        Comparator<? super Person> comparator = sortedPersons.getComparator();
+        String sort = comparator == null ? "Saved order" : "Custom order";
+        if (comparator instanceof PersonSortComparator personSort) {
+            sort = personSort.getDescription();
+        }
+        return String.format("Showing %d of %d contacts | Filter: %s | Sort: %s",
+                sortedPersons.size(), addressBook.getPersonList().size(), filter, sort);
     }
 
     @Override
