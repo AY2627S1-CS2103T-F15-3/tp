@@ -100,6 +100,29 @@ public class AddressBookParserTest {
     }
 
     @Test
+    public void parseCommand_unicodeSpaces_treatedAsSeparators() throws Exception {
+        // Command word followed by a Unicode space
+        assertTrue(parser.parseCommand("list ") instanceof ListCommand);
+        assertTrue(parser.parseCommand("　list ") instanceof ListCommand);
+
+        // Keywords separated by Unicode spaces
+        assertEquals(new FindCommand(new NameContainsKeywordsPredicate(List.of("Computer", "Science"))),
+                parser.parseCommand("find Computer Science"));
+
+        // Prefixes preceded by Unicode spaces, and Unicode spaces within values
+        FilterCommand expected = new FilterCommand(new ContactFilterPredicate(
+                Optional.of(new Major("Computer Science")),
+                Optional.of(new GraduationYear("2027")), Optional.empty()));
+        assertEquals(expected, parser.parseCommand("filter m/Computer Science c/2027 "));
+    }
+
+    @Test
+    public void parseCommand_noteWithUnicodeSpaces_textNotNormalised() throws Exception {
+        assertEquals(new NoteCommand(INDEX_FIRST_PERSON, new Notes("Met at CS2103T")),
+                parser.parseCommand("note 1 Met at CS2103T"));
+    }
+
+    @Test
     public void parseCommand_filterWithoutCriteria_throwsParseException() {
         String expectedMessage = String.format(MESSAGE_INVALID_COMMAND_FORMAT, FilterCommand.MESSAGE_USAGE);
         assertThrows(ParseException.class, expectedMessage, () -> parser.parseCommand("filter"));
