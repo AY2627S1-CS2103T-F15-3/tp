@@ -57,4 +57,20 @@ public class NameTest {
         // different values -> returns false
         assertFalse(name.equals(new Name("Other Valid Name")));
     }
+
+    @Test
+    public void isValidName_commonPunctuationAndUnicode_acceptsRealNames() {
+        for (String name : new String[]{"Anne-Marie Tan", "Sean O'Connor", "D\u2019Arcy Tan",
+            "\u5f20\u4f1f", "Jos\u00e9 Garc\u00eda", "Jose\u0301 Tan"}) {
+            assertTrue(Name.isValidName(name), name);
+        }
+    }
+
+    @Test
+    public void isValidName_blankControlAndUnsupportedCharacters_rejected() {
+        for (String name : new String[]{"'", "-", "\u0301", " Anne", "Anne\nMarie", "Anne\tMarie",
+            "Anne/Marie", "Anne*", "\u200b", "Anne\u200bMarie"}) {
+            assertFalse(Name.isValidName(name), name);
+        }
+    }
 }

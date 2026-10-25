@@ -89,6 +89,11 @@ Format: `help`
 
 Adds a person to UniMate.
 
+Names can contain Unicode letters and numbers, combining marks for accents, spaces, apostrophes
+(`O'Connor` or `D’Arcy`) and hyphens (`Anne-Marie`). The first character must be a letter or number.
+Blank names and other punctuation are rejected. Command input normalizes whitespace, including line breaks,
+to spaces before name validation. These rules also apply when editing a name.
+
 Format: `add n/NAME [p/PHONE_NUMBER] [e/EMAIL] a/ADDRESS [m/MAJOR] [c/CLASS_YEAR] [t/TAG]... [d/DEFAULT_INDEX]...`
 
 <box type="tip" seamless>
