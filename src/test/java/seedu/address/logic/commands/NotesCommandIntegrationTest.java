@@ -58,11 +58,14 @@ public class NotesCommandIntegrationTest {
     @Test
     public void execute_addShowOverwriteDelete_changesOnlyNotes() throws Exception {
         assertEquals(ShowNoteCommand.MESSAGE_NO_NOTES, execute("shownote 1").getFeedbackToUser());
-        assertEquals("Note saved for Alice.", execute("note 1 Met during CS2103T").getFeedbackToUser());
+        assertEquals("Note saved for Alice.\nSaved note: Met during CS2103T",
+                execute("note 1 Met during CS2103T").getFeedbackToUser());
         assertEquals(alice.withNotes(new Notes("Met during CS2103T")), model.getFilteredPersonList().get(0));
         assertEquals("Note for Alice:\nMet during CS2103T", execute("shownote 1").getFeedbackToUser());
 
-        execute("note 1 Project teammate");
+        assertEquals("Note replaced for Alice. Use undo to restore the previous note."
+                + "\nPrevious note: Met during CS2103T\nSaved note: Project teammate",
+                execute("note 1 Project teammate").getFeedbackToUser());
         assertEquals("Note for Alice:\nProject teammate", execute("shownote 1").getFeedbackToUser());
         assertEquals(alice.withNotes(new Notes("Project teammate")), model.getFilteredPersonList().get(0));
         assertEquals("Note deleted for Alice.", execute("delnote 1").getFeedbackToUser());
@@ -73,12 +76,43 @@ public class NotesCommandIntegrationTest {
     @Test
     public void execute_filteredList_usesDisplayedIndexAndPreservesFilter() throws Exception {
         model.updateFilteredPersonList(person -> person.getName().equals(bob.getName()));
-        execute("note 1 Met at orientation");
+        assertEquals("Note saved for Bob.\nSaved note: Met at orientation",
+                execute("note 1 Met at orientation").getFeedbackToUser());
         assertEquals(List.of(bob.withNotes(new Notes("Met at orientation"))), model.getFilteredPersonList());
         assertEquals("Note for Bob:\nMet at orientation", execute("shownote 1").getFeedbackToUser());
+        assertEquals("Note replaced for Bob. Use undo to restore the previous note."
+                + "\nPrevious note: Met at orientation\nSaved note: Met at hackathon",
+                execute("note 1 Met at hackathon").getFeedbackToUser());
+        assertEquals(List.of(bob.withNotes(new Notes("Met at hackathon"))), model.getFilteredPersonList());
+        assertEquals(alice, model.getAddressBook().getPersonList().get(0));
         execute("delnote 1");
         assertEquals(List.of(bob), model.getFilteredPersonList());
         assertEquals(List.of(alice, bob), model.getAddressBook().getPersonList());
+    }
+
+    @Test
+    public void execute_replacementFeedback_includesCompleteNotes() throws Exception {
+        String previousText = "a".repeat(Notes.MAX_LENGTH);
+        String savedText = "b".repeat(Notes.MAX_LENGTH);
+        assertEquals("Note saved for Alice.\nSaved note: " + previousText,
+                execute("note 1 " + previousText).getFeedbackToUser());
+
+        assertEquals("Note replaced for Alice. Use undo to restore the previous note."
+                + "\nPrevious note: " + previousText + "\nSaved note: " + savedText,
+                execute("note 1 " + savedText).getFeedbackToUser());
+        assertEquals(new Notes(savedText), model.getFilteredPersonList().get(0).getNotes());
+    }
+
+    @Test
+    public void execute_replacementFeedback_preservesUnicodeAndLiteralText() throws Exception {
+        String previousText = "Met\u00A0at CS2103T; n/Alice 100%";
+        String savedText = "t/Friend https://example.com/\u03B1  keep  spaces";
+        execute("note 1 " + previousText);
+
+        assertEquals("Note replaced for Alice. Use undo to restore the previous note."
+                + "\nPrevious note: " + previousText + "\nSaved note: " + savedText,
+                execute("note 1 " + savedText).getFeedbackToUser());
+        assertEquals(new Notes(savedText), model.getFilteredPersonList().get(0).getNotes());
     }
 
     @Test
@@ -137,7 +171,8 @@ public class NotesCommandIntegrationTest {
         execute("note 1 First note");
         execute("note 1 Second note");
         assertTrue(model.undoAddressBook());
-        execute("note 1 First note");
+        assertEquals("Note unchanged for Alice.\nSaved note: First note",
+                execute("note 1 First note").getFeedbackToUser());
         assertEquals("Note for Alice:\nFirst note", execute("shownote 1").getFeedbackToUser());
         assertTrue(model.redoAddressBook());
         assertEquals(new Notes("Second note"), model.getFilteredPersonList().get(0).getNotes());
@@ -175,8 +210,15 @@ public class NotesCommandIntegrationTest {
         StorageManager storage = new StorageManager(new JsonAddressBookStorage(dataFile),
                 new JsonUserPrefsStorage(testFolder.resolve("preferences.json")));
         Logic logic = new LogicManager(model, storage);
-        logic.execute("note 1 Met at orientation");
-        logic.execute("note 1 Project teammate");
+        assertEquals("Note saved for Alice.\nSaved note: Met at orientation",
+                logic.execute("note 1 Met at orientation").getFeedbackToUser());
+        assertEquals("Note replaced for Alice. Use undo to restore the previous note."
+                + "\nPrevious note: Met at orientation\nSaved note: Project teammate",
+                logic.execute("note 1 Project teammate").getFeedbackToUser());
+        logic.execute("undo");
+        assertEquals(new Notes("Met at orientation"),
+                storage.readAddressBook().orElseThrow().getPersonList().get(0).getNotes());
+        logic.execute("redo");
 
         Model reloaded = new ModelManager(storage.readAddressBook().orElseThrow(), new UserPrefs());
         Logic reloadedLogic = new LogicManager(reloaded, storage);

@@ -227,6 +227,12 @@ notifications. Notes on the diagram identify the snapshot copy and the displayed
 1. `LogicManager` saves the resulting address book through `Storage` before returning the feedback
    to its caller. The observable list supplies the updated contact to the UI's card rendering.
 
+`NoteCommand` retains the original immutable `Notes` value to classify its feedback after committing.
+A new note includes its saved text. Replacing different non-empty text includes both the previous
+and saved text, plus an `undo` reminder. Identical text produces `Note unchanged for NAME.` and the
+saved text; the existing history mechanism ignores the unchanged data. These messages use the
+standard `CommandResult` and existing result display without changing command syntax or storage.
+
 Malformed input fails during parsing; an index beyond the displayed list fails before the snapshot
 or replacement. Neither case changes contact data or history. If saving fails after execution,
 `LogicManager` reports a command error; it does not roll back the in-memory contact or history change.
@@ -1548,10 +1554,18 @@ Use a test contact for these checks. Run `list` and identify its displayed index
 
 1. Run `shownote 1` on a contact with no note.<br>
    Expected: `No notes have been added to this contact.` No note icon is visible.
-1. Run `note 1 Met during CS2103T`, then `shownote 1`.<br>
-   Expected: A note icon appears at the bottom right of the card. The message area shows the saved text beneath the contact's name.
-1. Run `note 1 Project teammate`, then `shownote 1`.<br>
-   Expected: Only `Project teammate` is shown; the previous note was replaced. Other contact details are preserved.
+1. Run `note 1 Met during CS2103T` and inspect its feedback, then run `shownote 1`.<br>
+   Expected: The feedback starts with `Note saved for NAME.` and includes `Saved note: Met during CS2103T`.
+   A note icon appears at the bottom right of the card, and `shownote` displays the saved text.
+1. Run `note 1 Project teammate` and inspect its feedback.<br>
+   Expected: The feedback starts with `Note replaced for NAME. Use undo to restore the previous note.`
+   It includes `Previous note: Met during CS2103T` and `Saved note: Project teammate` on separate lines.
+   Other contact details are preserved.
+1. Run `undo`, then `shownote 1`.<br>
+   Expected: The original `Met during CS2103T` note is restored.
+1. Run `redo`, then `note 1 Project teammate`.<br>
+   Expected: The replacement is restored. Saving the same text reports `Note unchanged for NAME.` and
+   `Saved note: Project teammate` without adding an undo step.
 1. Edit the contact's phone, add a tag with `tag`, and remove it with `untag`, then run `shownote` using the contact's current index.<br>
    Expected: The note is still `Project teammate`.
 1. Restart the app, locate the same contact, and run `shownote`.<br>
