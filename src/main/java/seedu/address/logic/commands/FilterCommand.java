@@ -2,6 +2,9 @@ package seedu.address.logic.commands;
 
 import static java.util.Objects.requireNonNull;
 
+import java.util.logging.Logger;
+
+import seedu.address.commons.core.LogsCenter;
 import seedu.address.commons.util.ToStringBuilder;
 import seedu.address.logic.Messages;
 import seedu.address.model.Model;
@@ -17,6 +20,8 @@ public class FilterCommand extends Command {
             + "Parameters: [m/MAJOR] [c/CLASS_YEAR] [t/TAG] (at least one; each prefix at most once)\n"
             + "Example: " + COMMAND_WORD + " m/Computer Science c/2027 t/Classmate";
 
+    private static final Logger logger = LogsCenter.getLogger(FilterCommand.class);
+
     private final ContactFilterPredicate predicate;
 
     /**
@@ -30,8 +35,9 @@ public class FilterCommand extends Command {
     public CommandResult execute(Model model) {
         requireNonNull(model);
         model.updateFilteredPersonList(predicate);
-        return new CommandResult(String.format(Messages.MESSAGE_PERSONS_LISTED_OVERVIEW,
-                model.getFilteredPersonList().size()));
+        int resultCount = model.getFilteredPersonList().size();
+        logger.info("Filter applied: " + resultCount + " contacts matched.");
+        return new CommandResult(String.format(Messages.MESSAGE_PERSONS_LISTED_OVERVIEW, resultCount));
     }
 
     @Override

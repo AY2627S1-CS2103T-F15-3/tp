@@ -6,15 +6,21 @@ box Logic LOGIC_COLOR_T1
 participant ":LogicManager" as LogicManager LOGIC_COLOR
 participant ":AddressBookParser" as AddressBookParser LOGIC_COLOR
 participant "u:UndoCommand" as UndoCommand LOGIC_COLOR
+participant "r:CommandResult" as CommandResult LOGIC_COLOR
 end box
 
 box Model MODEL_COLOR_T1
-participant ":Model" as Model MODEL_COLOR
+participant "m:Model" as Model MODEL_COLOR
 end box
-[-> LogicManager : execute(undo)
+
+box Storage STORAGE_COLOR_T1
+participant ":Storage" as Storage STORAGE_COLOR
+end box
+
+[-> LogicManager : execute("undo")
 activate LogicManager
 
-LogicManager -> AddressBookParser : parseCommand(undo)
+LogicManager -> AddressBookParser : parseCommand("undo")
 activate AddressBookParser
 
 create UndoCommand
@@ -27,20 +33,55 @@ deactivate UndoCommand
 AddressBookParser --> LogicManager : u
 deactivate AddressBookParser
 
-LogicManager -> UndoCommand : execute()
+LogicManager -> UndoCommand : execute(m)
 activate UndoCommand
 
-UndoCommand -> Model : undoAddressBook()
+UndoCommand -> Model : canUndoAddressBook()
 activate Model
 
-Model --> UndoCommand
+Model --> UndoCommand : canUndo
 deactivate Model
 
-UndoCommand --> LogicManager : result
-deactivate UndoCommand
-UndoCommand -[hidden]-> LogicManager : result
-destroy UndoCommand
+alt canUndo is false
+    UndoCommand --> LogicManager : throw CommandException
+    deactivate UndoCommand
+    [<-- LogicManager : throw CommandException
+else else
+    'Reactivates the command, since the branches above and below are drawn one after the other.
+    activate UndoCommand
+    UndoCommand -> Model : undoAddressBook()
+    activate Model
 
-[<--LogicManager
+    Model --> UndoCommand
+    deactivate Model
+
+    UndoCommand -> Model : updateFilteredPersonList(PREDICATE_SHOW_ALL_PERSONS)
+    activate Model
+
+    Model --> UndoCommand
+    deactivate Model
+
+    create CommandResult
+    UndoCommand -> CommandResult
+    activate CommandResult
+
+    CommandResult --> UndoCommand
+    deactivate CommandResult
+
+    UndoCommand --> LogicManager : r
+    deactivate UndoCommand
+
+    LogicManager -> Storage : saveAddressBook(addressBook)
+    activate Storage
+
+    Storage --> LogicManager
+    deactivate Storage
+
+    [<-- LogicManager : r
+end
 deactivate LogicManager
+
+'Hidden arrow to position the destroy marker below the end of the activation bar.
+UndoCommand -[hidden]-> LogicManager
+destroy UndoCommand
 @enduml

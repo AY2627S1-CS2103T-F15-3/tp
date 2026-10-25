@@ -1,0 +1,42 @@
+@startuml
+!include style.puml
+skinparam ArrowFontStyle plain
+
+box Logic LOGIC_COLOR_T1
+participant ":SortCommandParser" as Parser LOGIC_COLOR
+participant "s:SortCommand" as Command LOGIC_COLOR
+end box
+
+box Model MODEL_COLOR_T1
+participant "comparator:\nPersonSortComparator" as Comparator MODEL_COLOR
+participant "m:Model" as Model MODEL_COLOR
+end box
+
+[-> Parser : parse(" year desc")
+activate Parser
+
+create Command
+Parser -> Command : SortCommand(YEAR, DESC)
+activate Command
+Command --> Parser : s
+deactivate Command
+[<-- Parser : s
+deactivate Parser
+
+[-> Command : execute(m)
+activate Command
+create Comparator
+Command -> Comparator : PersonSortComparator(YEAR, DESC)
+activate Comparator
+Comparator --> Command : comparator
+deactivate Comparator
+
+Command -> Model : updateSortedPersonList(comparator)
+activate Model
+Model --> Command
+deactivate Model
+
+[<-- Command : result
+deactivate Command
+
+@enduml

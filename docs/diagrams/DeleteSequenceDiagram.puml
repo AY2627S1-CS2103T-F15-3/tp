@@ -7,6 +7,7 @@ participant ":LogicManager" as LogicManager LOGIC_COLOR
 participant ":AddressBookParser" as AddressBookParser LOGIC_COLOR
 participant ":DeleteCommandParser" as DeleteCommandParser LOGIC_COLOR
 participant "d:DeleteCommand" as DeleteCommand LOGIC_COLOR
+participant "Messages" as Messages LOGIC_COLOR
 participant "r:CommandResult" as CommandResult LOGIC_COLOR
 end box
 
@@ -21,17 +22,17 @@ LogicManager -> AddressBookParser : parseCommand("delete 1")
 activate AddressBookParser
 
 create DeleteCommandParser
-AddressBookParser -> DeleteCommandParser
+AddressBookParser -> DeleteCommandParser : DeleteCommandParser()
 activate DeleteCommandParser
 
 DeleteCommandParser --> AddressBookParser
 deactivate DeleteCommandParser
 
-AddressBookParser -> DeleteCommandParser : parse("1")
+AddressBookParser -> DeleteCommandParser : parse(" 1")
 activate DeleteCommandParser
 
 create DeleteCommand
-DeleteCommandParser -> DeleteCommand
+DeleteCommandParser -> DeleteCommand : DeleteCommand(index)
 activate DeleteCommand
 
 DeleteCommand --> DeleteCommandParser :
@@ -49,14 +50,38 @@ deactivate AddressBookParser
 LogicManager -> DeleteCommand : execute(m)
 activate DeleteCommand
 
-DeleteCommand -> Model : deletePerson(1)
+DeleteCommand -> Model : getFilteredPersonList()
+activate Model
+Model --> DeleteCommand : lastShownList
+deactivate Model
+
+note over DeleteCommand, Model
+  Check that the index is within the displayed list.
+  For index 1, personToDelete = lastShownList.get(0).
+  This list follows the current filter and sort order.
+end note
+
+DeleteCommand -> Model : deletePerson(personToDelete)
 activate Model
 
 Model --> DeleteCommand
 deactivate Model
 
+DeleteCommand -> Messages : format(personToDelete)
+activate Messages
+note right of Messages
+  Include Major and Class year
+  only when their values are specified.
+end note
+Messages --> DeleteCommand : formattedPerson
+deactivate Messages
+
+note over DeleteCommand, CommandResult
+  feedback = "Deleted person: " + formattedPerson
+end note
+
 create CommandResult
-DeleteCommand -> CommandResult
+DeleteCommand -> CommandResult : CommandResult(feedback)
 activate CommandResult
 
 CommandResult --> DeleteCommand
@@ -65,6 +90,11 @@ deactivate CommandResult
 DeleteCommand --> LogicManager : r
 deactivate DeleteCommand
 
-[<--LogicManager
+note over LogicManager, Model
+  LogicManager saves the resulting address book through Storage
+  before returning r. The storage interactions are omitted here.
+end note
+
+[<--LogicManager : r
 deactivate LogicManager
 @enduml

@@ -124,8 +124,26 @@ public class Person {
         return notes;
     }
 
+    /**
+     * Returns the date added or last actual change to the basic profile, excluding tags, notes and favourites.
+     */
     public LocalDate getLastUpdated() {
         return lastUpdated;
+    }
+
+    /**
+     * Returns a copy with the specified basic-profile date, preserving all other contact state.
+     */
+    public Person withLastUpdated(LocalDate updatedDate) {
+        return new Person(name, phone, email, address, major, graduationYear, tags, notes,
+                favourite, updatedDate);
+    }
+
+    /**
+     * Returns whether both ways to contact this person are unspecified.
+     */
+    public boolean isIncomplete() {
+        return phone.value.isEmpty() && email.value.isEmpty();
     }
 
     /**
@@ -153,7 +171,7 @@ public class Person {
     }
 
     /**
-     * Returns true if both persons have the same name.
+     * Returns true if both persons have the same name, ignoring case.
      * This defines a weaker notion of equality between two persons.
      */
     public boolean isSamePerson(Person otherPerson) {
@@ -162,7 +180,7 @@ public class Person {
         }
 
         return otherPerson != null
-                && otherPerson.getName().equals(getName());
+                && otherPerson.getName().fullName.equalsIgnoreCase(getName().fullName);
     }
 
     /**

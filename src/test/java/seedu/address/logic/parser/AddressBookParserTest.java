@@ -8,7 +8,9 @@ import static seedu.address.testutil.Assert.assertThrows;
 import static seedu.address.testutil.TypicalIndexes.INDEX_FIRST_PERSON;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
@@ -28,7 +30,9 @@ import seedu.address.logic.commands.NoteCommand;
 import seedu.address.logic.commands.RedoCommand;
 import seedu.address.logic.commands.ShowNoteCommand;
 import seedu.address.logic.commands.SortCommand;
+import seedu.address.logic.commands.TagCommand;
 import seedu.address.logic.commands.UndoCommand;
+import seedu.address.logic.commands.UntagCommand;
 import seedu.address.logic.parser.exceptions.ParseException;
 import seedu.address.model.person.ContactFilterPredicate;
 import seedu.address.model.person.GraduationYear;
@@ -107,6 +111,7 @@ public class AddressBookParserTest {
 
     @Test
     public void parseCommand_sort_routesFieldAndDirection() throws Exception {
+        assertEquals(new SortCommand(SortField.NAME, SortDirection.ASC), parser.parseCommand("SoRt Name ASC"));
         assertEquals(new SortCommand(SortField.NAME, SortDirection.ASC), parser.parseCommand("sort name asc"));
         assertEquals(new SortCommand(SortField.MAJOR, SortDirection.DESC),
                 parser.parseCommand("  sort   major  desc  "));
@@ -119,7 +124,7 @@ public class AddressBookParserTest {
         assertThrows(ParseException.class, expectedMessage, () -> parser.parseCommand("sort"));
         assertThrows(ParseException.class, expectedMessage, () -> parser.parseCommand("sort name"));
         assertThrows(ParseException.class, expectedMessage, () -> parser.parseCommand("sort name asc extra"));
-        assertThrows(ParseException.class, MESSAGE_UNKNOWN_COMMAND, () -> parser.parseCommand("SORT name asc"));
+        assertThrows(ParseException.class, expectedMessage, () -> parser.parseCommand("SORT name"));
     }
 
     @Test
@@ -131,7 +136,16 @@ public class AddressBookParserTest {
     @Test
     public void parseCommand_list() throws Exception {
         assertTrue(parser.parseCommand(ListCommand.COMMAND_WORD) instanceof ListCommand);
-        assertTrue(parser.parseCommand(ListCommand.COMMAND_WORD + " 3") instanceof ListCommand);
+        assertTrue(parser.parseCommand("  list  \t ") instanceof ListCommand);
+    }
+
+    @Test
+    public void parseCommand_listWithArguments_throwsParseException() {
+        String expectedMessage = String.format(MESSAGE_INVALID_COMMAND_FORMAT, ListCommand.MESSAGE_USAGE);
+        for (String input : List.of("list 3", "list all", "list t/Friend", "list \t extra")) {
+            assertThrows(ParseException.class, expectedMessage, () -> parser.parseCommand(input));
+        }
+        assertThrows(ParseException.class, expectedMessage, () -> parser.parseCommand("LIST all"));
     }
 
     @Test
@@ -146,8 +160,7 @@ public class AddressBookParserTest {
         assertThrows(ParseException.class, expectedMessage, () -> parser.parseCommand(UndoCommand.COMMAND_WORD + " 1"));
         assertThrows(ParseException.class, expectedMessage, () -> parser.parseCommand(UndoCommand.COMMAND_WORD
                 + " all"));
-        // The command word is case-sensitive, like other commands.
-        assertThrows(ParseException.class, MESSAGE_UNKNOWN_COMMAND, () -> parser.parseCommand("UNDO"));
+        assertThrows(ParseException.class, expectedMessage, () -> parser.parseCommand("UNDO 1"));
     }
 
     @Test
@@ -181,7 +194,50 @@ public class AddressBookParserTest {
         assertThrows(ParseException.class, expectedMessage, () -> parser.parseCommand(RedoCommand.COMMAND_WORD + " 1"));
         assertThrows(ParseException.class, expectedMessage, () -> parser.parseCommand(RedoCommand.COMMAND_WORD
                 + " all"));
-        // The command word is case-sensitive, like other commands.
-        assertThrows(ParseException.class, MESSAGE_UNKNOWN_COMMAND, () -> parser.parseCommand("REDO"));
+        assertThrows(ParseException.class, expectedMessage, () -> parser.parseCommand("REDO 1"));
+    }
+
+    @Test
+    public void parseCommand_allCommandWords_acceptDifferentCases() throws Exception {
+        List<String> inputs = List.of(
+                "add n/Alice a/NUS", "fav 1", "unfav 1", "note 1 Met at NUS",
+                "shownote 1", "delnote 1", "tag 1 t/NOC", "untag 1 t/NOC", "tags",
+                "edit 1 n/Alice", "delete 1", "clear", "sort name asc",
+                "filter t/NOC", "find Alice", "list", "listfav", "undo", "exit", "help", "redo");
+        for (String input : inputs) {
+            int separator = input.indexOf(' ');
+            String word = separator < 0 ? input : input.substring(0, separator);
+            String arguments = separator < 0 ? "" : input.substring(separator);
+            String mixedCase = word.substring(0, 1).toUpperCase(Locale.ROOT) + word.substring(1);
+            assertEquals(parser.parseCommand(input).getClass(),
+                    parser.parseCommand(word.toUpperCase(Locale.ROOT) + arguments).getClass(), input);
+            assertEquals(parser.parseCommand(input).getClass(),
+                    parser.parseCommand(mixedCase + arguments).getClass(), input);
+        }
+        assertEquals(parser.parseCommand("untag 1 t/NOC"), parser.parseCommand("UnTag 1 t/NOC"));
+        assertEquals(parser.parseCommand("unfav 1"), parser.parseCommand("UnFav 1"));
+        assertEquals(parser.parseCommand("listfav").getClass(), parser.parseCommand("ListFav").getClass());
+    }
+
+    @Test
+    public void parseCommand_commandWordNormalization_preservesArguments() throws Exception {
+        Set<Tag> tags = Set.of(new Tag("NOC"), new Tag("noc"));
+        assertEquals(new TagCommand(INDEX_FIRST_PERSON, tags), parser.parseCommand("TAG 1 t/NOC t/noc"));
+        assertEquals(new UntagCommand(INDEX_FIRST_PERSON, Set.of(new Tag("NOC"))),
+                parser.parseCommand("UNTAG 1 t/NOC"));
+        assertEquals(new FindCommand(new NameContainsKeywordsPredicate(List.of("Alice", "NUS"))),
+                parser.parseCommand("FIND Alice NUS"));
+        assertEquals(new NoteCommand(INDEX_FIRST_PERSON, new Notes("Met at NUS t/NOC")),
+                parser.parseCommand("NOTE 1 Met at NUS t/NOC"));
+        Person person = new PersonBuilder().build();
+        String addInput = PersonUtil.getAddCommand(person);
+        assertEquals(new AddCommand(person), parser.parseCommand("ADD" + addInput.substring(3)));
+    }
+
+    @Test
+    public void parseCommand_uppercasePrefix_stillRejected() {
+        String expectedMessage = String.format(MESSAGE_INVALID_COMMAND_FORMAT, TagCommand.MESSAGE_USAGE);
+        assertThrows(ParseException.class, expectedMessage, () -> parser.parseCommand("TAG 1 T/NOC"));
+        assertThrows(ParseException.class, MESSAGE_UNKNOWN_COMMAND, () -> parser.parseCommand("UNKNOWNCOMMAND"));
     }
 }
