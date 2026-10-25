@@ -120,6 +120,8 @@ public class AddressBookParserTest {
     public void parseCommand_noteWithUnicodeSpaces_textNotNormalised() throws Exception {
         assertEquals(new NoteCommand(INDEX_FIRST_PERSON, new Notes("Met at CS2103T")),
                 parser.parseCommand("note 1 Met at CS2103T"));
+        assertEquals(new NoteCommand(INDEX_FIRST_PERSON, new Notes("Met at CS2103T")),
+                parser.parseCommand("note 1 Met at CS2103T"));
     }
 
     @Test
