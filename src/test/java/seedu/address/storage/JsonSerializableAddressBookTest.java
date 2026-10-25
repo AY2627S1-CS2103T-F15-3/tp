@@ -5,6 +5,8 @@ import static seedu.address.testutil.Assert.assertThrows;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
@@ -22,6 +24,24 @@ public class JsonSerializableAddressBookTest {
     private static final Path TYPICAL_PERSONS_FILE = TEST_DATA_FOLDER.resolve("typicalPersonsAddressBook.json");
     private static final Path INVALID_PERSON_FILE = TEST_DATA_FOLDER.resolve("invalidPersonAddressBook.json");
     private static final Path DUPLICATE_PERSON_FILE = TEST_DATA_FOLDER.resolve("duplicatePersonAddressBook.json");
+
+    @Test
+    public void toModelType_nullPerson_throwsIllegalValueException() {
+        JsonSerializableAddressBook data = new JsonSerializableAddressBook(Collections.singletonList(null));
+
+        assertThrows(IllegalValueException.class, JsonSerializableAddressBook.MESSAGE_NULL_PERSON, data::toModelType);
+    }
+
+    @Test
+    public void toModelType_validPersonThenNull_rejectsWholeAddressBook() {
+        List<JsonAdaptedPerson> persons = new ArrayList<>();
+        persons.add(new JsonAdaptedPerson(new PersonBuilder().build()));
+        persons.add(null);
+        JsonSerializableAddressBook data = new JsonSerializableAddressBook(persons);
+
+        assertThrows(IllegalValueException.class, JsonSerializableAddressBook.MESSAGE_NULL_PERSON, data::toModelType);
+        assertThrows(IllegalValueException.class, JsonSerializableAddressBook.MESSAGE_NULL_PERSON, data::toModelType);
+    }
 
     @Test
     public void toModelType_caseOnlyDuplicateNames_rejectedWithoutChangingSource() {
