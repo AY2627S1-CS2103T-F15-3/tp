@@ -3,6 +3,7 @@ package seedu.address.logic.parser;
 import static java.util.Objects.requireNonNull;
 import static seedu.address.logic.Messages.MESSAGE_INVALID_COMMAND_FORMAT;
 
+import java.util.Locale;
 import java.util.logging.Logger;
 
 import seedu.address.commons.core.LogsCenter;
@@ -24,13 +25,13 @@ public class SortCommandParser implements Parser<SortCommand> {
         if (tokens.length != 2) {
             throw invalidFormat("Expected one field and one direction");
         }
-        SortField field = switch (tokens[0]) {
+        SortField field = switch (tokens[0].toLowerCase(Locale.ROOT)) {
             case "name" -> SortField.NAME;
             case "major" -> SortField.MAJOR;
             case "year" -> SortField.YEAR;
             default -> throw invalidFormat("Unsupported sort field");
         };
-        SortDirection direction = switch (tokens[1]) {
+        SortDirection direction = switch (tokens[1].toLowerCase(Locale.ROOT)) {
             case "asc" -> SortDirection.ASC;
             case "desc" -> SortDirection.DESC;
             default -> throw invalidFormat("Unsupported sort direction");

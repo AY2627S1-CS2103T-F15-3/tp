@@ -157,7 +157,7 @@ public class SortCommandIntegrationTest {
         AddressBook before = new AddressBook(model.getAddressBook());
         String expectedMessage = String.format(MESSAGE_INVALID_COMMAND_FORMAT, SortCommand.MESSAGE_USAGE);
         for (String command : List.of("sort", "sort name", "sort phone asc", "sort year ascending",
-                "sort major asc desc", "sort NAME asc")) {
+                "sort major asc desc", "SORT PHONE ASC")) {
             assertThrows(ParseException.class, expectedMessage, () -> logic.execute(command));
             assertEquals(List.of(dana, charlie, bob), model.getFilteredPersonList());
             assertEquals(before, model.getAddressBook());
