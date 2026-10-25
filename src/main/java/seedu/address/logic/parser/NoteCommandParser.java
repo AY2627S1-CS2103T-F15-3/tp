@@ -16,7 +16,8 @@ public class NoteCommandParser implements Parser<NoteCommand> {
     @Override
     public NoteCommand parse(String args) throws ParseException {
         requireNonNull(args);
-        String[] parts = args.strip().split("\\s+", 2);
+        // Note arguments are not normalised by AddressBookParser, so split on Unicode whitespace here.
+        String[] parts = args.strip().split("\\p{javaWhitespace}+", 2);
         if (parts.length != 2) {
             throw new ParseException(String.format(MESSAGE_INVALID_COMMAND_FORMAT, NoteCommand.MESSAGE_USAGE));
         }
