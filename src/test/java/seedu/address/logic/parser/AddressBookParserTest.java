@@ -201,6 +201,15 @@ public class AddressBookParserTest {
     }
 
     @Test
+    public void parseCommand_uppercaseNoteWithUnicodeSpaces_textNotNormalised() throws Exception {
+        // Command words are case-insensitive, so any casing of note must keep the text as typed.
+        assertEquals(new NoteCommand(INDEX_FIRST_PERSON, new Notes("Met\u00A0at\u2003CS2103T")),
+                parser.parseCommand("NOTE 1 Met\u00A0at\u2003CS2103T"));
+        assertEquals(new NoteCommand(INDEX_FIRST_PERSON, new Notes("Met\u00A0at\u2003CS2103T")),
+                parser.parseCommand("Note 1 Met\u00A0at\u2003CS2103T"));
+    }
+
+    @Test
     public void parseCommand_filterWithoutCriteria_throwsParseException() {
         String expectedMessage = String.format(MESSAGE_INVALID_COMMAND_FORMAT, FilterCommand.MESSAGE_USAGE);
         assertThrows(ParseException.class, expectedMessage, () -> parser.parseCommand("filter"));
