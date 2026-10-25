@@ -2,6 +2,7 @@ package seedu.address.logic.parser;
 
 import static java.util.Objects.requireNonNull;
 import static seedu.address.logic.Messages.MESSAGE_INVALID_COMMAND_FORMAT;
+import static seedu.address.logic.parser.CliSyntax.PREFIX_FAVOURITE;
 import static seedu.address.logic.parser.CliSyntax.PREFIX_GRADUATION_YEAR;
 import static seedu.address.logic.parser.CliSyntax.PREFIX_MAJOR;
 import static seedu.address.logic.parser.CliSyntax.PREFIX_TAG;
@@ -21,13 +22,14 @@ import seedu.address.model.person.Major;
 import seedu.address.model.tag.Tag;
 
 /**
- * Parses independently optional major, graduation-year and tag filter criteria.
+ * Parses independently optional major, graduation-year, tag and favourite filter criteria.
  */
 public class FilterCommandParser implements Parser<FilterCommand> {
+    public static final String MESSAGE_INVALID_FAVOURITE = "Favourite status must be true or false.";
     private static final Logger logger = LogsCenter.getLogger(FilterCommandParser.class);
     private static final Pattern PREFIX_PATTERN = Pattern.compile("(?<!\\S)([a-zA-Z]/)");
     private static final Set<String> SUPPORTED_PREFIXES = Set.of(PREFIX_MAJOR.getPrefix(),
-            PREFIX_GRADUATION_YEAR.getPrefix(), PREFIX_TAG.getPrefix());
+            PREFIX_GRADUATION_YEAR.getPrefix(), PREFIX_TAG.getPrefix(), PREFIX_FAVOURITE.getPrefix());
 
     /**
      * Parses at least one criterion, rejecting repeated prefixes, unsupported prefixes and invalid values.
@@ -48,14 +50,15 @@ public class FilterCommandParser implements Parser<FilterCommand> {
     private FilterCommand parseCriteria(String args) throws ParseException {
         rejectUnsupportedPrefixes(args);
         ArgumentMultimap arguments = ArgumentTokenizer.tokenize(" " + args,
-                PREFIX_MAJOR, PREFIX_GRADUATION_YEAR, PREFIX_TAG);
+                PREFIX_MAJOR, PREFIX_GRADUATION_YEAR, PREFIX_TAG, PREFIX_FAVOURITE);
         if (!arguments.getPreamble().isEmpty()
                 || (arguments.getValue(PREFIX_MAJOR).isEmpty()
                 && arguments.getValue(PREFIX_GRADUATION_YEAR).isEmpty()
-                && arguments.getValue(PREFIX_TAG).isEmpty())) {
+                && arguments.getValue(PREFIX_TAG).isEmpty()
+                && arguments.getValue(PREFIX_FAVOURITE).isEmpty())) {
             throw new ParseException(String.format(MESSAGE_INVALID_COMMAND_FORMAT, FilterCommand.MESSAGE_USAGE));
         }
-        arguments.verifyNoDuplicatePrefixesFor(PREFIX_MAJOR, PREFIX_GRADUATION_YEAR, PREFIX_TAG);
+        arguments.verifyNoDuplicatePrefixesFor(PREFIX_MAJOR, PREFIX_GRADUATION_YEAR, PREFIX_TAG, PREFIX_FAVOURITE);
         Optional<Major> major = arguments.getValue(PREFIX_MAJOR).isPresent()
                 ? Optional.of(ParserUtil.parseMajor(arguments.getValue(PREFIX_MAJOR).get())) : Optional.empty();
         Optional<GraduationYear> year = arguments.getValue(PREFIX_GRADUATION_YEAR).isPresent()
@@ -63,7 +66,19 @@ public class FilterCommandParser implements Parser<FilterCommand> {
                 : Optional.empty();
         Optional<Tag> tag = arguments.getValue(PREFIX_TAG).isPresent()
                 ? Optional.of(ParserUtil.parseTag(arguments.getValue(PREFIX_TAG).get())) : Optional.empty();
-        return new FilterCommand(new ContactFilterPredicate(major, year, tag));
+        Optional<Boolean> favourite = arguments.getValue(PREFIX_FAVOURITE).isPresent()
+                ? Optional.of(parseFavourite(arguments.getValue(PREFIX_FAVOURITE).get())) : Optional.empty();
+        return new FilterCommand(new ContactFilterPredicate(major, year, tag, favourite));
+    }
+
+    private boolean parseFavourite(String value) throws ParseException {
+        if ("true".equalsIgnoreCase(value)) {
+            return true;
+        }
+        if ("false".equalsIgnoreCase(value)) {
+            return false;
+        }
+        throw new ParseException(MESSAGE_INVALID_FAVOURITE);
     }
 
     private void rejectUnsupportedPrefixes(String args) throws ParseException {

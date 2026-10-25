@@ -11,14 +11,16 @@ import seedu.address.model.Model;
 import seedu.address.model.person.ContactFilterPredicate;
 
 /**
- * Lists contacts matching every supplied major, graduation-year and tag criterion.
+ * Lists contacts matching every supplied major, graduation-year, tag and favourite criterion.
  */
 public class FilterCommand extends Command {
     public static final String COMMAND_WORD = "filter";
     public static final String MESSAGE_USAGE = COMMAND_WORD + ": Lists contacts matching all supplied criteria. "
-            + "Major and tag values match in full, ignoring case; years match exactly.\n"
-            + "Parameters: [m/MAJOR] [c/CLASS_YEAR] [t/TAG] (at least one; each prefix at most once)\n"
-            + "Example: " + COMMAND_WORD + " m/Computer Science c/2027 t/Classmate";
+            + "Major and tag values match in full, ignoring case; years match exactly. "
+            + "Favourite status is true or false, ignoring case.\n"
+            + "Parameters: [m/MAJOR] [c/CLASS_YEAR] [t/TAG] [f/FAVOURITE] "
+            + "(at least one; each prefix at most once)\n"
+            + "Example: " + COMMAND_WORD + " m/Computer Science c/2027 t/Classmate f/true";
 
     private static final Logger logger = LogsCenter.getLogger(FilterCommand.class);
 

@@ -467,16 +467,19 @@ Examples:
 * `find alex david` returns `Alex Yeoh`, `David Li`<br>
   ![result for 'find alex david'](images/findAlexDavidResult.png)
 
-### Filtering contacts by major, class year and tag: `filter`
+### Filtering contacts by major, class year, tag and favourite status: `filter`
 
 Shows contacts whose complete field values match **all** supplied criteria (AND matching).
 
-Format: `filter [m/MAJOR] [c/CLASS_YEAR] [t/TAG]`
+Format: `filter [m/MAJOR] [c/CLASS_YEAR] [t/TAG] [f/FAVOURITE]`
 
 * Supply at least one criterion. Each prefix may appear only once, in any order, separated by spaces.
 * Major and tag matching ignore case but require the complete value: `m/Computer Science` matches
   `Computer Science`, while `m/Computer` does not. A tag criterion matches any one of the contact's tags.
 * Class year matches exactly and must be four digits from `2000` to `2099`.
+* `f/true` selects favourites and `f/false` selects non-favourites. These two values ignore case.
+  Combine this criterion with major, class year or tag criteria to narrow your favourites without
+  running `listfav` separately. Omit `f/` to include both favourites and non-favourites.
 * Omitted criteria leave those fields unrestricted. An unspecified academic field does not match a
   supplied criterion for that field, but the contact can still match a criterion on another field.
 * Leading and trailing spaces around values are ignored; spaces within a major remain significant.
@@ -489,7 +492,9 @@ Format: `filter [m/MAJOR] [c/CLASS_YEAR] [t/TAG]`
 * Indices refer to the currently displayed list. For example, `delete 1` targets the first filtered result.
   Deleting or untagging a contact that no longer matches removes it from the results and renumbers the list.
 * Successful `add`, `edit`, `undo` and `redo` commands show the full list.
-  Reapply the filter before using a filtered index again. Tag and untag retain the active filter.
+  Reapply the filter before using a filtered index again. Tag, untag, fav and unfav retain the filter.
+  Changing favourite status immediately removes a contact that no longer matches `f/true` or `f/false`;
+  check the renumbered displayed indices before entering another indexed command.
 * Filters are temporary: restarting UniMate shows the full contact list. Filtering does not create
   an undoable data change or clear redo history.
 
@@ -497,6 +502,8 @@ Examples:
 * `filter m/Computer Science c/2027 t/Classmate` shows contacts who match all three criteria.
 * `filter c/2027` shows all contacts with class year `2027`, regardless of their major or tags.
 * `filter t/friend` shows contacts with a complete tag matching `friend`, ignoring case.
+* `filter f/true m/Computer Science t/Classmate` shows favourite classmates in Computer Science.
+* `filter f/false` shows all contacts who are not favourites.
 * `list` returns to the full contact list.
 
 Unlike `find Computer Science`, which searches for either word across names and academic fields,
@@ -679,7 +686,7 @@ Action     | Format, Examples
 **Delete** | `delete INDEX`<br> e.g., `delete 3`
 **Edit**   | `edit INDEX [n/NAME] [p/PHONE_NUMBER] [e/EMAIL] [a/ADDRESS] [m/MAJOR] [c/CLASS_YEAR] [t/TAG]... `<br> e.g.,`edit 2 n/James Lee e/jameslee@example.com`
 **Find**   | `find KEYWORD [MORE_KEYWORDS]`<br> e.g., `find James Jake`, `find Computer Science`, `find 2027`
-**Filter** | `filter [m/MAJOR] [c/CLASS_YEAR] [t/TAG]` (at least one criterion)<br> e.g., `filter m/Computer Science c/2027 t/Classmate`
+**Filter** | `filter [m/MAJOR] [c/CLASS_YEAR] [t/TAG] [f/FAVOURITE]` (at least one criterion)<br> e.g., `filter m/Computer Science c/2027 t/Classmate f/true`
 **Sort**   | `sort FIELD DIRECTION`<br> e.g., `sort name asc`, `sort major desc`, `sort year asc`
 **List all saved contacts** | `list` (no parameters; clears the current filter and reports the total)
 **Favourite** | `fav INDEX`<br> e.g., `fav 1`

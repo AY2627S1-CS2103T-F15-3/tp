@@ -87,7 +87,8 @@ public class ContactFilterPredicateTest {
     public void toStringMethod_containsCriteria() {
         ContactFilterPredicate predicate = predicate("Computer Science", "2027");
         assertEquals(ContactFilterPredicate.class.getCanonicalName()
-                + "{major=Optional[Computer Science], graduationYear=Optional[2027], tag=Optional.empty}",
+                + "{major=Optional[Computer Science], graduationYear=Optional[2027], tag=Optional.empty, "
+                + "favourite=Optional.empty}",
                 predicate.toString());
     }
 
@@ -118,6 +119,52 @@ public class ContactFilterPredicateTest {
     public void constructor_nullTag_throwsNullPointerException() {
         assertThrows(NullPointerException.class, () -> new ContactFilterPredicate(Optional.of(new Major("Computing")),
                 Optional.empty(), null));
+    }
+
+    @Test
+    public void test_favouriteOnly_matchesRequestedStatus() {
+        for (boolean favourite : new boolean[]{true, false}) {
+            ContactFilterPredicate predicate = new ContactFilterPredicate(Optional.empty(), Optional.empty(),
+                    Optional.empty(), Optional.of(favourite));
+            assertTrue(predicate.test(new PersonBuilder(computing).withFavourite(favourite).build()));
+            assertFalse(predicate.test(new PersonBuilder(computing).withFavourite(!favourite).build()));
+        }
+        assertTrue(predicate("Computer Science", null).test(
+                new PersonBuilder(computing).withFavourite(true).build()));
+        assertTrue(predicate("Computer Science", null).test(
+                new PersonBuilder(computing).withFavourite(false).build()));
+    }
+
+    @Test
+    public void test_favouriteWithAcademicAndTagCriteria_requiresEveryCriterion() {
+        ContactFilterPredicate predicate = new ContactFilterPredicate(Optional.of(new Major("Computer Science")),
+                Optional.of(new GraduationYear("2027")), Optional.of(new Tag("Classmate")), Optional.of(true));
+        Person matching = new PersonBuilder(computing).withFavourite(true).withTags("Classmate").build();
+        assertTrue(predicate.test(matching));
+        assertFalse(predicate.test(new PersonBuilder(matching).withFavourite(false).build()));
+        assertFalse(predicate.test(new PersonBuilder(matching).withMajor("Mathematics").build()));
+        assertFalse(predicate.test(new PersonBuilder(matching).withGraduationYear("2028").build()));
+        assertFalse(predicate.test(new PersonBuilder(matching).withTags("Friend").build()));
+    }
+
+    @Test
+    public void constructor_favouriteCriteria_rejectsNullAndNoCriteria() {
+        assertThrows(NullPointerException.class, () -> new ContactFilterPredicate(Optional.empty(),
+                Optional.empty(), Optional.empty(), null));
+        assertThrows(IllegalArgumentException.class, () -> new ContactFilterPredicate(Optional.empty(),
+                Optional.empty(), Optional.empty(), Optional.empty()));
+    }
+
+    @Test
+    public void equals_favouriteCriteria_distinguishesTrueFalseAndOmitted() {
+        ContactFilterPredicate favourite = new ContactFilterPredicate(Optional.empty(), Optional.empty(),
+                Optional.empty(), Optional.of(true));
+        assertEquals(favourite, new ContactFilterPredicate(Optional.empty(), Optional.empty(),
+                Optional.empty(), Optional.of(true)));
+        assertFalse(favourite.equals(new ContactFilterPredicate(Optional.empty(), Optional.empty(),
+                Optional.empty(), Optional.of(false))));
+        assertFalse(predicate("Computer Science", null).equals(new ContactFilterPredicate(
+                Optional.of(new Major("Computer Science")), Optional.empty(), Optional.empty(), Optional.of(false))));
     }
 
     private ContactFilterPredicate predicate(String major, String year) {

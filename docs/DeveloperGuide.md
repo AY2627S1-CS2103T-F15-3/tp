@@ -290,19 +290,22 @@ case-insensitive, whole-word and `OR`-based across all three fields. An empty `M
 never matches a keyword. `FindCommand` applies the predicate through `Model#updateFilteredPersonList`;
 the model and storage format are unchanged.
 
-### Filtering contacts by academic fields and tags
+### Filtering contacts by academic fields, tags and favourite status
 
-`FilterCommandParser` recognises the existing `m/`, `c/` and `t/` prefixes, requires at least one,
+`FilterCommandParser` recognises `m/`, `c/`, `t/` and `f/` prefixes, requires at least one,
 and rejects repeated criteria, a non-empty preamble and unsupported single-letter prefixes.
 It uses `ParserUtil.parseMajor`, `parseGraduationYear` and `parseTag` to trim and validate supplied
-values. An omitted criterion is represented by an empty `Optional`; a supplied blank value is invalid.
+values. The favourite criterion accepts only `true` or `false`, ignoring case. An omitted criterion is
+represented by an empty `Optional`; a supplied blank value is invalid.
 As with other prefixed commands, prefix-like tokens are reserved syntax rather than literal major text.
 
-`ContactFilterPredicate` holds the optional `Major`, `GraduationYear` and `Tag` criteria.
+`ContactFilterPredicate` holds optional `Major`, `GraduationYear`, `Tag` and favourite-status criteria.
+Its three-argument constructor remains available and leaves favourite status unrestricted.
 Its `test(Person)` combines them using AND. Major and tag comparisons use full-value,
 case-insensitive matching; graduation years use exact equality. A tag criterion succeeds if any of
-that person's tags matches. This differs from `NameContainsKeywordsPredicate`, which uses OR
-matching over whole-word keywords in names, majors and graduation years.
+that person's tags matches; favourite status compares against `Person#isFavourite`. This differs from
+`NameContainsKeywordsPredicate`, which uses OR matching over whole-word keywords in names, majors and
+graduation years.
 
 `AddressBookParser` routes `filter` to `FilterCommandParser`. `FilterCommand` then passes the predicate
 to `Model#updateFilteredPersonList` and reports the size of `Model#getFilteredPersonList`.
