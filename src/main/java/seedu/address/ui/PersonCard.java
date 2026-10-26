@@ -30,8 +30,7 @@ public class PersonCard extends UiPart<Region> {
 
     private static final String LAST_UPDATED_HELP = "Date added or last change to name, phone, email, address, "
             + "major or class year. Tags, notes and favourites do not change this date. "
-            + "For older contacts without a saved date, the loading date is used as a baseline, "
-            + "not a known historical add or edit date.";
+            + "Older contacts without a saved date show Unknown and sort last in both date directions.";
 
     public final Person person;
     private final Clock clock;
@@ -106,7 +105,7 @@ public class PersonCard extends UiPart<Region> {
         address.setText(person.getAddress().value);
         email.setText(getValueOrFallback(person.getEmail().value));
         setAcademicFieldTexts(person, major::setText, graduationYear::setText);
-        lastUpdated.setText(person.getLastUpdated().toString());
+        lastUpdated.setText(person.getLastUpdated() == null ? "Unknown" : person.getLastUpdated().toString());
         lastUpdated.setTooltip(new Tooltip(LAST_UPDATED_HELP));
     }
 

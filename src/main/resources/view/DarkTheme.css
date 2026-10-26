@@ -372,3 +372,11 @@
 .tooltip-text {
     -fx-text-fill: #f2eee9;
 }
+
+#historyPositionLabel {
+    -fx-text-fill: #b9e4ff;
+    -fx-background-color: #304555;
+    -fx-background-radius: 4;
+    -fx-padding: 5 8 5 8;
+    -fx-font-size: 11pt;
+}

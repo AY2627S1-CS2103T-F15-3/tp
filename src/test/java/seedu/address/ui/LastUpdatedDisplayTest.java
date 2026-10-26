@@ -106,14 +106,16 @@ public class LastUpdatedDisplayTest {
     }
 
     @Test
-    public void constructor_tooltip_explainsLegacyDateBaseline() throws Exception {
+    public void constructor_unknownDate_showsUnknownWithoutUpdateReminder() throws Exception {
         runOnFxThread(() -> {
-            PersonCard card = new PersonCard(alice, 1, CLOCK);
+            Person unknown = new PersonBuilder(alice).withLastUpdated(null).build();
+            PersonCard card = new PersonCard(unknown, 1, CLOCK);
             String tooltip = dateLabel(card.getRoot()).getTooltip().getText();
 
-            assertTrue(tooltip.contains("For older contacts without a saved date"));
-            assertTrue(tooltip.contains("the loading date is used as a baseline"));
-            assertTrue(tooltip.contains("not a known historical add or edit date"));
+            assertEquals("Unknown", dateLabel(card.getRoot()).getText());
+            assertTrue(tooltip.contains("Older contacts without a saved date show Unknown"));
+            assertTrue(tooltip.contains("sort last in both date directions"));
+            assertEquals(0, card.getRoot().lookupAll(".system-tag").size());
             return null;
         });
     }

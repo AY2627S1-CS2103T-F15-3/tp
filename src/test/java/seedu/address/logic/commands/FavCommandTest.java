@@ -35,7 +35,8 @@ public class FavCommandTest {
         assertEquals(String.format(FavCommand.MESSAGE_SUCCESS, Messages.format(expected)), result.getFeedbackToUser());
         CommandException error = assertThrows(CommandException.class, () ->
                 parser.parseCommand("fav 1").execute(model));
-        assertEquals(FavCommand.MESSAGE_ALREADY_FAVOURITE, error.getMessage());
+        assertEquals(String.format(FavCommand.MESSAGE_ALREADY_FAVOURITE, expected.getName().fullName),
+                error.getMessage());
         assertEquals(expected, model.getFilteredPersonList().get(0));
     }
 
@@ -50,6 +51,9 @@ public class FavCommandTest {
         assertEquals(1, model.getFilteredPersonList().size());
         assertEquals(new PersonBuilder(bob).withFavourite(true).build(), model.getFilteredPersonList().get(0));
         assertEquals(alice, model.getAddressBook().getPersonList().get(0));
+        CommandException repeated = assertThrows(CommandException.class, () ->
+                parser.parseCommand("fav 1").execute(model));
+        assertEquals("Bob is already a favourite.", repeated.getMessage());
         CommandException error = assertThrows(CommandException.class, () ->
                 parser.parseCommand("fav 2").execute(model));
         assertEquals(Messages.MESSAGE_INVALID_PERSON_DISPLAYED_INDEX, error.getMessage());
@@ -64,6 +68,21 @@ public class FavCommandTest {
                     error.getMessage());
         }
         assertThrows(CommandException.class, () -> parser.parseCommand("fav 1").execute(model));
+    }
+
+    @Test
+    public void execute_alreadyFavourite_reportsSelectedNameWithoutChangingData() {
+        model.addPerson(new PersonBuilder().withName("Alice").withFavourite(true).build());
+        model.addPerson(new PersonBuilder().withName("Bob Chen").withFavourite(true).build());
+        for (int i = 0; i < 2; i++) {
+            Person selected = model.getFilteredPersonList().get(i);
+            String input = "fav " + (i + 1);
+            CommandException error = assertThrows(CommandException.class, () ->
+                    parser.parseCommand(input).execute(model));
+            assertEquals(selected.getName().fullName + " is already a favourite.", error.getMessage());
+            assertEquals(selected, model.getFilteredPersonList().get(i));
+            assertFalse(model.canUndoAddressBook());
+        }
     }
 
     @Test

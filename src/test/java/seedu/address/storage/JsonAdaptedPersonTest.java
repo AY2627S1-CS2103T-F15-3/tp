@@ -62,7 +62,7 @@ public class JsonAdaptedPersonTest {
         for (String notes : new String[]{"", null}) {
             JsonAdaptedPerson person = new JsonAdaptedPerson(VALID_NAME, VALID_PHONE, VALID_EMAIL, VALID_ADDRESS,
                     null, null, VALID_TAGS, notes);
-            assertEquals(BENSON, person.toModelType());
+            assertEquals(new PersonBuilder(BENSON).withLastUpdated(null).build(), person.toModelType());
             assertEquals(Notes.EMPTY, person.toModelType().getNotes());
         }
     }
@@ -104,7 +104,7 @@ public class JsonAdaptedPersonTest {
     public void toModelType_nullPhone_loadsAsUnspecified() throws Exception {
         JsonAdaptedPerson person =
                 new JsonAdaptedPerson(VALID_NAME, null, VALID_EMAIL, VALID_ADDRESS, null, null, VALID_TAGS);
-        assertEquals(new PersonBuilder(BENSON).withPhone("").build(), person.toModelType());
+        assertEquals(new PersonBuilder(BENSON).withPhone("").withLastUpdated(null).build(), person.toModelType());
     }
 
     @Test
@@ -119,7 +119,7 @@ public class JsonAdaptedPersonTest {
     public void toModelType_nullEmail_loadsAsUnspecified() throws Exception {
         JsonAdaptedPerson person =
                 new JsonAdaptedPerson(VALID_NAME, VALID_PHONE, null, VALID_ADDRESS, null, null, VALID_TAGS);
-        assertEquals(new PersonBuilder(BENSON).withEmail("").build(), person.toModelType());
+        assertEquals(new PersonBuilder(BENSON).withEmail("").withLastUpdated(null).build(), person.toModelType());
     }
 
     @Test
@@ -232,20 +232,22 @@ public class JsonAdaptedPersonTest {
     public void toModelType_missingOptionalFields_preservesLegacyContact() throws Exception {
         JsonAdaptedPerson legacy = new JsonAdaptedPerson(VALID_NAME, VALID_PHONE, VALID_EMAIL, VALID_ADDRESS,
                 null, null, VALID_TAGS);
-        assertEquals(BENSON, legacy.toModelType());
+        assertEquals(new PersonBuilder(BENSON).withLastUpdated(null).build(), legacy.toModelType());
         JsonAdaptedPerson empty = new JsonAdaptedPerson(VALID_NAME, VALID_PHONE, VALID_EMAIL, VALID_ADDRESS,
                 "", "", VALID_TAGS);
-        assertEquals(BENSON, empty.toModelType());
+        assertEquals(new PersonBuilder(BENSON).withLastUpdated(null).build(), empty.toModelType());
     }
 
     @Test
     public void toModelType_oneOptionalFieldMissing_preservesOtherField() throws Exception {
         JsonAdaptedPerson majorOnly = new JsonAdaptedPerson(VALID_NAME, VALID_PHONE, VALID_EMAIL, VALID_ADDRESS,
                 "Business", null, VALID_TAGS);
-        assertEquals(new PersonBuilder(BENSON).withMajor("Business").build(), majorOnly.toModelType());
+        assertEquals(new PersonBuilder(BENSON).withMajor("Business").withLastUpdated(null).build(),
+                majorOnly.toModelType());
         JsonAdaptedPerson yearOnly = new JsonAdaptedPerson(VALID_NAME, VALID_PHONE, VALID_EMAIL, VALID_ADDRESS,
                 null, "2027", VALID_TAGS);
-        assertEquals(new PersonBuilder(BENSON).withGraduationYear("2027").build(), yearOnly.toModelType());
+        assertEquals(new PersonBuilder(BENSON).withGraduationYear("2027").withLastUpdated(null).build(),
+                yearOnly.toModelType());
     }
 
     @Test
