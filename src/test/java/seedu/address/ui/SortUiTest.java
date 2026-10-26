@@ -23,6 +23,7 @@ import javafx.scene.control.TextField;
 import javafx.stage.Stage;
 import seedu.address.logic.LogicManager;
 import seedu.address.logic.Messages;
+import seedu.address.logic.commands.AddCommand;
 import seedu.address.logic.commands.SortCommand;
 import seedu.address.model.Model;
 import seedu.address.model.ModelManager;
@@ -120,6 +121,38 @@ public class SortUiTest {
                 assertCards(window, List.of(alice, bob, charlie));
                 enter(window, "redo");
                 assertCards(window, List.of(bob));
+            } finally {
+                window.getRoot().close();
+            }
+        });
+    }
+
+    @Test
+    public void commandBox_duplicateAdd_identifiesDisplayedAndHiddenContacts() throws Exception {
+        runOnFxThread(() -> {
+            MainWindow window = createWindow();
+            try {
+                enter(window, "sort name asc");
+                enter(window, "add n/charlie p/88888888 a/Different address");
+                assertEquals(AddCommand.MESSAGE_DUPLICATE_PERSON + "\nExisting contact at displayed index 3:\n"
+                        + Messages.format(charlie), feedback(window));
+                assertCards(window, List.of(alice, bob, charlie));
+
+                enter(window, "filter t/Classmate");
+                String command = "add n/ALICE p/77777777 a/Different address";
+                enter(window, command);
+                assertEquals(AddCommand.MESSAGE_DUPLICATE_PERSON
+                        + "\nExisting contact is hidden by the current filter (saved index 3):\n"
+                        + Messages.format(alice) + "\nRun list, then sort reset to view this contact at index 3.",
+                        feedback(window));
+                assertCards(window, List.of(bob, charlie));
+                TextField input = (TextField) window.getRoot().getScene().lookup("#commandTextField");
+                assertEquals(command, input.getText());
+                assertTrue(input.getStyleClass().contains(CommandBox.ERROR_STYLE_CLASS));
+
+                enter(window, "list");
+                enter(window, "sort reset");
+                assertCards(window, List.of(charlie, bob, alice));
             } finally {
                 window.getRoot().close();
             }

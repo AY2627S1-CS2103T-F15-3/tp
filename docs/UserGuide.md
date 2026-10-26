@@ -112,6 +112,12 @@ contact, then `edit 1 a/NUS`.
 * Each of these prefixes may appear only once. Leading and trailing spaces around their values are ignored.
 * The fields are saved with the contact, can be edited using `edit`, are shown in the displayed contact list and appear in command messages when specified.
 * A contact with the same name as an existing contact, ignoring case, is rejected as a duplicate, even if their major, class year or other details differ. For example, `John Doe` and `john doe` identify the same contact. Names retain their original capitalization for display and storage. Editing a contact's own name capitalization is allowed.
+* A duplicate `add` error shows the existing contact's saved details. If the contact is visible,
+  `Existing contact at displayed index N:` identifies its number in the current filtered and sorted list.
+  If a filter hides it, the error labels its number as a **saved index** and tells you to run `list`,
+  then `sort reset`. After those commands, the contact is displayed at that index. A saved index
+  should only be used for an indexed command after following those instructions and checking the card.
+* Rejecting a duplicate leaves the current view, saved contacts and undo/redo history unchanged.
 * Before opening an older data file, back it up and give any contacts whose names differ only in case distinct names. Such files fail duplicate validation; contacts are not automatically merged, renamed or deleted. The existing startup error handling opens an empty list after a loading error. Close the app without making changes and fix a copy of the backed-up file before retrying, as subsequent successful data-changing commands could overwrite the data file.
 * A successful `add` can be reverted with [`undo`](#undoing-a-change-undo).
 * Phone and email are independently optional. Omit `p/` or `e/` when unknown; do not supply an empty prefix in `add`. Non-empty values must satisfy the existing phone and email format rules. A contact without either receives the [automatic incomplete reminder](#automatic-incomplete-reminders).
