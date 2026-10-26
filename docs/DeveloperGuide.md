@@ -972,18 +972,29 @@ the current draft; Down past the newest entry restores it. Navigation stops at t
 Down at the draft position leaves input unchanged. Editing recalled input does not change stored entries.
 History is held in memory and is not written to contact data or preferences.
 
-<puml src="diagrams/CommandHistorySequenceDiagram.puml" alt="Sequence diagram for recording submissions and browsing command history in the GUI" />
+Alt+Up/Down (Option+Up/Down on macOS) calls `previousMatching` / `nextMatching` on the same
+history cursor. `previousMatching` captures the current input as a case-sensitive `startsWith` prefix;
+subsequent searches retain it, skipping unrelated entries. No older match leaves the cursor unchanged.
+After the newest match, `nextMatching` restores the saved draft and ends the search. Without an active
+search, Alt+Down is a no-op. Editing input, submitting a command or using chronological arrows resets
+the prefix. `CommandBox` guards programmatic recalls so its text listener resets the search only for
+external edits. Switching navigation modes keeps the original draft and the current history position.
 
-`CommandHistoryTest` covers boundaries, duplicates and draft state. `CommandBoxTest` exercises the real
+<puml src="diagrams/CommandHistorySequenceDiagram.puml" alt="Sequence diagram for submissions, chronological navigation and optional prefix history search" />
+
+`CommandHistoryTest` covers boundaries, duplicates, exact prefixes, mode switching and draft state. `CommandBoxTest` exercises the real
 FXML text field on the JavaFX thread: Up/Down event consumption, caret placement, draft restoration,
-failed submissions, error styling and the absence of executor calls during browsing.
+failed submissions, error styling, Alt shortcuts, edited prefixes and the absence of executor calls during browsing.
 For manual UI verification:
 
 1. Submit `list`, then an invalid command. Press Up twice and verify both can be recalled in reverse order.
 2. Press Up again at the oldest entry; verify it stays displayed. Press Down to return to the newest entry.
 3. Return to the draft position, type a partial command, then press Up and Down; verify the draft is restored.
 4. Edit a recalled command and submit it; verify the new submission is the newest entry.
-5. Restart UniMate and verify Up/Down leave the input unchanged until a command is submitted.
+5. Submit `add n/Alice`, `list`, `add n/Bob`, then `list`. Type `add ` and use Alt+Up twice:
+   verify Bob then Alice is recalled, skipping List entries. Alt+Down twice restores Bob then `add `.
+6. Verify no matches leave input unchanged, and ordinary arrows still visit all entries after prefix search.
+7. Restart UniMate and verify both navigation modes leave the input unchanged until a command is submitted.
 
 ## **Coming soon**
 

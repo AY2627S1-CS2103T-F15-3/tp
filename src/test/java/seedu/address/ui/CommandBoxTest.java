@@ -125,6 +125,74 @@ public class CommandBoxTest {
         });
     }
 
+    @Test
+    public void prefixShortcut_preservesPrefixDraftCaretAndDoesNotExecute() throws Exception {
+        runOnFxThread(() -> {
+            List<String> executed = new ArrayList<>();
+            TextField field = field(new CommandBox(command -> {
+                executed.add(command);
+                return new CommandResult("OK");
+            }));
+            submit(field, "add n/Alice");
+            submit(field, "list");
+            submit(field, "add n/Bob");
+            submit(field, "list");
+            field.setText("add ");
+            press(field, KeyCode.UP);
+            assertEquals("list", field.getText());
+            press(field, KeyCode.DOWN);
+            assertEquals("add ", field.getText());
+            List<KeyCode> propagated = new ArrayList<>();
+            field.addEventHandler(KeyEvent.KEY_PRESSED, event -> propagated.add(event.getCode()));
+            pressAlt(field, KeyCode.UP);
+            assertEquals("add n/Bob", field.getText());
+            assertEquals(field.getText().length(), field.getCaretPosition());
+            pressAlt(field, KeyCode.UP);
+            assertEquals("add n/Alice", field.getText());
+            pressAlt(field, KeyCode.UP);
+            assertEquals("add n/Alice", field.getText());
+            pressAlt(field, KeyCode.DOWN);
+            assertEquals("add n/Bob", field.getText());
+            pressAlt(field, KeyCode.DOWN);
+            assertEquals("add ", field.getText());
+            pressAlt(field, KeyCode.DOWN);
+            assertEquals("add ", field.getText());
+            assertTrue(propagated.isEmpty());
+            assertEquals(List.of("add n/Alice", "list", "add n/Bob", "list"), executed);
+        });
+    }
+
+    @Test
+    public void prefixShortcut_editRestartsSearchAndOrdinaryArrowsResetIt() throws Exception {
+        runOnFxThread(() -> {
+            TextField field = field(new CommandBox(command -> new CommandResult("OK")));
+            submit(field, "add n/Alice");
+            submit(field, "list");
+            submit(field, "add n/Bob");
+            submit(field, "help");
+            field.setText("add ");
+            pressAlt(field, KeyCode.UP);
+            field.setText("li");
+            pressAlt(field, KeyCode.UP);
+            assertEquals("list", field.getText());
+            pressAlt(field, KeyCode.DOWN);
+            assertEquals("add ", field.getText());
+            field.setText("missing");
+            pressAlt(field, KeyCode.UP);
+            assertEquals("missing", field.getText());
+            press(field, KeyCode.UP);
+            assertEquals("help", field.getText());
+            pressAlt(field, KeyCode.DOWN);
+            assertEquals("help", field.getText());
+            press(field, KeyCode.DOWN);
+            assertEquals("missing", field.getText());
+        });
+    }
+
+    private static void pressAlt(TextField field, KeyCode code) {
+        field.fireEvent(new KeyEvent(KeyEvent.KEY_PRESSED, "", "", code, false, false, true, false));
+    }
+
     private static TextField field(CommandBox box) {
         return (TextField) box.getRoot().lookup("#commandTextField");
     }
