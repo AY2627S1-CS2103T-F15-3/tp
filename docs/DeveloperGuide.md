@@ -207,6 +207,11 @@ the corresponding `shownote` command.
 
 `AddressBookParser` routes `note`, `shownote` and `delnote` to their respective parsers. `NoteCommandParser` splits the first index from the remaining text and validates that text without interpreting field prefixes. `ShowNoteCommandParser` and `DeleteNoteCommandParser` accept only an index. Each command resolves the index against `Model#getFilteredPersonList()` and preserves the current filter.
 
+`NoteCommandParser` uses `StringUtil.stripWhitespace` to remove surrounding Unicode whitespace from the
+arguments and note text. This includes non-breaking spaces (U+00A0), figure spaces (U+2007) and narrow
+non-breaking spaces (U+202F), which `String.strip()` does not remove. Trimming occurs before the
+blank-text and length checks. Whitespace inside the note is preserved without normalization.
+
 The sequence below traces `note 1 Met during CS2103T` when at least one contact is displayed and
 saving succeeds. The same flow creates a first note or replaces an existing note. `m:Model` is the
 interface implemented by `ModelManager`; its displayed list includes both filtering and sorting.
@@ -1618,6 +1623,11 @@ Use a test contact for these checks. Run `list` and identify its displayed index
    Expected: A note icon appears at the bottom right of the card. The message area shows the saved text beneath the contact's name.
 1. Run `note 1 Project teammate`, then `shownote 1`.<br>
    Expected: Only `Project teammate` is shown; the previous note was replaced. Other contact details are preserved.
+1. Paste `note 1 <NBSP>Hello<NBSP>`, replacing each `<NBSP>` with an actual non-breaking space (U+00A0),
+   then run `shownote 1`.<br>
+   Expected: The note is exactly `Hello`, with five characters and no surrounding spaces. After restarting,
+   `shownote` still displays `Hello`. Non-breaking spaces between words in a note remain unchanged.
+   Restore `note 1 Project teammate` before continuing with the following checks.
 1. Edit the contact's phone, add a tag with `tag`, and remove it with `untag`, then run `shownote` using the contact's current index.<br>
    Expected: The note is still `Project teammate`.
 1. Restart the app, locate the same contact, and run `shownote`.<br>
