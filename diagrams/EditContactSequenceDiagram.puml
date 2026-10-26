@@ -1,0 +1,64 @@
+@startuml
+!include style.puml
+skinparam ArrowFontStyle plain
+participant ":CommandBox" as Box UI_COLOR
+participant ":MainWindow" as Window UI_COLOR
+participant ":LogicManager" as Logic LOGIC_COLOR
+participant ":AddressBookParser" as Parser LOGIC_COLOR
+participant ":EditCommandParser" as EditParser LOGIC_COLOR
+participant "edit:EditCommand" as Edit LOGIC_COLOR
+participant "model:Model" as Model MODEL_COLOR
+participant "storage:Storage" as Storage STORAGE_COLOR
+
+note over Box, Storage
+  Successful edit of the first displayed contact.
+  Parsing, invalid-index and duplicate-name errors stop before mutation.
+end note
+Box -> Window : executeCommand("edit 1 m/Mathematics c/")
+activate Window
+Window -> Logic : execute(commandText)
+activate Logic
+Logic -> Parser : parseCommand(commandText)
+Parser -> EditParser : parse(" 1 m/Mathematics c/")
+create Edit
+EditParser -> Edit : new EditCommand(index, descriptor)
+EditParser --> Parser : edit
+Parser --> Logic : edit
+Logic -> Edit : execute(model)
+activate Edit
+Edit -> Model : getFilteredPersonList()
+Model --> Edit : displayed contacts
+Edit -> Edit : createEditedPerson(person, descriptor)
+note right of Edit
+  Omitted fields, notes and favourite status survive.
+  Blank c/ becomes GraduationYear.EMPTY.
+  A basic profile change updates lastUpdated.
+end note
+opt Name changed
+  Edit -> Model : hasPerson(editedPerson)
+  Model --> Edit : false
+end
+Edit -> Model : getAddressBook()
+Model --> Edit : contact data to snapshot
+Edit -> Edit : previousState = new AddressBook(contact data)
+Edit -> Model : setPerson(person, editedPerson)
+Edit -> Model : updateFilteredPersonList(PREDICATE_SHOW_ALL_PERSONS)
+Edit -> Model : commitAddressBook(previousState)
+Edit --> Logic : CommandResult("Edited person: ...")
+deactivate Edit
+Logic -> Model : getAddressBook()
+Model --> Logic : updated contact data
+Logic -> Storage : saveAddressBook(updated contact data)
+Storage --> Logic
+Logic --> Window : CommandResult
+deactivate Logic
+Window -> Window : personListPanel.refresh()
+Window -> Window : resultDisplay.setFeedbackToUser(feedback)
+Window --> Box : CommandResult
+deactivate Window
+note over Box : Clear the command text after success.
+note over Window, Model
+  The observable list updates contact cards and displayed indices.
+  Cleared academic fields display Not specified.
+end note
+@enduml
