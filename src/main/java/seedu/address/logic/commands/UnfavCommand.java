@@ -21,7 +21,7 @@ public class UnfavCommand extends Command {
             + "from the person at the displayed index.\n"
             + "Parameters: INDEX (must be a positive integer)\nExample: unfav 1";
     public static final String MESSAGE_SUCCESS = "Removed from favourites: %1$s";
-    public static final String MESSAGE_NOT_FAVOURITE = "This person is not a favourite.";
+    public static final String MESSAGE_NOT_FAVOURITE = "%1$s is not a favourite.";
 
     private final Index index;
 
@@ -41,15 +41,16 @@ public class UnfavCommand extends Command {
         }
         Person person = displayed.get(index.getZeroBased());
         if (!person.isFavourite()) {
-            throw new CommandException(MESSAGE_NOT_FAVOURITE);
+            throw new CommandException(String.format(MESSAGE_NOT_FAVOURITE, person.getName().fullName));
         }
         Person updatedPerson = new Person(person.getName(), person.getPhone(), person.getEmail(), person.getAddress(),
                 person.getMajor(), person.getGraduationYear(), person.getTags(), person.getNotes(), false,
                 person.getLastUpdated());
         ReadOnlyAddressBook previousState = new AddressBook(model.getAddressBook());
         model.setPerson(person, updatedPerson);
-        model.commitAddressBook(previousState);
-        return new CommandResult(String.format(MESSAGE_SUCCESS, Messages.format(updatedPerson)));
+        String message = String.format(MESSAGE_SUCCESS, Messages.format(updatedPerson));
+        model.commitAddressBook(previousState, message);
+        return new CommandResult(message);
     }
 
     @Override

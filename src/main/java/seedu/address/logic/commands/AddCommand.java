@@ -81,8 +81,9 @@ public class AddCommand extends Command {
         ReadOnlyAddressBook previousState = new AddressBook(model.getAddressBook());
         Person addedPerson = toAdd.withLastUpdated(LocalDate.now(clock));
         model.addPerson(addedPerson);
-        model.commitAddressBook(previousState);
-        return new CommandResult(String.format(MESSAGE_SUCCESS, Messages.format(addedPerson)));
+        String message = String.format(MESSAGE_SUCCESS, Messages.format(addedPerson));
+        model.commitAddressBook(previousState, message);
+        return new CommandResult(message);
     }
 
     @Override

@@ -10,6 +10,7 @@ import static seedu.address.testutil.TypicalPersons.ALICE;
 import static seedu.address.testutil.TypicalPersons.BENSON;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 
@@ -83,7 +84,7 @@ public class ModelManagerTest {
     private void addPersonAndCommit(Person person) {
         AddressBook previousState = new AddressBook(modelManager.getAddressBook());
         modelManager.addPerson(person);
-        modelManager.commitAddressBook(previousState);
+        modelManager.commitAddressBook(previousState, "Added " + person.getName());
     }
 
     @Test
@@ -96,7 +97,26 @@ public class ModelManagerTest {
 
     @Test
     public void commitAddressBook_nullPreviousState_throwsNullPointerException() {
-        assertThrows(NullPointerException.class, () -> modelManager.commitAddressBook(null));
+        assertThrows(NullPointerException.class, () -> modelManager.commitAddressBook(null, "change"));
+    }
+
+    @Test
+    public void commitAddressBook_nullDescription_throwsNullPointerException() {
+        assertThrows(NullPointerException.class, () ->
+                modelManager.commitAddressBook(new AddressBook(modelManager.getAddressBook()), null));
+    }
+
+    @Test
+    public void getUndoRedoDescription_afterCommitAndUndo_returnsCommittedDescription() {
+        assertEquals(Optional.empty(), modelManager.getUndoDescription());
+        addPersonAndCommit(ALICE);
+        assertEquals(Optional.of("Added " + ALICE.getName()), modelManager.getUndoDescription());
+        assertEquals(Optional.empty(), modelManager.getRedoDescription());
+
+        modelManager.undoAddressBook();
+
+        assertEquals(Optional.empty(), modelManager.getUndoDescription());
+        assertEquals(Optional.of("Added " + ALICE.getName()), modelManager.getRedoDescription());
     }
 
     @Test
@@ -110,7 +130,7 @@ public class ModelManagerTest {
 
     @Test
     public void commitAddressBook_dataUnchanged_doesNotCreateUndoableState() {
-        modelManager.commitAddressBook(new AddressBook(modelManager.getAddressBook()));
+        modelManager.commitAddressBook(new AddressBook(modelManager.getAddressBook()), "No change");
 
         assertFalse(modelManager.canUndoAddressBook());
         assertFalse(modelManager.canRedoAddressBook());
@@ -123,7 +143,7 @@ public class ModelManagerTest {
         Person editedAlice = new PersonBuilder(ALICE).withMajor("Mathematics").build();
         AddressBook previousState = new AddressBook(modelManager.getAddressBook());
         modelManager.setPerson(ALICE, editedAlice);
-        modelManager.commitAddressBook(previousState);
+        modelManager.commitAddressBook(previousState, "Edited Alice");
 
         assertTrue(modelManager.undoAddressBook());
         assertEquals(new AddressBookBuilder().withPerson(ALICE).withPerson(BENSON).build(),
