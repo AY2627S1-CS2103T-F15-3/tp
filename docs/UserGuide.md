@@ -362,7 +362,8 @@ Format: `note INDEX TEXT`
 
 * `INDEX` is the positive index shown in the current contact list, including search results.
 * `TEXT` is required and must be a single line of up to 500 characters. Spaces, punctuation and Unicode text are allowed; control characters such as tabs are not.
-* Leading and trailing whitespace is trimmed. Spaces within the note are preserved.
+* Leading and trailing whitespace, including non-breaking spaces (U+00A0), is trimmed before the
+  500-character limit is checked. Spaces within the note, including Unicode spaces, are preserved.
 * Everything after the index is note text. No field prefix or quotation marks are needed; text such as `n/` or `t/` is saved literally.
 * The contact's other details and the current list filter are preserved.
 * Notes are saved automatically with contact data and remain available after restarting UniMate. New contacts have no note; use `note` after `add`.
@@ -581,6 +582,12 @@ Format: `delete INDEX`
 * Deletes the person at the specified `INDEX`.
 * The index refers to the index number shown in the displayed person list.
 * The index **must be a positive integer** 1, 2, 3, ...
+* An index beyond the displayed list is rejected with the valid range for that view. For example, if
+  `find Alpha` displays one contact, `delete 2` reports
+  `Index 2 is outside the current displayed list. The only valid index is 1.`
+* If no contacts are displayed but saved contacts exist, the error suggests `list` to show them.
+  If there are no saved contacts, it suggests adding a contact first. Rejected commands leave contacts,
+  the displayed list and undo/redo history unchanged.
 * The deleted person message includes the deleted contact's major and class year when those fields are specified.
 * A deletion can be [undone](#undoing-a-change-undo), which restores the deleted person, and [redone](#redoing-a-change-redo).
 
@@ -692,6 +699,13 @@ UniMate data is saved automatically as a JSON file `[JAR file location]/data/uni
 If your changes make the data file invalid, UniMate starts with an empty contact list at the next run. The invalid file remains on disk until you run a command (UniMate saves after every command). Still, we recommend backing up the file before editing it.<br>
 Furthermore, certain edits can cause UniMate to behave in unexpected ways (e.g., if a value entered is outside of the acceptable range). Therefore, edit the data file only if you are confident that you can update it correctly.
 </box>
+
+A file containing only `null`, a null contact entry such as `{"persons":[null]}`, or a null tag entry
+such as `"tags":[null]` is invalid. UniMate rejects the whole file, logs the loading error and opens
+with an empty contact list. For null contact or tag entries, the logged error identifies their
+positions, counting from 1 in the saved arrays (not the GUI's displayed order). Close the window
+without running a command before repairing or restoring the file. A valid empty address book
+(`{"persons":[]}`) and omitted optional contact fields remain supported.
 
 --------------------------------------------------------------------------------------------------------------------
 
