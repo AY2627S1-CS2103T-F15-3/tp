@@ -171,6 +171,22 @@ The `Storage` component,
 omit either property, it treats the missing value as an empty string and constructs an unspecified
 `Major` or `GraduationYear`. Supplied non-empty values are validated before the contact is loaded.
 
+`JsonSerializableAddressBook#toModelType` rejects null entries in `persons`, and
+`JsonAdaptedPerson#toModelType` rejects null entries in a contact's tag list, using
+`IllegalValueException`. `JsonAdaptedTag` also rejects a null tag name. `JsonAddressBookStorage`
+converts these validation errors to `DataLoadingException`, rejecting the whole file rather than
+returning a partial address book. Missing or null optional tag lists remain valid legacy data.
+Null-entry errors identify one-based positions in the saved `persons` and `tags` arrays, rather than
+GUI display indices. For example, `Contact entry 2 is null.` identifies a null contact, while
+`Contact entry 2 is invalid: Tag entry 3 is null.` identifies a null tag. Contact conversion errors
+include the contact position and retain the original validation exception as their cause.
+
+`JsonUtil#readJsonFile` rejects a null JSON root as a `DataLoadingException`; it returns
+`Optional.empty()` only for a missing file. `MainApp` therefore uses its existing empty-contact-list
+recovery for invalid data, while missing files still use sample contacts. Loading and window-close
+shutdown do not rewrite the invalid contact file. `MainAppTest` checks this recovery with isolated
+storage and a stub UI; storage tests check null data, valid empty lists and legacy contacts.
+
 ### Common classes
 
 Classes used by multiple components are in the `seedu.address.commons` package.
@@ -1740,6 +1756,30 @@ Use only the separate test folder for these checks. The paths below are relative
    1. Relaunch the app without entering a command.<br>
       Expected: The whole data file is rejected and the app opens with an empty contact list. It does not partially load the other contacts or silently correct the invalid year. The invalid file remains unchanged at this point.
    1. Close the window using its close button, then restore the valid backup. Do not enter `exit` before restoring, because a successfully executed command would save the empty in-memory list over the invalid file.
+
+1. Null entries and null JSON roots
+
+   1. With the app closed, use a disposable test folder and retain the valid backup. Test each of these
+      file contents separately in `data/unimate.json`:
+
+      * `{"persons":[null]}`
+      * `{"persons":[{"name":"Null Tag","address":"NUS","tags":[null]}]}`
+      * `null`
+   1. Relaunch the app without entering a command.<br>
+      Expected: The GUI opens with an empty contact list, and the loading error is logged.
+      For the first two files, the log identifies `Contact entry 1 is null.` and
+      `Contact entry 1 is invalid: Tag entry 1 is null.`, respectively.
+      The original invalid file remains unchanged.
+   1. Close the window using its close button and inspect the file.<br>
+      Expected: It still contains the original invalid data. Restore the backup before the next case.
+   1. Repeat with a valid contact followed by a null entry in the same `persons` array.<br>
+      Expected: The whole file is rejected; the valid contact is not partially loaded. The logged
+      error is `Contact entry 2 is null.`.
+   1. Repeat with a valid contact followed by a contact whose `tags` array is `["friends",null]`.<br>
+      Expected: The whole file is rejected, and the log identifies
+      `Contact entry 2 is invalid: Tag entry 2 is null.`. Positions count entries from 1 in saved-file order.
+   1. Separately test `{"persons":[]}` and a valid older contact with omitted optional fields.<br>
+      Expected: The empty list loads normally, and the older contact loads with unspecified optional details.
 
 1. Loading a file saved under the old filename
 
