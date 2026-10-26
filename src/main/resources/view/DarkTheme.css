@@ -164,6 +164,10 @@
     -fx-text-fill: white;
 }
 
+.result-display.warning {
+    -fx-text-fill: #ffcf66;
+}
+
 .result-display .label {
     -fx-text-fill: black !important;
 }

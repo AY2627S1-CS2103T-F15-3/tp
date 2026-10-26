@@ -125,8 +125,11 @@ contact, then `edit 1 a/NUS`.
 * A successful `add` can be reverted with [`undo`](#undoing-a-change-undo).
 * Phone and email are independently optional. Omit `p/` or `e/` when unknown; do not supply an empty prefix in `add`. Non-empty values must satisfy the existing phone and email format rules. A contact without either receives the [automatic incomplete reminder](#automatic-incomplete-reminders).
 * Adding a different name with a shared phone number or email succeeds with a warning at the top of
-  the result display. The warning shows every matching existing contact, its current displayed index
-  and whether the phone number, email address or both are shared. Use `undo` if the addition was accidental.
+  the result display, highlighted with amber text. The short message confirms the contact
+  was added and suggests `undo` if unintended. It lists every matching existing contact by name and
+  current displayed index, for example `#2 Alice (phone); #3 Bob (email)` or `#2 Alice (phone and email)`.
+  Full addresses and other unrelated details are not repeated. Long names or many matches wrap and
+  can be read by scrolling. The next ordinary result or error clears the warning highlighting.
 * Shared-detail warnings compare non-empty phone numbers exactly and email addresses ignoring case.
   Missing phone/email values do not count as shared details. These warnings do not change the
   duplicate-name rule or alter the stored capitalization of email addresses.

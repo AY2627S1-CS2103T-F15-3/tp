@@ -58,10 +58,9 @@ public class AddCommand extends Command {
     public static final String MESSAGE_DUPLICATE_PERSON_HIDDEN = MESSAGE_DUPLICATE_PERSON
             + "\nExisting contact is hidden by the current filter (saved index %1$d):\n%2$s"
             + "\nRun list, then sort reset to view this contact at index %1$d.";
-    public static final String MESSAGE_SHARED_DETAILS_WARNING = "Warning: Shared contact details found. "
-            + "The new contact was added; use undo if this was accidental.\n%1$s\n%2$s";
-    public static final String MESSAGE_SHARED_DETAILS_MATCH =
-            "Existing contact at displayed index %1$d (same %2$s):\n%3$s";
+    public static final String MESSAGE_SHARED_DETAILS_WARNING = "Warning: Contact added. Use undo if unintended."
+            + "\nShared details: %1$s";
+    public static final String MESSAGE_SHARED_DETAILS_MATCH = "#%1$d %2$s (%3$s)";
 
     private final Person toAdd;
     private final Clock clock;
@@ -93,16 +92,16 @@ public class AddCommand extends Command {
         Person addedPerson = toAdd.withLastUpdated(LocalDate.now(clock));
         model.addPerson(addedPerson);
         String message = String.format(MESSAGE_SUCCESS, Messages.format(addedPerson));
-        String feedback = getAddFeedback(model, addedPerson, message);
+        CommandResult result = getAddResult(model, addedPerson, message);
         model.commitAddressBook(previousState, message);
-        return new CommandResult(feedback);
+        return result;
     }
 
     /**
      * Warns about shared non-empty phone/email details using indices from the refreshed display.
      * Phone numbers match exactly; email matching ignores case for this advisory warning.
      */
-    private String getAddFeedback(Model model, Person addedPerson, String successMessage) {
+    private CommandResult getAddResult(Model model, Person addedPerson, String successMessage) {
         List<String> matches = new ArrayList<>();
         List<Person> displayedPersons = model.getFilteredPersonList();
         for (int i = 0; i < displayedPersons.size(); i++) {
@@ -112,19 +111,19 @@ public class AddCommand extends Command {
             }
             List<String> sharedFields = new ArrayList<>();
             if (!addedPerson.getPhone().value.isEmpty() && addedPerson.getPhone().equals(existingPerson.getPhone())) {
-                sharedFields.add("phone number");
+                sharedFields.add("phone");
             }
             if (!addedPerson.getEmail().value.isEmpty()
                     && addedPerson.getEmail().value.equalsIgnoreCase(existingPerson.getEmail().value)) {
-                sharedFields.add("email address");
+                sharedFields.add("email");
             }
             if (!sharedFields.isEmpty()) {
                 matches.add(String.format(MESSAGE_SHARED_DETAILS_MATCH,
-                        i + 1, String.join(" and ", sharedFields), Messages.format(existingPerson)));
+                        i + 1, existingPerson.getName().fullName, String.join(" and ", sharedFields)));
             }
         }
-        return matches.isEmpty() ? successMessage
-                : String.format(MESSAGE_SHARED_DETAILS_WARNING, successMessage, String.join("\n", matches));
+        return matches.isEmpty() ? new CommandResult(successMessage)
+                : CommandResult.warning(String.format(MESSAGE_SHARED_DETAILS_WARNING, String.join("; ", matches)));
     }
 
     /**
