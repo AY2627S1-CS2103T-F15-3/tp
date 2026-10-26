@@ -12,6 +12,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import seedu.address.commons.exceptions.IllegalValueException;
+import seedu.address.commons.util.StringUtil;
 import seedu.address.model.person.Address;
 import seedu.address.model.person.Email;
 import seedu.address.model.person.GraduationYear;
@@ -147,13 +148,16 @@ class JsonAdaptedPerson {
         if (address == null) {
             throw new IllegalValueException(String.format(MISSING_FIELD_MESSAGE_FORMAT, Address.class.getSimpleName()));
         }
-        if (!Address.isValidAddress(address)) {
+        String storedAddress = normalizeStoredText(address);
+        if (!Address.isValidAddress(storedAddress)) {
             throw new IllegalValueException(Address.MESSAGE_CONSTRAINTS);
         }
-        final Address modelAddress = new Address(address);
+        final Address modelAddress = new Address(storedAddress);
 
         // Older AB3 files do not contain these optional fields.
-        String storedMajor = major == null ? "" : major;
+        // An optional field with nothing visible in it (e.g. only NBSP or ZERO WIDTH SPACE) loads as unspecified,
+        // so that one blank-looking value does not stop the whole file from loading.
+        String storedMajor = isAbsentOrInvisible(major) ? "" : normalizeStoredText(major);
         if (!Major.isValidMajor(storedMajor)) {
             throw new IllegalValueException(Major.MESSAGE_CONSTRAINTS);
         }
@@ -165,7 +169,7 @@ class JsonAdaptedPerson {
         }
         final GraduationYear modelGraduationYear = new GraduationYear(storedYear);
 
-        String storedNotes = notes == null ? "" : notes;
+        String storedNotes = isAbsentOrInvisible(notes) ? "" : notes;
         if (!Notes.isValidNotes(storedNotes)) {
             throw new IllegalValueException(Notes.MESSAGE_CONSTRAINTS);
         }
@@ -181,6 +185,18 @@ class JsonAdaptedPerson {
         }
         return new Person(modelName, modelPhone, modelEmail, modelAddress,
                 modelMajor, modelGraduationYear, modelTags, modelNotes, favourite, modelLastUpdated);
+    }
+
+    /**
+     * Returns {@code value} as a command would store it: Unicode spaces become ASCII spaces and the ends are trimmed.
+     * Data files saved before command input was normalised (#141) may still contain Unicode spaces.
+     */
+    private static String normalizeStoredText(String value) {
+        return StringUtil.normalizeWhitespace(value).trim();
+    }
+
+    private static boolean isAbsentOrInvisible(String value) {
+        return value == null || !StringUtil.hasVisibleCharacter(value);
     }
 
 }

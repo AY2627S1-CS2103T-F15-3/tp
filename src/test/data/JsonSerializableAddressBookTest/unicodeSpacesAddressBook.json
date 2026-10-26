@@ -1,0 +1,10 @@
+{
+  "persons": [ {
+    "name": "Dan Lim",
+    "phone": "91234567",
+    "address": " Blk 456, Clementi　Ave 3 ",
+    "major": "Computer Science",
+    "notes": "Met at orientation",
+    "tags": [ "friends" ]
+  } ]
+}
