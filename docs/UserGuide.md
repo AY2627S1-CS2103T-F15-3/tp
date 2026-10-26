@@ -70,8 +70,11 @@ This guide describes the features available in v1.4.
   For example, if the command specifies `n/NAME p/PHONE_NUMBER`, `p/PHONE_NUMBER n/NAME` is also acceptable.
 
 * Extraneous parameters for `help`, `exit`, and `clear` are ignored.<br>
-  For example, `help 123` is interpreted as `help`.<br>
-  `list`, `listfav`, `tags`, `undo` and `redo` reject extra parameters, such as `list all` or `undo 1`.
+  For example, `help 123` is interpreted as `help`.
+
+* `list`, `listfav`, `tags`, `undo` and `redo` take no parameters and reject extra arguments.<br>
+  In particular, `list all` is rejected; use plain `list` to show all saved contacts.
+  See [Listing all persons](#listing-all-persons-list) for details.
 
 * If you are using a PDF version of this document, be careful when copying and pasting commands that span multiple lines as space characters surrounding line-breaks may be omitted when copied over to the application.
 </box>
@@ -317,7 +320,7 @@ Example (assuming at least one person is displayed):
 |--------------------|----------------|
 | Missing or invalid index, or extra arguments (e.g., `fav`, `fav 0`, `fav 1 extra`) | `Invalid command format!`, followed by the `fav` usage instructions. |
 | Index exceeds the displayed list size | `The person index provided is invalid.` |
-| Person is already favourited | `This person is already a favourite.` |
+| Person is already favourited | The selected contact's name followed by ` is already a favourite.`, e.g., `Alice is already a favourite.` |
 
 These errors leave contact data unchanged.
 
@@ -343,7 +346,7 @@ Example (assuming the first displayed person is favourited):
 |--------------------|----------------|
 | Missing or invalid index, or extra arguments (e.g., `unfav`, `unfav -1`, `unfav 1 extra`) | `Invalid command format!`, followed by the `unfav` usage instructions. |
 | Index exceeds the displayed list size | `The person index provided is invalid.` |
-| Person is not favourited | `This person is not a favourite.` |
+| Person is not favourited | The selected contact's name followed by ` is not a favourite.`, e.g., `Alice is not a favourite.` |
 
 These errors leave contact data unchanged. After `unfav` removes a person from the favourite list, check the new displayed indices before entering another indexed command.
 
@@ -600,27 +603,42 @@ Examples:
 * `filter t/Classmate`, then `sort year asc`, shows only classmates, earliest class year first.
   `list` then shows all contacts in the same year order.
 
-### Deleting a person: `delete`
+### Deleting contacts: `delete`
 
-Deletes the specified person from UniMate.
+Deletes one or more specified contacts from UniMate.
 
-Format: `delete INDEX`
+Format: `delete INDEX [MORE_INDICES]`
 
-* Deletes the person at the specified `INDEX`.
-* The index refers to the index number shown in the displayed person list.
-* The index **must be a positive integer** 1, 2, 3, ...
+* Supply one or more **distinct positive integers** separated by spaces, such as `delete 1 3 5`.
+  Commas and ranges such as `delete 1,3` and `delete 1-3` are not accepted.
+* Every index refers to the filtered and sorted list displayed **before the command starts**.
+  For example, `delete 1 3 5` removes the original 1st, 3rd and 5th displayed contacts, even as the
+  remaining cards are renumbered. Indices can be supplied in any order, such as `delete 5 1 3`.
+* Every index is checked before any contact is deleted. If any index is invalid or repeated, the
+  whole command is rejected. For example, `delete 1 1` reports
+  `Index 1 is repeated. Specify each displayed index only once. No contacts were deleted.`
 * An index beyond the displayed list is rejected with the valid range for that view. For example, if
   `find Alpha` displays one contact, `delete 2` reports
-  `Index 2 is outside the current displayed list. The only valid index is 1.`
+  `Index 2 is outside the current displayed list. No contacts were deleted. The only valid index is 1.`
+  If three contacts are displayed, `delete 1 3 4` reports that index 4 is out of range and states
+  `No contacts were deleted.` Contacts 1 and 3 remain present too.
 * If no contacts are displayed but saved contacts exist, the error suggests `list` to show them.
   If there are no saved contacts, it suggests adding a contact first. Rejected commands leave contacts,
   the displayed list and undo/redo history unchanged.
-* The deleted person message includes the deleted contact's major and class year when those fields are specified.
-* A deletion can be [undone](#undoing-a-change-undo), which restores the deleted person, and [redone](#redoing-a-change-redo).
+* Deleting one contact keeps the `Deleted person: ...` feedback. Deleting several contacts reports
+  `Deleted N contacts:`, followed by their details on separate lines, labelled with their original
+  displayed indices in the order you entered them. Major and class year are included when specified.
+* Deletion preserves the current filter and sort order. Contacts outside the displayed results are unaffected.
+* One [undo](#undoing-a-change-undo) restores the entire batch, and one
+  [redo](#redoing-a-change-redo) deletes that batch again.
 
 Examples:
+
 * `list` followed by `delete 2` deletes the 2nd person in UniMate.
+* `list` followed by `delete 1 3 5` deletes the original 1st, 3rd and 5th displayed contacts together.
 * `find Betsy` followed by `delete 1` deletes the 1st person in the results of the `find` command.
+* `filter t/Classmate`, then `sort name asc`, then `delete 1 3` deletes the original 1st and 3rd
+  classmates in ascending name order, provided at least three results are displayed.
 * Deleting a contact with academic fields shows a message such as
   `Deleted person: Alex Tan; Phone: 91234567; Email: alex@example.com; Address: 10 Kent Ridge Road; Major: Computer Science; Class year: 2027; Tags: [classmate]`.
 
@@ -661,6 +679,7 @@ Examples:
 * For a contact with an existing note, `delnote 1` followed by `undo` brings back the deleted note.
 * `add n/Alex Tan p/91234567 e/alex@example.com a/10 Kent Ridge Road`, then `edit 1 c/2027`, then `undo` twice first reverts the edit and then removes the added contact.
 * `delete 3` followed by `undo` brings the deleted person back.
+* `delete 1 3 5` followed by `undo` restores all three contacts in one step.
 * `edit 1 p/92345678`, then `fav 1`, then `undo` twice first removes the favourite status and then restores the previous phone number.
 * `fav 1`, then `tag 2 t/Friend`, then `undo` removes the `Friend` tag and shows `Undid: Tagged person: …​`, naming the 2nd person. Running `undo` again shows `Undid: Added to favourites: …​`.
 
@@ -704,6 +723,14 @@ Press **↑** again to browse older commands, or **↓** to browse newer command
 After the newest command, **↓** restores the draft you were typing before browsing.
 At the oldest command, further **↑** presses keep that command displayed.
 
+While browsing, a label beside the command box shows **History i/N**, where **1** is the oldest
+submission and **N** is the newest. Repeated identical commands occupy separate positions, so three
+`list` submissions show **History 3/3**, **2/3**, then **1/3** as you press ↑. The label briefly pulses
+on every history arrow press, including ↑ at the oldest entry, even when the command text stays the
+same. It disappears when you return to your draft or press Enter, including a failed submission.
+At the draft or with empty history the label stays hidden. Prefix search uses the same absolute
+positions among all submissions, so its displayed numbers may skip unrelated entries.
+
 Commands are recorded when you press Enter, including unsuccessful commands and repeated submissions.
 Empty input is not recorded. You can edit a recalled command and press Enter to submit it again;
 browsing alone does not execute commands. Edits made while browsing are not saved in the history.
@@ -718,7 +745,20 @@ For example, submit `list`, then `find Alice`. Type `edit 1 m/` without pressing
 Press **↑** twice to see `find Alice` then `list`; press **↓** twice to return through `find Alice`
 to your draft `edit 1 m/`. None of these arrow presses executes a command.
 
-<puml src="diagrams/CommandHistoryActivityDiagram.puml" alt="Activity diagram for navigating submitted commands and restoring a draft with Up and Down" width="600" />
+For optional prefix search, type a prefix such as `add ` (including the space), then press
+**Alt+↑** (**Option+↑** on macOS) to skip unrelated commands and recall older matching entries.
+**Alt+↓** (**Option+↓**) browses newer matches and restores your original draft after the last match.
+Matching is case-sensitive and includes spaces; an empty prefix matches all commands. Repeated shortcut
+presses keep the initial prefix. At the oldest match, or when there is no match, the input stays unchanged.
+Alt+↓ without an active search leaves input unchanged. Editing the text starts a new prefix search from
+that text at the current history position. Ordinary ↑/↓ continues chronologically from the current
+position and ends the prefix search. Both navigation modes preserve the draft saved when you first
+left the end of history, and neither executes commands.
+
+For example, submit `add n/Alice`, `list`, `add n/Bob`, then `list`. Type `add ` without pressing Enter.
+Alt+↑ recalls `add n/Bob`, then `add n/Alice`; Alt+↓ recalls `add n/Bob`, then restores `add `.
+
+<puml src="diagrams/CommandHistoryActivityDiagram.puml" alt="Activity diagram for chronological and prefix history navigation with draft restoration" />
 
 ### Saving the data
 
@@ -774,12 +814,12 @@ Action     | Format, Examples
 -----------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 **Add**    | `add n/NAME [p/PHONE_NUMBER] [e/EMAIL] a/ADDRESS [m/MAJOR] [c/CLASS_YEAR] [t/TAG]... [d/DEFAULT_INDEX]...` <br> e.g., `add n/James Ho p/22224444 e/jamesho@example.com a/123, Clementi Rd, 1234665 t/friend t/colleague`
 **Clear**  | `clear`
-**Delete** | `delete INDEX`<br> e.g., `delete 3`
+**Delete** | `delete INDEX [MORE_INDICES]`<br> e.g., `delete 1 3 5`
 **Edit**   | `edit INDEX [n/NAME] [p/PHONE_NUMBER] [e/EMAIL] [a/ADDRESS] [m/MAJOR] [c/CLASS_YEAR] [t/TAG]... `<br> e.g.,`edit 2 n/James Lee e/jameslee@example.com`
 **Find**   | `find KEYWORD [MORE_KEYWORDS]`<br> e.g., `find James Jake`, `find Computer Science`, `find 2027`
 **Filter** | `filter [m/MAJOR] [c/CLASS_YEAR] [t/TAG]` (at least one criterion)<br> e.g., `filter m/Computer Science c/2027 t/Classmate`
 **Sort**   | `sort FIELD DIRECTION` or `sort reset`<br> e.g., `sort name asc`, `sort major desc`, `sort year asc`, `sort updated desc`
-**List all saved contacts** | `list` (no parameters; clears the current filter and reports the total)
+**List all saved contacts** | `list` (rejects extra arguments; clears the current filter and reports the total)
 **Favourite** | `fav INDEX`<br> e.g., `fav 1`
 **Unfavourite** | `unfav INDEX`<br> e.g., `unfav 1`
 **List favourites** | `listfav`
