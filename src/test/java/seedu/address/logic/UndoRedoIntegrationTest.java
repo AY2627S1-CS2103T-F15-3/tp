@@ -80,6 +80,13 @@ public class UndoRedoIntegrationTest {
             .withPhone("81234567").withEmail("alice.tan@example.com").withAddress("Utown Residence")
             .withMajor("Economics").withGraduationYear("2026").withTags("Classmate").build();
 
+    private static final String EDIT_ALICE_FEEDBACK = "Edited Alice Tan:"
+            + "\nName: Alice Pauline → Alice Tan\nPhone: 94351253 → 81234567"
+            + "\nEmail: alice@example.com → alice.tan@example.com"
+            + "\nAddress: 123, Jurong West Ave 6, #08-111 → Utown Residence"
+            + "\nMajor: Not specified → Economics\nClass year: Not specified → 2026"
+            + "\nTags replaced. Removed: friends. Added: Classmate.";
+
     @TempDir
     public Path temporaryFolder;
 
@@ -120,7 +127,7 @@ public class UndoRedoIntegrationTest {
         String description = String.format(EditCommand.MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(edited));
 
         assertCommandSuccess("edit 1 t/Project",
-                description + "\nTags replaced. Removed: friends. Added: Project.", editedContacts);
+                "Edited Alice Pauline:\nTags replaced. Removed: friends. Added: Project.", editedContacts);
         assertEquals(description, model.getUndoDescription().orElseThrow());
         assertUndoSuccess(description, getTypicalPersons());
         assertEquals(description, model.getRedoDescription().orElseThrow());
@@ -131,7 +138,7 @@ public class UndoRedoIntegrationTest {
         List<Person> clearedContacts = replace(editedContacts, edited, cleared);
         String clearDescription = String.format(EditCommand.MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(cleared));
         assertCommandSuccess("edit 1 t/",
-                clearDescription + "\nTags replaced. Removed: Project. Added: None.", clearedContacts);
+                "Edited Alice Pauline:\nTags replaced. Removed: Project. Added: None.", clearedContacts);
         assertEquals(clearDescription, model.getUndoDescription().orElseThrow());
         assertUndoSuccess(clearDescription, editedContacts);
         assertEquals(clearDescription, model.getRedoDescription().orElseThrow());
@@ -139,8 +146,30 @@ public class UndoRedoIntegrationTest {
     }
 
     @Test
+    public void repeatedEdit_reportsNoChangesAndPreservesUndoAndRedo() throws Exception {
+        logic.execute("list");
+        Person edited = new PersonBuilder(ALICE).withPhone("91234567").build();
+        List<Person> editedContacts = replace(getTypicalPersons(), ALICE, edited);
+        String description = String.format(EditCommand.MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(edited));
+        assertCommandSuccess("edit 1 p/91234567", "Edited Alice Pauline:\nPhone: 94351253 → 91234567",
+                editedContacts);
+        assertCommandSuccess("edit 1 p/91234567",
+                "No changes made to Alice Pauline. The supplied values match the existing details.", editedContacts);
+        assertEquals(description, model.getUndoDescription().orElseThrow());
+        assertUndoSuccess(description, getTypicalPersons());
+        assertFalse(model.canUndoAddressBook());
+
+        // A no-op while redo is available must keep its original description and state.
+        assertCommandSuccess("edit 1 p/94351253",
+                "No changes made to Alice Pauline. The supplied values match the existing details.",
+                getTypicalPersons());
+        assertEquals(description, model.getRedoDescription().orElseThrow());
+        assertRedoSuccess(description, editedContacts);
+    }
+
+    @Test
     public void editThenUndo_restoresOriginalContact() throws Exception {
-        assertEditSuccess(EDIT_ALICE, EDITED_ALICE, replace(getTypicalPersons(), ALICE, EDITED_ALICE));
+        assertEditSuccess(EDIT_ALICE, EDIT_ALICE_FEEDBACK, replace(getTypicalPersons(), ALICE, EDITED_ALICE));
         assertUndoSuccess(getTypicalPersons());
         assertFalse(model.canUndoAddressBook());
     }
@@ -148,7 +177,7 @@ public class UndoRedoIntegrationTest {
     @Test
     public void editUndoRedo_restoresEditedContact() throws Exception {
         List<Person> afterEdit = replace(getTypicalPersons(), ALICE, EDITED_ALICE);
-        assertEditSuccess(EDIT_ALICE, EDITED_ALICE, afterEdit);
+        assertEditSuccess(EDIT_ALICE, EDIT_ALICE_FEEDBACK, afterEdit);
         assertUndoSuccess(getTypicalPersons());
         assertRedoSuccess(afterEdit);
         assertFalse(model.canRedoAddressBook());
@@ -162,7 +191,9 @@ public class UndoRedoIntegrationTest {
         List<Person> afterEdit = typicalPersonsWith(editedAlex);
 
         assertAddSuccess(ADD_ALEX, ALEX, afterAdd);
-        assertEditSuccess("edit 8 p/98887777 c/2028 t/Mentor", editedAlex, afterEdit);
+        assertEditSuccess("edit 8 p/98887777 c/2028 t/Mentor",
+                "Edited Alex Tan:\nPhone: 91234567 → 98887777\nClass year: 2027 → 2028"
+                        + "\nTags replaced. Removed: CCA, Friend. Added: Mentor.", afterEdit);
         assertUndoSuccess(afterAdd);
         assertUndoSuccess(getTypicalPersons());
         assertRedoSuccess(afterAdd);
@@ -189,7 +220,7 @@ public class UndoRedoIntegrationTest {
         afterAddBeth.add(BETH);
 
         assertAddSuccess(ADD_ALEX, ALEX, afterAddAlex);
-        assertEditSuccess(EDIT_ALICE, EDITED_ALICE, afterEditAlice);
+        assertEditSuccess(EDIT_ALICE, EDIT_ALICE_FEEDBACK, afterEditAlice);
         assertAddSuccess(ADD_BETH, BETH, afterAddBeth);
         assertUndoSuccess(afterEditAlice);
         assertUndoSuccess(afterAddAlex);
@@ -217,7 +248,7 @@ public class UndoRedoIntegrationTest {
         List<Person> afterEdit = replace(getTypicalPersons(), ALICE, EDITED_ALICE);
         assertAddSuccess(ADD_ALEX, ALEX, typicalPersonsWith(ALEX));
         assertUndoSuccess(getTypicalPersons());
-        assertEditSuccess(EDIT_ALICE, EDITED_ALICE, afterEdit);
+        assertEditSuccess(EDIT_ALICE, EDIT_ALICE_FEEDBACK, afterEdit);
 
         assertCommandFailure(RedoCommand.COMMAND_WORD, CommandException.class, RedoCommand.MESSAGE_FAILURE);
         assertUndoSuccess(getTypicalPersons());
@@ -226,7 +257,7 @@ public class UndoRedoIntegrationTest {
     @Test
     public void undoRedoUndo_movesConsistentlyBetweenStates() throws Exception {
         List<Person> afterEdit = replace(getTypicalPersons(), ALICE, EDITED_ALICE);
-        assertEditSuccess(EDIT_ALICE, EDITED_ALICE, afterEdit);
+        assertEditSuccess(EDIT_ALICE, EDIT_ALICE_FEEDBACK, afterEdit);
 
         assertUndoSuccess(getTypicalPersons());
         assertRedoSuccess(afterEdit);
@@ -255,7 +286,7 @@ public class UndoRedoIntegrationTest {
     @Test
     public void failedEditAfterUndo_redoStillAvailable() throws Exception {
         List<Person> afterEdit = replace(getTypicalPersons(), ALICE, EDITED_ALICE);
-        assertEditSuccess(EDIT_ALICE, EDITED_ALICE, afterEdit);
+        assertEditSuccess(EDIT_ALICE, EDIT_ALICE_FEEDBACK, afterEdit);
         assertUndoSuccess(getTypicalPersons());
 
         assertCommandFailure("edit 2 n/Alice Pauline", CommandException.class,
@@ -307,7 +338,12 @@ public class UndoRedoIntegrationTest {
                 .withEmail("alexander@example.com").withAddress("Bukit Timah").withMajor("Data Science")
                 .withGraduationYear("2029").withTags("Mentor").build();
         assertEditSuccess("edit 8 n/Alexander Tan p/87654321 e/alexander@example.com a/Bukit Timah"
-                + " m/Data Science c/2029 t/Mentor", editedAlex, typicalPersonsWith(editedAlex));
+                + " m/Data Science c/2029 t/Mentor", "Edited Alexander Tan:"
+                        + "\nName: Alex Tan → Alexander Tan\nPhone: 91234567 → 87654321"
+                        + "\nEmail: alex@example.com → alexander@example.com"
+                        + "\nAddress: Kent Ridge Hall → Bukit Timah\nMajor: Computer Science → Data Science"
+                        + "\nClass year: 2027 → 2029\nTags replaced. Removed: CCA, Friend. Added: Mentor.",
+                typicalPersonsWith(editedAlex));
 
         assertUndoSuccess(typicalPersonsWith(ALEX));
         Person restored = model.getFilteredPersonList().get(7);
@@ -333,7 +369,7 @@ public class UndoRedoIntegrationTest {
     @Test
     public void undoRedo_savedDataMatchesModelAndHistoryIsNotSaved() throws Exception {
         assertAddSuccess(ADD_ALEX, ALEX, typicalPersonsWith(ALEX));
-        assertEditSuccess(EDIT_ALICE, EDITED_ALICE, replace(typicalPersonsWith(ALEX), ALICE, EDITED_ALICE));
+        assertEditSuccess(EDIT_ALICE, EDIT_ALICE_FEEDBACK, replace(typicalPersonsWith(ALEX), ALICE, EDITED_ALICE));
         assertUndoSuccess(typicalPersonsWith(ALEX));
 
         // Reopening the saved data restores the undone state, but starts with no undo or redo history.
@@ -373,7 +409,8 @@ public class UndoRedoIntegrationTest {
         Person editedDaniel = new PersonBuilder(DANIEL).withPhone("81112222").build();
 
         // Index 2 refers to the second contact in the filtered list, not in the full list.
-        assertEditSuccess("edit 2 p/81112222", editedDaniel, replace(getTypicalPersons(), DANIEL, editedDaniel));
+        assertEditSuccess("edit 2 p/81112222", "Edited Daniel Meier:\nPhone: 87652533 → 81112222",
+                replace(getTypicalPersons(), DANIEL, editedDaniel));
         assertUndoSuccess(getTypicalPersons());
         assertRedoSuccess(replace(getTypicalPersons(), DANIEL, editedDaniel));
     }
@@ -536,7 +573,13 @@ public class UndoRedoIntegrationTest {
         states.add(currentContacts());
         for (String command : List.of("add n/Alice a/NUS p/91234567", "tag 1 t/Project", "edit 1 p/92345678",
                 "fav 1", "add n/Bob a/SMU p/93456789", "untag 1 t/Project", "unfav 1", "edit 2 a/NTU")) {
-            mixedChangeFeedback.add(logic.execute(command).getFeedbackToUser());
+            String feedback = logic.execute(command).getFeedbackToUser();
+            if (command.startsWith("edit ")) {
+                int index = Integer.parseInt(command.split(" ")[1]) - 1;
+                feedback = String.format(EditCommand.MESSAGE_EDIT_PERSON_SUCCESS,
+                        Messages.format(model.getFilteredPersonList().get(index)));
+            }
+            mixedChangeFeedback.add(feedback);
             List<Person> afterCommand = currentContacts();
             assertNotEquals(states.get(states.size() - 1), afterCommand, command + " should change the contacts");
             states.add(afterCommand);
@@ -559,17 +602,7 @@ public class UndoRedoIntegrationTest {
     /**
      * Executes an edit command and checks its feedback and the resulting contacts.
      */
-    private void assertEditSuccess(String command, Person edited, List<Person> expectedContacts) throws Exception {
-        String feedback = String.format(EditCommand.MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(edited));
-        if (command.contains(" t/")) {
-            Person original = model.getFilteredPersonList().get(Integer.parseInt(command.split(" ")[1]) - 1);
-            String removed = original.getTags().stream().filter(tag -> !edited.getTags().contains(tag))
-                    .map(tag -> tag.tagName).sorted().collect(java.util.stream.Collectors.joining(", "));
-            String added = edited.getTags().stream().filter(tag -> !original.getTags().contains(tag))
-                    .map(tag -> tag.tagName).sorted().collect(java.util.stream.Collectors.joining(", "));
-            feedback += "\nTags replaced. Removed: " + (removed.isEmpty() ? "None" : removed)
-                    + ". Added: " + (added.isEmpty() ? "None" : added) + ".";
-        }
+    private void assertEditSuccess(String command, String feedback, List<Person> expectedContacts) throws Exception {
         assertCommandSuccess(command, feedback, expectedContacts);
         assertEquals(expectedContacts, model.getFilteredPersonList());
     }

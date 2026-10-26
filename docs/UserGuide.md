@@ -472,7 +472,7 @@ Format: `edit INDEX [n/NAME] [p/PHONE] [e/EMAIL] [a/ADDRESS] [m/MAJOR] [c/CLASS_
 * Leading and trailing spaces are ignored. If any supplied value is invalid or an academic prefix is repeated, no fields are updated.
 * After a successful edit, the full contact list is shown. If editing search or filter results, run `find` or `filter` again before using a result index for another edit.
 * When editing tags, all of the person's existing tags are removed; adding tags is not cumulative.
-* When `t/` is supplied, feedback includes `Tags replaced. Removed: ... . Added: ... .`
+* When the supplied `t/` values change the tag set, feedback includes `Tags replaced. Removed: ... . Added: ... .`
   with actual changes sorted by tag name (`None` for an empty list). Unchanged tags are excluded.
   For example, replacing `Friend` and `Classmate` with `Project` reports
   `Tags replaced. Removed: Classmate, Friend. Added: Project.`
@@ -484,9 +484,15 @@ Format: `edit INDEX [n/NAME] [p/PHONE] [e/EMAIL] [a/ADDRESS] [m/MAJOR] [c/CLASS_
   Feedback wraps within the result display when the window is narrow.
 * Enter `p/` or `e/` without a value to clear that contact method. Clearing both shows the automatic `incomplete` reminder; omitted phone/email prefixes preserve the existing values.
 * A successful `edit` that changes the person's details can be reverted with [`undo`](#undoing-a-change-undo).
-  Undo/redo messages include the `Edited person: ...` details but do not repeat the tag replacement summary.
-* The result display shows `Edited person: ` followed by the updated details, and the command box is cleared.
-  The contact card shows `Major: Not specified` or `Class year: Not specified` when an academic field is cleared.
+  Undo/redo messages retain the full `Edited person: ...` contact details rather than repeating the field or tag change summary.
+* The result display shows `Edited NAME:` followed by only the fields that actually changed,
+  one per line in the form `Field: old value → new value`. Cleared optional fields show `Not specified`.
+  Fields whose supplied values already match are omitted. Tag changes use the removal/addition summary above.
+  The command box is cleared, and the contact card shows the resulting details.
+* If all supplied values already match, the result is
+  `No changes made to NAME. The supplied values match the existing details.`
+  The contact's update date and undo/redo history are preserved; no undo step is created and available redo
+  remains available. The full contact list is still shown and the command box is cleared.
 * Notes and favourite status are preserved. Changing a basic profile field refreshes the contact's update date;
   changing only tags does not refresh that date.
 * Invalid input, an index outside the displayed list, or a name already used by another contact leaves the
@@ -503,6 +509,16 @@ Examples:
 *  `edit 1 p/91234567 e/johndoe@example.com` Edits the phone number and email address of the 1st person to be `91234567` and `johndoe@example.com` respectively.
 *  `edit 1 m/Computer Science c/2027` Updates the 1st person's major and graduation year.
 *  `edit 1 m/ c/` Clears both academic fields while keeping the other details.
+   If Alice Tan previously had major `Computer Science` and class year `2027`, feedback is:
+
+   ```text
+   Edited Alice Tan:
+   Major: Computer Science → Not specified
+   Class year: 2027 → Not specified
+   ```
+
+   Repeating the command reports `No changes made to Alice Tan. The supplied values match the existing details.`
+
 *  `edit 2 n/Betsy Crower t/` Edits the name of the 2nd person to be `Betsy Crower` and clears all existing tags.
 
 ### Locating persons by name, major or class year: `find`
@@ -665,7 +681,7 @@ Format: `undo`
 * Every command that changes your contacts can be undone: `add`, `edit`, `delete`, `clear`, `tag`, `untag`, `fav`, `unfav`, `note` and `delnote`.
 * Restores your contacts to how they were before the most recent change that has not already been undone.
 * The message names the change that was undone: `Undid:` followed by the message that change showed when you made it, such as `Undid: Tagged person: …​` or `Undid: Deleted person: Alex Tan; …​`.
-  For `edit`, the tag replacement summary is not repeated in undo or redo feedback.
+  For `edit`, undo and redo use the full `Edited person: ...` contact details instead of the immediate change summary.
 * Run `undo` again to revert earlier changes one at a time, starting from the most recent.
 * After an undo, the full contact list is shown, even if you were viewing the results of `find`.
 * A command that leaves every detail unchanged, such as an `edit` with the same values or `tag` with a tag the person already has, does not count as a change.
@@ -695,7 +711,7 @@ Format: `redo`
 
 * The change undone most recently is redone first. Running `redo` repeatedly therefore reapplies undone changes in the order you originally made them.
 * The message names the change that was redone: `Redid:` followed by the message that change showed when you first made it, such as `Redid: Added to favourites: …​`.
-  As with undo, an `edit` tag replacement summary is omitted.
+  As with undo, `edit` uses the full contact details instead of the immediate change summary.
 * After a redo, the full contact list is shown, even if you were viewing the results of `find`.
 * Undone changes can be redone only until you change your contacts again. After any command that changes your contacts, such as `add`, `delete` or `fav`, `redo` is no longer available.
 * Commands that fail, and commands that do not change contacts, such as `list`, `find`, `tags` and `help`, do not affect what `redo` reapplies.

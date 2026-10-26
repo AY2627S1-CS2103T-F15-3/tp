@@ -96,9 +96,10 @@ public class RedoCommandTest {
         String addMessage = new AddCommand(new PersonBuilder().withName("Alex Tan").withMajor("Mathematics")
                 .build()).execute(model).getFeedbackToUser();
         AddressBook stateAfterAdd = new AddressBook(model.getAddressBook());
-        String editMessage = new EditCommand(INDEX_FIRST_PERSON,
-                new EditPersonDescriptorBuilder().withGraduationYear("2026").build()).execute(model)
-                .getFeedbackToUser();
+        new EditCommand(INDEX_FIRST_PERSON,
+                new EditPersonDescriptorBuilder().withGraduationYear("2026").build()).execute(model);
+        String editMessage = String.format(EditCommand.MESSAGE_EDIT_PERSON_SUCCESS,
+                Messages.format(model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased())));
         AddressBook stateAfterEdit = new AddressBook(model.getAddressBook());
         model.undoAddressBook();
         model.undoAddressBook();

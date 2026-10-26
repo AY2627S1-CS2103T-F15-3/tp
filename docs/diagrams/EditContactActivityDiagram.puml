@@ -7,12 +7,17 @@ start
 :Press Enter in the command box;
 if (Input valid, index displayed
 and name not a duplicate?) then (yes)
-  :Update the contact and save automatically;
-  if (Tags supplied?) then (yes)
-    :Compare old and new tags;
-    :Build sorted Removed / Added summary\n(use None for empty differences);
+  if (Any contact detail changed?) then (yes)
+    :Update the contact and record history;
+    :Build Edited NAME feedback\nwith only actual field changes\nand Not specified for cleared values;
+    if (Tags changed?) then (yes)
+      :Append sorted Removed / Added summary;
+    endif
+  else (no)
+    :Keep the contact, date and undo/redo history;
+    :Build No changes made feedback;
   endif
-  :Show Edited person feedback and tag summary if supplied\nclear the command box;
+  :Save automatically and show feedback\nclear the command box;
   :Show the full contact list
 with updated contact cards;
 else (no)

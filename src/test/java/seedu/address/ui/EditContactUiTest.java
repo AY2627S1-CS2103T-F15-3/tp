@@ -77,7 +77,7 @@ public class EditContactUiTest {
                 assertEquals("Bob", edited.getName().fullName);
                 assertEquals(bob.getNotes(), edited.getNotes());
                 assertTrue(edited.isFavourite());
-                assertEquals("Edited person: " + Messages.format(edited)
+                assertEquals("Edited Bob:\nMajor: Computer Science → Mathematics\nClass year: 2027 → 2028"
                         + "\nTags replaced. Removed: Classmate. Added: StudyGroup.", feedback(window));
                 assertEquals("", input(window).getText());
                 assertAcademicCard(window, edited, "Major: Mathematics", "Class year: 2028");
@@ -89,7 +89,16 @@ public class EditContactUiTest {
                 enter(window, "find Bob");
                 enter(window, "edit 1 m/ c/");
                 Person cleared = (Person) list(window).getItems().get(1);
+                assertEquals("Edited Bob:\nMajor: Mathematics → Not specified\nClass year: 2028 → Not specified",
+                        feedback(window));
                 assertAcademicCard(window, cleared, "Major: Not specified", "Class year: Not specified");
+                enter(window, "find Bob");
+                enter(window, "edit 1 m/ c/");
+                assertEquals("No changes made to Bob. The supplied values match the existing details.",
+                        feedback(window));
+                assertEquals("", input(window).getText());
+                assertFalse(input(window).getStyleClass().contains(CommandBox.ERROR_STYLE_CLASS));
+                assertEquals(3, list(window).getItems().size());
                 try {
                     Person saved = new JsonAddressBookStorage(directory.resolve("contacts.json"))
                             .readAddressBook().orElseThrow().getPersonList().get(1);
