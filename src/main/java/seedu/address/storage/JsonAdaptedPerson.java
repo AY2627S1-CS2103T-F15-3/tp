@@ -155,10 +155,10 @@ class JsonAdaptedPerson {
         final Address modelAddress = new Address(storedAddress);
 
         // Older AB3 files do not contain these optional fields.
-        String storedMajor = major == null ? "" : normalizeStoredText(major);
-        // Only an absent or empty major means unspecified, as a whitespace-only m/ is rejected by commands too.
-        boolean isBlankMajor = storedMajor.isEmpty() && major != null && !major.isEmpty();
-        if (isBlankMajor || !Major.isValidMajor(storedMajor)) {
+        // An optional field with nothing visible in it (e.g. only NBSP or ZERO WIDTH SPACE) loads as unspecified,
+        // so that one blank-looking value does not stop the whole file from loading.
+        String storedMajor = isAbsentOrInvisible(major) ? "" : normalizeStoredText(major);
+        if (!Major.isValidMajor(storedMajor)) {
             throw new IllegalValueException(Major.MESSAGE_CONSTRAINTS);
         }
         final Major modelMajor = new Major(storedMajor);
@@ -169,7 +169,7 @@ class JsonAdaptedPerson {
         }
         final GraduationYear modelGraduationYear = new GraduationYear(storedYear);
 
-        String storedNotes = notes == null ? "" : notes;
+        String storedNotes = isAbsentOrInvisible(notes) ? "" : notes;
         if (!Notes.isValidNotes(storedNotes)) {
             throw new IllegalValueException(Notes.MESSAGE_CONSTRAINTS);
         }
@@ -193,6 +193,10 @@ class JsonAdaptedPerson {
      */
     private static String normalizeStoredText(String value) {
         return StringUtil.normalizeWhitespace(value).trim();
+    }
+
+    private static boolean isAbsentOrInvisible(String value) {
+        return value == null || !StringUtil.hasVisibleCharacter(value);
     }
 
 }

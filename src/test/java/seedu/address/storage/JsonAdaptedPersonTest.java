@@ -29,6 +29,9 @@ public class JsonAdaptedPersonTest {
     private static final String INVALID_ADDRESS = " ";
     private static final String INVALID_EMAIL = "example.com";
     private static final String INVALID_TAG = "#friend";
+    /** Values with nothing visible: Unicode spaces, format characters and a lone variation selector. */
+    private static final String[] INVISIBLE_VALUES =
+        {" ", "\u00a0", "\u2003", "\u200b", "\ufeff", "\u2060\u200b", "\ufe0f"};
 
     private static final String VALID_NAME = BENSON.getName().toString();
     private static final String VALID_PHONE = BENSON.getPhone().toString();
@@ -64,7 +67,7 @@ public class JsonAdaptedPersonTest {
 
     @Test
     public void toModelType_invalidNotes_throwsIllegalValueException() {
-        for (String notes : new String[]{" ", "First\nSecond", "a".repeat(Notes.MAX_LENGTH + 1)}) {
+        for (String notes : new String[]{"First\nSecond", "a".repeat(Notes.MAX_LENGTH + 1)}) {
             JsonAdaptedPerson person = new JsonAdaptedPerson(VALID_NAME, VALID_PHONE, VALID_EMAIL, VALID_ADDRESS,
                     null, null, VALID_TAGS, notes);
             assertThrows(IllegalValueException.class, Notes.MESSAGE_CONSTRAINTS, person::toModelType);
@@ -118,16 +121,23 @@ public class JsonAdaptedPersonTest {
     }
 
     @Test
-    public void toModelType_invisibleOnlyAddressOrMajor_throwsIllegalValueException() {
-        for (String invisible : new String[]{"​", "﻿", " ", " "}) {
-            JsonAdaptedPerson invalidAddress =
+    public void toModelType_invisibleOnlyAddress_throwsIllegalValueException() {
+        for (String invisible : INVISIBLE_VALUES) {
+            JsonAdaptedPerson person =
                     new JsonAdaptedPerson(VALID_NAME, VALID_PHONE, VALID_EMAIL, invisible, null, null, VALID_TAGS);
-            assertThrows(IllegalValueException.class, Address.MESSAGE_CONSTRAINTS, invalidAddress::toModelType);
+            assertThrows(IllegalValueException.class, Address.MESSAGE_CONSTRAINTS, person::toModelType);
+        }
+    }
 
-            JsonAdaptedPerson invalidMajor =
-                    new JsonAdaptedPerson(VALID_NAME, VALID_PHONE, VALID_EMAIL, VALID_ADDRESS, invisible, null,
-                            VALID_TAGS);
-            assertThrows(IllegalValueException.class, Major.MESSAGE_CONSTRAINTS, invalidMajor::toModelType);
+    @Test
+    public void toModelType_invisibleOnlyMajorOrNotes_loadsAsUnspecified() throws Exception {
+        // Optional fields that look blank should not stop the whole data file from loading.
+        for (String invisible : INVISIBLE_VALUES) {
+            JsonAdaptedPerson person = new JsonAdaptedPerson(VALID_NAME, VALID_PHONE, VALID_EMAIL, VALID_ADDRESS,
+                    invisible, null, VALID_TAGS, invisible);
+            Person loaded = person.toModelType();
+            assertEquals("", loaded.getMajor().value);
+            assertEquals(Notes.EMPTY, loaded.getNotes());
         }
     }
 
@@ -213,7 +223,7 @@ public class JsonAdaptedPersonTest {
     @Test
     public void toModelType_invalidUniversityFields_throwsIllegalValueException() {
         JsonAdaptedPerson invalidMajor = new JsonAdaptedPerson(VALID_NAME, VALID_PHONE, VALID_EMAIL, VALID_ADDRESS,
-                " ", "2027", VALID_TAGS);
+                "Computer\u0001Science", "2027", VALID_TAGS);
         assertThrows(IllegalValueException.class, Major.MESSAGE_CONSTRAINTS, invalidMajor::toModelType);
         JsonAdaptedPerson invalidYear = new JsonAdaptedPerson(VALID_NAME, VALID_PHONE, VALID_EMAIL, VALID_ADDRESS,
                 "Computer Science", "2100", VALID_TAGS);
