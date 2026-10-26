@@ -160,7 +160,7 @@
         "editing-a-person-edit": "Editing a person: edit",
         "locating-persons-by-name-major-or-class-year-find": "Locating persons by name, major or class year: find",
         "filtering-contacts-by-major-class-year-and-tag-filter": "Filtering contacts by major, class year and tag: filter",
-        "sorting-contacts-by-name-major-or-class-year-sort": "Sorting contacts by name, major or class year: sort",
+        "sorting-contacts-by-name-major-class-year-or-update-date-sort": "Sorting contacts by name, major, class year or update date: sort",
         "deleting-contacts-delete": "Deleting contacts: delete",
         "clearing-all-entries-clear": "Clearing all entries: clear",
         "undoing-a-change-undo": "Undoing a change: undo",
