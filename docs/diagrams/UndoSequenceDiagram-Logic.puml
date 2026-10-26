@@ -49,6 +49,12 @@ alt canUndo is false
 else else
     'Reactivates the command, since the branches above and below are drawn one after the other.
     activate UndoCommand
+    UndoCommand -> Model : getUndoDescription()
+    activate Model
+
+    Model --> UndoCommand : description
+    deactivate Model
+
     UndoCommand -> Model : undoAddressBook()
     activate Model
 
@@ -62,7 +68,7 @@ else else
     deactivate Model
 
     create CommandResult
-    UndoCommand -> CommandResult
+    UndoCommand -> CommandResult : "Undid: " + description
     activate CommandResult
 
     CommandResult --> UndoCommand

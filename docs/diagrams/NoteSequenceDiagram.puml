@@ -79,7 +79,7 @@ activate Model
 Model --> NoteCommand
 deactivate Model
 
-NoteCommand -> Model : commitAddressBook(previousState)
+NoteCommand -> Model : commitAddressBook(previousState, message)
 activate Model
 Model --> NoteCommand
 deactivate Model
