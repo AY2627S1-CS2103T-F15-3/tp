@@ -27,20 +27,20 @@ public class AddressTest {
         // invalid addresses
         assertFalse(Address.isValidAddress("")); // empty string
         assertFalse(Address.isValidAddress(" ")); // spaces only
-        assertFalse(Address.isValidAddress(" ")); // no-break space only
-        assertFalse(Address.isValidAddress(" ")); // EM SPACE only
-        assertFalse(Address.isValidAddress("​")); // zero-width space only
-        assertFalse(Address.isValidAddress("﻿")); // byte order mark only
+        assertFalse(Address.isValidAddress("\u00a0")); // no-break space only
+        assertFalse(Address.isValidAddress("\u2003")); // EM SPACE only
+        assertFalse(Address.isValidAddress("\u200b")); // zero-width space only
+        assertFalse(Address.isValidAddress("\ufeff")); // byte order mark only
         assertFalse(Address.isValidAddress("\u200d\u200c")); // zero width joiner and non-joiner only
         assertFalse(Address.isValidAddress("\ufe0f")); // variation selector only
         assertFalse(Address.isValidAddress("\u0301\ufe0f")); // combining marks only
-        assertFalse(Address.isValidAddress("⁠​ ")); // Unicode spaces and invisible characters
+        assertFalse(Address.isValidAddress("\u2060\u200b\u00a0")); // Unicode spaces and invisible characters
 
         // valid addresses
         assertTrue(Address.isValidAddress("Blk 456, Den Road, #01-355"));
         assertTrue(Address.isValidAddress("-")); // one character
-        assertTrue(Address.isValidAddress("Main​St")); // invisible character within visible text
-        assertTrue(Address.isValidAddress("Blk 456")); // Unicode space within visible text
+        assertTrue(Address.isValidAddress("Main\u200bSt")); // invisible character within visible text
+        assertTrue(Address.isValidAddress("Blk\u00a0456")); // Unicode space within visible text
         assertTrue(Address.isValidAddress("\u0645\u06cc\u200c\u0634\u0648\u062f")); // zero width non-joiner
         assertTrue(Address.isValidAddress("\u0915\u094d\u200d\u0937")); // zero width joiner
         assertTrue(Address.isValidAddress("\ud83d\udc68\u200d\ud83d\udcbb")); // emoji sequence

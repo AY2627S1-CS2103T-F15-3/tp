@@ -21,6 +21,9 @@ import seedu.address.model.person.Phone;
 import seedu.address.model.tag.Tag;
 
 public class ParserUtilTest {
+    /** Values with nothing visible: marks, format characters and Unicode spaces, alone or combined. */
+    private static final String[] INVISIBLE_ONLY_VALUES =
+        {"\ufe0f", "\u0301", "\u200b", "\ufeff", "\u2060\u200b", "\u00a0", " \u200b "};
     private static final String INVALID_NAME = "R@chel";
     private static final String INVALID_PHONE = "+651234";
     private static final String INVALID_ADDRESS = " ";
@@ -114,7 +117,7 @@ public class ParserUtilTest {
 
     @Test
     public void parseAddress_invisibleCharactersOnly_throwsParseException() {
-        for (String address : new String[]{"\ufe0f", "\u0301", "​", "﻿", "⁠​", " ", " ​ "}) {
+        for (String address : INVISIBLE_ONLY_VALUES) {
             assertThrows(ParseException.class, Address.MESSAGE_CONSTRAINTS, () -> ParserUtil.parseAddress(address));
         }
     }
@@ -210,7 +213,7 @@ public class ParserUtilTest {
 
     @Test
     public void parseMajor_invisibleCharactersOnly_throwsParseException() {
-        for (String major : new String[]{"\ufe0f", "\u0301", "​", "﻿", "⁠​", " ", " ​ "}) {
+        for (String major : INVISIBLE_ONLY_VALUES) {
             assertThrows(ParseException.class, Major.MESSAGE_CONSTRAINTS, () -> ParserUtil.parseMajor(major));
         }
     }

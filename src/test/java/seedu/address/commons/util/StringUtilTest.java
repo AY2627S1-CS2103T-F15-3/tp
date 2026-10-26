@@ -133,15 +133,15 @@ public class StringUtilTest {
         assertTrue(StringUtil.containsWordIgnoreCase("AAA bBb ccc  bbb", "bbB"));
 
         // Unicode spaces separate words
-        assertTrue(StringUtil.containsWordIgnoreCase("Computer Science", "Science"));
-        assertTrue(StringUtil.containsWordIgnoreCase("Computer Science", "computer"));
-        assertTrue(StringUtil.containsWordIgnoreCase("aaa bbb", "　bbb "));
+        assertTrue(StringUtil.containsWordIgnoreCase("Computer\u2003Science", "Science"));
+        assertTrue(StringUtil.containsWordIgnoreCase("Computer\u00a0Science", "computer"));
+        assertTrue(StringUtil.containsWordIgnoreCase("aaa bbb", "\u3000bbb\u2003"));
     }
 
     @Test
     public void containsWordIgnoreCase_unicodeSpaceInWord_throwsIllegalArgumentException() {
         assertThrows(IllegalArgumentException.class, "Word parameter should be a single word", ()
-            -> StringUtil.containsWordIgnoreCase("typical sentence", "aaa BBB"));
+            -> StringUtil.containsWordIgnoreCase("typical sentence", "aaa\u2003BBB"));
     }
 
     @Test
@@ -165,8 +165,8 @@ public class StringUtilTest {
     public void normalizeWhitespace_unicodeSpaces_replacedWithAsciiSpaces() {
         assertEquals("", StringUtil.normalizeWhitespace(""));
         assertEquals("a b", StringUtil.normalizeWhitespace("a b"));
-        assertEquals("a b  c d", StringUtil.normalizeWhitespace("a b 　c\td"));
-        assertEquals(" a ", StringUtil.normalizeWhitespace(" a "));
+        assertEquals("a b  c d", StringUtil.normalizeWhitespace("a\u2003b\u00a0\u3000c\td"));
+        assertEquals(" a ", StringUtil.normalizeWhitespace("\u2003a\u2003"));
         assertThrows(NullPointerException.class, () -> StringUtil.normalizeWhitespace(null));
     }
 
@@ -181,8 +181,8 @@ public class StringUtilTest {
 
     @Test
     public void stripWhitespace_unicodeSpaces_strippedFromEndsOnly() {
-        assertEquals("", StringUtil.stripWhitespace("   "));
-        assertEquals("a b", StringUtil.stripWhitespace("　 a b \t"));
+        assertEquals("", StringUtil.stripWhitespace("\u2003 \u00a0"));
+        assertEquals("a\u2003b", StringUtil.stripWhitespace("\u3000 a\u2003b\u00a0\t"));
         assertThrows(NullPointerException.class, () -> StringUtil.stripWhitespace(null));
     }
 
