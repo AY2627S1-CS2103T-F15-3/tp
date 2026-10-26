@@ -386,7 +386,7 @@ is shown on restart.
 ### Sorting the displayed contacts
 
 `AddressBookParser` routes `sort` to `SortCommandParser`. The parser accepts either two tokens
-(a field `name`, `major` or `year`, followed by `asc` or `desc`) or the single keyword `reset`.
+(a field `name`, `major`, `year` or `updated`, followed by `asc` or `desc`) or the single keyword `reset`.
 Keywords are case-insensitive. A field and direction produce `SortCommand` with
 `PersonSortComparator.SortField` and `SortDirection` values; `reset` produces `SortResetCommand`.
 Invalid input raises a `ParseException` with usage instructions before any view or data change.
@@ -415,6 +415,13 @@ sorting keys. Direction is applied to the value comparator **before** `Comparato
 that descending order does not move unspecified values to the front. Equal primary values use ascending
 case-insensitive name order; names differing only in case compare equally.
 
+For `UPDATED`, the comparator compares `Person#getLastUpdated()` as `LocalDate` values.
+Ascending puts older dates first; descending reverses only the date comparison, keeping the
+ascending name tie-break in both directions. Dates are mandatory in the model; storage supplies
+the existing compatibility baseline for older files without dates. The view status describes
+this field as `Last updated`. Replacing a contact after an edit or restoring it through undo/redo
+automatically reorders the displayed view using the restored date.
+
 Sorting the view rather than `UniquePersonList` preserves storage order and history snapshots. As with
 other successful commands, `LogicManager` still invokes storage, but the saved contacts remain in their
 underlying order. Sort commands do not call `commitAddressBook`, so undo and redo availability is preserved.
@@ -425,7 +432,9 @@ Restarting constructs a view without a comparator or predicate, restoring saved 
 Comparator, model, command and parser unit tests cover ordering and validation. `SortCommandIntegrationTest`
 checks command interactions, notes preservation and JSON persistence; `SortUiTest` checks the real command
 box, rendered card numbering and feedback. `SortResetCommandTest` checks saved order, filter preservation
-and redo availability after resetting. See [Sorting contacts](#sorting-contacts) for manual checks.
+and redo availability after resetting. `UpdatedSortIntegrationTest` covers date ordering, ties,
+filters, displayed-index editing, undo/redo and JSON reload; `SortUiTest` also checks date sorting
+through the command box and rendered cards. See [Sorting contacts](#sorting-contacts) for manual checks.
 
 #### Persistent view status
 
@@ -1575,6 +1584,40 @@ testers are expected to do more *exploratory* testing.
    1. Run `filter m/Computer Science and Information Systems c/2027 t/SortDemo` and narrow the window.<br>
       Expected: Long status text wraps within the window; all criteria and the sort description remain
       readable. Zero matches, if any, show `Showing 0 of N contacts` without deleting saved contacts.
+
+1. Latest update date
+
+   1. Prerequisites: Use a disposable copy with no contacts named `UpdatedAlpha`, `UpdatedBeta` or
+      `UpdatedGamma`, and no tag `UpdateSortDemo`. Add contacts in this order:
+
+      * `add n/UpdatedGamma p/91234567 t/UpdateSortDemo`
+      * `add n/UpdatedBeta p/92345678 t/UpdateSortDemo`
+      * `add n/UpdatedAlpha p/93456789 t/UpdateSortDemo`
+
+      Close UniMate. In the disposable `data/unimate.json`, set only these contacts' `lastUpdated`
+      properties: `UpdatedGamma` to `2025-01-01`, and `UpdatedBeta` and `UpdatedAlpha` to `2024-12-31`.
+      Relaunch and run `filter t/UpdateSortDemo`. Confirm the dates on the cards before continuing.
+   1. Run `sort updated asc`, then `sort updated desc`.<br>
+      Expected: Ascending shows `UpdatedAlpha`, `UpdatedBeta`, `UpdatedGamma`; descending shows
+      `UpdatedGamma`, `UpdatedAlpha`, `UpdatedBeta`. Both directions break equal dates by ascending
+      names. Only the three matching contacts appear. Status ends with `Sort: Last updated ascending`
+      or `Sort: Last updated descending`, and card numbers match the displayed order.
+   1. Run `sort updated asc`, then `edit 1 p/99999999`, then `filter t/UpdateSortDemo`.<br>
+      Expected: `UpdatedAlpha` changes phone and receives today's date, moving after the two older contacts.
+      It was third in saved order but is targeted using the first displayed card.
+      Run `sort updated desc`: `UpdatedAlpha`, `UpdatedGamma`, `UpdatedBeta` appear.
+   1. Run `undo`, then `filter t/UpdateSortDemo`.<br>
+      Expected: `UpdatedAlpha` regains its original phone and date; descending order becomes
+      `UpdatedGamma`, `UpdatedAlpha`, `UpdatedBeta`. Run `sort updated asc`, then `redo`, then reapply
+      the filter: the edited phone/date return, with `UpdatedBeta`, `UpdatedGamma`, `UpdatedAlpha`
+      in ascending order. Sorting has not consumed undo history or cleared redo.
+   1. Try `sort updated`, `sort updated ascending` and `sort updated desc extra` separately.<br>
+      Expected: Usage errors; the filter, order, dates and status remain unchanged.
+      Run `sort reset`: only the matching contacts remain, in saved order
+      `UpdatedGamma`, `UpdatedBeta`, `UpdatedAlpha`.
+   1. Close and reopen UniMate, then run `filter t/UpdateSortDemo`.<br>
+      Expected: The same saved order and edited phone/date remain. The temporary sort is reset and
+      status ends with `Sort: Saved order`.
 
 ### Deleting a person
 
