@@ -609,7 +609,9 @@ Format: `delete INDEX [MORE_INDICES]`
   `Index 1 is repeated. Specify each displayed index only once. No contacts were deleted.`
 * An index beyond the displayed list is rejected with the valid range for that view. For example, if
   `find Alpha` displays one contact, `delete 2` reports
-  `Index 2 is outside the current displayed list. The only valid index is 1.`
+  `Index 2 is outside the current displayed list. No contacts were deleted. The only valid index is 1.`
+  If three contacts are displayed, `delete 1 3 4` reports that index 4 is out of range and states
+  `No contacts were deleted.` Contacts 1 and 3 remain present too.
 * If no contacts are displayed but saved contacts exist, the error suggests `list` to show them.
   If there are no saved contacts, it suggests adding a contact first. Rejected commands leave contacts,
   the displayed list and undo/redo history unchanged.

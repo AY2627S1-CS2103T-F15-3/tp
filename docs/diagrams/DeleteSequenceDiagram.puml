@@ -78,11 +78,6 @@ loop For each captured contact
     deactivate Model
 end
 
-DeleteCommand -> Model : commitAddressBook(previousState)
-activate Model
-Model --> DeleteCommand
-deactivate Model
-
 loop For each captured contact in input order
     DeleteCommand -> Messages : format(personToDelete)
     activate Messages
@@ -95,13 +90,18 @@ loop For each captured contact in input order
 end
 
 note over DeleteCommand, CommandResult
-  feedback = "Deleted 3 contacts:" and contact detail lines
+  message = "Deleted 3 contacts:" and contact detail lines
   labelled with their original displayed indices 1, 3 and 5.
   A single deletion retains "Deleted person: " feedback.
 end note
 
+DeleteCommand -> Model : commitAddressBook(previousState, message)
+activate Model
+Model --> DeleteCommand
+deactivate Model
+
 create CommandResult
-DeleteCommand -> CommandResult : CommandResult(feedback)
+DeleteCommand -> CommandResult : CommandResult(message)
 activate CommandResult
 
 CommandResult --> DeleteCommand

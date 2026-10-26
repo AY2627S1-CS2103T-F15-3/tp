@@ -481,12 +481,15 @@ includes the supplied one-based index and the valid range,
 `The only valid index is 1.` An empty view reports that no contacts are displayed and suggests `list` when
 saved contacts exist; an empty address book instead suggests adding a contact. These checks throw a
 `CommandException` before any model mutation, preserving contacts, the current view and undo/redo history.
+Both out-of-range messages explicitly state `No contacts were deleted.` so users know the entire
+batch was rejected, including any valid indices supplied before the invalid one.
 Duplicate detection uses the numeric index values, so `delete 1 01` also rejects the repeated index.
 
 After all indices pass validation, the command has captured every selected `Person` from the original
 displayed list. It copies the address book once, calls `Model#deletePerson` for each captured contact,
-and calls `Model#commitAddressBook` once after the whole batch. It never looks up a target using an
-index from the changing live list. This supports nonconsecutive, adjacent and reversed index lists
+and calls `Model#commitAddressBook(previousState, message)` once after constructing the batch feedback.
+That feedback is stored as the history description. It never looks up a target using an index from
+the changing live list. This supports nonconsecutive, adjacent and reversed index lists
 without deleting the wrong contacts as indices shift. Contacts outside the selection, the active
 filter and the active sort order are preserved. A single `undo` or `redo` restores or reapplies the
 whole batch using the existing history mechanism; undo/redo shows the full list as usual.
@@ -1616,8 +1619,6 @@ testers are expected to do more *exploratory* testing.
       Expected: The demo contacts return in saved order: `SortGamma`, `SortBeta`, `sortAlpha`.
       The edit and deletion remain saved, while the previous sort and filter do not survive restarting.
 
-### Deleting contacts
-
 1. Reset order and persistent status
 
    1. Prerequisites: Complete the sorting checks above in the disposable copy. The remaining demo
@@ -1639,6 +1640,8 @@ testers are expected to do more *exploratory* testing.
       Expected: Long status text wraps within the window; all criteria and the sort description remain
       readable. Zero matches, if any, show `Showing 0 of N contacts` without deleting saved contacts.
 
+### Deleting contacts
+
 1. Deleting a contact with academic fields
 
    1. Prerequisites: Add a test contact using `add n/DeleteCheck p/91234567 e/delete@example.com a/10 Kent Ridge Road m/Computer Science c/2027 t/classmate`.
@@ -1655,13 +1658,13 @@ testers are expected to do more *exploratory* testing.
    1. Test cases: `delete 0`, `delete`, `delete x`.<br>
       Expected: An invalid-command-format error is shown and no contact is deleted.
    1. Run `delete` with a numeric index greater than the displayed list size.<br>
-      Expected: `Index X is outside the current displayed list. Choose an index from 1 to N.`, where `X` is the
-      supplied index and `N` is the displayed list size. No contact is deleted.
+      Expected: The error states `Index X is outside the current displayed list. No contacts were deleted.`
+      and `Choose an index from 1 to N.`, where `X` is the supplied index and `N` is the displayed list size.
    1. Run `find DeleteIndexCheckNoMatch`, ensuring no saved contact matches, then `delete 1`.<br>
       Expected: `No contacts are currently displayed to delete. Use list to view all saved contacts.`
       Saved contacts and the empty displayed list remain unchanged.
    1. Run `list`, then `find` with a keyword matching exactly one saved contact. Run `delete 2`.<br>
-      Expected: `Index 2 is outside the current displayed list. The only valid index is 1.`
+      Expected: `Index 2 is outside the current displayed list. No contacts were deleted. The only valid index is 1.`
       The matching contact remains displayed and no contact is deleted.
    1. In an empty disposable address book, run `delete 1`.<br>
       Expected: `There are no saved contacts to delete. Add a contact before using delete.`
@@ -1691,6 +1694,8 @@ testers are expected to do more *exploratory* testing.
    1. Try `delete 1 6`, `delete 1 0`, `delete 1 1`, `delete 1 01`, `delete 1,3` and `delete 1-3` separately.<br>
       Expected: Each whole command is rejected; all five contacts remain displayed. Repeated numeric
       indices report `Index 1 is repeated. Specify each displayed index only once. No contacts were deleted.`
+      The out-of-range error for `delete 1 6` also states `No contacts were deleted.`, confirming that
+      the valid contact at index 1 remains present.
       The failed commands preserve the redo opportunity: run `redo` and reapply the filter to see
       only B and D again.
    1. Clean up: Run `undo`, reapply the filter, then `delete 1 2 3 4 5`.<br>

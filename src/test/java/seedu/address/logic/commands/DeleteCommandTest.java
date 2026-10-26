@@ -149,7 +149,8 @@ public class DeleteCommandTest {
         DeleteCommand deleteCommand = new DeleteCommand(outOfBoundIndex);
 
         assertCommandFailure(deleteCommand, model,
-                "Index 2 is outside the current displayed list. The only valid index is 1.");
+                "Index 2 is outside the current displayed list. "
+                        + "No contacts were deleted. The only valid index is 1.");
     }
 
     @Test
@@ -214,7 +215,8 @@ public class DeleteCommandTest {
         showPersonAtIndex(model, INDEX_FIRST_PERSON);
 
         assertCommandFailure(new DeleteCommand(Index.fromOneBased(Integer.MAX_VALUE)), model,
-                "Index 2147483647 is outside the current displayed list. The only valid index is 1.");
+                "Index 2147483647 is outside the current displayed list. "
+                        + "No contacts were deleted. The only valid index is 1.");
     }
 
     @Test
@@ -229,7 +231,8 @@ public class DeleteCommandTest {
         showPersonAtIndex(model, INDEX_FIRST_PERSON);
 
         assertCommandFailure(new DeleteCommand(INDEX_SECOND_PERSON), model,
-                "Index 2 is outside the current displayed list. The only valid index is 1.");
+                "Index 2 is outside the current displayed list. "
+                        + "No contacts were deleted. The only valid index is 1.");
 
         assertTrue(model.canUndoAddressBook());
         assertTrue(model.canRedoAddressBook());

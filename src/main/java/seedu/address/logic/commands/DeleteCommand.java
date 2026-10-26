@@ -36,9 +36,9 @@ public class DeleteCommand extends Command {
     public static final String MESSAGE_DUPLICATE_INDEX = "Index %1$d is repeated. "
             + "Specify each displayed index only once. No contacts were deleted.";
     public static final String MESSAGE_INVALID_INDEX = "Index %1$d is outside the current displayed list. "
-            + "Choose an index from 1 to %2$d.";
+            + "No contacts were deleted. Choose an index from 1 to %2$d.";
     public static final String MESSAGE_INVALID_INDEX_SINGLE_PERSON = "Index %1$d is outside "
-            + "the current displayed list. The only valid index is 1.";
+            + "the current displayed list. No contacts were deleted. The only valid index is 1.";
     public static final String MESSAGE_NO_CONTACTS = "There are no saved contacts to delete. "
             + "Add a contact before using delete.";
     public static final String MESSAGE_NO_DISPLAYED_CONTACTS = "No contacts are currently displayed to delete. "

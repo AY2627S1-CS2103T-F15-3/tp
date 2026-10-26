@@ -88,19 +88,22 @@ public class DeleteCommandIntegrationTest {
     @Test
     public void execute_batch_isOneUndoRedoStepAndPersistsAcrossReloads() throws Exception {
         assertFalse(model.canUndoAddressBook());
-        logic.execute("delete 5 1 3");
+        String deletionFeedback = logic.execute("delete 5 1 3").getFeedbackToUser();
         List<Person> remaining = List.of(foxtrot, echo, dana);
         assertSavedPersons(remaining);
+        assertEquals(deletionFeedback, model.getUndoDescription().orElseThrow());
 
-        logic.execute("undo");
+        assertEquals("Undid: " + deletionFeedback, logic.execute("undo").getFeedbackToUser());
 
         assertSavedPersons(originalPersons);
         assertEquals(originalPersons, model.getFilteredPersonList());
         assertFalse(model.canUndoAddressBook());
-        logic.execute("redo");
+        assertEquals(deletionFeedback, model.getRedoDescription().orElseThrow());
+        assertEquals("Redid: " + deletionFeedback, logic.execute("redo").getFeedbackToUser());
         assertSavedPersons(remaining);
         assertEquals(remaining, model.getFilteredPersonList());
         assertFalse(model.canRedoAddressBook());
+        assertEquals(deletionFeedback, model.getUndoDescription().orElseThrow());
         Model reloaded = new ModelManager(storage.readAddressBook().orElseThrow(), new UserPrefs());
         assertEquals(remaining, reloaded.getFilteredPersonList());
         assertFalse(reloaded.canUndoAddressBook());
@@ -112,14 +115,21 @@ public class DeleteCommandIntegrationTest {
         logic.execute("add n/HistorySecond a/NUS");
         AddressBook afterSecondAdd = new AddressBook(model.getAddressBook());
         logic.execute("undo");
-        logic.execute("filter t/Batch");
+        logic.execute("find Alice Bob Charlie");
         logic.execute("sort name desc");
         AddressBook before = new AddressBook(model.getAddressBook());
         List<Person> displayedBefore = List.copyOf(model.getFilteredPersonList());
         String savedBefore = FileUtil.readFromFile(storage.getAddressBookFilePath());
 
-        for (String command : List.of("delete 1 5", "delete 5 1", "delete 1 1", "delete 1 01")) {
-            assertThrows(CommandException.class, () -> logic.execute(command));
+        String expectedRangeError = "Index 4 is outside the current displayed list. "
+                + "No contacts were deleted. Choose an index from 1 to 3.";
+        for (String command : List.of("delete 1 3 4", "delete 4 1 3")) {
+            assertThrows(CommandException.class, expectedRangeError, () -> logic.execute(command));
+            assertUnchangedAfterRejection(before, displayedBefore, savedBefore);
+        }
+        String expectedDuplicateError = String.format(DeleteCommand.MESSAGE_DUPLICATE_INDEX, 1);
+        for (String command : List.of("delete 1 1", "delete 1 01")) {
+            assertThrows(CommandException.class, expectedDuplicateError, () -> logic.execute(command));
             assertUnchangedAfterRejection(before, displayedBefore, savedBefore);
         }
         String expectedUsage = String.format(MESSAGE_INVALID_COMMAND_FORMAT, DeleteCommand.MESSAGE_USAGE);
