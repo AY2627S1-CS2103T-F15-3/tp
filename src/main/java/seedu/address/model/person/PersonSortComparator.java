@@ -47,6 +47,16 @@ public class PersonSortComparator implements Comparator<Person> {
         return value.isEmpty() ? null : value;
     }
 
+    /**
+     * Creates a date comparator with oldest or newest updates first.
+     * Equal dates compare equally; callers can append a name tie-break without reversing it.
+     */
+    public static Comparator<Person> byUpdateDate(SortDirection direction) {
+        requireNonNull(direction);
+        Comparator<Person> byDate = Comparator.comparing(Person::getLastUpdated);
+        return direction == SortDirection.ASC ? byDate : byDate.reversed();
+    }
+
     /** Returns the selected field and direction for the view status. */
     public String getDescription() {
         String fieldName = switch (field) {

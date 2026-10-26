@@ -10,6 +10,7 @@ import static seedu.address.model.person.PersonSortComparator.SortField.NAME;
 import static seedu.address.model.person.PersonSortComparator.SortField.YEAR;
 import static seedu.address.testutil.Assert.assertThrows;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -86,6 +87,34 @@ public class PersonSortComparatorTest {
                 }
             }
         }
+    }
+
+    @Test
+    public void byUpdateDate_ordersCalendarDatesInBothDirections() {
+        Person oldest = new PersonBuilder(bob).withLastUpdated(LocalDate.of(2020, 12, 31)).build();
+        Person leapDay = new PersonBuilder(alice).withLastUpdated(LocalDate.of(2024, 2, 29)).build();
+        Person newest = new PersonBuilder(charlie).withLastUpdated(LocalDate.of(2025, 1, 1)).build();
+        List<Person> contacts = new ArrayList<>(List.of(newest, oldest, leapDay));
+        contacts.sort(PersonSortComparator.byUpdateDate(ASC));
+        assertEquals(List.of(oldest, leapDay, newest), contacts);
+        contacts.sort(PersonSortComparator.byUpdateDate(DESC));
+        assertEquals(List.of(newest, leapDay, oldest), contacts);
+    }
+
+    @Test
+    public void byUpdateDate_equalDatesAndExtremes_compareConsistently() {
+        Person earliest = new PersonBuilder(alice).withLastUpdated(LocalDate.MIN).build();
+        Person latest = new PersonBuilder(bob).withLastUpdated(LocalDate.MAX).build();
+        Person sameDate = new PersonBuilder(charlie).withLastUpdated(LocalDate.MIN).build();
+        for (var direction : PersonSortComparator.SortDirection.values()) {
+            var comparator = PersonSortComparator.byUpdateDate(direction);
+            assertEquals(0, comparator.compare(earliest, sameDate));
+            assertEquals(-Integer.signum(comparator.compare(earliest, latest)),
+                    Integer.signum(comparator.compare(latest, earliest)));
+        }
+        assertTrue(PersonSortComparator.byUpdateDate(ASC).compare(earliest, latest) < 0);
+        assertTrue(PersonSortComparator.byUpdateDate(DESC).compare(earliest, latest) > 0);
+        assertThrows(NullPointerException.class, () -> PersonSortComparator.byUpdateDate(null));
     }
 
     @Test
