@@ -3,6 +3,7 @@
 skinparam arrowThickness 1.1
 skinparam arrowColor UI_COLOR_T4
 skinparam classBackgroundColor UI_COLOR
+skinparam linetype ortho
 
 package UI <<Rectangle>>{
 Class "<<interface>>\nUi" as Ui
@@ -40,7 +41,7 @@ MainWindow --> "0..1" HelpWindow
 PersonListPanel ..> PersonListCell : creates
 PersonListCell -down-> "0..1" PersonCard
 
-MainWindow -left-|> UiPart
+MainWindow --|> UiPart
 
 ResultDisplay --|> UiPart
 CommandBox --|> UiPart
@@ -58,5 +59,4 @@ HelpWindow -[hidden]left- CommandBox
 CommandBox -[hidden]left- ResultDisplay
 ResultDisplay -[hidden]left- StatusBarFooter
 
-MainWindow -[hidden]-|> UiPart
 @enduml

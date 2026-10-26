@@ -142,8 +142,9 @@ The `Model` component,
   Each `Person` includes `Major`, `GraduationYear` and 'Notes' value objects in addition to its existing contact details and tags.
 * selects contacts using a `FilteredList<Person>` and orders that view using a `SortedList<Person>`.
   `getFilteredPersonList()` returns `sortedPersons` as an unmodifiable `ObservableList<Person>`,
-  so the UI and numbered commands use the same displayed order. Both transformations observe the saved
-  contact list, so data changes update the display.
+  so the UI and numbered commands use the same displayed order. The filtered view takes its source
+  from `addressBook.getPersonList()`, and the sorted view takes the filtered view as its source.
+  Changes to the saved contact list therefore update the display.
 * stores a `UserPrefs` object that represents the user’s preferences (currently, just the GUI settings). This is exposed to the outside as a `ReadOnlyUserPrefs` object.
 * keeps an in-memory history of contact data states in an `AddressBookHistory` object. The `undo` and `redo` commands use it to revert and reapply every successful change to contact data. See [Recording contact data history](#recording-contact-data-history).
 * does not depend on any of the other three components (as the `Model` represents data entities of the domain, they should make sense on their own without depending on other components)
@@ -405,7 +406,8 @@ The existing observable list updates `PersonListPanel`, including the displayed 
 no new storage fields are needed. Commands that use displayed indices continue
 to obtain their targets from that same list.
 
-The following sequence summarises filter parsing and execution; routing and Model internals are omitted.
+The sequence below shows how valid filter criteria become a predicate and are applied through the Model API.
+Routing, validation details and Model internals are omitted.
 
 <puml src="diagrams/FilterSequenceDiagram.puml" alt="Filter command parsing and execution" />
 
@@ -424,9 +426,10 @@ Keywords are case-insensitive. A field and direction produce `SortCommand` with
 `PersonSortComparator.SortField` and `SortDirection` values; `reset` produces `SortResetCommand`.
 Invalid input raises a `ParseException` with usage instructions before any view or data change.
 
-The following sequence summarises `sort year desc`; routing and Model internals are omitted.
+The sequence below traces `sort year desc` from parsing to the Model sorting API.
+It shows how the command supplies a comparator; list transformations and comparison rules are explained below.
 
-<puml src="diagrams/SortSequenceDiagram.puml" alt="Sort command parsing and execution" />
+<puml src="diagrams/SortSequenceDiagram.puml" alt="Parsing sort year desc and applying its comparator through the Model API" />
 
 `SortCommand#execute` supplies a `PersonSortComparator` to `Model#updateSortedPersonList`.
 `ModelManager` maintains this observable transformation chain:
@@ -536,14 +539,10 @@ both displayed and persisted contacts. See [Listing all persons](UserGuide.md#li
 
 ### Displaying academic fields in the contact list
 
-`ListCommand` resets the model's filtered person list to `PREDICATE_SHOW_ALL_PERSONS`. `PersonListPanel` observes
-that list and creates a `PersonCard` for every visible `Person`, so the card layout determines which fields appear
-after `list` as well as in filtered results produced by `find`.
-
-`PersonCard` reads the existing `Major` and `GraduationYear` value objects and formats them as labeled rows.
-`PersonListCard.fxml` places those rows below the contact details. Because both fields are optional, an empty value
-is rendered as `Not specified` instead of leaving an ambiguous blank line. This is a presentation-only change:
-`ListCommand`, the model, and the JSON storage format are unchanged.
+Contact cards display major and class year alongside the contact details when space allows,
+and below them in narrow windows. Unspecified values appear as `Not specified`.
+This affects display only; stored values are unchanged.
+See [Contact card layout](#contact-card-layout) for layout and expansion behaviour.
 
 ### Automatic incomplete reminders
 
