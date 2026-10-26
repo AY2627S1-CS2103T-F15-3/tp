@@ -94,7 +94,7 @@ public class LastUpdatedDisplayTest {
                 PersonCard card = new PersonCard(person, 1, CLOCK);
                 Label label = dateLabel(card.getRoot());
 
-                assertEquals("Last updated: " + date, label.getText());
+                assertEquals(date.toString(), label.getText());
                 assertTrue(label.isVisible());
                 assertTrue(label.isManaged());
                 assertNotNull(label.getTooltip());
@@ -226,7 +226,7 @@ public class LastUpdatedDisplayTest {
                 .map(node -> (ListCell<?>) node)
                 .findFirst().orElseThrow();
         Label label = dateLabel(cell.getGraphic());
-        assertEquals("Last updated: " + person.getLastUpdated(), label.getText());
+        assertEquals(person.getLastUpdated().toString(), label.getText());
         assertTrue(label.isVisible());
         assertTrue(label.isManaged());
         assertTrue(label.getHeight() > 0);

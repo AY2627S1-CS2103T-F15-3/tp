@@ -79,7 +79,7 @@ public class EditContactUiTest {
                 assertTrue(edited.isFavourite());
                 assertEquals("Edited person: " + Messages.format(edited), feedback(window));
                 assertEquals("", input(window).getText());
-                assertAcademicCard(window, edited, "Major: Mathematics", "Class year: 2028");
+                assertAcademicCard(window, edited, "Mathematics", "2028");
                 assertTrue(card(window, edited).lookup("#favouriteIcon").isVisible());
                 assertTrue(card(window, edited).lookup("#noteIcon").isVisible());
                 assertTrue(card(window, edited).lookupAll(".label").stream()
@@ -88,7 +88,7 @@ public class EditContactUiTest {
                 enter(window, "find Bob");
                 enter(window, "edit 1 m/ c/");
                 Person cleared = (Person) list(window).getItems().get(1);
-                assertAcademicCard(window, cleared, "Major: Not specified", "Class year: Not specified");
+                assertAcademicCard(window, cleared, "Not specified", "Not specified");
                 try {
                     Person saved = new JsonAddressBookStorage(directory.resolve("contacts.json"))
                             .readAddressBook().orElseThrow().getPersonList().get(1);
@@ -119,7 +119,7 @@ public class EditContactUiTest {
                     assertEquals(commands[i], input(window).getText());
                     assertEquals(errors[i], feedback(window));
                     assertTrue(input(window).getStyleClass().contains(CommandBox.ERROR_STYLE_CLASS));
-                    assertAcademicCard(window, bob, "Major: Computer Science", "Class year: 2027");
+                    assertAcademicCard(window, bob, "Computer Science", "2027");
                 }
                 enter(window, "edit 1 m/Mathematics");
                 assertFalse(input(window).getStyleClass().contains(CommandBox.ERROR_STYLE_CLASS));
@@ -136,6 +136,11 @@ public class EditContactUiTest {
     }
 
     private javafx.scene.Node card(MainWindow window, Person person) {
+        // ListView only renders visible cards; bring the target into view before checking its labels.
+        list(window).scrollTo(list(window).getItems().indexOf(person));
+        window.getRoot().getScene().getRoot().applyCss();
+        window.getRoot().getScene().getRoot().layout();
+        list(window).layout();
         return list(window).lookupAll(".list-cell").stream()
                 .filter(node -> node instanceof ListCell<?> candidate && person.equals(candidate.getItem()))
                 .map(node -> ((ListCell<?>) node).getGraphic()).findFirst().orElseThrow();
