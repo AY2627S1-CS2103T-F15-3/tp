@@ -97,6 +97,15 @@ Format: `add n/NAME [p/PHONE_NUMBER] [e/EMAIL] a/ADDRESS [m/MAJOR] [c/CLASS_YEAR
 Major and class year are optional and can be supplied independently.
 </box>
 
+<box type="warning" seamless>
+
+**Check your field prefixes:** Use the prefixes shown in the command format above. Unknown prefix-like
+text can become part of the preceding field instead of producing an error. For example,
+`add n/PrefixProbe a/NUS x/typo` saves the address as `NUS x/typo`; `x/` does not start a separate field.
+Check the added contact's details. To correct this example, run `find PrefixProbe`, confirm the displayed
+contact, then `edit 1 a/NUS`.
+</box>
+
 * `m/MAJOR` records the person's academic major. A supplied major must be non-blank text on one line.
 * `c/CLASS_YEAR` records the graduation year (class of 20XX). Enter exactly four digits from `2000` to `2099`.
 * Omit `m/` or `c/` if the value is unknown or does not apply; an empty supplied value is rejected.
@@ -414,7 +423,7 @@ Example: `delnote 2`
 
 The message area displays `Note deleted for NAME.`, and the note icon disappears. The current list filter is preserved. If the contact already has no note, the message is `This contact has no note to delete.` and its data stays unchanged.
 
-Deleting an existing note can be undone and redone. Deleting an already empty note does not create an undo step or clear any available redo history.
+Deleting an existing note can be [undone](#undoing-a-change-undo) and [redone](#redoing-a-change-redo). Deleting an already empty note does not create an undo step or clear any available redo history.
 
 For all three note commands, an index outside the displayed list reports `The person index provided is invalid.` Missing or invalid index syntax produces a usage error. `note INDEX` without text is also a usage error; use `delnote INDEX` to clear a note. `shownote` and `delnote` reject extra arguments. Invalid note text is rejected without changing the existing note.
 
@@ -647,6 +656,9 @@ Format: `undo`
 Examples:
 * `add n/Alex Tan p/91234567 e/alex@example.com a/10 Kent Ridge Road` followed by `undo` removes `Alex Tan` again.
 * `edit 2 p/98765432` followed by `undo` restores the 2nd person's previous phone number.
+* For a contact without a note, `note 1 Follow up` followed by `undo` removes the note again.
+* `note 1 Follow up`, then `note 1 Project teammate`, then `undo` restores the previous note, `Follow up`.
+* For a contact with an existing note, `delnote 1` followed by `undo` brings back the deleted note.
 * `add n/Alex Tan p/91234567 e/alex@example.com a/10 Kent Ridge Road`, then `edit 1 c/2027`, then `undo` twice first reverts the edit and then removes the added contact.
 * `delete 3` followed by `undo` brings the deleted person back.
 * `edit 1 p/92345678`, then `fav 1`, then `undo` twice first removes the favourite status and then restores the previous phone number.
@@ -669,6 +681,8 @@ Format: `redo`
 
 Examples:
 * `add n/Alex Tan p/91234567 e/alex@example.com a/10 Kent Ridge Road`, then `undo`, then `redo` adds `Alex Tan` back.
+* For a contact without a note, `note 1 Follow up`, then `undo`, then `redo` saves the note `Follow up` again.
+* For a contact with an existing note, `delnote 1`, then `undo`, then `redo` deletes the note again.
 * `edit 1 p/91234567`, then `undo`, then `redo` changes the 1st person's phone number to `91234567` again.
 * `clear`, then `undo`, then `redo` clears your contacts again, showing `Redid: Address book has been cleared!`.
 
