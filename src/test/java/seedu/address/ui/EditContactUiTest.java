@@ -21,6 +21,8 @@ import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.paint.Color;
+import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import seedu.address.logic.LogicManager;
 import seedu.address.logic.Messages;
@@ -98,6 +100,51 @@ public class EditContactUiTest {
                 } catch (Exception e) {
                     throw new AssertionError(e);
                 }
+            } finally {
+                window.getRoot().close();
+            }
+        });
+    }
+
+    @Test
+    public void edit_newSharedDetails_showsAmberWarningWithRefreshedSortedIndices() throws Exception {
+        runOnFxThread(() -> {
+            MainWindow window = createWindow();
+            try {
+                enter(window, "edit 2 p/93334444 e/bob.editwarn@example.com");
+                Person beforeEdit = (Person) list(window).getItems().get(1);
+                enter(window, "sort name desc");
+                enter(window, "find Bob");
+                assertEquals(List.of(beforeEdit), list(window).getItems());
+
+                enter(window, "edit 1 n/Aaron p/" + PersonBuilder.DEFAULT_PHONE
+                        + " e/" + PersonBuilder.DEFAULT_EMAIL);
+
+                Person edited = new PersonBuilder(bob).withName("Aaron").build();
+                assertEquals(List.of(charlie, alice, edited), list(window).getItems());
+                assertEquals("Warning: Contact edited. Use undo if unintended.\nShared details: "
+                        + "#1 Charlie (phone and email); #2 Alice (phone and email)", feedback(window));
+                TextArea result = (TextArea) window.getRoot().getScene().lookup("#resultDisplay");
+                assertTrue(result.getStyleClass().contains(ResultDisplay.WARNING_STYLE_CLASS));
+                assertEquals(Color.web("#ffcf66"), ((Text) result.lookup(".text")).getFill());
+                assertTrue(result.getBorder() == null || result.getBorder().getStrokes().isEmpty());
+                assertEquals("", input(window).getText());
+                assertFalse(input(window).getStyleClass().contains(CommandBox.ERROR_STYLE_CLASS));
+                list(window).scrollTo(2);
+                list(window).layout();
+                assertAcademicCard(window, edited, "Major: Computer Science", "Class year: 2027");
+                assertTrue(card(window, edited).lookup("#favouriteIcon").isVisible());
+                assertTrue(card(window, edited).lookup("#noteIcon").isVisible());
+
+                String description = String.format(EditCommand.MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(edited));
+                enter(window, "undo");
+                assertEquals(List.of(charlie, beforeEdit, alice), list(window).getItems());
+                assertEquals("Undid: " + description, feedback(window));
+                assertFalse(result.getStyleClass().contains(ResultDisplay.WARNING_STYLE_CLASS));
+                enter(window, "redo");
+                assertEquals(List.of(charlie, alice, edited), list(window).getItems());
+                assertEquals("Redid: " + description, feedback(window));
+                assertFalse(result.getStyleClass().contains(ResultDisplay.WARNING_STYLE_CLASS));
             } finally {
                 window.getRoot().close();
             }

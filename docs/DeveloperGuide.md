@@ -343,13 +343,14 @@ command box, result text, unchanged cards and the recovery instructions.
 
 ### Warning about shared phone numbers or email addresses when adding
 
-After a successful addition, `AddCommand#getAddResult` scans the refreshed displayed list,
-skipping the added contact by `Person#isSamePerson`. `ModelManager#addPerson` has already cleared the
+After a successful addition, `AddCommand#getAddResult` delegates matching to
+`SharedContactDetailsWarning#describeMatches`, which scans the refreshed displayed list and skips
+the added contact by `Person#isSamePerson`. `ModelManager#addPerson` has already cleared the
 filter while preserving the active sort order, so the scan includes all existing contacts and its
 indices match the current cards. Looking up indices before the add would be incorrect when the
 added contact changes the sorted positions.
 
-For each existing contact, the command checks non-empty phone numbers using `Phone#equals` and
+For each existing contact, the shared helper checks non-empty phone numbers using `Phone#equals` and
 non-empty email values using `String#equalsIgnoreCase`. Email comparison ignores case only for this
 advisory warning; stored values, `Email#equals` and the duplicate-name rule are unchanged. Empty
 optional fields never count as matches. Every matching contact is listed once, with a reason
@@ -420,6 +421,63 @@ it does not roll back the in-memory edit.
 GUI regression coverage is in `EditContactUiTest`: submissions through `MainWindow`, rendered fields,
 filtered indices, clearing fields, preserved notes/favourite status, invalid edits and saved JSON.
 `EditCommandTest` and `EditCommandParserTest` cover command and parser boundaries.
+
+#### Warning when an edit introduces shared contact details
+
+`EditCommand#getEditResult` checks the edited contact after `setPerson` and the full-list refresh,
+so the shared helper's indices follow the retained sort order even after a rename. It enables phone
+comparison only when `Phone#equals` reports a changed value, and email comparison only when the
+old and new email values differ ignoring case. It then calls
+`SharedContactDetailsWarning#describeMatches`, reusing the add warning's non-empty matching rules,
+self-exclusion, compact formatting and displayed order. The helper skips scanning when neither
+contact method changed. Pre-existing shared values are not reported for unrelated or unchanged edits.
+
+A match returns `CommandResult.warning` with `Warning: Contact edited. Use undo if unintended.` and
+the matching names, displayed indices and reasons. The existing text-only amber warning style is
+reused; no border or command-input error style is added. The edit remains successful and is saved
+normally. Duplicate-name and invalid-index errors still occur before mutation.
+
+The history description remains the ordinary `Edited person: ...` message, so one undo restores the
+complete previous contact and redo restores the edit without repeating warning feedback. No-op
+edits still preserve both history stacks. Notes, favourite status and all omitted fields are retained.
+`EditCommandSharedDetailsTest` covers changed phone/email values, case-insensitive matches, multiple
+matches, self-exclusion, empty fields, unchanged and unrelated edits, persistence and one-step history.
+`EditContactUiTest` checks amber text without a border, successful input clearing, preserved icons,
+refreshed sorted card indices and ordinary undo/redo feedback.
+
+### Shared phone or email warnings on edit
+
+1. Changed methods and refreshed indices
+
+   1. Prerequisites: Use a disposable copy with no contacts named `EditWarning Alice` or `EditWarning Bob`.
+      Add `add n/EditWarning Alice p/91112222 e/alice.editwarning@example.com a/NUS`, then
+      `add n/EditWarning Bob p/93334444 e/bob.editwarning@example.com a/NUS`.
+   1. Run `find EditWarning`, then `sort name asc`.<br>
+      Expected: Alice is index 1 and Bob is index 2 within the two-contact view.
+   1. Run `edit 2 p/91112222`.<br>
+      Expected: The edit succeeds and the input clears. Amber text without a border starts with
+      `Warning: Contact edited. Use undo if unintended.` The next line identifies Alice's name and
+      current displayed index with `(phone)`. The full contact list returns in the retained sort order;
+      the warning index follows this refreshed list, not the previous two-contact view.
+   1. Run `undo`, then `redo`.<br>
+      Expected: One undo restores Bob's previous phone and one redo restores the shared phone.
+      Both use ordinary edit-history feedback without warning styling. Alice remains unchanged.
+   1. Run `find EditWarning`, confirm Bob's displayed index, then edit that index with
+      `e/ALICE.EDITWARNING@EXAMPLE.COM`.<br>
+      Expected: The edit succeeds with an `(email)` warning for Alice. The already-shared unchanged
+      phone is not reported as newly shared. The uppercase email is saved unchanged.
+
+1. Unchanged, unrelated and empty values
+
+   1. Before each check, find Bob and use his actual displayed index.
+   1. Repeat the existing `p/91112222`, change only the major with `m/Mathematics`, or change only
+      the email's capitalization.<br>
+      Expected: Ordinary edit feedback, not a warning about the existing shared values. An unchanged
+      edit does not create another undo step or clear redo availability.
+   1. Clear a contact method with `p/` or `e/`.<br>
+      Expected: Ordinary success feedback; empty values do not match other empty contact methods.
+   1. Close and reopen the disposable copy.<br>
+      Expected: Edited values persist; the warnings did not modify or merge any other contact.
 
 ### Searching by academic fields
 

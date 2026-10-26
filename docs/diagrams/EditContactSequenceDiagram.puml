@@ -43,7 +43,13 @@ Model --> Edit : contact data to snapshot
 Edit -> Edit : previousState = new AddressBook(contact data)
 Edit -> Model : setPerson(person, editedPerson)
 Edit -> Model : updateFilteredPersonList(PREDICATE_SHOW_ALL_PERSONS)
-Edit -> Model : commitAddressBook(previousState)
+Edit -> Edit : getEditResult(model, person, editedPerson, message)
+note right of Edit
+  Changed phone/email values can produce a non-blocking warning.
+  SharedContactDetailsWarning uses refreshed displayed indices.
+  This academic-only edit keeps ordinary success feedback.
+end note
+Edit -> Model : commitAddressBook(previousState, message)
 Edit --> Logic : CommandResult("Edited person: ...")
 deactivate Edit
 Logic -> Model : getAddressBook()
@@ -53,7 +59,7 @@ Storage --> Logic
 Logic --> Window : CommandResult
 deactivate Logic
 Window -> Window : personListPanel.refresh()
-Window -> Window : resultDisplay.setFeedbackToUser(feedback)
+Window -> Window : resultDisplay.setFeedbackToUser(feedback, isWarning)
 Window --> Box : CommandResult
 deactivate Window
 note over Box : Clear the command text after success.

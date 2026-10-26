@@ -8,9 +8,16 @@ start
 if (Input valid, index displayed
 and name not a duplicate?) then (yes)
   :Update the contact and save automatically;
-  :Show Edited person feedback\nclear the command box;
   :Show the full contact list
 with updated contact cards;
+  if (Changed phone or email
+matches another contact?) then (yes)
+    :Show a compact amber warning
+with current indices and an undo hint;
+  else (no)
+    :Show Edited person feedback;
+  endif
+  :Clear the command box;
 else (no)
   :Show an error in the result display\nkeep the input for correction;
   :Keep contacts and current view unchanged;

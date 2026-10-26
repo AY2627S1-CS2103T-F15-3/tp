@@ -489,13 +489,24 @@ Format: `edit INDEX [n/NAME] [p/PHONE] [e/EMAIL] [a/ADDRESS] [m/MAJOR] [c/CLASS_
   A supplied major must be non-blank text on one line; a class year must be four digits from `2000` to `2099`.
 * Enter `m/` or `c/` with no value to clear that optional field. Each of these prefixes may appear only once.
 * Leading and trailing spaces are ignored. If any supplied value is invalid or an academic prefix is repeated, no fields are updated.
-* After a successful edit, the full contact list is shown. If editing search or filter results, run `find` or `filter` again before using a result index for another edit.
+* After a successful edit, the full contact list is shown while retaining the active sort order.
+  If editing search or filter results, run `find` or `filter` again before using a result index for another edit.
 * When editing tags, all of the person's existing tags are removed; adding tags is not cumulative.
 * To remove all of a person's tags, enter `t/` without a tag after it.
 * Enter `p/` or `e/` without a value to clear that contact method. Clearing both shows the automatic `incomplete` reminder; omitted phone/email prefixes preserve the existing values.
 * A successful `edit` that changes the person's details can be reverted with [`undo`](#undoing-a-change-undo).
-* The result display shows `Edited person: ` followed by the updated details, and the command box is cleared.
+* The result display normally shows `Edited person: ` followed by the updated details, and the command box is cleared.
   The contact card shows `Major: Not specified` or `Class year: Not specified` when an academic field is cleared.
+* Changing a phone number or email to one used by another contact succeeds with an amber-text warning,
+  without a coloured border. It starts with `Warning: Contact edited. Use undo if unintended.` and
+  lists matching names, current displayed indices and the changed shared methods, such as
+  `#2 Alice (phone); #3 Bob (email)`. Indices refer to the refreshed full list, including matches
+  hidden before the edit. All matches are retained; long feedback wraps and can be scrolled.
+* Warning comparisons match non-empty phone numbers exactly and email addresses ignoring case.
+  Only methods whose values changed are checked. Unchanged values, email-capitalization-only changes,
+  unrelated field edits, cleared methods and the edited contact itself do not trigger a warning.
+  The edit is saved normally, and one `undo` restores the previous contact. Undo and redo use ordinary
+  edit feedback without repeating the warning.
 * Notes and favourite status are preserved. Changing a basic profile field refreshes the contact's update date;
   changing only tags does not refresh that date.
 * Invalid input, an index outside the displayed list, or a name already used by another contact leaves the
