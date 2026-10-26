@@ -371,7 +371,27 @@ Format: `note INDEX TEXT`
 
 Example: `note 2 Met during CS2103T`
 
-The message area displays `Note saved for NAME.` A small note icon at the bottom right of the contact card indicates that a note is present. Use `shownote` to read it.
+The message area identifies what happened and includes the saved text:
+
+* A new note starts with `Note saved for NAME.`, followed by `Saved note: TEXT`.
+* Replacing a different existing note starts with `Note replaced for NAME. Use undo to restore the previous note.`,
+  followed by `Previous note: OLD_TEXT` and `Saved note: NEW_TEXT` on separate lines.
+* Saving identical text starts with `Note unchanged for NAME.`, followed by `Saved note: TEXT`.
+  This does not create an undo step or clear redo history.
+
+For example, replacing `Met during CS2103T` with `Met at hackathon` for Alice displays:
+
+```text
+Note replaced for Alice. Use undo to restore the previous note.
+Previous note: Met during CS2103T
+Saved note: Met at hackathon
+```
+
+Long feedback wraps within the message area. Scroll vertically to compare the complete previous
+and saved notes.
+
+A small note icon at the bottom right of the contact card indicates that a note is present.
+Use `shownote` to read it again.
 
 ### Viewing a contact's note: `shownote`
 
