@@ -43,6 +43,15 @@ else (ordinary Up/Down)
   endif
 endif
 :For recalled text, move caret to end\nwithout resetting search in text listener;
+if (At the draft?) then (yes)
+  :Stop feedback and hide position label
+release its layout space;
+else (no)
+  :Show History i/N beside command box
+1 = oldest, N = total submissions;
+  :Restart 200 ms opacity pulse
+even for duplicates or boundary presses;
+endif
 :Consume arrow event;
 :Keep contacts and result feedback unchanged\nno command is executed;
 stop
