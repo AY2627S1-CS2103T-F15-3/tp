@@ -320,15 +320,18 @@ The normal storage path then saves the contact, including its academic fields.
 
 ### Identifying an existing contact when add rejects a duplicate
 
-`AddCommand` retains the existing `Model#hasPerson` check. When it finds a duplicate,
-`AddCommand#getDuplicateMessage` locates the saved contact using `Person#isSamePerson`, then uses
-`Messages#format` to report that contact's actual details, including its original name capitalization
-and supplied academic fields. Values from the attempted addition do not replace the saved details.
+`AddCommand` searches the saved person list once using `Person#isSamePerson` and branches on the
+resulting `Optional<Person>`. When a duplicate is found, it passes that same saved contact to
+`AddCommand#getDuplicateMessage`, which uses `Messages#format` to report the contact's actual details,
+including its original name capitalization and supplied academic fields. Values from the attempted
+addition do not replace the saved details.
 
 The command looks up that saved contact in `Model#getFilteredPersonList()`. If visible, its one-based
 index is labelled `displayed index` and follows the active filter and sort. If hidden, the error
 explicitly labels its one-based position in the saved person list as a `saved index` and instructs
-the user to run `list`, then `sort reset`. Both commands are needed because `list` preserves sorting.
+the user to run `list`, then `sort reset`. The command names come from `ListCommand.COMMAND_WORD` and
+`SortCommand.COMMAND_WORD`. Both commands are needed because `list` preserves sorting. The hidden
+contact may have been excluded by `filter`, `find` or `listfav`.
 The error also works when the displayed list is empty; it never treats the saved index as an index
 in the current filtered view.
 
@@ -338,8 +341,9 @@ remain unchanged. `LogicManager` does not save after the exception. The GUI uses
 wrapped result display and retains the submitted command for correction.
 
 `AddCommandIntegrationTest` checks displayed and saved indices, case-only duplicates with different
-details, empty views, unchanged saved files and preserved undo/redo. `SortUiTest` checks the actual
-command box, result text, unchanged cards and the recovery instructions.
+details, empty views, unchanged saved files and preserved undo/redo after `filter`, `find` and
+`listfav`. `SortUiTest` checks the actual command box, result text, unchanged cards and the recovery
+instructions.
 
 ### Editing academic fields
 
@@ -867,8 +871,9 @@ Every stored state is a copy made with `new AddressBook(...)`. `Person` and its 
 
 Given below is the flow for a successful `add n/Alex Tan …​`:
 
-1. `AddCommand#execute` checks `Model#hasPerson`. A duplicate throws a `CommandException` identifying
-   the existing contact and its displayed or saved index, so nothing is recorded.
+1. `AddCommand#execute` searches the saved person list using `Person#isSamePerson`. If the resulting
+   `Optional<Person>` contains a duplicate, it throws a `CommandException` identifying that contact
+   and its displayed or saved index, so nothing is recorded.
 1. The command creates `previousState = new AddressBook(model.getAddressBook())`, then calls `Model#addPerson`.
 1. The command formats its success message and calls `Model#commitAddressBook(previousState, message)`. `AddressBookHistory#commit` then:
    1. returns without recording if `previousState` holds the same contacts as the current data;
