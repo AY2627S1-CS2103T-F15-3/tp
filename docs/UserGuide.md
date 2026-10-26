@@ -733,7 +733,20 @@ For example, submit `list`, then `find Alice`. Type `edit 1 m/` without pressing
 Press **↑** twice to see `find Alice` then `list`; press **↓** twice to return through `find Alice`
 to your draft `edit 1 m/`. None of these arrow presses executes a command.
 
-<puml src="diagrams/CommandHistoryActivityDiagram.puml" alt="Activity diagram for navigating submitted commands and restoring a draft with Up and Down" width="600" />
+For optional prefix search, type a prefix such as `add ` (including the space), then press
+**Alt+↑** (**Option+↑** on macOS) to skip unrelated commands and recall older matching entries.
+**Alt+↓** (**Option+↓**) browses newer matches and restores your original draft after the last match.
+Matching is case-sensitive and includes spaces; an empty prefix matches all commands. Repeated shortcut
+presses keep the initial prefix. At the oldest match, or when there is no match, the input stays unchanged.
+Alt+↓ without an active search leaves input unchanged. Editing the text starts a new prefix search from
+that text at the current history position. Ordinary ↑/↓ continues chronologically from the current
+position and ends the prefix search. Both navigation modes preserve the draft saved when you first
+left the end of history, and neither executes commands.
+
+For example, submit `add n/Alice`, `list`, `add n/Bob`, then `list`. Type `add ` without pressing Enter.
+Alt+↑ recalls `add n/Bob`, then `add n/Alice`; Alt+↓ recalls `add n/Bob`, then restores `add `.
+
+<puml src="diagrams/CommandHistoryActivityDiagram.puml" alt="Activity diagram for chronological and prefix history navigation with draft restoration" />
 
 ### Saving the data
 
