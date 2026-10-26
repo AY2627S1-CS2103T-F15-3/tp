@@ -12,6 +12,7 @@ Class MainWindow
 Class HelpWindow
 Class ResultDisplay
 Class PersonListPanel
+Class PersonListCell
 Class PersonCard
 Class StatusBarFooter
 Class CommandBox
@@ -36,7 +37,8 @@ MainWindow *-down-> "1" PersonListPanel
 MainWindow *-down-> "1" StatusBarFooter
 MainWindow --> "0..1" HelpWindow
 
-PersonListPanel -down-> "*" PersonCard
+PersonListPanel ..> PersonListCell : creates
+PersonListCell -down-> "0..1" PersonCard
 
 MainWindow -left-|> UiPart
 

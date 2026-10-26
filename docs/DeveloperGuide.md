@@ -80,6 +80,8 @@ The UI consists of a `MainWindow` and its parts, such as `CommandBox`, `ResultDi
 
 The `UI` component uses the JavaFX UI framework. The layouts of these UI parts are defined in matching `.fxml` files in `src/main/resources/view`. For example, [`MainWindow.fxml`](https://github.com/AY2627S1-CS2103T-F15-3/tp/tree/master/src/main/resources/view/MainWindow.fxml) specifies the layout of [`MainWindow`](https://github.com/AY2627S1-CS2103T-F15-3/tp/tree/master/src/main/java/seedu/address/ui/MainWindow.java).
 
+Contact-card layout and expansion are described under [Contact card layout](#contact-card-layout).
+
 The `UI` component,
 
 * executes user commands using the `Logic` component.
@@ -197,6 +199,24 @@ Classes used by multiple components are in the `seedu.address.commons` package.
 
 This section describes some noteworthy details on how certain features are implemented.
 
+### Contact card layout
+
+`PersonListCard.fxml` groups contact details and academic fields separately, with captions styled
+independently from their values in `DarkTheme.css`.
+
+* `PersonCard` populates values, tags and presence indicators. `PersonListCell` creates each card using
+  its displayed index and binds its preferred width to the list width, reserving space for the scrollbar.
+* `ExpandableText` handles ellipses and click, Enter or Space expansion. `PersonListPanel` shares each
+  contact's expanded-field state across recreated cells. This state is kept only in memory and does
+  not change contact data or undo/redo history.
+* `PersonCardPane` measures the card at its available width and stacks the detail groups below
+  560 logical pixels of content width. `TagPane` measures and places tag rows using the same wrapping
+  calculation. Cell and card clips prevent content from painting over neighbouring cards.
+
+`PersonCardEdgeCaseTest` covers all 128 combinations of optional fields and 12 long-value cases.
+`PersonCardLayoutTest` checks field captions and values at different widths. `ExpandableContactListTest`
+checks expansion, collapse, cell recycling, resizing and scrolling to the end of expanded content.
+
 ### Contact notes
 
 #### Structure and responsibilities
@@ -215,9 +235,10 @@ that it will apply; all three note commands override `Command#execute(Model)` an
 
 `JsonAdaptedPerson` saves the text under `notes`. Missing or null values in older files become empty notes. Invalid stored note text produces the usual data-loading failure. The UI's presence indicator derives from `Person#getNotes().isEmpty()` and updates when the observable contact list replaces a person; note text is displayed through ordinary command feedback.
 
-`PersonCard` holds the displayed contact and its `noteIcon` label. The label is an indicator, not a
-control that opens or expands the note. Its tooltip uses the card's current displayed index to suggest
-the corresponding `shownote` command.
+`PersonCard` holds the displayed contact and its `noteIcon` label, whose JavaFX `SVGPath` graphic
+appears at the top right of the card. The label is an indicator, not a control that opens or expands
+the note. Its tooltip uses the card's current displayed index to suggest the corresponding `shownote`
+command.
 
 #### Adding or replacing a note
 
@@ -556,9 +577,9 @@ Phone and email objects remain non-null throughout the model. `Phone.isValidPhon
 
 #### System tags, rendering and refresh
 
-`SystemTag.forPerson` evaluates the age and completeness predicates independently and returns at most one of each reminder. A profile may therefore have both labels. `PersonCard#refreshTags` clears and rebuilds the pane, preserving ordinary blue labels, and appends each derived reminder with the existing `system-tag` CSS class. The existing yellow background (`#F4C542`), dark text (`#222222`), padding, font and corner radii are reused without changing favourite or note icons. Missing phone/email display as `Not specified`.
+`SystemTag.forPerson` evaluates the age and completeness predicates independently and returns at most one of each reminder. A profile may therefore have both labels. `PersonCard#refreshTags` clears and rebuilds the pane, preserving ordinary grey labels, and appends each derived reminder with the existing `system-tag` CSS class. The `system-tag` style uses amber text on a dark brown background, with the same padding, font and corner radii as ordinary tags. Missing phone/email display as `Not specified`.
 
-`SystemTag.isSystemLabel` distinguishes both reserved display names. A user's stored `incomplete` tag is shown as blue `incomplete (custom)` with a tooltip explaining `t/incomplete`; it is neither renamed nor removed from JSON. Tag commands still operate only on user tags. The incomplete reminder has a contact-detail tooltip rather than the date tooltip used by `UPDATE`.
+`SystemTag.isSystemLabel` distinguishes both reserved display names. A user's stored `incomplete` tag is shown as a grey `incomplete (custom)` tag with a tooltip explaining `t/incomplete`; it is neither renamed nor removed from JSON. Tag commands still operate only on user tags. The incomplete reminder has a contact-detail tooltip rather than the date tooltip used by `UPDATE`.
 
 Successful commands use the existing `MainWindow` to `PersonListPanel.refresh` path, and model replacements update the observable list. Filling either contact method removes `INCOMPLETE`; clearing the last one adds it. A successful actual basic-field edit also refreshes the profile date and can independently remove `UPDATE`. If the edit leaves both methods empty, `INCOMPLETE` remains applicable.
 
@@ -643,9 +664,9 @@ The existing `Person` constructor overloads initialize unspecified dates using `
 
 #### GUI implementation
 
-`PersonCard#refreshTags` clears the tag pane, recreates the sorted user labels and appends the current `SystemTag` labels. Each system label has the `system-tag` style class and a tooltip showing the recorded date. `#tags .label.system-tag` in `DarkTheme.css` overrides only background (`#F4C542`) and text (`#222222`), inheriting ordinary tag padding, font size and corner radii. Favourite and note icons remain independent.
+`PersonCard#refreshTags` clears the tag pane, recreates the sorted user labels and appends the current `SystemTag` labels. Each update reminder has the `system-tag` style class and a tooltip showing the recorded date. `#tags .label.system-tag` in `DarkTheme.css` sets the dark brown background, amber border and text, inheriting ordinary tag padding, font size and corner radii. Favourite and note icons remain independent.
 
-An ordinary tag whose exact stored name is `update` is rendered as blue `update (custom)`, with a tooltip explaining that it is managed using `t/update`. The underlying name, validation, filtering and storage remain unchanged. Rebuilding the pane prevents duplicate system labels and lets a custom tag coexist with the reminder.
+An ordinary tag whose exact stored name is `update` is rendered as a grey `update (custom)` tag, with a tooltip explaining that it is managed using `t/update`. The underlying name, validation, filtering and storage remain unchanged. Rebuilding the pane prevents duplicate system labels and lets a custom tag coexist with the reminder.
 
 After `LogicManager#execute` succeeds, `MainWindow` calls `PersonListPanel#refresh`, which calls `ListView#refresh`. Recreated cards evaluate the current date again even when the contact data did not change. An actual basic-profile edit both replaces the model person and triggers this refresh, removing an outdated reminder immediately. No timer refreshes an idle window.
 
@@ -704,7 +725,8 @@ Notes and favourite status are preserved together by the combined `Person` const
 
 `DarkTheme.css` styles `#favouriteIcon` with `#e63946` for both text and the one-pixel circular border, a radius of 12, and a transparent background. The ID selector overrides the general list-cell label colour, including for selected cells. Ordinary tag styles are unaffected.
 
-The existing `PersonListPanel` observes the filtered list and creates a new `PersonCard` in `PersonListViewCell#updateItem`, using `getIndex() + 1` for numbering. Model replacement therefore updates the heart immediately; removing a person from the favourite filter updates the visible cards and indices without a separate favourite list or refresh command.
+`PersonListPanel` observes the displayed list. Its `PersonListCell#updateItem` creates a new
+`PersonCard`, using `getIndex() + 1` for numbering. Model replacement therefore updates the heart immediately; removing a person from the favourite filter updates the visible cards and indices without a separate favourite list or refresh command.
 
 #### Design considerations
 
@@ -783,7 +805,8 @@ The current `EditCommand` still supports replacing the entire tag set through `e
 
 #### Long tag display and hover access
 
-`PersonCard#refreshTags` abbreviates ordinary tag names longer than `MAX_DISPLAYED_TAG_CHARACTERS` (20) before constructing their JavaFX `Label`: the first 20 characters are followed by `...`. The full value remains in `Person#getTags`; custom/system name collisions retain their `(custom)` display suffix. This explicit character threshold keeps display behaviour consistent despite platform font metrics. The tag pane and labels can shrink, and each label's maximum width is bound to the pane's content width (excluding its insets). `OverrunStyle.ELLIPSIS` supplies a further layout safeguard if even the abbreviated text cannot fit.
+`PersonCard#refreshTags` abbreviates ordinary tag names longer than `MAX_DISPLAYED_TAG_CHARACTERS` (20) before constructing their JavaFX `Label`: the first 20 characters are followed by `...`. The full value remains in `Person#getTags`; custom/system name collisions retain their `(custom)` display suffix. This explicit character threshold keeps display behaviour consistent despite platform font metrics. `TagPane` limits each tag to the available content width. `ExpandableText` applies
+`OverrunStyle.ELLIPSIS` while collapsed and wraps the full name when expanded.
 
 `PersonCard#installTagTooltip` retains the complete original name in a wrapping tooltip with a maximum popup width of 400 logical pixels. It keeps the Label's tooltip property for accessibility, uninstalls the default delayed mouse behaviour, and uses mouse-enter/exit/press handlers to show immediately and hide on exit or press. Labels participate in mouse picking. Existing explanatory tooltips for custom names that match system reminders are retained. `Tag` and its validation, equality and JSON representation are unchanged; only the presentation is abbreviated.
 
@@ -1738,7 +1761,7 @@ Use a test contact for these checks. Run `list` and identify its displayed index
    Expected: `No notes have been added to this contact.` No note icon is visible.
 1. Run `note 1 Met during CS2103T` and inspect its feedback, then run `shownote 1`.<br>
    Expected: The feedback starts with `Note saved for NAME.` and includes `Saved note: Met during CS2103T`.
-   A note icon appears at the bottom right of the card, and `shownote` displays the saved text.
+   An orange note icon appears at the top right of the card, and `shownote` displays the saved text.
 1. Run `note 1 Project teammate` and inspect its feedback.<br>
    Expected: The feedback starts with `Note replaced for NAME. Use undo to restore the previous note.`
    It includes `Previous note: Met during CS2103T` and `Saved note: Project teammate` on separate lines.
