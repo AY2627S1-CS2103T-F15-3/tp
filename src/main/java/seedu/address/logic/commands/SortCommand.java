@@ -18,8 +18,9 @@ import seedu.address.model.person.PersonSortComparator.SortField;
 public class SortCommand extends Command {
     public static final String COMMAND_WORD = "sort";
     public static final String MESSAGE_USAGE = COMMAND_WORD + ": Sorts contacts while preserving the current filter.\n"
-            + "Parameters: FIELD DIRECTION (name, major or year; asc or desc)\n"
-            + "Unspecified academic values stay last. Example: " + COMMAND_WORD + " year desc";
+            + "Parameters: FIELD DIRECTION (name, major or year; asc or desc; case-insensitive)\n"
+            + "Unspecified academic values stay last. Example: " + COMMAND_WORD + " year desc\n"
+            + "Use " + COMMAND_WORD + " reset to restore saved order while keeping the current filter.";
     public static final String MESSAGE_SUCCESS = "Sorted contacts by %s (%s).";
 
     private static final Logger logger = LogsCenter.getLogger(SortCommand.class);

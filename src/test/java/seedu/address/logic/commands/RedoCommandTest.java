@@ -58,11 +58,11 @@ public class RedoCommandTest {
     @Test
     public void execute_undoneAdd_restoresAddedPerson() throws Exception {
         Person newPerson = new PersonBuilder().withName("Alex Tan").build();
-        new AddCommand(newPerson).execute(model);
+        String addMessage = new AddCommand(newPerson).execute(model).getFeedbackToUser();
         AddressBook stateAfterAdd = new AddressBook(model.getAddressBook());
         model.undoAddressBook();
 
-        assertCommandSuccess(new RedoCommand(), model, RedoCommand.MESSAGE_SUCCESS,
+        assertCommandSuccess(new RedoCommand(), model, redoMessage(addMessage),
                 new ModelManager(stateAfterAdd, new UserPrefs()));
         assertTrue(model.hasPerson(newPerson));
     }
@@ -72,13 +72,13 @@ public class RedoCommandTest {
         Person original = model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased());
         Person editedPerson = new PersonBuilder(original).withPhone(VALID_PHONE_BOB).withMajor("Computer Science")
                 .withGraduationYear("2027").withTags("teammate", "cca").build();
-        new EditCommand(INDEX_FIRST_PERSON, new EditPersonDescriptorBuilder().withPhone(VALID_PHONE_BOB)
-                .withMajor("Computer Science").withGraduationYear("2027").withTags("teammate", "cca").build())
-                .execute(model);
+        String editMessage = new EditCommand(INDEX_FIRST_PERSON, new EditPersonDescriptorBuilder()
+                .withPhone(VALID_PHONE_BOB).withMajor("Computer Science").withGraduationYear("2027")
+                .withTags("teammate", "cca").build()).execute(model).getFeedbackToUser();
         AddressBook stateAfterEdit = new AddressBook(model.getAddressBook());
         model.undoAddressBook();
 
-        assertCommandSuccess(new RedoCommand(), model, RedoCommand.MESSAGE_SUCCESS,
+        assertCommandSuccess(new RedoCommand(), model, redoMessage(editMessage),
                 new ModelManager(stateAfterEdit, new UserPrefs()));
 
         Person restored = model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased());
@@ -91,17 +91,19 @@ public class RedoCommandTest {
 
     @Test
     public void execute_multipleRedos_restoresEachLaterStateInTurn() throws Exception {
-        new AddCommand(new PersonBuilder().withName("Alex Tan").withMajor("Mathematics").build()).execute(model);
+        String addMessage = new AddCommand(new PersonBuilder().withName("Alex Tan").withMajor("Mathematics")
+                .build()).execute(model).getFeedbackToUser();
         AddressBook stateAfterAdd = new AddressBook(model.getAddressBook());
-        new EditCommand(INDEX_FIRST_PERSON,
-                new EditPersonDescriptorBuilder().withGraduationYear("2026").build()).execute(model);
+        String editMessage = new EditCommand(INDEX_FIRST_PERSON,
+                new EditPersonDescriptorBuilder().withGraduationYear("2026").build()).execute(model)
+                .getFeedbackToUser();
         AddressBook stateAfterEdit = new AddressBook(model.getAddressBook());
         model.undoAddressBook();
         model.undoAddressBook();
 
-        assertCommandSuccess(new RedoCommand(), model, RedoCommand.MESSAGE_SUCCESS,
+        assertCommandSuccess(new RedoCommand(), model, redoMessage(addMessage),
                 new ModelManager(stateAfterAdd, new UserPrefs()));
-        assertCommandSuccess(new RedoCommand(), model, RedoCommand.MESSAGE_SUCCESS,
+        assertCommandSuccess(new RedoCommand(), model, redoMessage(editMessage),
                 new ModelManager(stateAfterEdit, new UserPrefs()));
         assertCommandFailure(new RedoCommand(), model, RedoCommand.MESSAGE_FAILURE);
     }
@@ -130,20 +132,21 @@ public class RedoCommandTest {
     @Test
     public void execute_failedAddAfterUndo_redoStillAvailable() throws Exception {
         Person newPerson = new PersonBuilder().withName("Alex Tan").build();
-        new AddCommand(newPerson).execute(model);
+        String addMessage = new AddCommand(newPerson).execute(model).getFeedbackToUser();
         AddressBook stateAfterAdd = new AddressBook(model.getAddressBook());
         model.undoAddressBook();
 
         Person existingPerson = model.getAddressBook().getPersonList().get(0);
         assertCommandFailure(new AddCommand(existingPerson), model, AddCommand.MESSAGE_DUPLICATE_PERSON);
 
-        assertCommandSuccess(new RedoCommand(), model, RedoCommand.MESSAGE_SUCCESS,
+        assertCommandSuccess(new RedoCommand(), model, redoMessage(addMessage),
                 new ModelManager(stateAfterAdd, new UserPrefs()));
     }
 
     @Test
     public void execute_failedEditAfterUndo_redoStillAvailable() throws Exception {
-        new AddCommand(new PersonBuilder().withName("Alex Tan").build()).execute(model);
+        String addMessage = new AddCommand(new PersonBuilder().withName("Alex Tan").build()).execute(model)
+                .getFeedbackToUser();
         AddressBook stateAfterAdd = new AddressBook(model.getAddressBook());
         model.undoAddressBook();
 
@@ -151,7 +154,7 @@ public class RedoCommandTest {
         assertCommandFailure(new EditCommand(INDEX_SECOND_PERSON, new EditPersonDescriptorBuilder(firstPerson).build()),
                 model, EditCommand.MESSAGE_DUPLICATE_PERSON);
 
-        assertCommandSuccess(new RedoCommand(), model, RedoCommand.MESSAGE_SUCCESS,
+        assertCommandSuccess(new RedoCommand(), model, redoMessage(addMessage),
                 new ModelManager(stateAfterAdd, new UserPrefs()));
     }
 
@@ -201,5 +204,18 @@ public class RedoCommandTest {
         new DeleteCommand(INDEX_FIRST_PERSON).execute(model);
 
         assertCommandFailure(new RedoCommand(), model, RedoCommand.MESSAGE_FAILURE);
+    }
+
+    @Test
+    public void execute_undoneClear_namesClear() throws Exception {
+        new ClearCommand().execute(model);
+        model.undoAddressBook();
+
+        assertCommandSuccess(new RedoCommand(), model, redoMessage(ClearCommand.MESSAGE_SUCCESS),
+                new ModelManager(new AddressBook(), new UserPrefs()));
+    }
+
+    private static String redoMessage(String changeDescription) {
+        return "Redid: " + changeDescription;
     }
 }

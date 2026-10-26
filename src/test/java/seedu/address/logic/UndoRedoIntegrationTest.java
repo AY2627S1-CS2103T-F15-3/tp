@@ -2,6 +2,7 @@ package seedu.address.logic;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static seedu.address.logic.Messages.MESSAGE_INVALID_COMMAND_FORMAT;
 import static seedu.address.logic.Messages.MESSAGE_INVALID_PERSON_DISPLAYED_INDEX;
@@ -24,7 +25,9 @@ import org.junit.jupiter.api.io.TempDir;
 
 import seedu.address.logic.commands.AddCommand;
 import seedu.address.logic.commands.CommandResult;
+import seedu.address.logic.commands.DeleteCommand;
 import seedu.address.logic.commands.EditCommand;
+import seedu.address.logic.commands.FavCommand;
 import seedu.address.logic.commands.ListCommand;
 import seedu.address.logic.commands.RedoCommand;
 import seedu.address.logic.commands.UndoCommand;
@@ -48,7 +51,7 @@ import seedu.address.storage.StorageManager;
 import seedu.address.testutil.PersonBuilder;
 
 /**
- * Checks that {@code add}, {@code edit}, {@code undo} and {@code redo} work together through command parsing,
+ * Checks that data-changing commands, {@code undo} and {@code redo} work together through command parsing,
  * the model's history and persistence.
  */
 public class UndoRedoIntegrationTest {
@@ -83,6 +86,7 @@ public class UndoRedoIntegrationTest {
     private Model model;
     private JsonAddressBookStorage addressBookStorage;
     private Logic logic;
+    private final List<String> mixedChangeFeedback = new ArrayList<>();
 
     @BeforeEach
     public void setUp() throws Exception {
@@ -349,6 +353,176 @@ public class UndoRedoIntegrationTest {
         assertRedoSuccess(replace(getTypicalPersons(), DANIEL, editedDaniel));
     }
 
+    @Test
+    public void editThenFav_undoRevertsFavThenEdit() throws Exception {
+        // Steps from issue #134: undo after fav used to fail.
+        logic.execute("clear");
+        logic.execute("add n/Alice a/NUS p/91234567");
+        List<Person> afterAdd = currentContacts();
+        logic.execute("edit 1 p/92345678");
+        List<Person> afterEdit = currentContacts();
+        logic.execute("fav 1");
+        List<Person> afterFav = currentContacts();
+
+        assertUndoSuccess(afterEdit);
+        assertFalse(model.getFilteredPersonList().get(0).isFavourite());
+        assertEquals("92345678", model.getFilteredPersonList().get(0).getPhone().value);
+
+        assertUndoSuccess(afterAdd);
+        assertEquals("91234567", model.getFilteredPersonList().get(0).getPhone().value);
+
+        assertRedoSuccess(afterEdit);
+        assertRedoSuccess(afterFav);
+        assertTrue(model.getFilteredPersonList().get(0).isFavourite());
+    }
+
+    @Test
+    public void favAlreadyFavouriteAfterUndo_redoStaysAvailable() throws Exception {
+        logic.execute("fav 1");
+        List<Person> afterFav = currentContacts();
+        logic.execute("edit 1 p/92345678");
+        List<Person> afterEdit = currentContacts();
+        assertUndoSuccess(afterFav);
+
+        // The rejected fav changes nothing, so the undone edit can still be redone.
+        assertCommandFailure("fav 1", CommandException.class,
+                String.format(FavCommand.MESSAGE_ALREADY_FAVOURITE, afterFav.get(0).getName().fullName));
+        assertRedoSuccess(afterEdit);
+    }
+
+    @Test
+    public void tagThenUntagAfterUndo_redoStaysUnavailable() throws Exception {
+        // Steps from issue #135: reversing the tag change used to make the discarded redo available again.
+        logic.execute("clear");
+        logic.execute("add n/Alice a/NUS p/91234567");
+        logic.execute("edit 1 p/92345678");
+        logic.execute("undo");
+        List<Person> afterUndo = currentContacts();
+
+        logic.execute("tag 1 t/Project");
+        List<Person> afterTag = currentContacts();
+        assertCommandFailure(RedoCommand.COMMAND_WORD, CommandException.class, RedoCommand.MESSAGE_FAILURE);
+
+        logic.execute("untag 1 t/Project");
+        assertEquals(afterUndo, currentContacts());
+        assertCommandFailure(RedoCommand.COMMAND_WORD, CommandException.class, RedoCommand.MESSAGE_FAILURE);
+        assertEquals("91234567", model.getFilteredPersonList().get(0).getPhone().value);
+
+        // The tag and untag are recorded in the history instead, so undo reverts them in turn.
+        assertUndoSuccess(afterTag);
+        assertUndoSuccess(afterUndo);
+    }
+
+    @Test
+    public void mixedFavTagAddEdit_undoAllThenRedoAll_correctContactsAfterEveryStep() throws Exception {
+        List<List<Person>> states = runMixedChanges();
+
+        // Undo walks back through every change, and then the clear, to the start of the history,
+        // naming each change as it is reversed.
+        for (int i = states.size() - 2; i >= 0; i--) {
+            assertUndoSuccess(mixedChangeFeedback.get(i + 1), states.get(i));
+        }
+        assertUndoSuccess(mixedChangeFeedback.get(0), getTypicalPersons());
+        assertCommandFailure(UndoCommand.COMMAND_WORD, CommandException.class, UndoCommand.MESSAGE_FAILURE);
+
+        // Redo reapplies the clear and every change in the original order, then fails at the latest change.
+        for (int i = 0; i < states.size(); i++) {
+            assertRedoSuccess(mixedChangeFeedback.get(i), states.get(i));
+        }
+        assertCommandFailure(RedoCommand.COMMAND_WORD, CommandException.class, RedoCommand.MESSAGE_FAILURE);
+    }
+
+    @Test
+    public void mixedFavTagAddEdit_interleavedUndoRedo_correctContactsAfterEveryStep() throws Exception {
+        List<List<Person>> states = runMixedChanges();
+        int last = states.size() - 1;
+
+        assertUndoSuccess(states.get(last - 1)); // reverts edit
+        assertUndoSuccess(states.get(last - 2)); // reverts unfav
+        assertTrue(model.getAddressBook().getPersonList().get(0).isFavourite());
+        assertRedoSuccess(states.get(last - 1)); // reapplies unfav
+        assertFalse(model.getAddressBook().getPersonList().get(0).isFavourite());
+        assertUndoSuccess(states.get(last - 2)); // reverts unfav again
+        assertUndoSuccess(states.get(last - 3)); // reverts untag
+        assertEquals(Set.of(new Tag("Project")), model.getAddressBook().getPersonList().get(0).getTags());
+
+        // A new fav, tag or untag after an undo discards the undone changes.
+        logic.execute("tag 2 t/Club");
+        List<Person> afterNewTag = currentContacts();
+        assertCommandFailure(RedoCommand.COMMAND_WORD, CommandException.class, RedoCommand.MESSAGE_FAILURE);
+        assertUndoSuccess(states.get(last - 3));
+        assertRedoSuccess(afterNewTag);
+        assertCommandFailure(RedoCommand.COMMAND_WORD, CommandException.class, RedoCommand.MESSAGE_FAILURE);
+    }
+
+    @Test
+    public void favThenTag_undoAndRedoNameEachChange() throws Exception {
+        // Steps from issue #165: undo did not say whether the tag or the favourite was reversed.
+        String favFeedback = logic.execute("fav 1").getFeedbackToUser();
+        List<Person> afterFav = currentContacts();
+        String tagFeedback = logic.execute("tag 2 t/Friend").getFeedbackToUser();
+        List<Person> afterTag = currentContacts();
+
+        assertUndoSuccess(tagFeedback, afterFav);
+        assertUndoSuccess(favFeedback, getTypicalPersons());
+        assertRedoSuccess(favFeedback, afterFav);
+        assertRedoSuccess(tagFeedback, afterTag);
+    }
+
+    @Test
+    public void deleteThenUndo_namesDeletedContact() throws Exception {
+        String deleteFeedback = logic.execute("delete 1").getFeedbackToUser();
+        List<Person> afterDelete = currentContacts();
+
+        assertEquals(String.format(DeleteCommand.MESSAGE_DELETE_PERSON_SUCCESS, Messages.format(ALICE)),
+                deleteFeedback);
+        assertUndoSuccess(deleteFeedback, getTypicalPersons());
+        assertRedoSuccess(deleteFeedback, afterDelete);
+    }
+
+    @Test
+    public void unfavInFavouritesList_undoRestoresFavouriteAndShowsAll() throws Exception {
+        logic.execute("fav 1");
+        List<Person> afterFav = currentContacts();
+        logic.execute("listfav");
+        assertEquals(List.of(afterFav.get(0)), model.getFilteredPersonList());
+
+        // The contact is no longer a favourite, so it disappears from the favourites list straight away.
+        logic.execute("unfav 1");
+        List<Person> afterUnfav = currentContacts();
+        assertTrue(model.getFilteredPersonList().isEmpty());
+
+        // Undo restores the favourite and shows every contact, not just the favourites.
+        assertUndoSuccess(afterFav);
+        assertTrue(model.getFilteredPersonList().get(0).isFavourite());
+        assertRedoSuccess(afterUnfav);
+        assertFalse(model.getFilteredPersonList().get(0).isFavourite());
+    }
+
+    /**
+     * Runs a mix of add, edit, fav, unfav, tag and untag commands from an empty contact list,
+     * and returns the contacts before the first command and after each one.
+     * The feedback of the clear and of each command is kept in {@code mixedChangeFeedback}.
+     */
+    private List<List<Person>> runMixedChanges() throws Exception {
+        mixedChangeFeedback.clear();
+        mixedChangeFeedback.add(logic.execute("clear").getFeedbackToUser());
+        List<List<Person>> states = new ArrayList<>();
+        states.add(currentContacts());
+        for (String command : List.of("add n/Alice a/NUS p/91234567", "tag 1 t/Project", "edit 1 p/92345678",
+                "fav 1", "add n/Bob a/SMU p/93456789", "untag 1 t/Project", "unfav 1", "edit 2 a/NTU")) {
+            mixedChangeFeedback.add(logic.execute(command).getFeedbackToUser());
+            List<Person> afterCommand = currentContacts();
+            assertNotEquals(states.get(states.size() - 1), afterCommand, command + " should change the contacts");
+            states.add(afterCommand);
+        }
+        return states;
+    }
+
+    private List<Person> currentContacts() {
+        return List.copyOf(model.getAddressBook().getPersonList());
+    }
+
     /**
      * Executes an add command and checks its feedback and the resulting contacts.
      */
@@ -367,18 +541,38 @@ public class UndoRedoIntegrationTest {
     }
 
     /**
-     * Executes {@code undo} and checks that {@code expectedContacts} are restored and all displayed.
+     * Executes {@code undo} and checks that it names the most recent recorded change,
+     * and that {@code expectedContacts} are restored and all displayed.
      */
     private void assertUndoSuccess(List<Person> expectedContacts) throws Exception {
-        assertCommandSuccess(UndoCommand.COMMAND_WORD, UndoCommand.MESSAGE_SUCCESS, expectedContacts);
+        assertUndoSuccess(model.getUndoDescription().orElseThrow(), expectedContacts);
+    }
+
+    /**
+     * Executes {@code undo} and checks that it names the change described by {@code expectedDescription},
+     * and that {@code expectedContacts} are restored and all displayed.
+     */
+    private void assertUndoSuccess(String expectedDescription, List<Person> expectedContacts) throws Exception {
+        assertCommandSuccess(UndoCommand.COMMAND_WORD, String.format(UndoCommand.MESSAGE_SUCCESS, expectedDescription),
+                expectedContacts);
         assertEquals(expectedContacts, model.getFilteredPersonList());
     }
 
     /**
-     * Executes {@code redo} and checks that {@code expectedContacts} are restored and all displayed.
+     * Executes {@code redo} and checks that it names the most recently undone change,
+     * and that {@code expectedContacts} are restored and all displayed.
      */
     private void assertRedoSuccess(List<Person> expectedContacts) throws Exception {
-        assertCommandSuccess(RedoCommand.COMMAND_WORD, RedoCommand.MESSAGE_SUCCESS, expectedContacts);
+        assertRedoSuccess(model.getRedoDescription().orElseThrow(), expectedContacts);
+    }
+
+    /**
+     * Executes {@code redo} and checks that it names the change described by {@code expectedDescription},
+     * and that {@code expectedContacts} are restored and all displayed.
+     */
+    private void assertRedoSuccess(String expectedDescription, List<Person> expectedContacts) throws Exception {
+        assertCommandSuccess(RedoCommand.COMMAND_WORD, String.format(RedoCommand.MESSAGE_SUCCESS, expectedDescription),
+                expectedContacts);
         assertEquals(expectedContacts, model.getFilteredPersonList());
     }
 

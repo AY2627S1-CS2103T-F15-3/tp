@@ -7,7 +7,9 @@ import java.util.List;
 import seedu.address.commons.core.index.Index;
 import seedu.address.logic.Messages;
 import seedu.address.logic.commands.exceptions.CommandException;
+import seedu.address.model.AddressBook;
 import seedu.address.model.Model;
+import seedu.address.model.ReadOnlyAddressBook;
 import seedu.address.model.person.Person;
 
 /**
@@ -18,7 +20,7 @@ public class FavCommand extends Command {
     public static final String MESSAGE_USAGE = "fav: Marks the person at the displayed index as a favourite.\n"
             + "Parameters: INDEX (must be a positive integer)\nExample: fav 1";
     public static final String MESSAGE_SUCCESS = "Added to favourites: %1$s";
-    public static final String MESSAGE_ALREADY_FAVOURITE = "This person is already a favourite.";
+    public static final String MESSAGE_ALREADY_FAVOURITE = "%1$s is already a favourite.";
 
     private final Index index;
 
@@ -38,13 +40,16 @@ public class FavCommand extends Command {
         }
         Person person = displayed.get(index.getZeroBased());
         if (person.isFavourite()) {
-            throw new CommandException(MESSAGE_ALREADY_FAVOURITE);
+            throw new CommandException(String.format(MESSAGE_ALREADY_FAVOURITE, person.getName().fullName));
         }
         Person favourite = new Person(person.getName(), person.getPhone(), person.getEmail(), person.getAddress(),
                 person.getMajor(), person.getGraduationYear(), person.getTags(), person.getNotes(), true,
                 person.getLastUpdated());
+        ReadOnlyAddressBook previousState = new AddressBook(model.getAddressBook());
         model.setPerson(person, favourite);
-        return new CommandResult(String.format(MESSAGE_SUCCESS, Messages.format(favourite)));
+        String message = String.format(MESSAGE_SUCCESS, Messages.format(favourite));
+        model.commitAddressBook(previousState, message);
+        return new CommandResult(message);
     }
 
     @Override

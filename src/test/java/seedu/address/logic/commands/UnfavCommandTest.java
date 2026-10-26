@@ -1,6 +1,7 @@
 package seedu.address.logic.commands;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.junit.jupiter.api.Test;
@@ -29,7 +30,8 @@ public class UnfavCommandTest {
         assertEquals(expected, model.getFilteredPersonList().get(0));
         CommandException error = assertThrows(CommandException.class, () -> parser.parseCommand("unfav 1")
                 .execute(model));
-        assertEquals(UnfavCommand.MESSAGE_NOT_FAVOURITE, error.getMessage());
+        assertEquals(String.format(UnfavCommand.MESSAGE_NOT_FAVOURITE, expected.getName().fullName),
+                error.getMessage());
         assertEquals(expected, model.getFilteredPersonList().get(0));
         parser.parseCommand("fav 1").execute(model);
         assertEquals(original, model.getFilteredPersonList().get(0));
@@ -46,6 +48,9 @@ public class UnfavCommandTest {
         assertEquals(1, model.getFilteredPersonList().size());
         assertEquals(new PersonBuilder(bob).withFavourite(false).build(), model.getFilteredPersonList().get(0));
         assertEquals(alice, model.getAddressBook().getPersonList().get(0));
+        CommandException repeated = assertThrows(CommandException.class, () ->
+                parser.parseCommand("unfav 1").execute(model));
+        assertEquals("Bob is not a favourite.", repeated.getMessage());
         CommandException error = assertThrows(CommandException.class, () -> parser.parseCommand("unfav 2")
                 .execute(model));
         assertEquals(Messages.MESSAGE_INVALID_PERSON_DISPLAYED_INDEX, error.getMessage());
@@ -60,5 +65,20 @@ public class UnfavCommandTest {
                     error.getMessage());
         }
         assertThrows(CommandException.class, () -> parser.parseCommand("unfav 1").execute(model));
+    }
+
+    @Test
+    public void execute_notFavourite_reportsSelectedNameWithoutChangingData() {
+        model.addPerson(new PersonBuilder().withName("Alice").build());
+        model.addPerson(new PersonBuilder().withName("Bob Chen").build());
+        for (int i = 0; i < 2; i++) {
+            Person selected = model.getFilteredPersonList().get(i);
+            String input = "unfav " + (i + 1);
+            CommandException error = assertThrows(CommandException.class, () ->
+                    parser.parseCommand(input).execute(model));
+            assertEquals(selected.getName().fullName + " is not a favourite.", error.getMessage());
+            assertEquals(selected, model.getFilteredPersonList().get(i));
+            assertFalse(model.canUndoAddressBook());
+        }
     }
 }

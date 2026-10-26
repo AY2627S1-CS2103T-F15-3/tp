@@ -36,6 +36,24 @@ public class EditCommandTest {
     private Model model = new ModelManager(getTypicalAddressBook(), new UserPrefs());
 
     @Test
+    public void execute_caseOnlyDuplicateName_failure() {
+        String otherName = model.getFilteredPersonList().get(INDEX_SECOND_PERSON.getZeroBased())
+                .getName().fullName.toUpperCase(java.util.Locale.ROOT);
+        EditCommand command = new EditCommand(INDEX_FIRST_PERSON,
+                new EditPersonDescriptorBuilder().withName(otherName).build());
+        assertCommandFailure(command, model, EditCommand.MESSAGE_DUPLICATE_PERSON);
+    }
+
+    @Test
+    public void execute_changeOwnNameCapitalization_success() throws Exception {
+        Person original = model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased());
+        String newName = original.getName().fullName.toUpperCase(java.util.Locale.ROOT);
+        new EditCommand(INDEX_FIRST_PERSON,
+                new EditPersonDescriptorBuilder().withName(newName).build()).execute(model);
+        assertEquals(newName, model.getAddressBook().getPersonList().get(0).getName().fullName);
+    }
+
+    @Test
     public void execute_allFieldsSpecifiedUnfilteredList_success() {
         Person editedPerson = new PersonBuilder().build();
         EditPersonDescriptor descriptor = new EditPersonDescriptorBuilder(editedPerson).build();

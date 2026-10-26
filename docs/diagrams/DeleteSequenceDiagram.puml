@@ -15,10 +15,10 @@ box Model MODEL_COLOR_T1
 participant "m:Model" as Model MODEL_COLOR
 end box
 
-[-> LogicManager : execute("delete 1")
+[-> LogicManager : execute("delete 1 3 5")
 activate LogicManager
 
-LogicManager -> AddressBookParser : parseCommand("delete 1")
+LogicManager -> AddressBookParser : parseCommand("delete 1 3 5")
 activate AddressBookParser
 
 create DeleteCommandParser
@@ -28,11 +28,11 @@ activate DeleteCommandParser
 DeleteCommandParser --> AddressBookParser
 deactivate DeleteCommandParser
 
-AddressBookParser -> DeleteCommandParser : parse(" 1")
+AddressBookParser -> DeleteCommandParser : parse(" 1 3 5")
 activate DeleteCommandParser
 
 create DeleteCommand
-DeleteCommandParser -> DeleteCommand : DeleteCommand(index)
+DeleteCommandParser -> DeleteCommand : DeleteCommand(indices)
 activate DeleteCommand
 
 DeleteCommand --> DeleteCommandParser :
@@ -56,32 +56,52 @@ Model --> DeleteCommand : lastShownList
 deactivate Model
 
 note over DeleteCommand, Model
-  Check that the index is within the displayed list.
-  For index 1, personToDelete = lastShownList.get(0).
-  This list follows the current filter and sort order.
+  Copy the filtered and sorted displayed list.
+  Reject repeated or out-of-range indices before mutation.
+  Capture the original contacts at indices 1, 3 and 5.
+  All targets are resolved before the first deletion.
 end note
 
-DeleteCommand -> Model : deletePerson(personToDelete)
+DeleteCommand -> Model : getAddressBook()
 activate Model
+Model --> DeleteCommand : currentAddressBook
+deactivate Model
 
+note right of DeleteCommand
+  previousState = new AddressBook(currentAddressBook)
+end note
+
+loop For each captured contact
+    DeleteCommand -> Model : deletePerson(personToDelete)
+    activate Model
+    Model --> DeleteCommand
+    deactivate Model
+end
+
+loop For each captured contact in input order
+    DeleteCommand -> Messages : format(personToDelete)
+    activate Messages
+    note right of Messages
+      Include Major and Class year
+      only when their values are specified.
+    end note
+    Messages --> DeleteCommand : formattedPerson
+    deactivate Messages
+end
+
+note over DeleteCommand, CommandResult
+  message = "Deleted 3 contacts:" and contact detail lines
+  labelled with their original displayed indices 1, 3 and 5.
+  A single deletion retains "Deleted person: " feedback.
+end note
+
+DeleteCommand -> Model : commitAddressBook(previousState, message)
+activate Model
 Model --> DeleteCommand
 deactivate Model
 
-DeleteCommand -> Messages : format(personToDelete)
-activate Messages
-note right of Messages
-  Include Major and Class year
-  only when their values are specified.
-end note
-Messages --> DeleteCommand : formattedPerson
-deactivate Messages
-
-note over DeleteCommand, CommandResult
-  feedback = "Deleted person: " + formattedPerson
-end note
-
 create CommandResult
-DeleteCommand -> CommandResult : CommandResult(feedback)
+DeleteCommand -> CommandResult : CommandResult(message)
 activate CommandResult
 
 CommandResult --> DeleteCommand

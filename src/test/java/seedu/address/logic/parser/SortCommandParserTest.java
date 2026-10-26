@@ -10,6 +10,7 @@ import java.util.Locale;
 import org.junit.jupiter.api.Test;
 
 import seedu.address.logic.commands.SortCommand;
+import seedu.address.logic.commands.SortResetCommand;
 import seedu.address.model.person.PersonSortComparator.SortDirection;
 import seedu.address.model.person.PersonSortComparator.SortField;
 
@@ -23,6 +24,10 @@ public class SortCommandParserTest {
                 String input = field.name().toLowerCase(Locale.ROOT) + " "
                         + direction.name().toLowerCase(Locale.ROOT);
                 assertParseSuccess(parser, input, new SortCommand(field, direction));
+                assertParseSuccess(parser, input.toUpperCase(Locale.ROOT), new SortCommand(field, direction));
+                assertParseSuccess(parser, field.name().substring(0, 1)
+                        + field.name().substring(1).toLowerCase(Locale.ROOT) + " " + direction.name(),
+                        new SortCommand(field, direction));
             }
         }
     }
@@ -37,7 +42,17 @@ public class SortCommandParserTest {
     public void parse_missingUnsupportedRepeatedOrExtraArguments_showsUsage() {
         for (String input : new String[]{"", "   ", "name", "asc", "name asc extra", "name asc desc",
             "name name asc", "phone asc", "tag desc", "year ascending", "name 1", "asc name", "n/asc",
-            "name asc m/Computing", "NAME asc", "name ASC", "graduationYear asc", "class year asc"}) {
+            "name asc m/Computing", "graduationYear asc", "class year asc"}) {
+            assertParseFailure(parser, input,
+                    String.format(MESSAGE_INVALID_COMMAND_FORMAT, SortCommand.MESSAGE_USAGE));
+        }
+    }
+
+    @Test
+    public void parse_reset_acceptsCaseAndWhitespaceButRejectsExtraArguments() {
+        assertParseSuccess(parser, " reset ", new SortResetCommand());
+        assertParseSuccess(parser, "\tReSeT\t", new SortResetCommand());
+        for (String input : new String[]{"reset asc", "name reset", "reset reset", "reset extra words"}) {
             assertParseFailure(parser, input,
                     String.format(MESSAGE_INVALID_COMMAND_FORMAT, SortCommand.MESSAGE_USAGE));
         }

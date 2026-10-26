@@ -4,7 +4,7 @@ skinparam ClassFontColor #000000
 skinparam ClassBorderColor #000000
 skinparam ClassBackgroundColor #FFFFAA
 
-title After command "delete 1"
+title After an unrecorded change
 
 package "undoStates" <<rectangle>> {
     class U0 as "<u>ab1:AddressBook</u>"

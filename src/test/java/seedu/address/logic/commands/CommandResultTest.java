@@ -9,6 +9,18 @@ import org.junit.jupiter.api.Test;
 
 public class CommandResultTest {
     @Test
+    public void getLogSummary_omitsDetailedNoteTextWithoutChangingFeedback() {
+        String feedback = "Note replaced for Alice. Use undo to restore the previous note."
+                + "\nPrevious note: Private previous text\nSaved note: Private saved text";
+        CommandResult commandResult = new CommandResult(feedback);
+
+        assertEquals("Note replaced for Alice. Use undo to restore the previous note.", commandResult.getLogSummary());
+        assertEquals(feedback, commandResult.getFeedbackToUser());
+        assertEquals("Listed all persons.", new CommandResult("Listed all persons.").getLogSummary());
+        assertEquals("", new CommandResult("").getLogSummary());
+    }
+
+    @Test
     public void equals() {
         CommandResult commandResult = new CommandResult("feedback");
 

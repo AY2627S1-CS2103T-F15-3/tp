@@ -3,7 +3,7 @@ package seedu.address.logic.commands;
 import static java.util.Objects.requireNonNull;
 
 import seedu.address.model.Model;
-import seedu.address.model.person.Person;
+import seedu.address.model.person.FavouritePredicate;
 
 /**
  * Shows only favourite persons in the address book.
@@ -17,7 +17,7 @@ public class ListFavCommand extends Command {
     @Override
     public CommandResult execute(Model model) {
         requireNonNull(model);
-        model.updateFilteredPersonList(Person::isFavourite);
+        model.updateFilteredPersonList(new FavouritePredicate());
         int count = model.getFilteredPersonList().size();
         return new CommandResult(count == 0 ? MESSAGE_EMPTY : String.format(MESSAGE_SUCCESS, count));
     }
