@@ -97,6 +97,15 @@ Format: `add n/NAME [p/PHONE_NUMBER] [e/EMAIL] a/ADDRESS [m/MAJOR] [c/CLASS_YEAR
 Major and class year are optional and can be supplied independently.
 </box>
 
+<box type="warning" seamless>
+
+**Check your field prefixes:** Use the prefixes shown in the command format above. Unknown prefix-like
+text can become part of the preceding field instead of producing an error. For example,
+`add n/PrefixProbe a/NUS x/typo` saves the address as `NUS x/typo`; `x/` does not start a separate field.
+Check the added contact's details. To correct this example, run `find PrefixProbe`, confirm the displayed
+contact, then `edit 1 a/NUS`.
+</box>
+
 * `m/MAJOR` records the person's academic major. A supplied major must be non-blank text on one line.
 * `c/CLASS_YEAR` records the graduation year (class of 20XX). Enter exactly four digits from `2000` to `2099`.
 * Omit `m/` or `c/` if the value is unknown or does not apply; an empty supplied value is rejected.
