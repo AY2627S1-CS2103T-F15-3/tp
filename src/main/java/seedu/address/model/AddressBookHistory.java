@@ -16,7 +16,7 @@ import java.util.Deque;
  *
  * <p>{@code currentState} is a copy of the state that the tracked address book is expected to be in
  * If the tracked address book no longer matches it, a change was made without being recorded
- * (e.g. by a command that is not undoable) and the history is stale
+ * (e.g. by a future command that forgets to commit its change) and the history is stale
  * Stale history is never restored, so an old snapshot cannot silently revert unrecorded changes.
  */
 public class AddressBookHistory {

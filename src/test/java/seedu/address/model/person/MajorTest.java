@@ -32,12 +32,27 @@ public class MajorTest {
         assertFalse(Major.isValidMajor("Computer\rScience")); // carriage return
         assertFalse(Major.isValidMajor("\u2003")); // Unicode whitespace only
         assertFalse(Major.isValidMajor("Computer\u0085Science")); // Unicode control character
+        assertFalse(Major.isValidMajor("\u00a0")); // no-break space only
+        assertFalse(Major.isValidMajor("\u200b")); // zero-width space only
+        assertFalse(Major.isValidMajor("\ufeff")); // byte order mark only
+        assertFalse(Major.isValidMajor("\u200d\u200c")); // zero width joiner and non-joiner only
+        assertFalse(Major.isValidMajor("\ufe0f")); // variation selector only
+        assertFalse(Major.isValidMajor("\u0301\ufe0f")); // combining marks only
+        assertFalse(Major.isValidMajor("\u2060\u200b")); // several invisible characters
+        assertFalse(Major.isValidMajor("\u00a0\u200b\u2003")); // Unicode spaces and invisible characters
 
         // valid major
         assertTrue(Major.isValidMajor("")); // unspecified optional field
         assertTrue(Major.isValidMajor("Computer Science")); // words separated by spaces
         assertTrue(Major.isValidMajor("Philosophy, Politics & Economics")); // punctuation
         assertTrue(Major.isValidMajor("Computing (Information Systems)")); // parentheses
+        assertTrue(Major.isValidMajor("Computer\u200bScience")); // invisible character within visible text
+        assertTrue(Major.isValidMajor("Computer\u00a0Science")); // Unicode space within visible text
+        assertTrue(Major.isValidMajor("\u0645\u06cc\u200c\u0634\u0648\u062f")); // zero width non-joiner
+        assertTrue(Major.isValidMajor("\u0915\u094d\u200d\u0937")); // zero width joiner
+        assertTrue(Major.isValidMajor("\ud83d\udc68\u200d\ud83d\udcbb")); // emoji sequence
+        assertTrue(Major.isValidMajor("\u2764\ufe0f")); // emoji with variation selector
+        assertTrue(Major.isValidMajor("Caf\u0065\u0301")); // combining accent after a letter
     }
 
     @Test

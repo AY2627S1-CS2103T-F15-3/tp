@@ -1,6 +1,7 @@
 package seedu.address.storage;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static seedu.address.testutil.Assert.assertThrows;
 
 import java.nio.file.Path;
@@ -9,13 +10,16 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 
 import seedu.address.commons.exceptions.IllegalValueException;
 import seedu.address.commons.util.JsonUtil;
 import seedu.address.model.AddressBook;
+import seedu.address.model.person.ContactFilterPredicate;
 import seedu.address.model.person.Email;
+import seedu.address.model.person.Major;
 import seedu.address.model.person.Person;
 import seedu.address.testutil.PersonBuilder;
 import seedu.address.testutil.TypicalPersons;
@@ -26,6 +30,7 @@ public class JsonSerializableAddressBookTest {
     private static final Path TYPICAL_PERSONS_FILE = TEST_DATA_FOLDER.resolve("typicalPersonsAddressBook.json");
     private static final Path INVALID_PERSON_FILE = TEST_DATA_FOLDER.resolve("invalidPersonAddressBook.json");
     private static final Path DUPLICATE_PERSON_FILE = TEST_DATA_FOLDER.resolve("duplicatePersonAddressBook.json");
+    private static final Path UNICODE_SPACES_FILE = TEST_DATA_FOLDER.resolve("unicodeSpacesAddressBook.json");
 
     @Test
     public void toModelType_nullPerson_throwsIllegalValueException() {
@@ -107,6 +112,20 @@ public class JsonSerializableAddressBookTest {
                 JsonSerializableAddressBook.class).get();
         assertThrows(IllegalValueException.class, JsonSerializableAddressBook.MESSAGE_DUPLICATE_PERSON,
                 dataFromFile::toModelType);
+    }
+
+    @Test
+    public void toModelType_fileSavedBeforeSpaceNormalisation_loadsAsCommandInputWould() throws Exception {
+        // Files saved before #141 can contain Unicode spaces that commands now convert to ASCII spaces.
+        JsonSerializableAddressBook dataFromFile = JsonUtil.readJsonFile(UNICODE_SPACES_FILE,
+                JsonSerializableAddressBook.class).get();
+        Person loaded = dataFromFile.toModelType().getPersonList().get(0);
+
+        assertEquals("Blk 456, Clementi Ave 3", loaded.getAddress().value);
+        assertEquals("Computer Science", loaded.getMajor().value);
+        assertEquals("Met\u00a0at\u2003orientation", loaded.getNotes().value);
+        assertTrue(new ContactFilterPredicate(Optional.of(new Major("Computer Science")), Optional.empty(),
+                Optional.empty()).test(loaded));
     }
 
 }
