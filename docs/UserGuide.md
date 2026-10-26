@@ -484,6 +484,11 @@ Format: `filter [m/MAJOR] [c/CLASS_YEAR] [t/TAG]`
   error without changing the current results. Use `t/Friend` to filter a default tag; `d/` is not supported.
 * The result message shows the number of matching contacts. Zero matches displays an empty list;
   no contacts are deleted.
+* A persistent status line above the contact list shows the displayed/total contact counts, active
+  filter or search, and sort order. For example:
+  `Showing 3 of 20 contacts | Filter: Class year: 2027 | Sort: Name ascending`.
+  It stays visible when another command, such as `shownote`, replaces the result message.
+  Long criteria wrap onto additional lines. The status also identifies favourites views and empty results.
 * Each `filter` replaces the previous search or filter and retains the active sort order, or the saved
   contact order if no sort has been chosen. `find` replaces the filter; `list` shows all contacts again.
 * Indices refer to the currently displayed list. For example, `delete 1` targets the first filtered result.
@@ -506,9 +511,9 @@ Unlike `find Computer Science`, which searches for either word across names and 
 
 Orders the displayed contacts while keeping the current search or filter.
 
-Format: `sort FIELD DIRECTION`
+Format: `sort FIELD DIRECTION` or `sort reset`
 
-* Both arguments are required and must appear in this order. Field and direction keywords are case-insensitive; for example, `sort Name ASC` is accepted.
+* To choose a sort order, both arguments are required and must appear in this order. Keywords are case-insensitive; for example, `sort Name ASC` is accepted.
   Extra surrounding spaces and spaces between arguments are allowed.
 
   | Argument | Accepted values | Meaning |
@@ -520,6 +525,10 @@ Format: `sort FIELD DIRECTION`
 * Contacts with an unspecified major or class year appear **last** when sorting by that field,
   for both directions. Equal academic values, including unspecified values, use ascending name order.
   Names differing only in case compare equally.
+* `sort reset` removes the active sort and restores saved contact order, while keeping the current
+  search or filter. It takes no direction or other arguments and succeeds even if no sort is active.
+  Unlike `sort reset`, `list` removes the filter and keeps the current sort. Use `list`, then
+  `sort reset`, to show all contacts in saved order.
 * Sorting an empty list or a single contact succeeds. Sorting does not add or remove contacts.
 * `filter`, `find` and `list` retain the chosen sort order. A successful `add`, `edit`, `undo` or `redo`
   shows all contacts in that order; tag, untag and delete retain the current filter and sort.
@@ -534,6 +543,8 @@ Format: `sort FIELD DIRECTION`
 Examples:
 * `sort name asc` displays names from A to Z.
 * `sort major desc` displays majors from Z to A, with unspecified majors last.
+* `filter c/2027`, then `sort name asc`, then `sort reset` shows only class year `2027` contacts
+  in saved order. The status changes from `Sort: Name ascending` to `Sort: Saved order`.
 * `filter t/Classmate`, then `sort year asc`, shows only classmates, earliest class year first.
   `list` then shows all contacts in the same year order.
 
@@ -680,7 +691,7 @@ Action     | Format, Examples
 **Edit**   | `edit INDEX [n/NAME] [p/PHONE_NUMBER] [e/EMAIL] [a/ADDRESS] [m/MAJOR] [c/CLASS_YEAR] [t/TAG]... `<br> e.g.,`edit 2 n/James Lee e/jameslee@example.com`
 **Find**   | `find KEYWORD [MORE_KEYWORDS]`<br> e.g., `find James Jake`, `find Computer Science`, `find 2027`
 **Filter** | `filter [m/MAJOR] [c/CLASS_YEAR] [t/TAG]` (at least one criterion)<br> e.g., `filter m/Computer Science c/2027 t/Classmate`
-**Sort**   | `sort FIELD DIRECTION`<br> e.g., `sort name asc`, `sort major desc`, `sort year asc`
+**Sort**   | `sort FIELD DIRECTION` or `sort reset`<br> e.g., `sort name asc`, `sort major desc`, `sort year asc`
 **List all saved contacts** | `list` (no parameters; clears the current filter and reports the total)
 **Favourite** | `fav INDEX`<br> e.g., `fav 1`
 **Unfavourite** | `unfav INDEX`<br> e.g., `unfav 1`
