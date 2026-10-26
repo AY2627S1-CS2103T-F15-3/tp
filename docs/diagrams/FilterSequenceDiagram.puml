@@ -1,4 +1,3 @@
-
 @startuml
 !include style.puml
 skinparam ArrowFontStyle plain
@@ -6,60 +5,57 @@ skinparam ArrowFontStyle plain
 box Logic LOGIC_COLOR_T1
 participant ":FilterCommandParser" as Parser LOGIC_COLOR
 participant "f:FilterCommand" as Command LOGIC_COLOR
+participant "r:CommandResult" as CommandResult LOGIC_COLOR
 end box
 
 box Model MODEL_COLOR_T1
-participant "predicate:\nContactFilterPredicate" as Predicate MODEL_COLOR
+participant "p:ContactFilterPredicate" as Predicate MODEL_COLOR
 participant "m:Model" as Model MODEL_COLOR
 end box
 
 [-> Parser : parse(args)
 activate Parser
 
-Parser -> Parser : parseCriteria(args)
-
 note right of Parser
-  Validates supplied prefixes and criteria.
-  Parses optional major, graduation year,
-  and tag values.
-  At least one criterion must be present.
+  Validates the m/, c/ and t/ criteria.
+  At least one criterion is required.
 end note
 
 create Predicate
 Parser -> Predicate : ContactFilterPredicate(major, year, tag)
 activate Predicate
-Predicate --> Parser : predicate
+Predicate --> Parser
 deactivate Predicate
 
 create Command
-Parser -> Command : FilterCommand(predicate)
+Parser -> Command : FilterCommand(p)
 activate Command
+Command --> Parser
 deactivate Command
 
-[<-- Parser : f
+[<-- Parser : 
 deactivate Parser
 
 [-> Command : execute(m)
 activate Command
 
-Command -> Model : updateFilteredPersonList(predicate)
+Command -> Model : updateFilteredPersonList(p)
 activate Model
 Model --> Command
 deactivate Model
 
 Command -> Model : getFilteredPersonList()
 activate Model
-Model --> Command : filteredPersonList
+Model --> Command : filteredList
 deactivate Model
 
-note right of Command
-  Obtains the number of matched contacts
-  using filteredPersonList.size().
-  Returns a CommandResult containing
-  the match count.
-end note
+create CommandResult
+Command -> CommandResult : number of matched contacts
+activate CommandResult
+CommandResult --> Command
+deactivate CommandResult
 
-[<-- Command : CommandResult
+[<-- Command : 
 deactivate Command
 
 @enduml
