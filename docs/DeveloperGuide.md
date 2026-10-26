@@ -769,16 +769,18 @@ The model keeps an in-memory history of contact data states. Every command that 
 
 | Class | Responsibility |
 |-------|----------------|
-| `AddressBookHistory` | Stores defensive `AddressBook` snapshots in an undo stack and a redo stack, and restores them into the tracked `AddressBook`. |
-| `Model` | Declares `commitAddressBook(ReadOnlyAddressBook)`, `canUndoAddressBook()`, `canRedoAddressBook()`, `undoAddressBook()` and `redoAddressBook()`. |
+| `AddressBookHistory` | Stores defensive `AddressBook` snapshots, each paired with a description of its change, in an undo stack and a redo stack, and restores them into the tracked `AddressBook`. |
+| `Model` | Declares `commitAddressBook(ReadOnlyAddressBook, String)`, `canUndoAddressBook()`, `canRedoAddressBook()`, `getUndoDescription()`, `getRedoDescription()`, `undoAddressBook()` and `redoAddressBook()`. |
 | `ModelManager` | Creates one `AddressBookHistory` for its `AddressBook` and delegates the methods above to it. |
-| `AddCommand`, `EditCommand`, `DeleteCommand`, `ClearCommand`, `TagCommand`, `UntagCommand`, `FavCommand`, `UnfavCommand`, `NoteCommand`, `DeleteNoteCommand` | Copy the contact data before changing it, then call `Model#commitAddressBook` with that copy. |
-| `UndoCommand`, `RedoCommand` | Check history availability, restore the corresponding state through the model, and reset the displayed list to show all contacts. |
+| `AddCommand`, `EditCommand`, `DeleteCommand`, `ClearCommand`, `TagCommand`, `UntagCommand`, `FavCommand`, `UnfavCommand`, `NoteCommand`, `DeleteNoteCommand` | Copy the contact data before changing it, then call `Model#commitAddressBook` with that copy and the command's success message as the description. |
+| `UndoCommand`, `RedoCommand` | Check history availability, read the description of the change being reversed or reapplied, restore the corresponding state through the model, and reset the displayed list to show all contacts. |
 
 `AddressBookHistory` holds:
 
 * `undoStates`: the contact data from before each recorded change, most recent on top.
 * `redoStates`: the contact data that has been undone, most recent on top.
+
+Each entry in either stack is a private `Change` record holding the snapshot and a short description of the change between it and the adjacent state, such as `Tagged person: …​`. `getUndoDescription()` and `getRedoDescription()` return the description at the top of the corresponding stack, or an empty `Optional` if there is no valid state to restore.
 * `currentState`: a copy of the contact data the tracked `AddressBook` is expected to contain.
 
 Every stored state is a copy made with `new AddressBook(...)`. `Person` and its fields are immutable, so later changes to the model cannot alter a stored snapshot.
@@ -789,11 +791,11 @@ Given below is the flow for a successful `add n/Alex Tan …​`:
 
 1. `AddCommand#execute` checks `Model#hasPerson`. A duplicate throws a `CommandException` here, so nothing is recorded.
 1. The command creates `previousState = new AddressBook(model.getAddressBook())`, then calls `Model#addPerson`.
-1. The command calls `Model#commitAddressBook(previousState)`. `AddressBookHistory#commit` then:
+1. The command formats its success message and calls `Model#commitAddressBook(previousState, message)`. `AddressBookHistory#commit` then:
    1. returns without recording if `previousState` holds the same contacts as the current data;
    1. clears `undoStates` if `previousState` differs from `currentState`, which means an unrecorded change happened earlier (see below);
-   1. pushes a copy of `previousState` onto `undoStates`, clears `redoStates`, and sets `currentState` to a copy of the current data.
-1. `LogicManager` saves the contact data to storage as before. The history itself is not saved.
+   1. pushes a copy of `previousState` with `message` onto `undoStates`, clears `redoStates`, and sets `currentState` to a copy of the current data.
+1. The command returns the same message as its `CommandResult`. `LogicManager` saves the contact data to storage as before. The history itself is not saved.
 
 The activity diagram below summarises what happens when a command commits:
 
@@ -807,7 +809,7 @@ A command that fails validation, such as a duplicate `add`, throws before copyin
 
 `DeleteCommand`, `ClearCommand`, `TagCommand`, `UntagCommand`, `FavCommand` and `UnfavCommand` follow the same pattern: each copies the data after its validation checks, makes its change through the model (`Model#deletePerson`, `Model#setAddressBook` or `Model#setPerson`), and then commits. Changes that leave the data unchanged, such as `tag` with a tag the person already has, `untag` with a tag the person does not have, or `clear` on an empty contact list, are ignored by the commit, so no undo step is recorded and redo remains available. `fav` on a person who is already a favourite and `unfav` on one who is not fail before copying the data.
 
-`Model#undoAddressBook()` pushes `currentState` onto `redoStates`, pops the top of `undoStates`, and restores it. `Model#redoAddressBook()` does the reverse. Restoring calls `AddressBook#resetData` on the existing `AddressBook`, so:
+`Model#undoAddressBook()` pops the top of `undoStates`, pushes `currentState` onto `redoStates` with the popped entry's description, and restores the popped state. `Model#redoAddressBook()` does the reverse. The description therefore moves with its change between the stacks, so a redo names the same change that the matching undo named. Restoring calls `AddressBook#resetData` on the existing `AddressBook`, so:
 
 * the `AddressBook` object and the `FilteredList` built on it are the same objects before and after, and the UI updates through its existing observers;
 * restoring a state does not record a new history entry.
@@ -915,8 +917,8 @@ The `undo` and `redo` commands let users revert and reapply any change to contac
 | Class | Responsibility |
 |-------|----------------|
 | `AddressBookParser` | Recognises the `undo` and `redo` command words. Throws a `ParseException` with `MESSAGE_INVALID_COMMAND_FORMAT` and the command's usage if any arguments follow the command word. |
-| `UndoCommand` | Checks `Model#canUndoAddressBook()`, calls `Model#undoAddressBook()`, and shows all contacts. |
-| `RedoCommand` | Checks `Model#canRedoAddressBook()`, calls `Model#redoAddressBook()`, and shows all contacts. |
+| `UndoCommand` | Checks `Model#canUndoAddressBook()`, reads `Model#getUndoDescription()`, calls `Model#undoAddressBook()`, and shows all contacts. |
+| `RedoCommand` | Checks `Model#canRedoAddressBook()`, reads `Model#getRedoDescription()`, calls `Model#redoAddressBook()`, and shows all contacts. |
 
 Neither command has its own parser class, because neither takes any arguments.
 
@@ -927,7 +929,7 @@ Given below is the flow for `undo`:
 1. `LogicManager#execute` passes the input to `AddressBookParser#parseCommand`. If anything follows the command word, such as in `undo 1`, a `ParseException` is thrown and the model is never reached.
 1. The parser returns a new `UndoCommand`, and `LogicManager` calls `UndoCommand#execute(model)`.
 1. The command checks `Model#canUndoAddressBook()`. If it returns `false`, the command throws a `CommandException` with `UndoCommand.MESSAGE_FAILURE`. The exception propagates out of `LogicManager#execute` before the save step, so neither the data nor the data file changes.
-1. Otherwise, the command calls `Model#undoAddressBook()`, which restores the previous state in place. It then calls `Model#updateFilteredPersonList(PREDICATE_SHOW_ALL_PERSONS)` so that every restored contact is visible, even if a `find` filter was active, and returns a `CommandResult` with `UndoCommand.MESSAGE_SUCCESS`.
+1. Otherwise, the command reads the description of the change about to be reversed with `Model#getUndoDescription()`, then calls `Model#undoAddressBook()`, which restores the previous state in place. It then calls `Model#updateFilteredPersonList(PREDICATE_SHOW_ALL_PERSONS)` so that every restored contact is visible, even if a `find` filter was active, and returns a `CommandResult` with `UndoCommand.MESSAGE_SUCCESS` formatted with that description.
 1. `LogicManager` saves the restored contact data through `Storage#saveAddressBook`, as it does for every successful command.
 
 The sequence diagram below shows these steps for `execute("undo")`, including the failure path when there is nothing to undo:
@@ -939,7 +941,7 @@ The sequence diagram below shows these steps for `execute("undo")`, including th
 **Note:** The lifeline for `UndoCommand` should end at the destroy marker (X), but due to a limitation of PlantUML, the lifeline continues till the end of diagram.
 </box>
 
-`redo` follows the same flow using `RedoCommand`, `Model#canRedoAddressBook()` and `Model#redoAddressBook()`.
+`redo` follows the same flow using `RedoCommand`, `Model#canRedoAddressBook()`, `Model#getRedoDescription()` and `Model#redoAddressBook()`.
 
 Neither command calls `Model#commitAddressBook`. Restoring a state moves it between the undo and redo stacks without adding a new entry. Repeated `undo` therefore keeps moving back through earlier states, and `redo` does not clear the remaining redo states.
 
@@ -949,8 +951,8 @@ If saving fails after a successful undo or redo, the in-memory state has already
 
 | Situation | Message |
 |-----------|---------|
-| `undo` succeeds | `Rollback to before the most recent change.` |
-| `redo` succeeds | `Restored the most recently undone change.` |
+| `undo` succeeds | `Undid: ` followed by the undone command's success message, e.g. `Undid: Tagged person: …​` |
+| `redo` succeeds | `Redid: ` followed by the redone command's success message, e.g. `Redid: Added to favourites: …​` |
 | Nothing to undo, including stale history | `There is no change to undo.` |
 | Nothing to redo, including stale history | `There is no change to redo. An undone change cannot be redone after another change has been made.` |
 | Arguments after `undo` or `redo` | `Invalid command format!`, followed by the command's usage |
@@ -965,6 +967,15 @@ If saving fails after a successful undo or redo, the in-memory state has already
 * **Alternative 2:** Call `undoAddressBook()` or `redoAddressBook()` directly and use the returned `boolean` to choose the message.
   * Pros: One model call.
   * Cons: The command's decision depends on the result of a call that may also discard stale history as a side effect, which is harder to follow.
+
+**Aspect: How the undone or redone change is described**
+
+* **Alternative 1 (current choice):** Each command passes its own success message to `commitAddressBook`, and the history stores it with the snapshot.
+  * Pros: Each command already formats this message, so no new wording is needed, and undo names the change exactly as the user saw it when it was made.
+  * Cons: Messages that include a full `Messages#format` of the person are long. Each command must remember to pass a description, although the two-argument signature makes it impossible to commit without one.
+* **Alternative 2:** Work out the description by comparing the two snapshots, e.g. finding the contact that was added or removed.
+  * Pros: Commands need no change.
+  * Cons: The comparison cannot tell a `tag` from an `edit` that only changes tags, and it needs separate logic for every kind of change.
 
 **Aspect: Handling extra arguments**
 
@@ -990,9 +1001,9 @@ Undo and redo are tested at each layer:
 
 | Test class | What it checks |
 |------------|----------------|
-| `AddressBookHistoryTest`, `ModelManagerTest` | Committing, undoing and redoing snapshots, ignoring unchanged commits, clearing redo states on a new commit, and stale history after unrecorded changes. |
+| `AddressBookHistoryTest`, `ModelManagerTest` | Committing, undoing and redoing snapshots, the descriptions returned for undo and redo, ignoring unchanged commits, clearing redo states on a new commit, and stale history after unrecorded changes. |
 | `AddCommandTest`, `AddCommandIntegrationTest`, `EditCommandTest` | Successful `add` and `edit` commands record exactly one history entry, while failed or unchanged ones record none. |
-| `UndoCommandTest`, `RedoCommandTest` | Each command on its own against a model: success and failure messages, the order of repeated undos and redos, redo invalidation, and resetting the filtered list. `UndoCommandTest` also undoes and redoes each of `delete`, `clear`, `tag`, `untag`, `fav`, `unfav` and `note`, checks that unchanged results such as `clear` on an empty list record nothing, and checks stale history after a change made directly through the model. |
+| `UndoCommandTest`, `RedoCommandTest` | Each command on its own against a model: success messages naming the undone or redone change, failure messages, the order of repeated undos and redos, redo invalidation, and resetting the filtered list. `UndoCommandTest` also undoes and redoes each of `delete`, `clear`, `tag`, `untag`, `fav`, `unfav` and `note`, checks that unchanged results such as `clear` on an empty list record nothing, and checks stale history after a change made directly through the model. |
 | `AddressBookParserTest` | `undo` and `redo` are parsed, and extra arguments are rejected with the usage message. |
 | `LogicManagerTest`, `UndoRedoIntegrationTest` | Full command strings through `LogicManager#execute`: parser, command, model history and JSON storage together. |
 

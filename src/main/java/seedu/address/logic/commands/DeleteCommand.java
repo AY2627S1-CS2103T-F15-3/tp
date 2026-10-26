@@ -63,8 +63,9 @@ public class DeleteCommand extends Command {
         Person personToDelete = lastShownList.get(targetIndex.getZeroBased());
         ReadOnlyAddressBook previousState = new AddressBook(model.getAddressBook());
         model.deletePerson(personToDelete);
-        model.commitAddressBook(previousState);
-        return new CommandResult(String.format(MESSAGE_DELETE_PERSON_SUCCESS, Messages.format(personToDelete)));
+        String message = String.format(MESSAGE_DELETE_PERSON_SUCCESS, Messages.format(personToDelete));
+        model.commitAddressBook(previousState, message);
+        return new CommandResult(message);
     }
 
     @Override

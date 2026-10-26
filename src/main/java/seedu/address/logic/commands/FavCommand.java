@@ -47,8 +47,9 @@ public class FavCommand extends Command {
                 person.getLastUpdated());
         ReadOnlyAddressBook previousState = new AddressBook(model.getAddressBook());
         model.setPerson(person, favourite);
-        model.commitAddressBook(previousState);
-        return new CommandResult(String.format(MESSAGE_SUCCESS, Messages.format(favourite)));
+        String message = String.format(MESSAGE_SUCCESS, Messages.format(favourite));
+        model.commitAddressBook(previousState, message);
+        return new CommandResult(message);
     }
 
     @Override
