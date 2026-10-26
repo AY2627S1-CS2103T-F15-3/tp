@@ -3,25 +3,47 @@
 skinparam ArrowFontStyle plain
 start
 :Focus the command box;
-if (Press Up or Down?) then (Up)
-  if (Any submitted commands?) then (yes)
-    if (Currently at the draft?) then (yes)
-      :Save the current draft;
+if (Alt+Up or Alt+Down?\nOption on macOS) then (yes)
+  if (Up?) then (yes)
+    :Capture current input as prefix\nif no search is active;
+    :Save draft if at the end of history;
+    :Search older entries with\ncase-sensitive startsWith(prefix);
+    if (Older match exists?) then (yes)
+      :Move to and show the match;
+    else (no)
+      :Leave input and position unchanged;
     endif
-    :Show the previous command\nstay at the oldest entry at the boundary;
-    :Move the caret to the end;
-  else (no)
-    :Leave the input unchanged;
+  else (Down)
+    if (Active search and browsing history?) then (yes)
+      :Search newer matching entries;
+      if (Newer match exists?) then (yes)
+        :Move to and show the match;
+      else (no)
+        :Return to end, restore saved draft\nand reset prefix search;
+      endif
+    else (no)
+      :Leave input unchanged;
+    endif
   endif
-else (Down)
-  if (Currently browsing history?) then (yes)
-    :Show the next command, or restore
-the saved draft after the newest entry;
-    :Move the caret to the end;
-  else (no)
-    :Leave the input unchanged;
+else (ordinary Up/Down)
+  :Reset prefix search, keep cursor and draft;
+  if (Up?) then (yes)
+    if (Any submitted commands?) then (yes)
+      :Save draft if at the end of history;
+      :Show previous chronological command\nstay at oldest entry at boundary;
+    else (no)
+      :Leave input unchanged;
+    endif
+  else (Down)
+    if (Currently browsing history?) then (yes)
+      :Show next chronological command, or\nrestore saved draft after newest entry;
+    else (no)
+      :Leave input unchanged;
+    endif
   endif
 endif
+:For recalled text, move caret to end\nwithout resetting search in text listener;
+:Consume arrow event;
 :Keep contacts and result feedback unchanged\nno command is executed;
 stop
 @enduml
