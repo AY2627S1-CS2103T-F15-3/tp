@@ -221,7 +221,7 @@ public class UndoCommandTest {
 
     @Test
     public void execute_afterNoOpChange_undoesEarlierChange() throws Exception {
-        Person newPerson = new PersonBuilder().withName("Alex Tan").build();
+        Person newPerson = new PersonBuilder().withName("Alex Tan").withTags("Friend").build();
         new AddCommand(newPerson).execute(model);
         // Tagging with a tag the person already has changes nothing, so no undo step is recorded.
         Index alexIndex = Index.fromZeroBased(model.getFilteredPersonList().indexOf(newPerson));
@@ -237,5 +237,19 @@ public class UndoCommandTest {
         new ClearCommand().execute(model);
 
         assertCommandFailure(new UndoCommand(), model, UndoCommand.MESSAGE_FAILURE);
+    }
+
+    @Test
+    public void execute_clearOnEmptyAddressBookAfterUndo_preservesRedo() throws Exception {
+        model = new ModelManager(new AddressBook(), new UserPrefs());
+        new AddCommand(new PersonBuilder().withName("Alex Tan").build()).execute(model);
+        AddressBook stateAfterAdd = new AddressBook(model.getAddressBook());
+        new UndoCommand().execute(model);
+
+        // Clearing the already-empty list changes nothing, so the undone add can still be redone.
+        new ClearCommand().execute(model);
+
+        assertCommandSuccess(new RedoCommand(), model, RedoCommand.MESSAGE_SUCCESS,
+                new ModelManager(stateAfterAdd, new UserPrefs()));
     }
 }
