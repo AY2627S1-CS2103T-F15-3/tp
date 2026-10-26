@@ -6,9 +6,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static seedu.address.logic.commands.CommandTestUtil.assertCommandFailure;
 import static seedu.address.logic.commands.CommandTestUtil.assertCommandSuccess;
 import static seedu.address.logic.commands.CommandTestUtil.showPersonAtIndex;
+import static seedu.address.testutil.Assert.assertThrows;
 import static seedu.address.testutil.TypicalIndexes.INDEX_FIRST_PERSON;
 import static seedu.address.testutil.TypicalIndexes.INDEX_SECOND_PERSON;
 import static seedu.address.testutil.TypicalPersons.getTypicalAddressBook;
+
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
@@ -30,6 +33,12 @@ public class DeleteCommandTest {
     private Model model = new ModelManager(getTypicalAddressBook(), new UserPrefs());
 
     @Test
+    public void constructor_noIndices_throwsIllegalArgumentException() {
+        assertThrows(IllegalArgumentException.class,
+                "At least one target index is required.", () -> new DeleteCommand());
+    }
+
+    @Test
     public void execute_validIndexUnfilteredList_success() {
         Person personToDelete = model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased());
         DeleteCommand deleteCommand = new DeleteCommand(INDEX_FIRST_PERSON);
@@ -41,6 +50,35 @@ public class DeleteCommandTest {
         expectedModel.deletePerson(personToDelete);
 
         assertCommandSuccess(deleteCommand, model, expectedMessage, expectedModel);
+    }
+
+    @Test
+    public void execute_adjacentIndicesInReverseOrder_deletesOriginalContacts() {
+        List<Person> original = List.copyOf(model.getFilteredPersonList());
+        DeleteCommand command = new DeleteCommand(Index.fromOneBased(3), INDEX_SECOND_PERSON, INDEX_FIRST_PERSON);
+        String expectedMessage = "Deleted 3 contacts:\n3. " + Messages.format(original.get(2))
+                + "\n2. " + Messages.format(original.get(1)) + "\n1. " + Messages.format(original.get(0));
+        Model expectedModel = new ModelManager(model.getAddressBook(), new UserPrefs());
+        original.subList(0, 3).forEach(expectedModel::deletePerson);
+
+        assertCommandSuccess(command, model, expectedMessage, expectedModel);
+    }
+
+    @Test
+    public void execute_repeatedIndex_rejectsWholeBatch() {
+        DeleteCommand command = new DeleteCommand(INDEX_FIRST_PERSON, INDEX_SECOND_PERSON, Index.fromOneBased(1));
+
+        assertCommandFailure(command, model,
+                "Index 1 is repeated. Specify each displayed index only once. No contacts were deleted.");
+    }
+
+    @Test
+    public void execute_validThenInvalidIndex_rejectsWholeBatch() {
+        Index invalidIndex = Index.fromOneBased(model.getFilteredPersonList().size() + 1);
+        DeleteCommand command = new DeleteCommand(INDEX_FIRST_PERSON, INDEX_SECOND_PERSON, invalidIndex);
+
+        assertCommandFailure(command, model, String.format(DeleteCommand.MESSAGE_INVALID_INDEX,
+                invalidIndex.getOneBased(), model.getFilteredPersonList().size()));
     }
 
     @Test
@@ -111,7 +149,8 @@ public class DeleteCommandTest {
         DeleteCommand deleteCommand = new DeleteCommand(outOfBoundIndex);
 
         assertCommandFailure(deleteCommand, model,
-                "Index 2 is outside the current displayed list. The only valid index is 1.");
+                "Index 2 is outside the current displayed list. "
+                        + "No contacts were deleted. The only valid index is 1.");
     }
 
     @Test
@@ -176,7 +215,8 @@ public class DeleteCommandTest {
         showPersonAtIndex(model, INDEX_FIRST_PERSON);
 
         assertCommandFailure(new DeleteCommand(Index.fromOneBased(Integer.MAX_VALUE)), model,
-                "Index 2147483647 is outside the current displayed list. The only valid index is 1.");
+                "Index 2147483647 is outside the current displayed list. "
+                        + "No contacts were deleted. The only valid index is 1.");
     }
 
     @Test
@@ -191,7 +231,8 @@ public class DeleteCommandTest {
         showPersonAtIndex(model, INDEX_FIRST_PERSON);
 
         assertCommandFailure(new DeleteCommand(INDEX_SECOND_PERSON), model,
-                "Index 2 is outside the current displayed list. The only valid index is 1.");
+                "Index 2 is outside the current displayed list. "
+                        + "No contacts were deleted. The only valid index is 1.");
 
         assertTrue(model.canUndoAddressBook());
         assertTrue(model.canRedoAddressBook());
@@ -221,13 +262,19 @@ public class DeleteCommandTest {
 
         // different person -> returns false
         assertFalse(deleteFirstCommand.equals(deleteSecondCommand));
+
+        // multiple indices retain their order because feedback follows the input order
+        DeleteCommand deleteBothCommand = new DeleteCommand(INDEX_FIRST_PERSON, INDEX_SECOND_PERSON);
+        assertEquals(deleteBothCommand, new DeleteCommand(INDEX_FIRST_PERSON, INDEX_SECOND_PERSON));
+        assertFalse(deleteBothCommand.equals(deleteFirstCommand));
+        assertFalse(deleteBothCommand.equals(new DeleteCommand(INDEX_SECOND_PERSON, INDEX_FIRST_PERSON)));
     }
 
     @Test
     public void toStringMethod() {
         Index targetIndex = Index.fromOneBased(1);
         DeleteCommand deleteCommand = new DeleteCommand(targetIndex);
-        String expected = DeleteCommand.class.getCanonicalName() + "{targetIndex=" + targetIndex + "}";
+        String expected = DeleteCommand.class.getCanonicalName() + "{targetIndices=" + List.of(targetIndex) + "}";
         assertEquals(expected, deleteCommand.toString());
     }
 

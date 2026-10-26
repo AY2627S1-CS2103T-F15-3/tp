@@ -598,27 +598,42 @@ Examples:
 * `filter t/Classmate`, then `sort year asc`, shows only classmates, earliest class year first.
   `list` then shows all contacts in the same year order.
 
-### Deleting a person: `delete`
+### Deleting contacts: `delete`
 
-Deletes the specified person from UniMate.
+Deletes one or more specified contacts from UniMate.
 
-Format: `delete INDEX`
+Format: `delete INDEX [MORE_INDICES]`
 
-* Deletes the person at the specified `INDEX`.
-* The index refers to the index number shown in the displayed person list.
-* The index **must be a positive integer** 1, 2, 3, ...
+* Supply one or more **distinct positive integers** separated by spaces, such as `delete 1 3 5`.
+  Commas and ranges such as `delete 1,3` and `delete 1-3` are not accepted.
+* Every index refers to the filtered and sorted list displayed **before the command starts**.
+  For example, `delete 1 3 5` removes the original 1st, 3rd and 5th displayed contacts, even as the
+  remaining cards are renumbered. Indices can be supplied in any order, such as `delete 5 1 3`.
+* Every index is checked before any contact is deleted. If any index is invalid or repeated, the
+  whole command is rejected. For example, `delete 1 1` reports
+  `Index 1 is repeated. Specify each displayed index only once. No contacts were deleted.`
 * An index beyond the displayed list is rejected with the valid range for that view. For example, if
   `find Alpha` displays one contact, `delete 2` reports
-  `Index 2 is outside the current displayed list. The only valid index is 1.`
+  `Index 2 is outside the current displayed list. No contacts were deleted. The only valid index is 1.`
+  If three contacts are displayed, `delete 1 3 4` reports that index 4 is out of range and states
+  `No contacts were deleted.` Contacts 1 and 3 remain present too.
 * If no contacts are displayed but saved contacts exist, the error suggests `list` to show them.
   If there are no saved contacts, it suggests adding a contact first. Rejected commands leave contacts,
   the displayed list and undo/redo history unchanged.
-* The deleted person message includes the deleted contact's major and class year when those fields are specified.
-* A deletion can be [undone](#undoing-a-change-undo), which restores the deleted person, and [redone](#redoing-a-change-redo).
+* Deleting one contact keeps the `Deleted person: ...` feedback. Deleting several contacts reports
+  `Deleted N contacts:`, followed by their details on separate lines, labelled with their original
+  displayed indices in the order you entered them. Major and class year are included when specified.
+* Deletion preserves the current filter and sort order. Contacts outside the displayed results are unaffected.
+* One [undo](#undoing-a-change-undo) restores the entire batch, and one
+  [redo](#redoing-a-change-redo) deletes that batch again.
 
 Examples:
+
 * `list` followed by `delete 2` deletes the 2nd person in UniMate.
+* `list` followed by `delete 1 3 5` deletes the original 1st, 3rd and 5th displayed contacts together.
 * `find Betsy` followed by `delete 1` deletes the 1st person in the results of the `find` command.
+* `filter t/Classmate`, then `sort name asc`, then `delete 1 3` deletes the original 1st and 3rd
+  classmates in ascending name order, provided at least three results are displayed.
 * Deleting a contact with academic fields shows a message such as
   `Deleted person: Alex Tan; Phone: 91234567; Email: alex@example.com; Address: 10 Kent Ridge Road; Major: Computer Science; Class year: 2027; Tags: [classmate]`.
 
@@ -660,6 +675,7 @@ Examples:
 * For a contact with an existing note, `delnote 1` followed by `undo` brings back the deleted note.
 * `add n/Alex Tan p/91234567 e/alex@example.com a/10 Kent Ridge Road`, then `edit 1 c/2027`, then `undo` twice first reverts the edit and then removes the added contact.
 * `delete 3` followed by `undo` brings the deleted person back.
+* `delete 1 3 5` followed by `undo` restores all three contacts in one step.
 * `edit 1 p/92345678`, then `fav 1`, then `undo` twice first removes the favourite status and then restores the previous phone number.
 * `fav 1`, then `tag 2 t/Friend`, then `undo` removes the `Friend` tag and shows `Undid: Tagged person: …​`, naming the 2nd person. Running `undo` again shows `Undid: Added to favourites: …​`.
 
@@ -792,7 +808,7 @@ Action     | Format, Examples
 -----------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 **Add**    | `add n/NAME [p/PHONE_NUMBER] [e/EMAIL] a/ADDRESS [m/MAJOR] [c/CLASS_YEAR] [t/TAG]... [d/DEFAULT_INDEX]...` <br> e.g., `add n/James Ho p/22224444 e/jamesho@example.com a/123, Clementi Rd, 1234665 t/friend t/colleague`
 **Clear**  | `clear`
-**Delete** | `delete INDEX`<br> e.g., `delete 3`
+**Delete** | `delete INDEX [MORE_INDICES]`<br> e.g., `delete 1 3 5`
 **Edit**   | `edit INDEX [n/NAME] [p/PHONE_NUMBER] [e/EMAIL] [a/ADDRESS] [m/MAJOR] [c/CLASS_YEAR] [t/TAG]... `<br> e.g.,`edit 2 n/James Lee e/jameslee@example.com`
 **Find**   | `find KEYWORD [MORE_KEYWORDS]`<br> e.g., `find James Jake`, `find Computer Science`, `find 2027`
 **Filter** | `filter [m/MAJOR] [c/CLASS_YEAR] [t/TAG]` (at least one criterion)<br> e.g., `filter m/Computer Science c/2027 t/Classmate`
