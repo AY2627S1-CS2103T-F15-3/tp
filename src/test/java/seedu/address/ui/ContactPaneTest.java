@@ -8,6 +8,7 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import javafx.geometry.Insets;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Label;
@@ -51,6 +52,30 @@ public class ContactPaneTest {
             assertEquals(narrowHeight, card.prefHeight(400), 0.1);
             assertEquals(wideHeight, card.prefHeight(900), 0.1);
             assertEquals(0, GridPane.getRowIndex(academic));
+            return null;
+        });
+    }
+
+    @Test
+    public void unconfiguredCard_measuresAndLaysOutChildrenWithoutExtraBottomSpace() throws Exception {
+        FxTestUtil.runOnFxThread(() -> {
+            PersonCardPane card = new PersonCardPane();
+            card.setPadding(new Insets(4));
+            card.setSpacing(6);
+            Region first = new Region();
+            first.setPrefHeight(20);
+            Region second = new Region();
+            second.setPrefHeight(30);
+            card.getChildren().addAll(first, second);
+
+            assertEquals(64, card.prefHeight(300), 0.1);
+            assertEquals(64, card.minHeight(300), 0.1);
+            card.resize(300, card.prefHeight(300));
+            card.layout();
+
+            assertEquals(4, first.getLayoutY(), 0.1);
+            assertEquals(30, second.getLayoutY(), 0.1);
+            assertEquals(4, card.getHeight() - second.getBoundsInParent().getMaxY(), 0.1);
             return null;
         });
     }

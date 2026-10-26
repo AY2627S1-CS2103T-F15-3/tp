@@ -97,6 +97,7 @@ public class ExpandableTextTest {
             AtomicInteger changes = new AtomicInteger();
             createLabel(label, LONG_VALUE, LONG_VALUE, new HashSet<>(), changes);
             click(label, MouseButton.SECONDARY);
+            click(label, MouseButton.PRIMARY, 2);
             press(label, KeyCode.ESCAPE);
             assertFalse(label.isWrapText());
             assertEquals(0, changes.get());
@@ -123,7 +124,11 @@ public class ExpandableTextTest {
     }
 
     private void click(Label label, MouseButton button) {
-        label.fireEvent(new MouseEvent(MouseEvent.MOUSE_CLICKED, 0, 0, 0, 0, button, 1,
+        click(label, button, 1);
+    }
+
+    private void click(Label label, MouseButton button, int clickCount) {
+        label.fireEvent(new MouseEvent(MouseEvent.MOUSE_CLICKED, 0, 0, 0, 0, button, clickCount,
                 false, false, false, false, false, false, false, false, false, true, null));
     }
 }
