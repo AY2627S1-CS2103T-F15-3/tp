@@ -29,10 +29,10 @@ public class LogicManager implements Logic {
     public static final String FILE_OPS_PERMISSION_ERROR_FORMAT =
             "Could not save data to file %s due to insufficient permissions to write to the file or the folder.";
 
-    public static final String MESSAGE_UNSAVED_CHANGE = "\nThe change made by this command has still been applied "
-            + "in UniMate, but it is not saved to the data file. Running %1$s now would revert this change. "
-            + "If you close UniMate now, this change will be lost. To keep it, fix the problem, "
-            + "then run any command, such as list, to save it.";
+    public static final String MESSAGE_UNSAVED_CHANGE = "\nThe change made by this command has been applied "
+            + ", but it is not saved to the local data file. Running %1$s now would revert this change. "
+            + "If you close UniMate now, this change will be lost. To keep it, fix the error, "
+            + "then run any command, such as list, to save the change locally.";
 
     private final Logger logger = LogsCenter.getLogger(LogicManager.class);
 
