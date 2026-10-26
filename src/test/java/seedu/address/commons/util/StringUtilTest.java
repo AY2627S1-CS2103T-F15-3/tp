@@ -198,6 +198,27 @@ public class StringUtilTest {
                 StringUtil.stripWhitespace(ZERO_WIDTH_SPACE + "a" + ZERO_WIDTH_SPACE));
     }
 
+    //---------------- Tests for hasVisibleCharacter ------------------------------------------
+
+    @Test
+    public void hasVisibleCharacter_invisibleOnly_returnsFalse() {
+        assertFalse(StringUtil.hasVisibleCharacter(""));
+        assertFalse(StringUtil.hasVisibleCharacter(ALL_WHITESPACE));
+        assertFalse(StringUtil.hasVisibleCharacter(ZERO_WIDTH_SPACE + "\ufeff\u2060\u200d"));
+        assertFalse(StringUtil.hasVisibleCharacter("\ufe0f")); // variation selector on its own
+        assertFalse(StringUtil.hasVisibleCharacter("\u0301\u20e3")); // combining marks on their own
+        assertThrows(NullPointerException.class, () -> StringUtil.hasVisibleCharacter(null));
+    }
+
+    @Test
+    public void hasVisibleCharacter_visibleCharacterPresent_returnsTrue() {
+        assertTrue(StringUtil.hasVisibleCharacter("a"));
+        assertTrue(StringUtil.hasVisibleCharacter("\u2764\ufe0f")); // emoji with variation selector
+        assertTrue(StringUtil.hasVisibleCharacter("1\ufe0f\u20e3")); // keycap emoji
+        assertTrue(StringUtil.hasVisibleCharacter("e\u0301")); // letter with combining accent
+        assertTrue(StringUtil.hasVisibleCharacter(ALL_WHITESPACE + "a" + ZERO_WIDTH_SPACE));
+    }
+
     //---------------- Tests for getDetails --------------------------------------
 
     /*

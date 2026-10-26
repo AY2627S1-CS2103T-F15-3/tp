@@ -18,7 +18,7 @@ public class NotesTest {
     @Test
     public void constructor_invalidNotes_throwsIllegalArgumentException() {
         for (String text : new String[]{" ", "\u2003", "\u00a0", "\u200b", "\ufeff", "\u2060\u200b\u00a0",
-            "\u200d", "\u200c\u200d",
+            "\u200d", "\u200c\u200d", "\ufe0f", "\u0301\ufe0f",
             "First\nSecond", "First\rSecond",
             "First\tSecond", "First\u0085Second", "First\u2028Second", "First\u2029Second",
             "a".repeat(Notes.MAX_LENGTH + 1)}) {
@@ -46,6 +46,8 @@ public class NotesTest {
             "\ud83d\udc68\u200d\ud83d\udcbb", // emoji sequence only
             "\ud83c\uddf8\ud83c\uddec trip", // flag emoji
             "\u2764\ufe0f", // emoji with variation selector
+            "1\ufe0f\u20e3", // keycap emoji
+            "Caf\u0065\u0301", // combining accent after a letter
             "\u0645\u06cc\u200c\u062e\u0648\u0627\u0647\u0645", // Persian word with zero width non-joiner
             "\u0915\u094d\u200d\u0937"}) { // Devanagari conjunct with zero width joiner
             assertTrue(Notes.isValidNotes(text));

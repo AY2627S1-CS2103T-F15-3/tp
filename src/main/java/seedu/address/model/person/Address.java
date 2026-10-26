@@ -3,6 +3,8 @@ package seedu.address.model.person;
 import static java.util.Objects.requireNonNull;
 import static seedu.address.commons.util.AppUtil.checkArgument;
 
+import seedu.address.commons.util.StringUtil;
+
 /**
  * Represents a Person's address in the address book.
  * Guarantees: immutable; is valid as declared in {@link #isValidAddress(String)}
@@ -17,7 +19,7 @@ public class Address {
      * The address must also contain a visible character, so values made only of Unicode spaces
      * or invisible format characters (such as U+200B) are treated as blank.
      */
-    public static final String VALIDATION_REGEX = "(?=.*[^\\p{javaWhitespace}\\p{Z}\\p{Cf}])[^\\s].*";
+    public static final String VALIDATION_REGEX = "(?=.*" + StringUtil.VISIBLE_CHARACTER_REGEX + ")[^\\s].*";
 
     public final String value;
 

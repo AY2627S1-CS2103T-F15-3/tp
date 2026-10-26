@@ -32,6 +32,8 @@ public class AddressTest {
         assertFalse(Address.isValidAddress("​")); // zero-width space only
         assertFalse(Address.isValidAddress("﻿")); // byte order mark only
         assertFalse(Address.isValidAddress("\u200d\u200c")); // zero width joiner and non-joiner only
+        assertFalse(Address.isValidAddress("\ufe0f")); // variation selector only
+        assertFalse(Address.isValidAddress("\u0301\ufe0f")); // combining marks only
         assertFalse(Address.isValidAddress("⁠​ ")); // Unicode spaces and invisible characters
 
         // valid addresses
@@ -42,6 +44,8 @@ public class AddressTest {
         assertTrue(Address.isValidAddress("\u0645\u06cc\u200c\u0634\u0648\u062f")); // zero width non-joiner
         assertTrue(Address.isValidAddress("\u0915\u094d\u200d\u0937")); // zero width joiner
         assertTrue(Address.isValidAddress("\ud83d\udc68\u200d\ud83d\udcbb")); // emoji sequence
+        assertTrue(Address.isValidAddress("\u2764\ufe0f")); // emoji with variation selector
+        assertTrue(Address.isValidAddress("Caf\u0065\u0301")); // combining accent after a letter
         assertTrue(Address.isValidAddress("Leng Inc; 1234 Market St; San Francisco CA 2349879; USA")); // long address
     }
 

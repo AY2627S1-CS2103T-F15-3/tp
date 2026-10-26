@@ -114,7 +114,7 @@ public class ParserUtilTest {
 
     @Test
     public void parseAddress_invisibleCharactersOnly_throwsParseException() {
-        for (String address : new String[]{"​", "﻿", "⁠​", " ", " ​ "}) {
+        for (String address : new String[]{"\ufe0f", "\u0301", "​", "﻿", "⁠​", " ", " ​ "}) {
             assertThrows(ParseException.class, Address.MESSAGE_CONSTRAINTS, () -> ParserUtil.parseAddress(address));
         }
     }
@@ -210,7 +210,7 @@ public class ParserUtilTest {
 
     @Test
     public void parseMajor_invisibleCharactersOnly_throwsParseException() {
-        for (String major : new String[]{"​", "﻿", "⁠​", " ", " ​ "}) {
+        for (String major : new String[]{"\ufe0f", "\u0301", "​", "﻿", "⁠​", " ", " ​ "}) {
             assertThrows(ParseException.class, Major.MESSAGE_CONSTRAINTS, () -> ParserUtil.parseMajor(major));
         }
     }

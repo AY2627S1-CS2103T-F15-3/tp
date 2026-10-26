@@ -3,6 +3,8 @@ package seedu.address.model.person;
 import static java.util.Objects.requireNonNull;
 import static seedu.address.commons.util.AppUtil.checkArgument;
 
+import seedu.address.commons.util.StringUtil;
+
 /**
  * Represents a Person's optional academic major in the address book.
  * Guarantees: immutable; is valid as declared in {@link #isValidMajor(String)}.
@@ -18,7 +20,7 @@ public class Major {
      * Spaces and punctuation are allowed, as in "Philosophy, Politics & Economics".
      */
     public static final String VALIDATION_REGEX =
-            "(?=.*[^\\p{javaWhitespace}\\p{Z}\\p{Cf}])[^\\p{javaISOControl}]+";
+            "(?=.*" + StringUtil.VISIBLE_CHARACTER_REGEX + ")[^\\p{javaISOControl}]+";
 
     public static final Major EMPTY = new Major("");
 
