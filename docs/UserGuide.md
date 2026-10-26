@@ -481,6 +481,7 @@ Format: `edit INDEX [n/NAME] [p/PHONE] [e/EMAIL] [a/ADDRESS] [m/MAJOR] [c/CLASS_
   Feedback wraps within the result display when the window is narrow.
 * Enter `p/` or `e/` without a value to clear that contact method. Clearing both shows the automatic `incomplete` reminder; omitted phone/email prefixes preserve the existing values.
 * A successful `edit` that changes the person's details can be reverted with [`undo`](#undoing-a-change-undo).
+  Undo/redo messages include the `Edited person: ...` details but do not repeat the tag replacement summary.
 * The result display shows `Edited person: ` followed by the updated details, and the command box is cleared.
   The contact card shows `Major: Not specified` or `Class year: Not specified` when an academic field is cleared.
 * Notes and favourite status are preserved. Changing a basic profile field refreshes the contact's update date;
@@ -661,6 +662,7 @@ Format: `undo`
 * Every command that changes your contacts can be undone: `add`, `edit`, `delete`, `clear`, `tag`, `untag`, `fav`, `unfav`, `note` and `delnote`.
 * Restores your contacts to how they were before the most recent change that has not already been undone.
 * The message names the change that was undone: `Undid:` followed by the message that change showed when you made it, such as `Undid: Tagged person: …​` or `Undid: Deleted person: Alex Tan; …​`.
+  For `edit`, the tag replacement summary is not repeated in undo or redo feedback.
 * Run `undo` again to revert earlier changes one at a time, starting from the most recent.
 * After an undo, the full contact list is shown, even if you were viewing the results of `find`.
 * A command that leaves every detail unchanged, such as an `edit` with the same values or `tag` with a tag the person already has, does not count as a change.
@@ -690,6 +692,7 @@ Format: `redo`
 
 * The change undone most recently is redone first. Running `redo` repeatedly therefore reapplies undone changes in the order you originally made them.
 * The message names the change that was redone: `Redid:` followed by the message that change showed when you first made it, such as `Redid: Added to favourites: …​`.
+  As with undo, an `edit` tag replacement summary is omitted.
 * After a redo, the full contact list is shown, even if you were viewing the results of `find`.
 * Undone changes can be redone only until you change your contacts again. After any command that changes your contacts, such as `add`, `delete` or `fav`, `redo` is no longer available.
 * Commands that fail, and commands that do not change contacts, such as `list`, `find`, `tags` and `help`, do not affect what `redo` reapplies.

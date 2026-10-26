@@ -109,8 +109,8 @@ public class EditCommand extends Command {
         model.updateFilteredPersonList(PREDICATE_SHOW_ALL_PERSONS);
         String message = String.format(MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(editedPerson));
         // An edit that leaves the person unchanged is not recorded by the model.
-        model.commitAddressBook(previousState);
-        String feedback = String.format(MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(editedPerson));
+        model.commitAddressBook(previousState, message);
+        String feedback = message;
         if (editPersonDescriptor.getTags().isPresent()) {
             feedback += "\nTags replaced. Removed: "
                     + formatTagDifference(personToEdit.getTags(), editedPerson.getTags())

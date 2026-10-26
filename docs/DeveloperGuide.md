@@ -351,7 +351,12 @@ When the descriptor contains tags (including an empty set), `EditCommand` append
 `Tags replaced. Removed: ... . Added: ... .` line to the success message. Set differences between
 the original and replacement tags identify actual removals/additions, sorted by tag name;
 empty differences display `None`. Omitted tags produce no summary. This does not change replacement
-semantics or history recording. `Email.MESSAGE_CONSTRAINTS` uses short newline-separated rules and
+semantics. The base `Edited person: ...` message is passed to
+`Model#commitAddressBook(previousState, message)` before the tag summary is appended to the returned
+feedback. Undo/redo descriptions therefore retain the edited contact details without repeating the
+replacement summary. `UndoRedoIntegrationTest` verifies exact edit, undo and redo feedback and persisted
+contact data for both tag replacement and clearing.
+`Email.MESSAGE_CONSTRAINTS` uses short newline-separated rules and
 explicitly forbids consecutive local-part special characters; the validation regex is unchanged.
 `ResultDisplay.fxml` enables text wrapping so narrow windows do not require horizontal scrolling.
 
@@ -835,7 +840,7 @@ The model keeps an in-memory history of contact data states. Every command that 
 | `AddressBookHistory` | Stores defensive `AddressBook` snapshots, each paired with a description of its change, in an undo stack and a redo stack, and restores them into the tracked `AddressBook`. |
 | `Model` | Declares `commitAddressBook(ReadOnlyAddressBook, String)`, `canUndoAddressBook()`, `canRedoAddressBook()`, `getUndoDescription()`, `getRedoDescription()`, `undoAddressBook()` and `redoAddressBook()`. |
 | `ModelManager` | Creates one `AddressBookHistory` for its `AddressBook` and delegates the methods above to it. |
-| `AddCommand`, `EditCommand`, `DeleteCommand`, `ClearCommand`, `TagCommand`, `UntagCommand`, `FavCommand`, `UnfavCommand`, `NoteCommand`, `DeleteNoteCommand` | Copy the contact data before changing it, then call `Model#commitAddressBook` with that copy and the command's success message as the description. |
+| `AddCommand`, `EditCommand`, `DeleteCommand`, `ClearCommand`, `TagCommand`, `UntagCommand`, `FavCommand`, `UnfavCommand`, `NoteCommand`, `DeleteNoteCommand` | Copy the contact data before changing it, then call `Model#commitAddressBook` with that copy and the command's base success message as the description (`edit` excludes the tag replacement summary). |
 | `UndoCommand`, `RedoCommand` | Check history availability, read the description of the change being reversed or reapplied, restore the corresponding state through the model, and reset the displayed list to show all contacts. |
 
 `AddressBookHistory` holds:
@@ -1023,8 +1028,8 @@ If saving fails after a successful undo or redo, the in-memory state has already
 
 | Situation | Message |
 |-----------|---------|
-| `undo` succeeds | `Undid: ` followed by the undone command's success message, e.g. `Undid: Tagged person: …​` |
-| `redo` succeeds | `Redid: ` followed by the redone command's success message, e.g. `Redid: Added to favourites: …​` |
+| `undo` succeeds | `Undid: ` followed by the undone command's base success message (excluding an edit tag summary), e.g. `Undid: Tagged person: …​` |
+| `redo` succeeds | `Redid: ` followed by the redone command's base success message (excluding an edit tag summary), e.g. `Redid: Added to favourites: …​` |
 | Nothing to undo, including stale history | `There is no change to undo.` |
 | Nothing to redo, including stale history | `There is no change to redo. An undone change cannot be redone after another change has been made.` |
 | Arguments after `undo` or `redo` | `Invalid command format!`, followed by the command's usage |
@@ -1042,7 +1047,7 @@ If saving fails after a successful undo or redo, the in-memory state has already
 
 **Aspect: How the undone or redone change is described**
 
-* **Alternative 1 (current choice):** Each command passes its own success message to `commitAddressBook`, and the history stores it with the snapshot.
+* **Alternative 1 (current choice):** Each command passes its base success message (excluding any edit tag summary) to `commitAddressBook`, and the history stores it with the snapshot.
   * Pros: Each command already formats this message, so no new wording is needed, and undo names the change exactly as the user saw it when it was made.
   * Cons: Messages that include a full `Messages#format` of the person are long. Each command must remember to pass a description, although the two-argument signature makes it impossible to commit without one.
 * **Alternative 2:** Work out the description by comparing the two snapshots, e.g. finding the contact that was added or removed.

@@ -44,13 +44,16 @@ Model --> Edit : contact data to snapshot
 Edit -> Edit : previousState = new AddressBook(contact data)
 Edit -> Model : setPerson(person, editedPerson)
 Edit -> Model : updateFilteredPersonList(PREDICATE_SHOW_ALL_PERSONS)
-Edit -> Model : commitAddressBook(previousState)
+Edit -> Edit : message = "Edited person: ..."
+Edit -> Model : commitAddressBook(previousState, message)
 opt Tags supplied (including empty t/)
   Edit -> Edit : formatTagDifference(oldTags, newTags)
   Edit -> Edit : formatTagDifference(newTags, oldTags)
   note right of Edit
     Append Tags replaced. Removed: ... . Added: ... .
     Sorted actual differences; None when empty.
+    Summary appears only in immediate edit feedback.
+    Undo/redo description retains the base message.
   end note
 end
 Edit --> Logic : CommandResult("Edited person: ..." + tag summary if supplied)
