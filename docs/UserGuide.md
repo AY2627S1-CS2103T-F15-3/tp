@@ -70,8 +70,11 @@ This guide describes the features available in v1.4.
   For example, if the command specifies `n/NAME p/PHONE_NUMBER`, `p/PHONE_NUMBER n/NAME` is also acceptable.
 
 * Extraneous parameters for `help`, `exit`, and `clear` are ignored.<br>
-  For example, `help 123` is interpreted as `help`.<br>
-  `list`, `listfav`, `tags`, `undo` and `redo` reject extra parameters, such as `list all` or `undo 1`.
+  For example, `help 123` is interpreted as `help`.
+
+* `list`, `listfav`, `tags`, `undo` and `redo` take no parameters and reject extra arguments.<br>
+  In particular, `list all` is rejected; use plain `list` to show all saved contacts.
+  See [Listing all persons](#listing-all-persons-list) for details.
 
 * If you are using a PDF version of this document, be careful when copying and pasting commands that span multiple lines as space characters surrounding line-breaks may be omitted when copied over to the application.
 </box>
@@ -821,7 +824,7 @@ Action     | Format, Examples
 **Find**   | `find KEYWORD [MORE_KEYWORDS]`<br> e.g., `find James Jake`, `find Computer Science`, `find 2027`
 **Filter** | `filter [m/MAJOR] [c/CLASS_YEAR] [t/TAG]` (at least one criterion)<br> e.g., `filter m/Computer Science c/2027 t/Classmate`
 **Sort**   | `sort FIELD DIRECTION` or `sort reset`<br> e.g., `sort name asc`, `sort major desc`, `sort year asc`
-**List all saved contacts** | `list` (no parameters; clears the current filter and reports the total)
+**List all saved contacts** | `list` (rejects extra arguments; clears the current filter and reports the total)
 **Favourite** | `fav INDEX`<br> e.g., `fav 1`
 **Unfavourite** | `unfav INDEX`<br> e.g., `unfav 1`
 **List favourites** | `listfav`
