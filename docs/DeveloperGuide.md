@@ -1517,9 +1517,11 @@ Perform these scenarios in order; each one relies on the contacts left by the pr
 
 1. Undoing and redoing several edits
 
-   1. Prerequisites: Run `find UndoCheck` and confirm that it is the only result.
-   1. Run `edit 1 p/98765432 c/2028`, then `edit 1 t/Mentor`.<br>
-      Expected: `UndoCheck` has phone `98765432`, class year `2028` and only the tag `Mentor`.
+   1. Before **each** edit below, run `find UndoCheck` and confirm that it is the only result. Successful edits return the display to the full contact list, so the search must be repeated before editing index `1` again.
+   1. Run `edit 1 p/98765432 c/2028`.<br>
+      Expected: The status message starts with `Edited person: UndoCheck`. `UndoCheck` has phone `98765432` and class year `2028`, and still has the tag `StudyGroup`. The full contact list is shown.
+   1. Run `find UndoCheck`, then `edit 1 t/Mentor`.<br>
+      Expected: The status message starts with `Edited person: UndoCheck`. Running `find UndoCheck` again shows phone `98765432`, class year `2028` and only the tag `Mentor`. No other contact has changed.
    1. Test case: `undo`.<br>
       Expected: The tag `StudyGroup` replaces `Mentor`; the phone and class year stay `98765432` and `2028`. The full contact list is shown instead of the search result.
    1. Test case: `undo` again.<br>
