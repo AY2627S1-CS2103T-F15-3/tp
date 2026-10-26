@@ -47,7 +47,7 @@ public class SortCommandTest {
         model.addPerson(bob);
         AddressBook beforeAdd = new AddressBook(model.getAddressBook());
         model.addPerson(alice);
-        model.commitAddressBook(beforeAdd);
+        model.commitAddressBook(beforeAdd, "Added Alice");
         model.undoAddressBook();
         model.updateFilteredPersonList(person -> false);
         AddressBook beforeSort = new AddressBook(model.getAddressBook());

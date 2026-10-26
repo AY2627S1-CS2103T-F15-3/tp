@@ -171,6 +171,22 @@ The `Storage` component,
 omit either property, it treats the missing value as an empty string and constructs an unspecified
 `Major` or `GraduationYear`. Supplied non-empty values are validated before the contact is loaded.
 
+`JsonSerializableAddressBook#toModelType` rejects null entries in `persons`, and
+`JsonAdaptedPerson#toModelType` rejects null entries in a contact's tag list, using
+`IllegalValueException`. `JsonAdaptedTag` also rejects a null tag name. `JsonAddressBookStorage`
+converts these validation errors to `DataLoadingException`, rejecting the whole file rather than
+returning a partial address book. Missing or null optional tag lists remain valid legacy data.
+Null-entry errors identify one-based positions in the saved `persons` and `tags` arrays, rather than
+GUI display indices. For example, `Contact entry 2 is null.` identifies a null contact, while
+`Contact entry 2 is invalid: Tag entry 3 is null.` identifies a null tag. Contact conversion errors
+include the contact position and retain the original validation exception as their cause.
+
+`JsonUtil#readJsonFile` rejects a null JSON root as a `DataLoadingException`; it returns
+`Optional.empty()` only for a missing file. `MainApp` therefore uses its existing empty-contact-list
+recovery for invalid data, while missing files still use sample contacts. Loading and window-close
+shutdown do not rewrite the invalid contact file. `MainAppTest` checks this recovery with isolated
+storage and a stub UI; storage tests check null data, valid empty lists and legacy contacts.
+
 ### Common classes
 
 Classes used by multiple components are in the `seedu.address.commons` package.
@@ -207,6 +223,11 @@ the corresponding `shownote` command.
 
 `AddressBookParser` routes `note`, `shownote` and `delnote` to their respective parsers. `NoteCommandParser` splits the first index from the remaining text and validates that text without interpreting field prefixes. `ShowNoteCommandParser` and `DeleteNoteCommandParser` accept only an index. Each command resolves the index against `Model#getFilteredPersonList()` and preserves the current filter.
 
+`NoteCommandParser` uses `StringUtil.stripWhitespace` to remove surrounding Unicode whitespace from the
+arguments and note text. This includes non-breaking spaces (U+00A0), figure spaces (U+2007) and narrow
+non-breaking spaces (U+202F), which `String.strip()` does not remove. Trimming occurs before the
+blank-text and length checks. Whitespace inside the note is preserved without normalization.
+
 The sequence below traces `note 1 Met during CS2103T` when at least one contact is displayed and
 saving succeeds. The same flow creates a first note or replaces an existing note. `m:Model` is the
 interface implemented by `ModelManager`; its displayed list includes both filtering and sorting.
@@ -217,8 +238,9 @@ notifications. Notes on the diagram identify the snapshot copy and the displayed
 
 1. `LogicManager` asks `AddressBookParser` to parse the command. `NoteCommandParser` validates the
    index and text, creates a `Notes` value, and returns a `NoteCommand`.
-1. The command checks the index against the displayed list and obtains that contact. It copies the
-   current address book before making any change.
+1. The command checks the index against the displayed list and obtains that contact. If the note
+   is identical, it returns unchanged feedback immediately. Otherwise, it copies the current
+   address book before making any change.
 1. `Person#withNotes` creates a replacement contact while retaining all other fields, including
    favourite status and `lastUpdated`. `Model#setPerson` installs the replacement without resetting
    the filter or sort order.
@@ -226,6 +248,20 @@ notifications. Notes on the diagram identify the snapshot copy and the displayed
    feedback; it does not save the data or call the UI directly.
 1. `LogicManager` saves the resulting address book through `Storage` before returning the feedback
    to its caller. The observable list supplies the updated contact to the UI's card rendering.
+
+`NoteCommand` compares the original immutable `Notes` value before requesting an address-book
+snapshot or calling `setPerson` and `commitAddressBook`. Identical text immediately produces
+`Note unchanged for NAME.` and the saved text. Actual changes retain the snapshot-and-commit flow:
+a new note includes its saved text, while a replacement includes both the previous and saved text
+plus an `undo` reminder. These messages use the standard `CommandResult` and existing result display
+without changing command syntax or storage.
+
+`ResultDisplay.fxml` enables text wrapping, so long previous and saved notes can be read using
+vertical scrolling. At INFO level, `LogicManager` logs the parsed command type instead of raw input,
+and `MainWindow` logs `CommandResult#getLogSummary`, the feedback's first line, instead of its full
+contents. Failed commands are logged without their input. Full note text remains in the GUI feedback;
+this logging policy applies to INFO messages. `NoteFeedbackUiTest` checks long wrapped feedback at
+450- and 740-pixel window widths and captures INFO logs for successful and failing note commands.
 
 Malformed input fails during parsing; an index beyond the displayed list fails before the snapshot
 or replacement. Neither case changes contact data or history. If saving fails after execution,
@@ -235,7 +271,7 @@ or replacement. Neither case changes contact data or history. If saving fails af
 
 `NoteCommand` overwrites the contact's note. `DeleteNoteCommand` replaces it with `Notes.EMPTY`; deleting an already empty note reports an informational message. Both record actual data changes through the existing model history. `ShowNoteCommand` returns the note, or an empty-note message, in a standard `CommandResult`; it does not mutate contact data or history. `LogicManager` retains its normal save-after-success behaviour for all commands.
 
-Note creation, replacement and deletion are supported by the implemented [`undo` and `redo` commands](#undo-and-redo-commands). Saving identical note text is a no-op for history: `AddressBookHistory#commit` compares the previous and resulting data and returns without adding an undo state or clearing redo states. Deleting an already empty note returns before changing the model or committing. Saving unchanged note text, deleting an already empty note, and viewing a note with `shownote` preserve any available redo history.
+Note creation, replacement and deletion are supported by the implemented [`undo` and `redo` commands](#undo-and-redo-commands). Saving identical note text returns before copying the address book, replacing a person or committing history. Deleting an already empty note also returns before changing the model or committing. Saving unchanged note text, deleting an already empty note, and viewing a note with `shownote` preserve any available redo history.
 
 `delnote` follows the same snapshot, replacement and commit sequence when a note exists, using
 `Notes.EMPTY` instead of supplied text. `shownote` only reads the displayed contact and builds its
@@ -280,6 +316,32 @@ uses the supplied values when constructing the edited `Person`, retaining existi
 The existing model update and JSON storage path save the edited values without a storage format change.
 After a successful edit that changes the contact, `EditCommand` records the previous contact data state in the
 model's history (see [Recording contact data history](#recording-contact-data-history)).
+
+#### Editing existing contacts: GUI and execution flow
+
+The following sequence follows `edit 1 m/Mathematics c/` from the actual command box to JSON storage
+and back to GUI feedback. Index `1` refers to the currently displayed list, including `find`, `filter`,
+`listfav` and sorted views. `EditCommand` checks the index and duplicate name before changing the model.
+
+<puml src="diagrams/EditContactSequenceDiagram.puml" alt="Sequence diagram for editing a displayed contact and refreshing the GUI" />
+
+After replacing the person, `EditCommand` resets the filter to `PREDICATE_SHOW_ALL_PERSONS` and commits
+the previous state for undo (unchanged data does not create another history entry). Any current sorting
+still applies. `LogicManager` saves the updated address book before returning the result.
+`MainWindow#executeCommand` refreshes the list and writes the feedback to `ResultDisplay`;
+`CommandBox` then clears its text. `PersonListPanel` observes the model's list and builds `PersonCard`s
+with the current indices. Cleared academic fields render as `Major: Not specified` and
+`Class year: Not specified`.
+
+The replacement `Person` retains notes and favourite status. Changes to name, phone, email, address,
+major or graduation year update `lastUpdated`; a tag-only edit retains the previous date.
+Parser and command validation failures show feedback and preserve input with the error style, without
+changing the contact list or filter. A storage failure occurs after mutation and is reported as an error;
+it does not roll back the in-memory edit.
+
+GUI regression coverage is in `EditContactUiTest`: submissions through `MainWindow`, rendered fields,
+filtered indices, clearing fields, preserved notes/favourite status, invalid edits and saved JSON.
+`EditCommandTest` and `EditCommandParserTest` cover command and parser boundaries.
 
 ### Searching by academic fields
 
@@ -374,8 +436,15 @@ optional behavior of major and class year.
 ### Deleting contacts with academic fields
 
 `DeleteCommand` identifies the target `Person` from `Model#getFilteredPersonList()` using the displayed index.
-It then calls `Model#deletePerson`, which removes the entire `Person` object from the `AddressBook`, including
-the stored `Major`, `GraduationYear`, and tags.
+Before deletion, it rejects an index outside that view with the supplied one-based index and the valid range,
+`1` to the displayed list size. When exactly one contact is displayed, the message instead states
+`The only valid index is 1.` An empty view reports that no contacts are displayed and suggests `list` when
+saved contacts exist; an empty address book instead suggests adding a contact. These checks throw a
+`CommandException` before any model mutation, preserving contacts, the current view and undo/redo history.
+Invalid index syntax still produces the parser's existing usage error.
+
+For a valid index, it calls `Model#deletePerson`, which removes the entire `Person` object from the `AddressBook`,
+including the stored `Major`, `GraduationYear`, and tags.
 
 After deletion, `DeleteCommand` uses `Messages#format(Person)` to include the deleted contact's details in the
 command result.
@@ -700,16 +769,18 @@ The model keeps an in-memory history of contact data states. Every command that 
 
 | Class | Responsibility |
 |-------|----------------|
-| `AddressBookHistory` | Stores defensive `AddressBook` snapshots in an undo stack and a redo stack, and restores them into the tracked `AddressBook`. |
-| `Model` | Declares `commitAddressBook(ReadOnlyAddressBook)`, `canUndoAddressBook()`, `canRedoAddressBook()`, `undoAddressBook()` and `redoAddressBook()`. |
+| `AddressBookHistory` | Stores defensive `AddressBook` snapshots, each paired with a description of its change, in an undo stack and a redo stack, and restores them into the tracked `AddressBook`. |
+| `Model` | Declares `commitAddressBook(ReadOnlyAddressBook, String)`, `canUndoAddressBook()`, `canRedoAddressBook()`, `getUndoDescription()`, `getRedoDescription()`, `undoAddressBook()` and `redoAddressBook()`. |
 | `ModelManager` | Creates one `AddressBookHistory` for its `AddressBook` and delegates the methods above to it. |
-| `AddCommand`, `EditCommand`, `DeleteCommand`, `ClearCommand`, `TagCommand`, `UntagCommand`, `FavCommand`, `UnfavCommand`, `NoteCommand`, `DeleteNoteCommand` | Copy the contact data before changing it, then call `Model#commitAddressBook` with that copy. |
-| `UndoCommand`, `RedoCommand` | Check history availability, restore the corresponding state through the model, and reset the displayed list to show all contacts. |
+| `AddCommand`, `EditCommand`, `DeleteCommand`, `ClearCommand`, `TagCommand`, `UntagCommand`, `FavCommand`, `UnfavCommand`, `NoteCommand`, `DeleteNoteCommand` | Copy the contact data before changing it, then call `Model#commitAddressBook` with that copy and the command's success message as the description. |
+| `UndoCommand`, `RedoCommand` | Check history availability, read the description of the change being reversed or reapplied, restore the corresponding state through the model, and reset the displayed list to show all contacts. |
 
 `AddressBookHistory` holds:
 
 * `undoStates`: the contact data from before each recorded change, most recent on top.
 * `redoStates`: the contact data that has been undone, most recent on top.
+
+Each entry in either stack is a private `Change` record holding the snapshot and a short description of the change between it and the adjacent state, such as `Tagged person: …​`. `getUndoDescription()` and `getRedoDescription()` return the description at the top of the corresponding stack, or an empty `Optional` if there is no valid state to restore.
 * `currentState`: a copy of the contact data the tracked `AddressBook` is expected to contain.
 
 Every stored state is a copy made with `new AddressBook(...)`. `Person` and its fields are immutable, so later changes to the model cannot alter a stored snapshot.
@@ -720,11 +791,11 @@ Given below is the flow for a successful `add n/Alex Tan …​`:
 
 1. `AddCommand#execute` checks `Model#hasPerson`. A duplicate throws a `CommandException` here, so nothing is recorded.
 1. The command creates `previousState = new AddressBook(model.getAddressBook())`, then calls `Model#addPerson`.
-1. The command calls `Model#commitAddressBook(previousState)`. `AddressBookHistory#commit` then:
+1. The command formats its success message and calls `Model#commitAddressBook(previousState, message)`. `AddressBookHistory#commit` then:
    1. returns without recording if `previousState` holds the same contacts as the current data;
    1. clears `undoStates` if `previousState` differs from `currentState`, which means an unrecorded change happened earlier (see below);
-   1. pushes a copy of `previousState` onto `undoStates`, clears `redoStates`, and sets `currentState` to a copy of the current data.
-1. `LogicManager` saves the contact data to storage as before. The history itself is not saved.
+   1. pushes a copy of `previousState` with `message` onto `undoStates`, clears `redoStates`, and sets `currentState` to a copy of the current data.
+1. The command returns the same message as its `CommandResult`. `LogicManager` saves the contact data to storage as before. The history itself is not saved.
 
 The activity diagram below summarises what happens when a command commits:
 
@@ -734,11 +805,11 @@ A command that fails validation, such as a duplicate `add`, throws before copyin
 
 `EditCommand#execute` follows the same pattern. It checks the displayed index and duplicate persons first, copies the data, calls `Model#setPerson`, and then commits. An edit that supplies the person's current values still returns the usual success message. Its commit is ignored because the data did not change, preserving both history stacks. The bare command `edit 1` is invalid because at least one field is required.
 
-`NoteCommand` and `DeleteNoteCommand` use the same snapshot-and-commit flow for actual note changes. An unchanged note produces equal before/after data, so the commit is ignored and redo remains available. `DeleteNoteCommand` returns immediately for an empty note. A new data-changing commit clears redo states; merely viewing a note does not.
+`NoteCommand` and `DeleteNoteCommand` use the same snapshot-and-commit flow for actual note changes. `NoteCommand` returns immediately for unchanged note text, without copying the address book, replacing the contact or committing history, so redo remains available. `DeleteNoteCommand` returns immediately for an empty note. A new data-changing commit clears redo states; merely viewing a note does not.
 
 `DeleteCommand`, `ClearCommand`, `TagCommand`, `UntagCommand`, `FavCommand` and `UnfavCommand` follow the same pattern: each copies the data after its validation checks, makes its change through the model (`Model#deletePerson`, `Model#setAddressBook` or `Model#setPerson`), and then commits. Changes that leave the data unchanged, such as `tag` with a tag the person already has, `untag` with a tag the person does not have, or `clear` on an empty contact list, are ignored by the commit, so no undo step is recorded and redo remains available. `fav` on a person who is already a favourite and `unfav` on one who is not fail before copying the data.
 
-`Model#undoAddressBook()` pushes `currentState` onto `redoStates`, pops the top of `undoStates`, and restores it. `Model#redoAddressBook()` does the reverse. Restoring calls `AddressBook#resetData` on the existing `AddressBook`, so:
+`Model#undoAddressBook()` pops the top of `undoStates`, pushes `currentState` onto `redoStates` with the popped entry's description, and restores the popped state. `Model#redoAddressBook()` does the reverse. The description therefore moves with its change between the stacks, so a redo names the same change that the matching undo named. Restoring calls `AddressBook#resetData` on the existing `AddressBook`, so:
 
 * the `AddressBook` object and the `FilteredList` built on it are the same objects before and after, and the UI updates through its existing observers;
 * restoring a state does not record a new history entry.
@@ -846,8 +917,8 @@ The `undo` and `redo` commands let users revert and reapply any change to contac
 | Class | Responsibility |
 |-------|----------------|
 | `AddressBookParser` | Recognises the `undo` and `redo` command words. Throws a `ParseException` with `MESSAGE_INVALID_COMMAND_FORMAT` and the command's usage if any arguments follow the command word. |
-| `UndoCommand` | Checks `Model#canUndoAddressBook()`, calls `Model#undoAddressBook()`, and shows all contacts. |
-| `RedoCommand` | Checks `Model#canRedoAddressBook()`, calls `Model#redoAddressBook()`, and shows all contacts. |
+| `UndoCommand` | Checks `Model#canUndoAddressBook()`, reads `Model#getUndoDescription()`, calls `Model#undoAddressBook()`, and shows all contacts. |
+| `RedoCommand` | Checks `Model#canRedoAddressBook()`, reads `Model#getRedoDescription()`, calls `Model#redoAddressBook()`, and shows all contacts. |
 
 Neither command has its own parser class, because neither takes any arguments.
 
@@ -858,7 +929,7 @@ Given below is the flow for `undo`:
 1. `LogicManager#execute` passes the input to `AddressBookParser#parseCommand`. If anything follows the command word, such as in `undo 1`, a `ParseException` is thrown and the model is never reached.
 1. The parser returns a new `UndoCommand`, and `LogicManager` calls `UndoCommand#execute(model)`.
 1. The command checks `Model#canUndoAddressBook()`. If it returns `false`, the command throws a `CommandException` with `UndoCommand.MESSAGE_FAILURE`. The exception propagates out of `LogicManager#execute` before the save step, so neither the data nor the data file changes.
-1. Otherwise, the command calls `Model#undoAddressBook()`, which restores the previous state in place. It then calls `Model#updateFilteredPersonList(PREDICATE_SHOW_ALL_PERSONS)` so that every restored contact is visible, even if a `find` filter was active, and returns a `CommandResult` with `UndoCommand.MESSAGE_SUCCESS`.
+1. Otherwise, the command reads the description of the change about to be reversed with `Model#getUndoDescription()`, then calls `Model#undoAddressBook()`, which restores the previous state in place. It then calls `Model#updateFilteredPersonList(PREDICATE_SHOW_ALL_PERSONS)` so that every restored contact is visible, even if a `find` filter was active, and returns a `CommandResult` with `UndoCommand.MESSAGE_SUCCESS` formatted with that description.
 1. `LogicManager` saves the restored contact data through `Storage#saveAddressBook`, as it does for every successful command.
 
 The sequence diagram below shows these steps for `execute("undo")`, including the failure path when there is nothing to undo:
@@ -870,7 +941,7 @@ The sequence diagram below shows these steps for `execute("undo")`, including th
 **Note:** The lifeline for `UndoCommand` should end at the destroy marker (X), but due to a limitation of PlantUML, the lifeline continues till the end of diagram.
 </box>
 
-`redo` follows the same flow using `RedoCommand`, `Model#canRedoAddressBook()` and `Model#redoAddressBook()`.
+`redo` follows the same flow using `RedoCommand`, `Model#canRedoAddressBook()`, `Model#getRedoDescription()` and `Model#redoAddressBook()`.
 
 Neither command calls `Model#commitAddressBook`. Restoring a state moves it between the undo and redo stacks without adding a new entry. Repeated `undo` therefore keeps moving back through earlier states, and `redo` does not clear the remaining redo states.
 
@@ -880,8 +951,8 @@ If saving fails after a successful undo or redo, the in-memory state has already
 
 | Situation | Message |
 |-----------|---------|
-| `undo` succeeds | `Rollback to before the most recent change.` |
-| `redo` succeeds | `Restored the most recently undone change.` |
+| `undo` succeeds | `Undid: ` followed by the undone command's success message, e.g. `Undid: Tagged person: …​` |
+| `redo` succeeds | `Redid: ` followed by the redone command's success message, e.g. `Redid: Added to favourites: …​` |
 | Nothing to undo, including stale history | `There is no change to undo.` |
 | Nothing to redo, including stale history | `There is no change to redo. An undone change cannot be redone after another change has been made.` |
 | Arguments after `undo` or `redo` | `Invalid command format!`, followed by the command's usage |
@@ -896,6 +967,15 @@ If saving fails after a successful undo or redo, the in-memory state has already
 * **Alternative 2:** Call `undoAddressBook()` or `redoAddressBook()` directly and use the returned `boolean` to choose the message.
   * Pros: One model call.
   * Cons: The command's decision depends on the result of a call that may also discard stale history as a side effect, which is harder to follow.
+
+**Aspect: How the undone or redone change is described**
+
+* **Alternative 1 (current choice):** Each command passes its own success message to `commitAddressBook`, and the history stores it with the snapshot.
+  * Pros: Each command already formats this message, so no new wording is needed, and undo names the change exactly as the user saw it when it was made.
+  * Cons: Messages that include a full `Messages#format` of the person are long. Each command must remember to pass a description, although the two-argument signature makes it impossible to commit without one.
+* **Alternative 2:** Work out the description by comparing the two snapshots, e.g. finding the contact that was added or removed.
+  * Pros: Commands need no change.
+  * Cons: The comparison cannot tell a `tag` from an `edit` that only changes tags, and it needs separate logic for every kind of change.
 
 **Aspect: Handling extra arguments**
 
@@ -921,9 +1001,9 @@ Undo and redo are tested at each layer:
 
 | Test class | What it checks |
 |------------|----------------|
-| `AddressBookHistoryTest`, `ModelManagerTest` | Committing, undoing and redoing snapshots, ignoring unchanged commits, clearing redo states on a new commit, and stale history after unrecorded changes. |
+| `AddressBookHistoryTest`, `ModelManagerTest` | Committing, undoing and redoing snapshots, the descriptions returned for undo and redo, ignoring unchanged commits, clearing redo states on a new commit, and stale history after unrecorded changes. |
 | `AddCommandTest`, `AddCommandIntegrationTest`, `EditCommandTest` | Successful `add` and `edit` commands record exactly one history entry, while failed or unchanged ones record none. |
-| `UndoCommandTest`, `RedoCommandTest` | Each command on its own against a model: success and failure messages, the order of repeated undos and redos, redo invalidation, and resetting the filtered list. `UndoCommandTest` also undoes and redoes each of `delete`, `clear`, `tag`, `untag`, `fav`, `unfav` and `note`, checks that unchanged results such as `clear` on an empty list record nothing, and checks stale history after a change made directly through the model. |
+| `UndoCommandTest`, `RedoCommandTest` | Each command on its own against a model: success messages naming the undone or redone change, failure messages, the order of repeated undos and redos, redo invalidation, and resetting the filtered list. `UndoCommandTest` also undoes and redoes each of `delete`, `clear`, `tag`, `untag`, `fav`, `unfav` and `note`, checks that unchanged results such as `clear` on an empty list record nothing, and checks stale history after a change made directly through the model. |
 | `AddressBookParserTest` | `undo` and `redo` are parsed, and extra arguments are rejected with the usage message. |
 | `LogicManagerTest`, `UndoRedoIntegrationTest` | Full command strings through `LogicManager#execute`: parser, command, model history and JSON storage together. |
 
@@ -935,7 +1015,9 @@ Undo and redo are tested at each layer:
 
 `CommandBox` owns a session-local `CommandHistory`. A `KEY_PRESSED` event filter on its text field
 consumes Up/Down events, recalls the corresponding text and moves the caret to its end.
-Recalling text clears the error style through the existing text listener and does not execute a command.
+When recalled text differs from the current input, the existing text listener clears the error style.
+Recalling an identical string does not trigger that listener. Browsing does not execute a command or
+change the result display or contact list.
 
 `CommandHistory` stores submissions in order, including duplicates and failed commands. `CommandBox`
 records non-empty input before calling the executor, so parse and execution errors remain recallable.
@@ -944,7 +1026,12 @@ the current draft; Down past the newest entry restores it. Navigation stops at t
 Down at the draft position leaves input unchanged. Editing recalled input does not change stored entries.
 History is held in memory and is not written to contact data or preferences.
 
-Automated boundary, draft and submission checks are in `CommandHistoryTest`. For manual UI verification:
+<puml src="diagrams/CommandHistorySequenceDiagram.puml" alt="Sequence diagram for recording submissions and browsing command history in the GUI" />
+
+`CommandHistoryTest` covers boundaries, duplicates and draft state. `CommandBoxTest` exercises the real
+FXML text field on the JavaFX thread: Up/Down event consumption, caret placement, draft restoration,
+failed submissions, error styling and the absence of executor calls during browsing.
+For manual UI verification:
 
 1. Submit `list`, then an invalid command. Press Up twice and verify both can be recalled in reverse order.
 2. Press Up again at the oldest entry; verify it stays displayed. Press Down to return to the newest entry.
@@ -1462,11 +1549,20 @@ testers are expected to do more *exploratory* testing.
 
 1. Rejecting invalid indices
 
-   1. Prerequisites: Run `list` with at least one contact present.
+   1. Prerequisites: Run `list` with at least two contacts present.
    1. Test cases: `delete 0`, `delete`, `delete x`.<br>
       Expected: An invalid-command-format error is shown and no contact is deleted.
    1. Run `delete` with a numeric index greater than the displayed list size.<br>
-      Expected: `The person index provided is invalid.` No contact is deleted.
+      Expected: `Index X is outside the current displayed list. Choose an index from 1 to N.`, where `X` is the
+      supplied index and `N` is the displayed list size. No contact is deleted.
+   1. Run `find DeleteIndexCheckNoMatch`, ensuring no saved contact matches, then `delete 1`.<br>
+      Expected: `No contacts are currently displayed to delete. Use list to view all saved contacts.`
+      Saved contacts and the empty displayed list remain unchanged.
+   1. Run `list`, then `find` with a keyword matching exactly one saved contact. Run `delete 2`.<br>
+      Expected: `Index 2 is outside the current displayed list. The only valid index is 1.`
+      The matching contact remains displayed and no contact is deleted.
+   1. In an empty disposable address book, run `delete 1`.<br>
+      Expected: `There are no saved contacts to delete. Add a contact before using delete.`
 
 ### Tagging and untagging a person
 
@@ -1517,9 +1613,11 @@ Perform these scenarios in order; each one relies on the contacts left by the pr
 
 1. Undoing and redoing several edits
 
-   1. Prerequisites: Run `find UndoCheck` and confirm that it is the only result.
-   1. Run `edit 1 p/98765432 c/2028`, then `edit 1 t/Mentor`.<br>
-      Expected: `UndoCheck` has phone `98765432`, class year `2028` and only the tag `Mentor`.
+   1. Before **each** edit below, run `find UndoCheck` and confirm that it is the only result. Successful edits return the display to the full contact list, so the search must be repeated before editing index `1` again.
+   1. Run `edit 1 p/98765432 c/2028`.<br>
+      Expected: The status message starts with `Edited person: UndoCheck`. `UndoCheck` has phone `98765432` and class year `2028`, and still has the tag `StudyGroup`. The full contact list is shown.
+   1. Run `find UndoCheck`, then `edit 1 t/Mentor`.<br>
+      Expected: The status message starts with `Edited person: UndoCheck`. Running `find UndoCheck` again shows phone `98765432`, class year `2028` and only the tag `Mentor`. No other contact has changed.
    1. Test case: `undo`.<br>
       Expected: The tag `StudyGroup` replaces `Mentor`; the phone and class year stay `98765432` and `2028`. The full contact list is shown instead of the search result.
    1. Test case: `undo` again.<br>
@@ -1565,10 +1663,27 @@ Use a test contact for these checks. Run `list` and identify its displayed index
 
 1. Run `shownote 1` on a contact with no note.<br>
    Expected: `No notes have been added to this contact.` No note icon is visible.
-1. Run `note 1 Met during CS2103T`, then `shownote 1`.<br>
-   Expected: A note icon appears at the bottom right of the card. The message area shows the saved text beneath the contact's name.
-1. Run `note 1 Project teammate`, then `shownote 1`.<br>
-   Expected: Only `Project teammate` is shown; the previous note was replaced. Other contact details are preserved.
+1. Run `note 1 Met during CS2103T` and inspect its feedback, then run `shownote 1`.<br>
+   Expected: The feedback starts with `Note saved for NAME.` and includes `Saved note: Met during CS2103T`.
+   A note icon appears at the bottom right of the card, and `shownote` displays the saved text.
+1. Run `note 1 Project teammate` and inspect its feedback.<br>
+   Expected: The feedback starts with `Note replaced for NAME. Use undo to restore the previous note.`
+   It includes `Previous note: Met during CS2103T` and `Saved note: Project teammate` on separate lines.
+   Other contact details are preserved.
+1. Run `undo`, then `shownote 1`.<br>
+   Expected: The original `Met during CS2103T` note is restored.
+1. Run `redo`, then `note 1 Project teammate`.<br>
+   Expected: The replacement is restored. Saving the same text reports `Note unchanged for NAME.` and
+   `Saved note: Project teammate` without adding an undo step.
+1. Paste `note 1 <NBSP>Hello<NBSP>`, replacing each `<NBSP>` with an actual non-breaking space (U+00A0),
+   then run `shownote 1`.<br>
+   Expected: The note is exactly `Hello`, with five characters and no surrounding spaces. After restarting,
+   `shownote` still displays `Hello`. Non-breaking spaces between words in a note remain unchanged.
+   Restore `note 1 Project teammate` before continuing with the following checks.
+1. Save a long note, then replace it with another long note, each up to 500 characters. Narrow the window.<br>
+   Expected: The previous and saved text remain complete and wrap within the message area. Vertical
+   scrolling reveals the full feedback. New INFO log entries contain the replacement summary without
+   either note's text. Restore `note 1 Project teammate` before continuing.
 1. Edit the contact's phone, add a tag with `tag`, and remove it with `untag`, then run `shownote` using the contact's current index.<br>
    Expected: The note is still `Project teammate`.
 1. Restart the app, locate the same contact, and run `shownote`.<br>
@@ -1681,6 +1796,30 @@ Use only the separate test folder for these checks. The paths below are relative
    1. Relaunch the app without entering a command.<br>
       Expected: The whole data file is rejected and the app opens with an empty contact list. It does not partially load the other contacts or silently correct the invalid year. The invalid file remains unchanged at this point.
    1. Close the window using its close button, then restore the valid backup. Do not enter `exit` before restoring, because a successfully executed command would save the empty in-memory list over the invalid file.
+
+1. Null entries and null JSON roots
+
+   1. With the app closed, use a disposable test folder and retain the valid backup. Test each of these
+      file contents separately in `data/unimate.json`:
+
+      * `{"persons":[null]}`
+      * `{"persons":[{"name":"Null Tag","address":"NUS","tags":[null]}]}`
+      * `null`
+   1. Relaunch the app without entering a command.<br>
+      Expected: The GUI opens with an empty contact list, and the loading error is logged.
+      For the first two files, the log identifies `Contact entry 1 is null.` and
+      `Contact entry 1 is invalid: Tag entry 1 is null.`, respectively.
+      The original invalid file remains unchanged.
+   1. Close the window using its close button and inspect the file.<br>
+      Expected: It still contains the original invalid data. Restore the backup before the next case.
+   1. Repeat with a valid contact followed by a null entry in the same `persons` array.<br>
+      Expected: The whole file is rejected; the valid contact is not partially loaded. The logged
+      error is `Contact entry 2 is null.`.
+   1. Repeat with a valid contact followed by a contact whose `tags` array is `["friends",null]`.<br>
+      Expected: The whole file is rejected, and the log identifies
+      `Contact entry 2 is invalid: Tag entry 2 is null.`. Positions count entries from 1 in saved-file order.
+   1. Separately test `{"persons":[]}` and a valid older contact with omitted optional fields.<br>
+      Expected: The empty list loads normally, and the older contact loads with unspecified optional details.
 
 1. Loading a file saved under the old filename
 

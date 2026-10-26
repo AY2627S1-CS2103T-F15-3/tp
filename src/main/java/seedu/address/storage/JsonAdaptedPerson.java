@@ -29,6 +29,7 @@ import seedu.address.model.tag.Tag;
 class JsonAdaptedPerson {
 
     public static final String MISSING_FIELD_MESSAGE_FORMAT = "Person's %s field is missing!";
+    public static final String MESSAGE_NULL_TAG = "Tag entry %1$d is null.";
 
     private final String name;
     private final String phone;
@@ -121,7 +122,11 @@ class JsonAdaptedPerson {
      */
     public Person toModelType() throws IllegalValueException {
         final List<Tag> personTags = new ArrayList<>();
-        for (JsonAdaptedTag tag : tags) {
+        for (int tagIndex = 0; tagIndex < tags.size(); tagIndex++) {
+            JsonAdaptedTag tag = tags.get(tagIndex);
+            if (tag == null) {
+                throw new IllegalValueException(String.format(MESSAGE_NULL_TAG, tagIndex + 1));
+            }
             personTags.add(tag.toModelType());
         }
 

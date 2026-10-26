@@ -26,6 +26,14 @@ public class DeleteCommand extends Command {
             + "Example: " + COMMAND_WORD + " 1";
 
     public static final String MESSAGE_DELETE_PERSON_SUCCESS = "Deleted person: %1$s";
+    public static final String MESSAGE_INVALID_INDEX = "Index %1$d is outside the current displayed list. "
+            + "Choose an index from 1 to %2$d.";
+    public static final String MESSAGE_INVALID_INDEX_SINGLE_PERSON = "Index %1$d is outside "
+            + "the current displayed list. The only valid index is 1.";
+    public static final String MESSAGE_NO_CONTACTS = "There are no saved contacts to delete. "
+            + "Add a contact before using delete.";
+    public static final String MESSAGE_NO_DISPLAYED_CONTACTS = "No contacts are currently displayed to delete. "
+            + "Use list to view all saved contacts.";
 
     private final Index targetIndex;
 
@@ -38,15 +46,26 @@ public class DeleteCommand extends Command {
         requireNonNull(model);
         List<Person> lastShownList = model.getFilteredPersonList();
 
+        if (lastShownList.isEmpty()) {
+            throw new CommandException(model.getAddressBook().getPersonList().isEmpty()
+                    ? MESSAGE_NO_CONTACTS : MESSAGE_NO_DISPLAYED_CONTACTS);
+        }
+
         if (targetIndex.getZeroBased() >= lastShownList.size()) {
-            throw new CommandException(Messages.MESSAGE_INVALID_PERSON_DISPLAYED_INDEX);
+            if (lastShownList.size() == 1) {
+                throw new CommandException(String.format(MESSAGE_INVALID_INDEX_SINGLE_PERSON,
+                        targetIndex.getOneBased()));
+            }
+            throw new CommandException(String.format(MESSAGE_INVALID_INDEX,
+                    targetIndex.getOneBased(), lastShownList.size()));
         }
 
         Person personToDelete = lastShownList.get(targetIndex.getZeroBased());
         ReadOnlyAddressBook previousState = new AddressBook(model.getAddressBook());
         model.deletePerson(personToDelete);
-        model.commitAddressBook(previousState);
-        return new CommandResult(String.format(MESSAGE_DELETE_PERSON_SUCCESS, Messages.format(personToDelete)));
+        String message = String.format(MESSAGE_DELETE_PERSON_SUCCESS, Messages.format(personToDelete));
+        model.commitAddressBook(previousState, message);
+        return new CommandResult(message);
     }
 
     @Override
