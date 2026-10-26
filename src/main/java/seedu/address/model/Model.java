@@ -1,6 +1,7 @@
 package seedu.address.model;
 
 import java.util.Comparator;
+import java.util.Optional;
 import java.util.function.Predicate;
 
 import javafx.beans.property.ReadOnlyStringProperty;
@@ -65,9 +66,10 @@ public interface Model {
     /**
      * Records a completed change from {@code previousState} to the current address book state,
      * so that the change can be undone. Clears any redo history.
+     * {@code description} names the change, and is reported when the change is undone or redone.
      * Does nothing if the change did not modify the address book data.
      */
-    void commitAddressBook(ReadOnlyAddressBook previousState);
+    void commitAddressBook(ReadOnlyAddressBook previousState, String description);
 
     /**
      * Returns true if there is a recorded address book state to undo to.
@@ -80,6 +82,18 @@ public interface Model {
      * Returns false if the address book was changed without being recorded since the last undo.
      */
     boolean canRedoAddressBook();
+
+    /**
+     * Returns the description of the change that {@link #undoAddressBook()} would reverse,
+     * or an empty {@code Optional} if there is nothing to undo.
+     */
+    Optional<String> getUndoDescription();
+
+    /**
+     * Returns the description of the change that {@link #redoAddressBook()} would reapply,
+     * or an empty {@code Optional} if there is nothing to redo.
+     */
+    Optional<String> getRedoDescription();
 
     /**
      * Restores the address book to its state before the most recent recorded change.

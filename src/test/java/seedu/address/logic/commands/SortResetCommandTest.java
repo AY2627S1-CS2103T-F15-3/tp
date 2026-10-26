@@ -50,7 +50,7 @@ public class SortResetCommandTest {
         model.addPerson(bob);
         AddressBook beforeAdd = new AddressBook(model.getAddressBook());
         model.addPerson(alice);
-        model.commitAddressBook(beforeAdd);
+        model.commitAddressBook(beforeAdd, "Added Alice");
         assertTrue(model.undoAddressBook());
         new SortCommand(NAME, DESC).execute(model);
         new SortResetCommand().execute(model);

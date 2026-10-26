@@ -10,7 +10,9 @@ import java.util.Set;
 import seedu.address.commons.core.index.Index;
 import seedu.address.logic.Messages;
 import seedu.address.logic.commands.exceptions.CommandException;
+import seedu.address.model.AddressBook;
 import seedu.address.model.Model;
+import seedu.address.model.ReadOnlyAddressBook;
 import seedu.address.model.person.Person;
 import seedu.address.model.tag.Tag;
 
@@ -50,8 +52,11 @@ public class UntagCommand extends Command {
         Person updatedPerson = new Person(person.getName(), person.getPhone(), person.getEmail(),
                 person.getAddress(), person.getMajor(), person.getGraduationYear(), updatedTags,
                 person.getNotes(), person.isFavourite(), person.getLastUpdated());
+        ReadOnlyAddressBook previousState = new AddressBook(model.getAddressBook());
         model.setPerson(person, updatedPerson);
-        return new CommandResult(String.format(MESSAGE_SUCCESS, Messages.format(updatedPerson)));
+        String message = String.format(MESSAGE_SUCCESS, Messages.format(updatedPerson));
+        model.commitAddressBook(previousState, message);
+        return new CommandResult(message);
     }
 
     @Override
