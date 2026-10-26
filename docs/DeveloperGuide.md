@@ -1106,7 +1106,10 @@ full opacity on each press, including boundary presses and identical recalls. At
 the transition stops and the label becomes invisible and unmanaged so the input reclaims its space.
 Failed submissions also hide the label. Prefix search displays absolute positions rather than match counts.
 
-<puml src="diagrams/CommandHistorySequenceDiagram.puml" alt="Sequence diagram for submissions, chronological navigation and optional prefix history search" />
+The sequence diagram below shows a submission followed by an Alt+Up prefix search.
+Alt+Down, Up and Down follow the same flow as Alt+Up, calling `nextMatching()`, `previous(input)` and `next()` instead.
+
+<puml src="diagrams/CommandHistorySequenceDiagram.puml" alt="Sequence diagram for a submission followed by an Alt+Up prefix history search" />
 
 `CommandHistoryTest` covers boundaries, duplicates, exact prefixes, mode switching and draft state. `CommandBoxTest` exercises the real
 FXML text field on the JavaFX thread: Up/Down event consumption, caret placement, draft restoration,
