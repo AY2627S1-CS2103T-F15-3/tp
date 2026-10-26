@@ -10,6 +10,7 @@ import static seedu.address.testutil.TypicalPersons.ALICE;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Predicate;
 
 import org.junit.jupiter.api.Test;
@@ -66,12 +67,13 @@ public class AddCommandTest {
         Person firstPerson = new PersonBuilder().withName("Alice").build();
         Person secondPerson = new PersonBuilder().withName("Bob").build();
 
-        new AddCommand(firstPerson).execute(modelStub);
-        new AddCommand(secondPerson).execute(modelStub);
+        String firstMessage = new AddCommand(firstPerson).execute(modelStub).getFeedbackToUser();
+        String secondMessage = new AddCommand(secondPerson).execute(modelStub).getFeedbackToUser();
 
         AddressBook stateBeforeSecondAdd = new AddressBook();
         stateBeforeSecondAdd.addPerson(firstPerson);
         assertEquals(List.of(new AddressBook(), stateBeforeSecondAdd), modelStub.committedPreviousStates);
+        assertEquals(List.of(firstMessage, secondMessage), modelStub.committedDescriptions);
     }
 
     @Test
@@ -239,7 +241,7 @@ public class AddCommandTest {
         }
 
         @Override
-        public void commitAddressBook(ReadOnlyAddressBook previousState) {
+        public void commitAddressBook(ReadOnlyAddressBook previousState, String description) {
             throw new AssertionError("This method should not be called.");
         }
 
@@ -250,6 +252,16 @@ public class AddCommandTest {
 
         @Override
         public boolean canRedoAddressBook() {
+            throw new AssertionError("This method should not be called.");
+        }
+
+        @Override
+        public Optional<String> getUndoDescription() {
+            throw new AssertionError("This method should not be called.");
+        }
+
+        @Override
+        public Optional<String> getRedoDescription() {
             throw new AssertionError("This method should not be called.");
         }
 
@@ -313,6 +325,7 @@ public class AddCommandTest {
     private class ModelStubAcceptingPersonAdded extends ModelStub {
         final ArrayList<Person> personsAdded = new ArrayList<>();
         final ArrayList<ReadOnlyAddressBook> committedPreviousStates = new ArrayList<>();
+        final ArrayList<String> committedDescriptions = new ArrayList<>();
 
         @Override
         public boolean hasPerson(Person person) {
@@ -334,9 +347,11 @@ public class AddCommandTest {
         }
 
         @Override
-        public void commitAddressBook(ReadOnlyAddressBook previousState) {
+        public void commitAddressBook(ReadOnlyAddressBook previousState, String description) {
             requireNonNull(previousState);
+            requireNonNull(description);
             committedPreviousStates.add(previousState);
+            committedDescriptions.add(description);
         }
     }
 
