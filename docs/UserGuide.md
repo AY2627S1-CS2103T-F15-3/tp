@@ -362,7 +362,8 @@ Format: `note INDEX TEXT`
 
 * `INDEX` is the positive index shown in the current contact list, including search results.
 * `TEXT` is required and must be a single line of up to 500 characters. Spaces, punctuation and Unicode text are allowed; control characters such as tabs are not.
-* Leading and trailing whitespace is trimmed. Spaces within the note are preserved.
+* Leading and trailing whitespace, including non-breaking spaces (U+00A0), is trimmed before the
+  500-character limit is checked. Spaces within the note, including Unicode spaces, are preserved.
 * Everything after the index is note text. No field prefix or quotation marks are needed; text such as `n/` or `t/` is saved literally.
 * The contact's other details and the current list filter are preserved.
 * Notes are saved automatically with contact data and remain available after restarting UniMate. New contacts have no note; use `note` after `add`.
@@ -370,7 +371,27 @@ Format: `note INDEX TEXT`
 
 Example: `note 2 Met during CS2103T`
 
-The message area displays `Note saved for NAME.` A small note icon at the bottom right of the contact card indicates that a note is present. Use `shownote` to read it.
+The message area identifies what happened and includes the saved text:
+
+* A new note starts with `Note saved for NAME.`, followed by `Saved note: TEXT`.
+* Replacing a different existing note starts with `Note replaced for NAME. Use undo to restore the previous note.`,
+  followed by `Previous note: OLD_TEXT` and `Saved note: NEW_TEXT` on separate lines.
+* Saving identical text starts with `Note unchanged for NAME.`, followed by `Saved note: TEXT`.
+  This does not create an undo step or clear redo history.
+
+For example, replacing `Met during CS2103T` with `Met at hackathon` for Alice displays:
+
+```text
+Note replaced for Alice. Use undo to restore the previous note.
+Previous note: Met during CS2103T
+Saved note: Met at hackathon
+```
+
+Long feedback wraps within the message area. Scroll vertically to compare the complete previous
+and saved notes.
+
+A small note icon at the bottom right of the contact card indicates that a note is present.
+Use `shownote` to read it again.
 
 ### Viewing a contact's note: `shownote`
 
@@ -437,11 +458,24 @@ Format: `edit INDEX [n/NAME] [p/PHONE] [e/EMAIL] [a/ADDRESS] [m/MAJOR] [c/CLASS_
   A supplied major must be non-blank text on one line; a class year must be four digits from `2000` to `2099`.
 * Enter `m/` or `c/` with no value to clear that optional field. Each of these prefixes may appear only once.
 * Leading and trailing spaces are ignored. If any supplied value is invalid or an academic prefix is repeated, no fields are updated.
-* After a successful edit, the full contact list is shown. If editing search results, run `find` again before using a search-result index for another edit.
+* After a successful edit, the full contact list is shown. If editing search or filter results, run `find` or `filter` again before using a result index for another edit.
 * When editing tags, all of the person's existing tags are removed; adding tags is not cumulative.
 * To remove all of a person's tags, enter `t/` without a tag after it.
 * Enter `p/` or `e/` without a value to clear that contact method. Clearing both shows the automatic `incomplete` reminder; omitted phone/email prefixes preserve the existing values.
 * A successful `edit` that changes the person's details can be reverted with [`undo`](#undoing-a-change-undo).
+* The result display shows `Edited person: ` followed by the updated details, and the command box is cleared.
+  The contact card shows `Major: Not specified` or `Class year: Not specified` when an academic field is cleared.
+* Notes and favourite status are preserved. Changing a basic profile field refreshes the contact's update date;
+  changing only tags does not refresh that date.
+* Invalid input, an index outside the displayed list, or a name already used by another contact leaves the
+  contacts and current view unchanged. The result display shows the error and the command box keeps the input for correction.
+
+The activity diagram below shows the edit workflow (assuming the data file can be saved):
+
+<puml src="diagrams/EditContactActivityDiagram.puml" alt="Activity diagram for editing an existing contact from the command box" width="550" />
+
+If saving fails, the result display reports a saving error and keeps the command text. The in-memory
+edit has already happened; the error does not mean it was rolled back.
 
 Examples:
 *  `edit 1 p/91234567 e/johndoe@example.com` Edits the phone number and email address of the 1st person to be `91234567` and `johndoe@example.com` respectively.
@@ -548,6 +582,12 @@ Format: `delete INDEX`
 * Deletes the person at the specified `INDEX`.
 * The index refers to the index number shown in the displayed person list.
 * The index **must be a positive integer** 1, 2, 3, ...
+* An index beyond the displayed list is rejected with the valid range for that view. For example, if
+  `find Alpha` displays one contact, `delete 2` reports
+  `Index 2 is outside the current displayed list. The only valid index is 1.`
+* If no contacts are displayed but saved contacts exist, the error suggests `list` to show them.
+  If there are no saved contacts, it suggests adding a contact first. Rejected commands leave contacts,
+  the displayed list and undo/redo history unchanged.
 * The deleted person message includes the deleted contact's major and class year when those fields are specified.
 * A deletion can be [undone](#undoing-a-change-undo), which restores the deleted person, and [redone](#redoing-a-change-redo).
 
@@ -634,6 +674,17 @@ Empty input is not recorded. You can edit a recalled command and press Enter to 
 browsing alone does not execute commands. Edits made while browsing are not saved in the history.
 History is cleared when you close UniMate.
 
+With no history, either arrow leaves your input unchanged. After the draft has been restored, further
+**↓** presses leave it unchanged. Recalled text places the caret at the end; the contact list and result
+message stay as they were until you submit a command. A successful submission clears the command box;
+a failed submission keeps the text for correction and can still be recalled.
+
+For example, submit `list`, then `find Alice`. Type `edit 1 m/` without pressing Enter.
+Press **↑** twice to see `find Alice` then `list`; press **↓** twice to return through `find Alice`
+to your draft `edit 1 m/`. None of these arrow presses executes a command.
+
+<puml src="diagrams/CommandHistoryActivityDiagram.puml" alt="Activity diagram for navigating submitted commands and restoring a draft with Up and Down" width="600" />
+
 ### Saving the data
 
 UniMate automatically saves data after every command. You do not need to save manually.
@@ -648,6 +699,13 @@ UniMate data is saved automatically as a JSON file `[JAR file location]/data/uni
 If your changes make the data file invalid, UniMate starts with an empty contact list at the next run. The invalid file remains on disk until you run a command (UniMate saves after every command). Still, we recommend backing up the file before editing it.<br>
 Furthermore, certain edits can cause UniMate to behave in unexpected ways (e.g., if a value entered is outside of the acceptable range). Therefore, edit the data file only if you are confident that you can update it correctly.
 </box>
+
+A file containing only `null`, a null contact entry such as `{"persons":[null]}`, or a null tag entry
+such as `"tags":[null]` is invalid. UniMate rejects the whole file, logs the loading error and opens
+with an empty contact list. For null contact or tag entries, the logged error identifies their
+positions, counting from 1 in the saved arrays (not the GUI's displayed order). Close the window
+without running a command before repairing or restoring the file. A valid empty address book
+(`{"persons":[]}`) and omitted optional contact fields remain supported.
 
 --------------------------------------------------------------------------------------------------------------------
 
