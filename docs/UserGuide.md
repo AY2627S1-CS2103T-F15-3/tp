@@ -362,7 +362,8 @@ Format: `note INDEX TEXT`
 
 * `INDEX` is the positive index shown in the current contact list, including search results.
 * `TEXT` is required and must be a single line of up to 500 characters. Spaces, punctuation and Unicode text are allowed; control characters such as tabs are not.
-* Leading and trailing whitespace is trimmed. Spaces within the note are preserved.
+* Leading and trailing whitespace, including non-breaking spaces (U+00A0), is trimmed before the
+  500-character limit is checked. Spaces within the note, including Unicode spaces, are preserved.
 * Everything after the index is note text. No field prefix or quotation marks are needed; text such as `n/` or `t/` is saved literally.
 * The contact's other details and the current list filter are preserved.
 * Notes are saved automatically with contact data and remain available after restarting UniMate. New contacts have no note; use `note` after `add`.
@@ -370,7 +371,27 @@ Format: `note INDEX TEXT`
 
 Example: `note 2 Met during CS2103T`
 
-The message area displays `Note saved for NAME.` A small note icon at the bottom right of the contact card indicates that a note is present. Use `shownote` to read it.
+The message area identifies what happened and includes the saved text:
+
+* A new note starts with `Note saved for NAME.`, followed by `Saved note: TEXT`.
+* Replacing a different existing note starts with `Note replaced for NAME. Use undo to restore the previous note.`,
+  followed by `Previous note: OLD_TEXT` and `Saved note: NEW_TEXT` on separate lines.
+* Saving identical text starts with `Note unchanged for NAME.`, followed by `Saved note: TEXT`.
+  This does not create an undo step or clear redo history.
+
+For example, replacing `Met during CS2103T` with `Met at hackathon` for Alice displays:
+
+```text
+Note replaced for Alice. Use undo to restore the previous note.
+Previous note: Met during CS2103T
+Saved note: Met at hackathon
+```
+
+Long feedback wraps within the message area. Scroll vertically to compare the complete previous
+and saved notes.
+
+A small note icon at the bottom right of the contact card indicates that a note is present.
+Use `shownote` to read it again.
 
 ### Viewing a contact's note: `shownote`
 
@@ -561,6 +582,12 @@ Format: `delete INDEX`
 * Deletes the person at the specified `INDEX`.
 * The index refers to the index number shown in the displayed person list.
 * The index **must be a positive integer** 1, 2, 3, ...
+* An index beyond the displayed list is rejected with the valid range for that view. For example, if
+  `find Alpha` displays one contact, `delete 2` reports
+  `Index 2 is outside the current displayed list. The only valid index is 1.`
+* If no contacts are displayed but saved contacts exist, the error suggests `list` to show them.
+  If there are no saved contacts, it suggests adding a contact first. Rejected commands leave contacts,
+  the displayed list and undo/redo history unchanged.
 * The deleted person message includes the deleted contact's major and class year when those fields are specified.
 * A deletion can be [undone](#undoing-a-change-undo), which restores the deleted person, and [redone](#redoing-a-change-redo).
 
@@ -589,6 +616,7 @@ Format: `undo`
 
 * Every command that changes your contacts can be undone: `add`, `edit`, `delete`, `clear`, `tag`, `untag`, `fav`, `unfav`, `note` and `delnote`.
 * Restores your contacts to how they were before the most recent change that has not already been undone.
+* The message names the change that was undone: `Undid:` followed by the message that change showed when you made it, such as `Undid: Tagged person: …​` or `Undid: Deleted person: Alex Tan; …​`.
 * Run `undo` again to revert earlier changes one at a time, starting from the most recent.
 * After an undo, the full contact list is shown, even if you were viewing the results of `find`.
 * A command that leaves every detail unchanged, such as an `edit` with the same values or `tag` with a tag the person already has, does not count as a change.
@@ -604,6 +632,7 @@ Examples:
 * `add n/Alex Tan p/91234567 e/alex@example.com a/10 Kent Ridge Road`, then `edit 1 c/2027`, then `undo` twice first reverts the edit and then removes the added contact.
 * `delete 3` followed by `undo` brings the deleted person back.
 * `edit 1 p/92345678`, then `fav 1`, then `undo` twice first removes the favourite status and then restores the previous phone number.
+* `fav 1`, then `tag 2 t/Friend`, then `undo` removes the `Friend` tag and shows `Undid: Tagged person: …​`, naming the 2nd person. Running `undo` again shows `Undid: Added to favourites: …​`.
 
 ### Redoing an undone change: `redo`
 
@@ -612,6 +641,7 @@ Reapplies the most recent change that was reverted by `undo`.
 Format: `redo`
 
 * The change undone most recently is redone first. Running `redo` repeatedly therefore reapplies undone changes in the order you originally made them.
+* The message names the change that was redone: `Redid:` followed by the message that change showed when you first made it, such as `Redid: Added to favourites: …​`.
 * After a redo, the full contact list is shown, even if you were viewing the results of `find`.
 * Undone changes can be redone only until you change your contacts again. After any command that changes your contacts, such as `add`, `delete` or `fav`, `redo` is no longer available.
 * Commands that fail, and commands that do not change contacts, such as `list`, `find`, `tags` and `help`, do not affect what `redo` reapplies.
@@ -622,7 +652,7 @@ Format: `redo`
 Examples:
 * `add n/Alex Tan p/91234567 e/alex@example.com a/10 Kent Ridge Road`, then `undo`, then `redo` adds `Alex Tan` back.
 * `edit 1 p/91234567`, then `undo`, then `redo` changes the 1st person's phone number to `91234567` again.
-* `clear`, then `undo`, then `redo` clears your contacts again.
+* `clear`, then `undo`, then `redo` clears your contacts again, showing `Redid: Address book has been cleared!`.
 
 <box type="tip" seamless>
 
@@ -685,6 +715,13 @@ UniMate data is saved automatically as a JSON file `[JAR file location]/data/uni
 If your changes make the data file invalid, UniMate starts with an empty contact list at the next run. The invalid file remains on disk until you run a command (UniMate saves after every command). Still, we recommend backing up the file before editing it.<br>
 Furthermore, certain edits can cause UniMate to behave in unexpected ways (e.g., if a value entered is outside of the acceptable range). Therefore, edit the data file only if you are confident that you can update it correctly.
 </box>
+
+A file containing only `null`, a null contact entry such as `{"persons":[null]}`, or a null tag entry
+such as `"tags":[null]` is invalid. UniMate rejects the whole file, logs the loading error and opens
+with an empty contact list. For null contact or tag entries, the logged error identifies their
+positions, counting from 1 in the saved arrays (not the GUI's displayed order). Close the window
+without running a command before repairing or restoring the file. A valid empty address book
+(`{"persons":[]}`) and omitted optional contact fields remain supported.
 
 --------------------------------------------------------------------------------------------------------------------
 

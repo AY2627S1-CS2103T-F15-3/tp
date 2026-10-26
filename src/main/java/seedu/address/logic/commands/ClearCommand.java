@@ -20,7 +20,8 @@ public class ClearCommand extends Command {
         requireNonNull(model);
         ReadOnlyAddressBook previousState = new AddressBook(model.getAddressBook());
         model.setAddressBook(new AddressBook());
-        model.commitAddressBook(previousState);
-        return new CommandResult(MESSAGE_SUCCESS);
+        String message = MESSAGE_SUCCESS;
+        model.commitAddressBook(previousState, message);
+        return new CommandResult(message);
     }
 }

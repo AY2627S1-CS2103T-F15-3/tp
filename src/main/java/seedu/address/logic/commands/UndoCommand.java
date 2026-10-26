@@ -15,7 +15,7 @@ public class UndoCommand extends Command {
     public static final String MESSAGE_USAGE = COMMAND_WORD + ": Undoes the most recent change to your contacts.\n"
             + "Usage: " + COMMAND_WORD;
 
-    public static final String MESSAGE_SUCCESS = "Rollback to before the most recent change.";
+    public static final String MESSAGE_SUCCESS = "Undid: %s";
     public static final String MESSAGE_FAILURE = "There is no change to undo.";
 
     @Override
@@ -26,8 +26,9 @@ public class UndoCommand extends Command {
             throw new CommandException(MESSAGE_FAILURE);
         }
 
+        String description = model.getUndoDescription().orElseThrow();
         model.undoAddressBook();
         model.updateFilteredPersonList(PREDICATE_SHOW_ALL_PERSONS);
-        return new CommandResult(MESSAGE_SUCCESS);
+        return new CommandResult(String.format(MESSAGE_SUCCESS, description));
     }
 }
