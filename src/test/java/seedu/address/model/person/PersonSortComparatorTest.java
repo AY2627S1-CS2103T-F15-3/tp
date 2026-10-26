@@ -102,6 +102,24 @@ public class PersonSortComparatorTest {
     }
 
     @Test
+    public void compare_updateDates_keepsUnknownLastInBothDirectionsWithAscendingNameTies() {
+        Person older = new PersonBuilder(alice).withLastUpdated(LocalDate.of(2020, 1, 1)).build();
+        Person newer = new PersonBuilder(bob).withLastUpdated(LocalDate.of(2025, 1, 1)).build();
+        Person unknownAlice = new PersonBuilder(alice).withLastUpdated(null).build();
+        Person unknownCharlie = new PersonBuilder(charlie).withLastUpdated(null).build();
+        assertEquals(List.of(older, newer, unknownAlice, unknownCharlie),
+                sorted(UPDATED, ASC, unknownCharlie, newer, unknownAlice, older));
+        assertEquals(List.of(newer, older, unknownAlice, unknownCharlie),
+                sorted(UPDATED, DESC, unknownCharlie, older, unknownAlice, newer));
+        for (var direction : PersonSortComparator.SortDirection.values()) {
+            var comparator = PersonSortComparator.byUpdateDate(direction);
+            assertTrue(comparator.compare(older, unknownAlice) < 0);
+            assertTrue(comparator.compare(unknownAlice, older) > 0);
+            assertEquals(0, comparator.compare(unknownAlice, unknownCharlie));
+        }
+    }
+
+    @Test
     public void byUpdateDate_ordersCalendarDatesInBothDirections() {
         Person oldest = new PersonBuilder(bob).withLastUpdated(LocalDate.of(2020, 12, 31)).build();
         Person leapDay = new PersonBuilder(alice).withLastUpdated(LocalDate.of(2024, 2, 29)).build();

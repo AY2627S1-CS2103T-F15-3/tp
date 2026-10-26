@@ -2,6 +2,7 @@ package seedu.address.model.person;
 
 import static java.util.Objects.requireNonNull;
 
+import java.time.LocalDate;
 import java.util.Comparator;
 
 import seedu.address.commons.util.ToStringBuilder;
@@ -22,7 +23,7 @@ public class PersonSortComparator implements Comparator<Person> {
 
     /**
      * Creates a comparator for {@code field} in {@code direction}. Text comparisons ignore case.
-     * Unspecified academic values sort last; ties use ascending case-insensitive names.
+     * Unspecified academic values and unknown dates sort last; ties use ascending case-insensitive names.
      */
     public PersonSortComparator(SortField field, SortDirection direction) {
         this.field = requireNonNull(field);
@@ -47,13 +48,14 @@ public class PersonSortComparator implements Comparator<Person> {
     }
 
     /**
-     * Creates a date comparator with oldest or newest updates first.
+     * Creates a date comparator with oldest or newest updates first, keeping unknown dates last.
      * Equal dates compare equally; callers can append a name tie-break without reversing it.
      */
     public static Comparator<Person> byUpdateDate(SortDirection direction) {
         requireNonNull(direction);
-        Comparator<Person> byDate = Comparator.comparing(Person::getLastUpdated);
-        return direction == SortDirection.ASC ? byDate : byDate.reversed();
+        Comparator<LocalDate> byDate = direction == SortDirection.ASC
+                ? Comparator.naturalOrder() : Comparator.reverseOrder();
+        return Comparator.comparing(Person::getLastUpdated, Comparator.nullsLast(byDate));
     }
 
     /** Returns the selected field and direction for the view status. */

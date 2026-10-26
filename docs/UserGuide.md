@@ -163,9 +163,8 @@ Example: run `list`, identify the displayed index of the contact, then enter `ed
 If the first contact's phone changes, its card immediately shows today's date. If that phone was
 already `91234567`, the previous date remains.
 
-For files that predate date tracking, a missing or null date starts at the day the file is first
-loaded. This is a compatibility baseline, not a recovered historical edit date. It is written to
-the file after the next successful command; see [Older data files](#automatic-update-reminders).
+Contacts from older files without an update date show `Last updated: Unknown`. They stay last
+in both ascending and descending update-date sorting until an actual basic-profile edit records a date.
 
 ### Automatic update reminders
 
@@ -185,7 +184,8 @@ A custom tag named `update` is still supported and saved unchanged. It appears i
 
 **Older data files:**
 
-When loading a file without `lastUpdated`, UniMate uses the loading date as a compatibility baseline. This is not the contact's true historical modification date. The baseline is retained when the data is saved normally. A supplied invalid date is rejected rather than silently replaced.
+Missing or null `lastUpdated` values remain unknown after saving and restarting. An unknown date does
+not generate an age-based `update` reminder. A supplied invalid date is rejected rather than silently replaced.
 
 ### Listing default tags: `tags`
 
@@ -561,6 +561,7 @@ Format: `sort FIELD DIRECTION` or `sort reset`
 * Names and majors are compared case-insensitively. Class years and update dates are ordered chronologically.
   For `updated`, `asc` puts the oldest dates first and `desc` puts the newest dates first.
   Contacts with the same date use ascending, case-insensitive name order in both directions.
+  Contacts with unknown update dates stay last in both directions.
 * Contacts with an unspecified major or class year appear **last** when sorting by that field,
   for both directions. Equal academic values, including unspecified values, use ascending name order.
   Names differing only in case compare equally.

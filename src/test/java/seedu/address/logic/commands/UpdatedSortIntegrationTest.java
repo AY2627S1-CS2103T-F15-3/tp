@@ -2,6 +2,7 @@ package seedu.address.logic.commands;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static seedu.address.testutil.Assert.assertThrows;
 
@@ -71,6 +72,35 @@ public class UpdatedSortIntegrationTest {
         ModelManager reopened = new ModelManager(storage.readAddressBook().orElseThrow(), model.getUserPrefs());
         assertEquals(List.of(charlie, bob, alice), reopened.getFilteredPersonList());
         assertTrue(reopened.viewStatusProperty().get().endsWith("Sort: Saved order"));
+    }
+
+    @Test
+    public void execute_unknownDate_staysLastUntilProfileEditAndReturnsOnUndo() throws Exception {
+        Person legacy = new PersonBuilder().withName("Legacy").withLastUpdated(null).build();
+        model.addPerson(legacy);
+        for (String command : List.of("note 4 Keep note", "tag 4 t/Legacy", "fav 4", "unfav 4", "untag 4 t/Legacy")) {
+            logic.execute(command);
+            assertNull(model.getAddressBook().getPersonList().get(3).getLastUpdated(), command);
+        }
+        Person unchangedDate = model.getAddressBook().getPersonList().get(3);
+        logic.execute("sort updated asc");
+        assertEquals(List.of(alice, bob, charlie, unchangedDate), model.getFilteredPersonList());
+        logic.execute("sort updated desc");
+        assertEquals(List.of(charlie, alice, bob, unchangedDate), model.getFilteredPersonList());
+        assertEquals(model.getAddressBook(), storage.readAddressBook().orElseThrow());
+
+        Clock clock = Clock.fixed(Instant.parse("2026-01-02T00:00:00Z"), ZoneOffset.UTC);
+        new EditCommand(Index.fromOneBased(4), new EditPersonDescriptorBuilder().withPhone("99999999").build(),
+                clock).execute(model);
+        Person edited = new PersonBuilder(unchangedDate).withPhone("99999999")
+                .withLastUpdated(LocalDate.of(2026, 1, 2)).build();
+        assertEquals(List.of(edited, charlie, alice, bob), model.getFilteredPersonList());
+        logic.execute("undo");
+        assertEquals(List.of(charlie, alice, bob, unchangedDate), model.getFilteredPersonList());
+        assertEquals(model.getAddressBook(), storage.readAddressBook().orElseThrow());
+        logic.execute("redo");
+        assertEquals(List.of(edited, charlie, alice, bob), model.getFilteredPersonList());
+        assertEquals(model.getAddressBook(), storage.readAddressBook().orElseThrow());
     }
 
     @Test
