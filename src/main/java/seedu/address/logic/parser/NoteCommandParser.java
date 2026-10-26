@@ -20,7 +20,7 @@ public class NoteCommandParser implements Parser<NoteCommand> {
         // Trim Unicode whitespace at the boundaries while preserving whitespace inside the note.
         String trimmedArgs = StringUtil.stripWhitespace(args);
         String[] parts = trimmedArgs.split(StringUtil.WHITESPACE_REGEX, 2);
-        if (parts.length != 2 || StringUtil.stripWhitespace(parts[1]).isEmpty()) {
+        if (parts.length != 2) {
             throw new ParseException(String.format(MESSAGE_INVALID_COMMAND_FORMAT, NoteCommand.MESSAGE_USAGE));
         }
 
