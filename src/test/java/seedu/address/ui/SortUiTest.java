@@ -106,6 +106,27 @@ public class SortUiTest {
     }
 
     @Test
+    public void commandBox_batchDelete_usesOriginalIndicesAndRenumbersCards() throws Exception {
+        runOnFxThread(() -> {
+            MainWindow window = createWindow();
+            try {
+                enter(window, "sort name asc");
+                assertCards(window, List.of(alice, bob, charlie));
+                enter(window, "delete 1 3");
+                assertCards(window, List.of(bob));
+                assertEquals("Deleted 2 contacts:\n1. " + Messages.format(alice)
+                        + "\n3. " + Messages.format(charlie), feedback(window));
+                enter(window, "undo");
+                assertCards(window, List.of(alice, bob, charlie));
+                enter(window, "redo");
+                assertCards(window, List.of(bob));
+            } finally {
+                window.getRoot().close();
+            }
+        });
+    }
+
+    @Test
     public void commandBox_invalidSortAndEditUndoRedo_preserveExpectedView() throws Exception {
         runOnFxThread(() -> {
             MainWindow window = createWindow();
