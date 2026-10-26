@@ -439,7 +439,16 @@ Format: `edit INDEX [n/NAME] [p/PHONE] [e/EMAIL] [a/ADDRESS] [m/MAJOR] [c/CLASS_
 * Leading and trailing spaces are ignored. If any supplied value is invalid or an academic prefix is repeated, no fields are updated.
 * After a successful edit, the full contact list is shown. If editing search or filter results, run `find` or `filter` again before using a result index for another edit.
 * When editing tags, all of the person's existing tags are removed; adding tags is not cumulative.
+* When `t/` is supplied, feedback includes `Tags replaced. Removed: ... . Added: ... .`
+  with actual changes sorted by tag name (`None` for an empty list). Unchanged tags are excluded.
+  For example, replacing `Friend` and `Classmate` with `Project` reports
+  `Tags replaced. Removed: Classmate, Friend. Added: Project.`
+  Use [`tag`](#adding-tags-to-a-person-tag) to add tags while keeping existing tags.
 * To remove all of a person's tags, enter `t/` without a tag after it.
+* Email local parts allow letters, digits and `+ _ . -`. Special characters cannot be consecutive
+  or at either end: `alice++cs2103t@example.com` is rejected; `alice+cs2103t@example.com` is valid.
+  Email errors show each rule on a short line, including the consecutive-special-character rule.
+  Feedback wraps within the result display when the window is narrow.
 * Enter `p/` or `e/` without a value to clear that contact method. Clearing both shows the automatic `incomplete` reminder; omitted phone/email prefixes preserve the existing values.
 * A successful `edit` that changes the person's details can be reverted with [`undo`](#undoing-a-change-undo).
 * The result display shows `Edited person: ` followed by the updated details, and the command box is cleared.

@@ -283,7 +283,7 @@ model's history (see [Recording contact data history](#recording-contact-data-hi
 
 #### Editing existing contacts: GUI and execution flow
 
-The following sequence follows `edit 1 m/Mathematics c/` from the actual command box to JSON storage
+The following sequence follows `edit 1 m/Mathematics c/ t/Project` from the actual command box to JSON storage
 and back to GUI feedback. Index `1` refers to the currently displayed list, including `find`, `filter`,
 `listfav` and sorted views. `EditCommand` checks the index and duplicate name before changing the model.
 
@@ -296,6 +296,14 @@ still applies. `LogicManager` saves the updated address book before returning th
 `CommandBox` then clears its text. `PersonListPanel` observes the model's list and builds `PersonCard`s
 with the current indices. Cleared academic fields render as `Major: Not specified` and
 `Class year: Not specified`.
+
+When the descriptor contains tags (including an empty set), `EditCommand` appends a separate
+`Tags replaced. Removed: ... . Added: ... .` line to the success message. Set differences between
+the original and replacement tags identify actual removals/additions, sorted by tag name;
+empty differences display `None`. Omitted tags produce no summary. This does not change replacement
+semantics or history recording. `Email.MESSAGE_CONSTRAINTS` uses short newline-separated rules and
+explicitly forbids consecutive local-part special characters; the validation regex is unchanged.
+`ResultDisplay.fxml` enables text wrapping so narrow windows do not require horizontal scrolling.
 
 The replacement `Person` retains notes and favourite status. Changes to name, phone, email, address,
 major or graduation year update `lastUpdated`; a tag-only edit retains the previous date.

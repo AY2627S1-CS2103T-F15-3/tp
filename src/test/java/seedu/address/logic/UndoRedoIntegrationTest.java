@@ -504,8 +504,17 @@ public class UndoRedoIntegrationTest {
      * Executes an edit command and checks its feedback and the resulting contacts.
      */
     private void assertEditSuccess(String command, Person edited, List<Person> expectedContacts) throws Exception {
-        assertCommandSuccess(command, String.format(EditCommand.MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(edited)),
-                expectedContacts);
+        String feedback = String.format(EditCommand.MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(edited));
+        if (command.contains(" t/")) {
+            Person original = model.getFilteredPersonList().get(Integer.parseInt(command.split(" ")[1]) - 1);
+            String removed = original.getTags().stream().filter(tag -> !edited.getTags().contains(tag))
+                    .map(tag -> tag.tagName).sorted().collect(java.util.stream.Collectors.joining(", "));
+            String added = edited.getTags().stream().filter(tag -> !original.getTags().contains(tag))
+                    .map(tag -> tag.tagName).sorted().collect(java.util.stream.Collectors.joining(", "));
+            feedback += "\nTags replaced. Removed: " + (removed.isEmpty() ? "None" : removed)
+                    + ". Added: " + (added.isEmpty() ? "None" : added) + ".";
+        }
+        assertCommandSuccess(command, feedback, expectedContacts);
         assertEquals(expectedContacts, model.getFilteredPersonList());
     }
 

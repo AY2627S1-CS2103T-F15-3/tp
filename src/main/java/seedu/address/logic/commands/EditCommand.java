@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import seedu.address.commons.core.index.Index;
 import seedu.address.commons.util.CollectionUtil;
@@ -108,7 +109,20 @@ public class EditCommand extends Command {
         model.updateFilteredPersonList(PREDICATE_SHOW_ALL_PERSONS);
         // An edit that leaves the person unchanged is not recorded by the model.
         model.commitAddressBook(previousState);
-        return new CommandResult(String.format(MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(editedPerson)));
+        String feedback = String.format(MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(editedPerson));
+        if (editPersonDescriptor.getTags().isPresent()) {
+            feedback += "\nTags replaced. Removed: "
+                    + formatTagDifference(personToEdit.getTags(), editedPerson.getTags())
+                    + ". Added: " + formatTagDifference(editedPerson.getTags(), personToEdit.getTags()) + ".";
+        }
+        return new CommandResult(feedback);
+    }
+
+    /** Returns sorted tag names present only in the first set, or "None". */
+    private static String formatTagDifference(Set<Tag> tags, Set<Tag> otherTags) {
+        String names = tags.stream().filter(tag -> !otherTags.contains(tag))
+                .map(tag -> tag.tagName).sorted().collect(Collectors.joining(", "));
+        return names.isEmpty() ? "None" : names;
     }
 
     /**
