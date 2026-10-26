@@ -144,14 +144,20 @@ public class AddCommandIntegrationTest {
     }
 
     @Test
-    public void execute_deleteAfterAdd_addCannotBeUndone() throws Exception {
-        new AddCommand(new PersonBuilder().build()).execute(model);
+    public void execute_deleteAfterAdd_undoesDeleteThenAdd() throws Exception {
+        AddressBook originalState = new AddressBook(model.getAddressBook());
+        Person newPerson = new PersonBuilder().build();
+        new AddCommand(newPerson).execute(model);
+        AddressBook stateAfterAdd = new AddressBook(model.getAddressBook());
 
-        // Delete is not undoable, so undoing the earlier add would silently revert the delete too.
         new DeleteCommand(INDEX_FIRST_PERSON).execute(model);
 
-        assertFalse(model.canUndoAddressBook());
-        assertFalse(model.undoAddressBook());
+        // Delete is undoable, so each undo reverts one change, most recent first.
+        assertTrue(model.undoAddressBook());
+        assertEquals(stateAfterAdd, model.getAddressBook());
+        assertTrue(model.undoAddressBook());
+        assertEquals(originalState, model.getAddressBook());
+        assertFalse(model.hasPerson(newPerson));
     }
 
 }

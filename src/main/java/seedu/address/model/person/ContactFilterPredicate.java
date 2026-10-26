@@ -3,8 +3,9 @@ package seedu.address.model.person;
 import static seedu.address.commons.util.AppUtil.checkArgument;
 import static seedu.address.commons.util.CollectionUtil.requireAllNonNull;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
-import java.util.function.Predicate;
 
 import seedu.address.commons.util.ToStringBuilder;
 import seedu.address.model.tag.Tag;
@@ -13,7 +14,7 @@ import seedu.address.model.tag.Tag;
  * Matches every supplied academic and tag criterion against a contact's complete field values.
  * Major and tag matching are case-insensitive; graduation years match exactly.
  */
-public class ContactFilterPredicate implements Predicate<Person> {
+public class ContactFilterPredicate implements PersonFilter {
     private final Optional<Major> major;
     private final Optional<GraduationYear> graduationYear;
     private final Optional<Tag> tag;
@@ -37,6 +38,15 @@ public class ContactFilterPredicate implements Predicate<Person> {
                 && graduationYear.map(value -> value.equals(person.getGraduationYear())).orElse(true)
                 && tag.map(value -> person.getTags().stream()
                     .anyMatch(personTag -> value.tagName.equalsIgnoreCase(personTag.tagName))).orElse(true);
+    }
+
+    @Override
+    public String getDescription() {
+        List<String> criteria = new ArrayList<>();
+        major.ifPresent(value -> criteria.add("Major: " + value.value));
+        graduationYear.ifPresent(value -> criteria.add("Class year: " + value.value));
+        tag.ifPresent(value -> criteria.add("Tag: " + value.tagName));
+        return String.join(" AND ", criteria);
     }
 
     @Override

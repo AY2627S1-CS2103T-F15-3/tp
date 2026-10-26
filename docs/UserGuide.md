@@ -37,7 +37,7 @@ This guide describes the features available in v1.4.
 
    * `delete 3` : Deletes the 3rd contact shown in the current list.
 
-   * `undo` : Reverts the most recent `add` or `edit`.
+   * `undo` : Reverts the most recent change to your contacts.
 
    * `clear` : Deletes all contacts.
 
@@ -291,7 +291,7 @@ These input errors leave all contacts unchanged. If any supplied tag is invalid,
 
 For both commands, UniMate saves the updated data automatically. A saving failure reports `Could not save data due to the following error: ...` or `Could not save data to file ... due to insufficient permissions to write to the file or the folder.` The in-memory change has already occurred in this case, so the error does not mean it was rolled back.
 
-Neither command can be undone. After `tag` or `untag` changes a person's tags, earlier `add` and `edit` changes can no longer be undone or redone either. See [`undo`](#undoing-a-change-undo).
+A `tag` or `untag` that changes a person's tags can be [undone](#undoing-a-change-undo) and [redone](#redoing-a-change-redo). Adding a tag the person already has, or removing one they do not have, changes nothing and does not create an undo step.
 
 ### Marking a favourite contact: `fav`
 
@@ -304,6 +304,7 @@ Format: `fav INDEX`
 * A successful command shows `Added to favourites: ` followed by the updated person's details.
 * A favourited contact displays a solid heart (`♥`) inside a small circular border to the right of their name. Both the heart and border are red (`#e63946`), with a transparent background. The icon is a visual indicator and cannot be clicked.
 * Favourite status is saved automatically and retained after restarting UniMate. New contacts and contacts loaded from older files without favourite status start as not favourited.
+* Marking a favourite can be [undone](#undoing-a-change-undo) and [redone](#redoing-a-change-redo).
 
 Example (assuming at least one person is displayed):
 
@@ -329,6 +330,7 @@ Format: `unfav INDEX`
 * A successful command shows `Removed from favourites: ` followed by the person's details, and the circular heart disappears immediately.
 * All other contact fields are preserved. The updated favourite status is saved automatically and remains removed after restarting UniMate.
 * When viewing favourites using `listfav`, the person immediately disappears from that filtered view. The contact remains stored and can be seen again using `list`.
+* Removing favourite status can be [undone](#undoing-a-change-undo) and [redone](#redoing-a-change-redo).
 
 Example (assuming the first displayed person is favourited):
 
@@ -369,7 +371,8 @@ Format: `note INDEX TEXT`
 
 * `INDEX` is the positive index shown in the current contact list, including search results.
 * `TEXT` is required and must be a single line of up to 500 characters. Spaces, punctuation and Unicode text are allowed; control characters such as tabs are not.
-* Leading and trailing whitespace is trimmed. Spaces within the note are preserved.
+* Leading and trailing whitespace, including non-breaking spaces (U+00A0), is trimmed before the
+  500-character limit is checked. Spaces within the note, including Unicode spaces, are preserved.
 * Everything after the index is note text. No field prefix or quotation marks are needed; text such as `n/` or `t/` is saved literally.
 * The contact's other details and the current list filter are preserved.
 * Notes are saved automatically with contact data and remain available after restarting UniMate. New contacts have no note; use `note` after `add`.
@@ -377,7 +380,27 @@ Format: `note INDEX TEXT`
 
 Example: `note 2 Met during CS2103T`
 
-The message area displays `Note saved for NAME.` A small note icon at the bottom right of the contact card indicates that a note is present. Use `shownote` to read it.
+The message area identifies what happened and includes the saved text:
+
+* A new note starts with `Note saved for NAME.`, followed by `Saved note: TEXT`.
+* Replacing a different existing note starts with `Note replaced for NAME. Use undo to restore the previous note.`,
+  followed by `Previous note: OLD_TEXT` and `Saved note: NEW_TEXT` on separate lines.
+* Saving identical text starts with `Note unchanged for NAME.`, followed by `Saved note: TEXT`.
+  This does not create an undo step or clear redo history.
+
+For example, replacing `Met during CS2103T` with `Met at hackathon` for Alice displays:
+
+```text
+Note replaced for Alice. Use undo to restore the previous note.
+Previous note: Met during CS2103T
+Saved note: Met at hackathon
+```
+
+Long feedback wraps within the message area. Scroll vertically to compare the complete previous
+and saved notes.
+
+A small note icon at the bottom right of the contact card indicates that a note is present.
+Use `shownote` to read it again.
 
 ### Viewing a contact's note: `shownote`
 
@@ -444,11 +467,24 @@ Format: `edit INDEX [n/NAME] [p/PHONE] [e/EMAIL] [a/ADDRESS] [m/MAJOR] [c/CLASS_
   A supplied major must be non-blank text on one line; a class year must be four digits from `2000` to `2099`.
 * Enter `m/` or `c/` with no value to clear that optional field. Each of these prefixes may appear only once.
 * Leading and trailing spaces are ignored. If any supplied value is invalid or an academic prefix is repeated, no fields are updated.
-* After a successful edit, the full contact list is shown. If editing search results, run `find` again before using a search-result index for another edit.
+* After a successful edit, the full contact list is shown. If editing search or filter results, run `find` or `filter` again before using a result index for another edit.
 * When editing tags, all of the person's existing tags are removed; adding tags is not cumulative.
 * To remove all of a person's tags, enter `t/` without a tag after it.
 * Enter `p/` or `e/` without a value to clear that contact method. Clearing both shows the automatic `incomplete` reminder; omitted phone/email prefixes preserve the existing values.
 * A successful `edit` that changes the person's details can be reverted with [`undo`](#undoing-a-change-undo).
+* The result display shows `Edited person: ` followed by the updated details, and the command box is cleared.
+  The contact card shows `Major: Not specified` or `Class year: Not specified` when an academic field is cleared.
+* Notes and favourite status are preserved. Changing a basic profile field refreshes the contact's update date;
+  changing only tags does not refresh that date.
+* Invalid input, an index outside the displayed list, or a name already used by another contact leaves the
+  contacts and current view unchanged. The result display shows the error and the command box keeps the input for correction.
+
+The activity diagram below shows the edit workflow (assuming the data file can be saved):
+
+<puml src="diagrams/EditContactActivityDiagram.puml" alt="Activity diagram for editing an existing contact from the command box" width="550" />
+
+If saving fails, the result display reports a saving error and keeps the command text. The in-memory
+edit has already happened; the error does not mean it was rolled back.
 
 Examples:
 *  `edit 1 p/91234567 e/johndoe@example.com` Edits the phone number and email address of the 1st person to be `91234567` and `johndoe@example.com` respectively.
@@ -493,6 +529,11 @@ Format: `filter [m/MAJOR] [c/CLASS_YEAR] [t/TAG]`
   error without changing the current results. Use `t/Friend` to filter a default tag; `d/` is not supported.
 * The result message shows the number of matching contacts. Zero matches displays an empty list;
   no contacts are deleted.
+* A persistent status line above the contact list shows the displayed/total contact counts, active
+  filter or search, and sort order. For example:
+  `Showing 3 of 20 contacts | Filter: Class year: 2027 | Sort: Name ascending`.
+  It stays visible when another command, such as `shownote`, replaces the result message.
+  Long criteria wrap onto additional lines. The status also identifies favourites views and empty results.
 * Each `filter` replaces the previous search or filter and retains the active sort order, or the saved
   contact order if no sort has been chosen. `find` replaces the filter; `list` shows all contacts again.
 * Indices refer to the currently displayed list. For example, `delete 1` targets the first filtered result.
@@ -515,9 +556,9 @@ Unlike `find Computer Science`, which searches for either word across names and 
 
 Orders the displayed contacts while keeping the current search or filter.
 
-Format: `sort FIELD DIRECTION`
+Format: `sort FIELD DIRECTION` or `sort reset`
 
-* Both arguments are required and must appear in this order. Field and direction keywords are case-insensitive; for example, `sort Name ASC` is accepted.
+* To choose a sort order, both arguments are required and must appear in this order. Keywords are case-insensitive; for example, `sort Name ASC` is accepted.
   Extra surrounding spaces and spaces between arguments are allowed.
 
   | Argument | Accepted values | Meaning |
@@ -529,6 +570,10 @@ Format: `sort FIELD DIRECTION`
 * Contacts with an unspecified major or class year appear **last** when sorting by that field,
   for both directions. Equal academic values, including unspecified values, use ascending name order.
   Names differing only in case compare equally.
+* `sort reset` removes the active sort and restores saved contact order, while keeping the current
+  search or filter. It takes no direction or other arguments and succeeds even if no sort is active.
+  Unlike `sort reset`, `list` removes the filter and keeps the current sort. Use `list`, then
+  `sort reset`, to show all contacts in saved order.
 * Sorting an empty list or a single contact succeeds. Sorting does not add or remove contacts.
 * `filter`, `find` and `list` retain the chosen sort order. A successful `add`, `edit`, `undo` or `redo`
   shows all contacts in that order; tag, untag and delete retain the current filter and sort.
@@ -543,6 +588,8 @@ Format: `sort FIELD DIRECTION`
 Examples:
 * `sort name asc` displays names from A to Z.
 * `sort major desc` displays majors from Z to A, with unspecified majors last.
+* `filter c/2027`, then `sort name asc`, then `sort reset` shows only class year `2027` contacts
+  in saved order. The status changes from `Sort: Name ascending` to `Sort: Saved order`.
 * `filter t/Classmate`, then `sort year asc`, shows only classmates, earliest class year first.
   `list` then shows all contacts in the same year order.
 
@@ -555,8 +602,14 @@ Format: `delete INDEX`
 * Deletes the person at the specified `INDEX`.
 * The index refers to the index number shown in the displayed person list.
 * The index **must be a positive integer** 1, 2, 3, ...
+* An index beyond the displayed list is rejected with the valid range for that view. For example, if
+  `find Alpha` displays one contact, `delete 2` reports
+  `Index 2 is outside the current displayed list. The only valid index is 1.`
+* If no contacts are displayed but saved contacts exist, the error suggests `list` to show them.
+  If there are no saved contacts, it suggests adding a contact first. Rejected commands leave contacts,
+  the displayed list and undo/redo history unchanged.
 * The deleted person message includes the deleted contact's major and class year when those fields are specified.
-* A deletion cannot be undone. After a successful `delete`, earlier `add` and `edit` changes can no longer be undone or redone either.
+* A deletion can be [undone](#undoing-a-change-undo), which restores the deleted person, and [redone](#redoing-a-change-redo).
 
 Examples:
 * `list` followed by `delete 2` deletes the 2nd person in UniMate.
@@ -572,23 +625,24 @@ Format: `clear`
 
 <box type="warning" seamless>
 
-**Caution:** `clear` cannot be undone. After it removes your contacts, earlier `add` and `edit` changes can no longer be undone or redone either.
+**Caution:** `clear` removes all your contacts. You can bring them back with [`undo`](#undoing-a-change-undo), but only while UniMate is still open: undo history is cleared when you close UniMate.
 </box>
 
 ### Undoing a change: `undo`
 
-Reverts the most recent change made by `add` or `edit`.
+Reverts the most recent change to your contacts.
 
 Format: `undo`
 
-* Restores your contacts to how they were before the most recent `add` or `edit` that has not already been undone.
-* Run `undo` again to revert earlier `add` and `edit` changes one at a time, starting from the most recent.
+* Every command that changes your contacts can be undone: `add`, `edit`, `delete`, `clear`, `tag`, `untag`, `fav`, `unfav`, `note` and `delnote`.
+* Restores your contacts to how they were before the most recent change that has not already been undone.
+* The message names the change that was undone: `Undid:` followed by the message that change showed when you made it, such as `Undid: Tagged person: …​` or `Undid: Deleted person: Alex Tan; …​`.
+* Run `undo` again to revert earlier changes one at a time, starting from the most recent.
 * After an undo, the full contact list is shown, even if you were viewing the results of `find`.
-* Only `add` and `edit` can be undone. An `edit` that leaves every detail unchanged does not count as a change.
-* Commands that fail, such as an `add` rejected as a duplicate, and commands that do not change contacts, such as `list`, `find`, `tags` and `help`, do not affect what `undo` reverts.
-* `delete`, `tag`, `untag` and `clear` cannot be undone. After one of them changes your contacts, earlier `add` and `edit` changes can no longer be undone or redone either. Changes you make after that can be undone as usual.
+* A command that leaves every detail unchanged, such as an `edit` with the same values or `tag` with a tag the person already has, does not count as a change.
+* Commands that fail, such as an `add` rejected as a duplicate, and commands that do not change contacts, such as `list`, `find`, `filter`, `sort`, `listfav`, `shownote`, `tags` and `help`, do not affect what `undo` reverts.
 * `undo` does not take any parameters. Unlike `help`, extra input such as `undo 1` is rejected and nothing is undone.
-* If there is nothing to undo, UniMate shows `There is no change to undo. Only add and edit can be undone, and not after a delete, tag, untag or clear.` and your contacts are unchanged.
+* If there is nothing to undo, UniMate shows `There is no change to undo.` and your contacts are unchanged.
 * Undo history is kept only while UniMate is open. It is cleared when you close UniMate, so changes from an earlier session cannot be undone.
 * The restored contacts are saved automatically.
 
@@ -596,6 +650,9 @@ Examples:
 * `add n/Alex Tan p/91234567 e/alex@example.com a/10 Kent Ridge Road` followed by `undo` removes `Alex Tan` again.
 * `edit 2 p/98765432` followed by `undo` restores the 2nd person's previous phone number.
 * `add n/Alex Tan p/91234567 e/alex@example.com a/10 Kent Ridge Road`, then `edit 1 c/2027`, then `undo` twice first reverts the edit and then removes the added contact.
+* `delete 3` followed by `undo` brings the deleted person back.
+* `edit 1 p/92345678`, then `fav 1`, then `undo` twice first removes the favourite status and then restores the previous phone number.
+* `fav 1`, then `tag 2 t/Friend`, then `undo` removes the `Friend` tag and shows `Undid: Tagged person: …​`, naming the 2nd person. Running `undo` again shows `Undid: Added to favourites: …​`.
 
 ### Redoing an undone change: `redo`
 
@@ -604,16 +661,18 @@ Reapplies the most recent change that was reverted by `undo`.
 Format: `redo`
 
 * The change undone most recently is redone first. Running `redo` repeatedly therefore reapplies undone changes in the order you originally made them.
+* The message names the change that was redone: `Redid:` followed by the message that change showed when you first made it, such as `Redid: Added to favourites: …​`.
 * After a redo, the full contact list is shown, even if you were viewing the results of `find`.
-* Undone changes can be redone only until you change your contacts again. After a successful `add` or `edit`, or a `delete`, `tag`, `untag` or `clear` that changes your contacts, `redo` is no longer available.
+* Undone changes can be redone only until you change your contacts again. After any command that changes your contacts, such as `add`, `delete` or `fav`, `redo` is no longer available.
 * Commands that fail, and commands that do not change contacts, such as `list`, `find`, `tags` and `help`, do not affect what `redo` reapplies.
 * `redo` does not take any parameters. Extra input such as `redo 1` is rejected and nothing is redone.
-* If there is nothing to redo, UniMate shows `There is no change to redo. Only an undone add or edit can be redone, and not after another change has been made.` and your contacts are unchanged.
+* If there is nothing to redo, UniMate shows `There is no change to redo. An undone change cannot be redone after another change has been made.` and your contacts are unchanged.
 * Like undo history, redo history is cleared when you close UniMate. The restored contacts are saved automatically.
 
 Examples:
 * `add n/Alex Tan p/91234567 e/alex@example.com a/10 Kent Ridge Road`, then `undo`, then `redo` adds `Alex Tan` back.
 * `edit 1 p/91234567`, then `undo`, then `redo` changes the 1st person's phone number to `91234567` again.
+* `clear`, then `undo`, then `redo` clears your contacts again, showing `Redid: Address book has been cleared!`.
 
 <box type="tip" seamless>
 
@@ -638,6 +697,17 @@ Empty input is not recorded. You can edit a recalled command and press Enter to 
 browsing alone does not execute commands. Edits made while browsing are not saved in the history.
 History is cleared when you close UniMate.
 
+With no history, either arrow leaves your input unchanged. After the draft has been restored, further
+**↓** presses leave it unchanged. Recalled text places the caret at the end; the contact list and result
+message stay as they were until you submit a command. A successful submission clears the command box;
+a failed submission keeps the text for correction and can still be recalled.
+
+For example, submit `list`, then `find Alice`. Type `edit 1 m/` without pressing Enter.
+Press **↑** twice to see `find Alice` then `list`; press **↓** twice to return through `find Alice`
+to your draft `edit 1 m/`. None of these arrow presses executes a command.
+
+<puml src="diagrams/CommandHistoryActivityDiagram.puml" alt="Activity diagram for navigating submitted commands and restoring a draft with Up and Down" width="600" />
+
 ### Saving the data
 
 UniMate automatically saves data after every command. You do not need to save manually.
@@ -652,6 +722,13 @@ UniMate data is saved automatically as a JSON file `[JAR file location]/data/uni
 If your changes make the data file invalid, UniMate starts with an empty contact list at the next run. The invalid file remains on disk until you run a command (UniMate saves after every command). Still, we recommend backing up the file before editing it.<br>
 Furthermore, certain edits can cause UniMate to behave in unexpected ways (e.g., if a value entered is outside of the acceptable range). Therefore, edit the data file only if you are confident that you can update it correctly.
 </box>
+
+A file containing only `null`, a null contact entry such as `{"persons":[null]}`, or a null tag entry
+such as `"tags":[null]` is invalid. UniMate rejects the whole file, logs the loading error and opens
+with an empty contact list. For null contact or tag entries, the logged error identifies their
+positions, counting from 1 in the saved arrays (not the GUI's displayed order). Close the window
+without running a command before repairing or restoring the file. A valid empty address book
+(`{"persons":[]}`) and omitted optional contact fields remain supported.
 
 --------------------------------------------------------------------------------------------------------------------
 
@@ -689,7 +766,7 @@ Action     | Format, Examples
 **Edit**   | `edit INDEX [n/NAME] [p/PHONE_NUMBER] [e/EMAIL] [a/ADDRESS] [m/MAJOR] [c/CLASS_YEAR] [t/TAG]... `<br> e.g.,`edit 2 n/James Lee e/jameslee@example.com`
 **Find**   | `find KEYWORD [MORE_KEYWORDS]`<br> e.g., `find James Jake`, `find Computer Science`, `find 2027`
 **Filter** | `filter [m/MAJOR] [c/CLASS_YEAR] [t/TAG]` (at least one criterion)<br> e.g., `filter m/Computer Science c/2027 t/Classmate`
-**Sort**   | `sort FIELD DIRECTION`<br> e.g., `sort name asc`, `sort major desc`, `sort year asc`
+**Sort**   | `sort FIELD DIRECTION` or `sort reset`<br> e.g., `sort name asc`, `sort major desc`, `sort year asc`
 **List all saved contacts** | `list` (no parameters; clears the current filter and reports the total)
 **Favourite** | `fav INDEX`<br> e.g., `fav 1`
 **Unfavourite** | `unfav INDEX`<br> e.g., `unfav 1`

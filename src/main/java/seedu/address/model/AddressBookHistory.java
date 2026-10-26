@@ -4,6 +4,7 @@ import static java.util.Objects.requireNonNull;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.Optional;
 
 /**
  * An in-memory undo/redo history of an {@code AddressBook}.
@@ -11,19 +12,21 @@ import java.util.Deque;
  * <p>Snapshots are stored as defensive copies in two stacks:
  * {@code undoStates} holds the states before each recorded change
  * {@code redoStates} holds the states that were undone
+ * Each snapshot is paired with a short description of the change it reverses or reapplies,
+ * so that undo and redo can report which change was affected.
  * Undoing and redoing reset the data of the tracked address book in place,
  * so references to it (and lists backed by it) remain valid.
  *
  * <p>{@code currentState} is a copy of the state that the tracked address book is expected to be in
  * If the tracked address book no longer matches it, a change was made without being recorded
- * (e.g. by a command that is not undoable) and the history is stale
+ * (e.g. by a future command that forgets to commit its change) and the history is stale
  * Stale history is never restored, so an old snapshot cannot silently revert unrecorded changes.
  */
 public class AddressBookHistory {
 
     private final AddressBook trackedAddressBook;
-    private final Deque<AddressBook> undoStates = new ArrayDeque<>();
-    private final Deque<AddressBook> redoStates = new ArrayDeque<>();
+    private final Deque<Change> undoStates = new ArrayDeque<>();
+    private final Deque<Change> redoStates = new ArrayDeque<>();
     private AddressBook currentState;
 
     /**
@@ -37,11 +40,12 @@ public class AddressBookHistory {
 
     /**
      * Records a completed change from {@code previousState} to the current data of the tracked address book,
-     * and clears the redo history.
+     * described by {@code description}, and clears the redo history.
      * Does nothing if the change did not modify any data.
      */
-    public void commit(ReadOnlyAddressBook previousState) {
+    public void commit(ReadOnlyAddressBook previousState, String description) {
         requireNonNull(previousState);
+        requireNonNull(description);
 
         if (hasSameData(previousState, trackedAddressBook)) {
             return;
@@ -52,7 +56,7 @@ public class AddressBookHistory {
             undoStates.clear();
         }
 
-        undoStates.push(new AddressBook(previousState));
+        undoStates.push(new Change(new AddressBook(previousState), description));
         redoStates.clear();
         currentState = new AddressBook(trackedAddressBook);
     }
@@ -72,6 +76,22 @@ public class AddressBookHistory {
     }
 
     /**
+     * Returns the description of the change that {@link #undo()} would reverse,
+     * or an empty {@code Optional} if there is no valid state to undo to.
+     */
+    public Optional<String> getUndoDescription() {
+        return canUndo() ? Optional.of(undoStates.peek().description()) : Optional.empty();
+    }
+
+    /**
+     * Returns the description of the change that {@link #redo()} would reapply,
+     * or an empty {@code Optional} if there is no valid state to redo to.
+     */
+    public Optional<String> getRedoDescription() {
+        return canRedo() ? Optional.of(redoStates.peek().description()) : Optional.empty();
+    }
+
+    /**
      * Restores the tracked address book to the state before the most recent recorded change.
      *
      * @return true if a state was restored, or false (leaving the tracked address book unchanged)
@@ -83,8 +103,9 @@ public class AddressBookHistory {
             return false;
         }
 
-        redoStates.push(currentState);
-        restore(undoStates.pop());
+        Change undone = undoStates.pop();
+        redoStates.push(new Change(currentState, undone.description()));
+        restore(undone.state());
         return true;
     }
 
@@ -100,8 +121,9 @@ public class AddressBookHistory {
             return false;
         }
 
-        undoStates.push(currentState);
-        restore(redoStates.pop());
+        Change redone = redoStates.pop();
+        undoStates.push(new Change(currentState, redone.description()));
+        restore(redone.state());
         return true;
     }
 
@@ -124,5 +146,11 @@ public class AddressBookHistory {
 
     private static boolean hasSameData(ReadOnlyAddressBook first, ReadOnlyAddressBook second) {
         return first.getPersonList().equals(second.getPersonList());
+    }
+
+    /**
+     * A snapshot of the address book paired with a description of the change between it and the adjacent state.
+     */
+    private record Change(AddressBook state, String description) {
     }
 }

@@ -6,7 +6,7 @@ start
 :Command copies the contact data
 as previousState and changes it;
 :Command calls
-Model#commitAddressBook(previousState);
+Model#commitAddressBook(previousState, message);
 
 'Since the beta syntax does not support placing the condition outside the
 'diamond we place it as the true branch instead.
@@ -22,7 +22,7 @@ from currentState])
     else ([else])
     endif
     :Push a copy of previousState
-    onto undoStates;
+    with message onto undoStates;
     :Clear redoStates;
     :Set currentState to a copy
     of the current data;

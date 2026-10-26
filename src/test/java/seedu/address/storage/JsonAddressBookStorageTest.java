@@ -11,11 +11,14 @@ import static seedu.address.testutil.TypicalPersons.getTypicalAddressBook;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import seedu.address.commons.exceptions.DataLoadingException;
+import seedu.address.commons.exceptions.IllegalValueException;
+import seedu.address.commons.util.FileUtil;
 import seedu.address.model.AddressBook;
 import seedu.address.model.ReadOnlyAddressBook;
 import seedu.address.model.person.Notes;
@@ -61,6 +64,78 @@ public class JsonAddressBookStorageTest {
     @Test
     public void readAddressBook_invalidAndValidPersonAddressBook_throwDataLoadingException() {
         assertThrows(DataLoadingException.class, () -> readAddressBook("invalidAndValidPersonAddressBook.json"));
+    }
+
+    @Test
+    public void readAddressBook_nullData_rejectsWholeFileWithoutChangingIt() throws IOException {
+        Path filePath = testFolder.resolve("invalid.json");
+        JsonAddressBookStorage storage = new JsonAddressBookStorage(filePath);
+        String validPerson = "{\"name\":\"Saved Contact\",\"address\":\"NUS\",\"tags\":[]}";
+        String nullTagPerson = "{\"name\":\"Null Tag\",\"address\":\"NUS\",\"tags\":[null]}";
+        for (String json : List.of("null", "{\"persons\":[null]}", "{\"persons\":[" + nullTagPerson + "]}",
+                "{\"persons\":[" + validPerson + ",null]}", "{\"persons\":[null," + validPerson + "]}",
+                "{\"persons\":[" + validPerson + "," + nullTagPerson + "]}", "{\"persons\":null}", "{}")) {
+            FileUtil.writeToFile(filePath, json);
+
+            assertThrows(DataLoadingException.class, storage::readAddressBook);
+            assertEquals(json, FileUtil.readFromFile(filePath));
+        }
+    }
+
+    @Test
+    public void readAddressBook_nullPerson_preservesContactPositionInLoadingError() throws IOException {
+        Path filePath = testFolder.resolve("null-contact.json");
+        String json = "{\"persons\":[{\"name\":\"Saved Contact\",\"address\":\"NUS\"},null]}";
+        FileUtil.writeToFile(filePath, json);
+        JsonAddressBookStorage storage = new JsonAddressBookStorage(filePath);
+
+        assertThrows(DataLoadingException.class, IllegalValueException.class.getName() + ": Contact entry 2 is null.",
+                storage::readAddressBook);
+        assertEquals(json, FileUtil.readFromFile(filePath));
+    }
+
+    @Test
+    public void readAddressBook_nullTag_preservesContactAndTagPositionsInLoadingError() throws IOException {
+        Path filePath = testFolder.resolve("null-tag.json");
+        String json = "{\"persons\":[{\"name\":\"Saved Contact\",\"address\":\"NUS\"},"
+                + "{\"name\":\"Second Contact\",\"address\":\"NUS\",\"tags\":[\"friends\",null,\"classmates\"]}]}";
+        FileUtil.writeToFile(filePath, json);
+        JsonAddressBookStorage storage = new JsonAddressBookStorage(filePath);
+
+        assertThrows(DataLoadingException.class, IllegalValueException.class.getName()
+                + ": Contact entry 2 is invalid: Tag entry 2 is null.", storage::readAddressBook);
+        assertEquals(json, FileUtil.readFromFile(filePath));
+    }
+
+    @Test
+    public void readAddressBook_emptyPersonsList_loadsEmptyAddressBook() throws Exception {
+        Path filePath = testFolder.resolve("empty.json");
+        FileUtil.writeToFile(filePath, "{\"persons\":[]}");
+
+        assertEquals(new AddressBook(), new JsonAddressBookStorage(filePath).readAddressBook().orElseThrow());
+        assertEquals("{\"persons\":[]}", FileUtil.readFromFile(filePath));
+    }
+
+    @Test
+    public void readAddressBook_legacyContactWithOptionalTags_loadsWithoutChangingFile() throws Exception {
+        Path filePath = testFolder.resolve("legacy.json");
+        for (String tags : List.of("", ",\"tags\":null", ",\"tags\":[]")) {
+            String json = "{\"persons\":[{\"name\":\"Saved Contact\",\"address\":\"NUS\"" + tags + "}]}";
+            FileUtil.writeToFile(filePath, json);
+
+            ReadOnlyAddressBook loaded = new JsonAddressBookStorage(filePath).readAddressBook().orElseThrow();
+
+            assertEquals(1, loaded.getPersonList().size());
+            Person person = loaded.getPersonList().get(0);
+            assertEquals("Saved Contact", person.getName().fullName);
+            assertEquals("", person.getPhone().value);
+            assertEquals("", person.getEmail().value);
+            assertEquals("", person.getMajor().value);
+            assertEquals("", person.getGraduationYear().value);
+            assertEquals(Notes.EMPTY, person.getNotes());
+            assertEquals(0, person.getTags().size());
+            assertEquals(json, FileUtil.readFromFile(filePath));
+        }
     }
 
     @Test

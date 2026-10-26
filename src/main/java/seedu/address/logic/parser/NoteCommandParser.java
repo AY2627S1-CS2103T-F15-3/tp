@@ -17,11 +17,10 @@ public class NoteCommandParser implements Parser<NoteCommand> {
     @Override
     public NoteCommand parse(String args) throws ParseException {
         requireNonNull(args);
-        // Note arguments are not normalised by AddressBookParser, so the index may be surrounded by any
-        // Unicode whitespace. The note text after the separator is kept as typed and validated by Notes.
-        String trimmedArgs = args.replaceFirst("^" + StringUtil.WHITESPACE_REGEX + "+", "").strip();
+        // Trim Unicode whitespace at the boundaries while preserving whitespace inside the note.
+        String trimmedArgs = StringUtil.stripWhitespace(args);
         String[] parts = trimmedArgs.split(StringUtil.WHITESPACE_REGEX, 2);
-        if (parts.length != 2 || parts[1].strip().isEmpty()) {
+        if (parts.length != 2) {
             throw new ParseException(String.format(MESSAGE_INVALID_COMMAND_FORMAT, NoteCommand.MESSAGE_USAGE));
         }
 
@@ -32,7 +31,7 @@ public class NoteCommandParser implements Parser<NoteCommand> {
             throw new ParseException(String.format(MESSAGE_INVALID_COMMAND_FORMAT, NoteCommand.MESSAGE_USAGE), e);
         }
 
-        String text = parts[1].strip();
+        String text = StringUtil.stripWhitespace(parts[1]);
         if (!Notes.isValidNotes(text)) {
             throw new ParseException(Notes.MESSAGE_CONSTRAINTS);
         }

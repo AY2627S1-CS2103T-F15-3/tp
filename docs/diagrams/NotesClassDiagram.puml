@@ -28,7 +28,7 @@ class DeleteNoteCommand {
 interface Model <<interface>> MODEL_COLOR {
   +getFilteredPersonList(): ObservableList<Person>
   +setPerson(target: Person, editedPerson: Person): void
-  +commitAddressBook(previousState: ReadOnlyAddressBook): void
+  +commitAddressBook(previousState: ReadOnlyAddressBook, description: String): void
 }
 class Person MODEL_COLOR {
   -notes: Notes

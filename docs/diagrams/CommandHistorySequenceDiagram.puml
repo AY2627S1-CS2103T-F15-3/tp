@@ -1,0 +1,46 @@
+@startuml
+!include style.puml
+skinparam ArrowFontStyle plain
+participant "commandTextField:TextField" as Field UI_COLOR
+participant ":CommandBox" as Box UI_COLOR
+participant ":CommandHistory" as History UI_COLOR
+participant "commandExecutor:CommandExecutor" as Executor UI_COLOR
+
+== Non-empty submission ==
+Field -> Box : handleCommandEntered()
+activate Box
+Box -> History : add(commandText)
+note right of History
+  Append even duplicate or invalid input.
+  Reset position to commands.size().
+end note
+Box -> Executor : execute(commandText)
+alt Execution succeeds
+  Executor --> Box : CommandResult
+  Box -> Field : setText("")
+else ParseException or CommandException
+  Executor --> Box : exception
+  Box -> Box : setStyleToIndicateCommandFailure()
+  note over Field : Keep submitted text for correction.
+end
+ deactivate Box
+
+== Browse without executing ==
+Field -> Box : handleHistoryNavigation(event)
+activate Box
+alt Up key
+  Box -> History : previous(currentInput)
+  History --> Box : previous command (or null if empty)
+  note right of History : Save draft only when leaving the end.
+else Down key
+  Box -> History : next()
+  History --> Box : newer command / saved draft / null
+end
+opt Returned text is not null
+  Box -> Field : setText(text)
+  Box -> Field : positionCaret(text.length())
+end
+Box -> Box : event.consume()
+deactivate Box
+note over Box, Executor : Browsing does not call the executor.
+@enduml
