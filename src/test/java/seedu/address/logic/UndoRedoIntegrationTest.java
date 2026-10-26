@@ -385,7 +385,8 @@ public class UndoRedoIntegrationTest {
         assertUndoSuccess(afterFav);
 
         // The rejected fav changes nothing, so the undone edit can still be redone.
-        assertCommandFailure("fav 1", CommandException.class, FavCommand.MESSAGE_ALREADY_FAVOURITE);
+        assertCommandFailure("fav 1", CommandException.class,
+                String.format(FavCommand.MESSAGE_ALREADY_FAVOURITE, afterFav.get(0).getName().fullName));
         assertRedoSuccess(afterEdit);
     }
 

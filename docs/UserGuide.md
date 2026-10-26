@@ -316,7 +316,7 @@ Example (assuming at least one person is displayed):
 |--------------------|----------------|
 | Missing or invalid index, or extra arguments (e.g., `fav`, `fav 0`, `fav 1 extra`) | `Invalid command format!`, followed by the `fav` usage instructions. |
 | Index exceeds the displayed list size | `The person index provided is invalid.` |
-| Person is already favourited | `This person is already a favourite.` |
+| Person is already favourited | The selected contact's name followed by ` is already a favourite.`, e.g., `Alice is already a favourite.` |
 
 These errors leave contact data unchanged.
 
@@ -342,7 +342,7 @@ Example (assuming the first displayed person is favourited):
 |--------------------|----------------|
 | Missing or invalid index, or extra arguments (e.g., `unfav`, `unfav -1`, `unfav 1 extra`) | `Invalid command format!`, followed by the `unfav` usage instructions. |
 | Index exceeds the displayed list size | `The person index provided is invalid.` |
-| Person is not favourited | `This person is not a favourite.` |
+| Person is not favourited | The selected contact's name followed by ` is not a favourite.`, e.g., `Alice is not a favourite.` |
 
 These errors leave contact data unchanged. After `unfav` removes a person from the favourite list, check the new displayed indices before entering another indexed command.
 
