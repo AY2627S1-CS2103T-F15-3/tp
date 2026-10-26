@@ -9,6 +9,7 @@ participant "commandExecutor:CommandExecutor" as Executor UI_COLOR
 == Non-empty submission ==
 Field -> Box : handleCommandEntered()
 activate Box
+Box -> Box : hideHistoryPosition()
 Box -> History : add(commandText)
 note right of History
   Append even duplicate or invalid input.
@@ -58,6 +59,15 @@ opt Returned text is not null
   note over Box : Text listener clears error style, keeps prefix.
   Box -> Field : positionCaret(text.length())
   Box -> Box : recallingHistory = false
+end
+Box -> Box : showHistoryPosition()
+Box -> History : getPosition(), size()
+History --> Box : absolute position (0 at draft), total
+alt Browsing a stored entry
+  Box -> Box : Show label "History i/N"\nrestart 200 ms opacity pulse
+  note over Box : Feedback also restarts for duplicates and boundary presses.
+else At draft or empty history
+  Box -> Box : hideHistoryPosition()\nstop transition, hide and unmanage label
 end
 Box -> Box : event.consume()
 deactivate Box

@@ -107,6 +107,30 @@ public class CommandHistoryTest {
         assertEquals("draft", history.next());
     }
 
+    @Test
+    public void position_reportsAbsoluteEntryAndZeroAtDraft() {
+        CommandHistory history = new CommandHistory();
+        assertEquals(0, history.getPosition());
+        assertEquals(0, history.size());
+        history.add("list");
+        history.add("list");
+        assertEquals(2, history.size());
+        assertEquals(0, history.getPosition());
+        history.previous("draft");
+        assertEquals(2, history.getPosition());
+        history.previous("list");
+        history.previous("list");
+        assertEquals(1, history.getPosition());
+        history.next();
+        assertEquals(2, history.getPosition());
+        history.next();
+        assertEquals(0, history.getPosition());
+        history.previous("draft");
+        history.add("help");
+        assertEquals(0, history.getPosition());
+        assertEquals(3, history.size());
+    }
+
     private static CommandHistory mixedHistory() {
         CommandHistory history = new CommandHistory();
         history.add("add n/Alice");

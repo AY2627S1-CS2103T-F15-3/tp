@@ -642,6 +642,14 @@ Press **↑** again to browse older commands, or **↓** to browse newer command
 After the newest command, **↓** restores the draft you were typing before browsing.
 At the oldest command, further **↑** presses keep that command displayed.
 
+While browsing, a label beside the command box shows **History i/N**, where **1** is the oldest
+submission and **N** is the newest. Repeated identical commands occupy separate positions, so three
+`list` submissions show **History 3/3**, **2/3**, then **1/3** as you press ↑. The label briefly pulses
+on every history arrow press, including ↑ at the oldest entry, even when the command text stays the
+same. It disappears when you return to your draft or press Enter, including a failed submission.
+At the draft or with empty history the label stays hidden. Prefix search uses the same absolute
+positions among all submissions, so its displayed numbers may skip unrelated entries.
+
 Commands are recorded when you press Enter, including unsuccessful commands and repeated submissions.
 Empty input is not recorded. You can edit a recalled command and press Enter to submit it again;
 browsing alone does not execute commands. Edits made while browsing are not saved in the history.
