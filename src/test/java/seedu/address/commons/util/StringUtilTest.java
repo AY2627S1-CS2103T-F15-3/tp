@@ -1,14 +1,24 @@
 package seedu.address.commons.util;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static seedu.address.testutil.Assert.assertThrows;
 
 import java.io.FileNotFoundException;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
 public class StringUtilTest {
+
+    /** One of each kind of whitespace in {@link StringUtil#WHITESPACE_REGEX}: ASCII, Unicode spaces and separators. */
+    private static final List<String> WHITESPACE_VARIANTS = List.of(" ", "\t", "\n", "\r", "\f",
+            "\u00A0", "\u1680", "\u2003", "\u2007", "\u200A", "\u2028", "\u2029", "\u202F", "\u205F",
+            "\u3000");
+    private static final String ALL_WHITESPACE = String.join("", WHITESPACE_VARIANTS);
+    /** Zero width space, an invisible format character rather than whitespace (see #142). */
+    private static final String ZERO_WIDTH_SPACE = "\u200B";
 
     //---------------- Tests for isNonZeroUnsignedInteger --------------------------------------
 
@@ -121,6 +131,92 @@ public class StringUtilTest {
 
         // Matches multiple words in sentence
         assertTrue(StringUtil.containsWordIgnoreCase("AAA bBb ccc  bbb", "bbB"));
+
+        // Unicode spaces separate words
+        assertTrue(StringUtil.containsWordIgnoreCase("Computer\u2003Science", "Science"));
+        assertTrue(StringUtil.containsWordIgnoreCase("Computer\u00a0Science", "computer"));
+        assertTrue(StringUtil.containsWordIgnoreCase("aaa bbb", "\u3000bbb\u2003"));
+    }
+
+    @Test
+    public void containsWordIgnoreCase_unicodeSpaceInWord_throwsIllegalArgumentException() {
+        assertThrows(IllegalArgumentException.class, "Word parameter should be a single word", ()
+            -> StringUtil.containsWordIgnoreCase("typical sentence", "aaa\u2003BBB"));
+    }
+
+    @Test
+    public void containsWordIgnoreCase_whitespaceOnlyWord_throwsIllegalArgumentException() {
+        assertThrows(IllegalArgumentException.class, "Word parameter cannot be empty", ()
+            -> StringUtil.containsWordIgnoreCase("typical sentence", ALL_WHITESPACE));
+    }
+
+    @Test
+    public void containsWordIgnoreCase_eachWhitespaceKind_treatedAsWordBoundary() {
+        for (String space : WHITESPACE_VARIANTS) {
+            assertTrue(StringUtil.containsWordIgnoreCase("Computer" + space + "Science", "science"));
+            assertTrue(StringUtil.containsWordIgnoreCase("Computer Science", space + "computer" + space));
+        }
+        assertFalse(StringUtil.containsWordIgnoreCase("Computer" + ZERO_WIDTH_SPACE + "Science", "science"));
+    }
+
+    //---------------- Tests for normalizeWhitespace / stripWhitespace ------------------------
+
+    @Test
+    public void normalizeWhitespace_unicodeSpaces_replacedWithAsciiSpaces() {
+        assertEquals("", StringUtil.normalizeWhitespace(""));
+        assertEquals("a b", StringUtil.normalizeWhitespace("a b"));
+        assertEquals("a b  c d", StringUtil.normalizeWhitespace("a\u2003b\u00a0\u3000c\td"));
+        assertEquals(" a ", StringUtil.normalizeWhitespace("\u2003a\u2003"));
+        assertThrows(NullPointerException.class, () -> StringUtil.normalizeWhitespace(null));
+    }
+
+    @Test
+    public void normalizeWhitespace_eachWhitespaceKind_replacedWithOneAsciiSpace() {
+        for (String space : WHITESPACE_VARIANTS) {
+            assertEquals("a b", StringUtil.normalizeWhitespace("a" + space + "b"));
+        }
+        assertEquals(" ".repeat(WHITESPACE_VARIANTS.size()), StringUtil.normalizeWhitespace(ALL_WHITESPACE));
+        assertEquals("a" + ZERO_WIDTH_SPACE + "b", StringUtil.normalizeWhitespace("a" + ZERO_WIDTH_SPACE + "b"));
+    }
+
+    @Test
+    public void stripWhitespace_unicodeSpaces_strippedFromEndsOnly() {
+        assertEquals("", StringUtil.stripWhitespace("\u2003 \u00a0"));
+        assertEquals("a\u2003b", StringUtil.stripWhitespace("\u3000 a\u2003b\u00a0\t"));
+        assertThrows(NullPointerException.class, () -> StringUtil.stripWhitespace(null));
+    }
+
+    @Test
+    public void stripWhitespace_edgeCases() {
+        assertEquals("", StringUtil.stripWhitespace(""));
+        assertEquals("", StringUtil.stripWhitespace(ALL_WHITESPACE));
+        assertEquals("a", StringUtil.stripWhitespace("a"));
+        for (String space : WHITESPACE_VARIANTS) {
+            assertEquals("a" + space + "b", StringUtil.stripWhitespace(space + "a" + space + "b" + space));
+        }
+        assertEquals(ZERO_WIDTH_SPACE + "a" + ZERO_WIDTH_SPACE,
+                StringUtil.stripWhitespace(ZERO_WIDTH_SPACE + "a" + ZERO_WIDTH_SPACE));
+    }
+
+    //---------------- Tests for hasVisibleCharacter ------------------------------------------
+
+    @Test
+    public void hasVisibleCharacter_invisibleOnly_returnsFalse() {
+        assertFalse(StringUtil.hasVisibleCharacter(""));
+        assertFalse(StringUtil.hasVisibleCharacter(ALL_WHITESPACE));
+        assertFalse(StringUtil.hasVisibleCharacter(ZERO_WIDTH_SPACE + "\ufeff\u2060\u200d"));
+        assertFalse(StringUtil.hasVisibleCharacter("\ufe0f")); // variation selector on its own
+        assertFalse(StringUtil.hasVisibleCharacter("\u0301\u20e3")); // combining marks on their own
+        assertThrows(NullPointerException.class, () -> StringUtil.hasVisibleCharacter(null));
+    }
+
+    @Test
+    public void hasVisibleCharacter_visibleCharacterPresent_returnsTrue() {
+        assertTrue(StringUtil.hasVisibleCharacter("a"));
+        assertTrue(StringUtil.hasVisibleCharacter("\u2764\ufe0f")); // emoji with variation selector
+        assertTrue(StringUtil.hasVisibleCharacter("1\ufe0f\u20e3")); // keycap emoji
+        assertTrue(StringUtil.hasVisibleCharacter("e\u0301")); // letter with combining accent
+        assertTrue(StringUtil.hasVisibleCharacter(ALL_WHITESPACE + "a" + ZERO_WIDTH_SPACE));
     }
 
     //---------------- Tests for getDetails --------------------------------------

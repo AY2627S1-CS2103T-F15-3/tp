@@ -12,12 +12,12 @@ import seedu.address.model.Model;
 public class RedoCommand extends Command {
 
     public static final String COMMAND_WORD = "redo";
-    public static final String MESSAGE_USAGE = COMMAND_WORD + ": Redoes the most recently undone add or edit.\n"
+    public static final String MESSAGE_USAGE = COMMAND_WORD + ": Redoes the most recently undone change.\n"
             + "Usage: " + COMMAND_WORD;
 
     public static final String MESSAGE_SUCCESS = "Restored the most recently undone change.";
-    public static final String MESSAGE_FAILURE = "There is no change to redo. Only an undone add or edit can be "
-            + "redone, and not after another change has been made.";
+    public static final String MESSAGE_FAILURE = "There is no change to redo. An undone change cannot be redone "
+            + "after another change has been made.";
 
     @Override
     public CommandResult execute(Model model) throws CommandException {
