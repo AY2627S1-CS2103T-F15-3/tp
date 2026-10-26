@@ -59,6 +59,7 @@ deactivate Model
 note over NoteCommand, Model
   Check the index, then select person = displayedPersons.get(0).
   This list follows the current filter and sort order.
+  Identical notes return unchanged feedback before the snapshot or mutation.
 end note
 
 NoteCommand -> Model : getAddressBook()
@@ -85,7 +86,7 @@ Model --> NoteCommand
 deactivate Model
 note over NoteCommand, Model
   History records actual data changes only.
-  Identical note text preserves undo and redo history.
+  Unchanged notes return before this flow and preserve history.
 end note
 
 NoteCommand --> LogicManager : result: CommandResult

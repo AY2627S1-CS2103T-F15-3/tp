@@ -1,3 +1,4 @@
+
 @startuml
 !include style.puml
 skinparam ArrowFontStyle plain
@@ -15,6 +16,15 @@ end box
 [-> Parser : parse(args)
 activate Parser
 
+Parser -> Parser : parseCriteria(args)
+
+note right of Parser
+  Validates supplied prefixes and criteria.
+  Parses optional major, graduation year,
+  and tag values.
+  At least one criterion must be present.
+end note
+
 create Predicate
 Parser -> Predicate : ContactFilterPredicate(major, year, tag)
 activate Predicate
@@ -31,6 +41,7 @@ deactivate Parser
 
 [-> Command : execute(m)
 activate Command
+
 Command -> Model : updateFilteredPersonList(predicate)
 activate Model
 Model --> Command
@@ -38,9 +49,17 @@ deactivate Model
 
 Command -> Model : getFilteredPersonList()
 activate Model
-Model --> Command : displayedContacts
+Model --> Command : filteredPersonList
 deactivate Model
-[<-- Command : result
+
+note right of Command
+  Obtains the number of matched contacts
+  using filteredPersonList.size().
+  Returns a CommandResult containing
+  the match count.
+end note
+
+[<-- Command : CommandResult
 deactivate Command
 
 @enduml
