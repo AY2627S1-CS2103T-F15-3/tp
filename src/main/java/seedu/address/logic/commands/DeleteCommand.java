@@ -84,7 +84,7 @@ public class DeleteCommand extends Command {
         }
 
         ReadOnlyAddressBook previousState = new AddressBook(model.getAddressBook());
-personsToDelete.forEach(model::deletePerson);
+        personsToDelete.forEach(model::deletePerson);
 
         String message;
         if (personsToDelete.size() == 1) {
