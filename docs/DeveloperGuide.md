@@ -176,6 +176,10 @@ omit either property, it treats the missing value as an empty string and constru
 `IllegalValueException`. `JsonAdaptedTag` also rejects a null tag name. `JsonAddressBookStorage`
 converts these validation errors to `DataLoadingException`, rejecting the whole file rather than
 returning a partial address book. Missing or null optional tag lists remain valid legacy data.
+Null-entry errors identify one-based positions in the saved `persons` and `tags` arrays, rather than
+GUI display indices. For example, `Contact entry 2 is null.` identifies a null contact, while
+`Contact entry 2 is invalid: Tag entry 3 is null.` identifies a null tag. Contact conversion errors
+include the contact position and retain the original validation exception as their cause.
 
 `JsonUtil#readJsonFile` rejects a null JSON root as a `DataLoadingException`; it returns
 `Optional.empty()` only for a missing file. `MainApp` therefore uses its existing empty-contact-list
@@ -1687,11 +1691,17 @@ Use only the separate test folder for these checks. The paths below are relative
       * `null`
    1. Relaunch the app without entering a command.<br>
       Expected: The GUI opens with an empty contact list, and the loading error is logged.
+      For the first two files, the log identifies `Contact entry 1 is null.` and
+      `Contact entry 1 is invalid: Tag entry 1 is null.`, respectively.
       The original invalid file remains unchanged.
    1. Close the window using its close button and inspect the file.<br>
       Expected: It still contains the original invalid data. Restore the backup before the next case.
    1. Repeat with a valid contact followed by a null entry in the same `persons` array.<br>
-      Expected: The whole file is rejected; the valid contact is not partially loaded.
+      Expected: The whole file is rejected; the valid contact is not partially loaded. The logged
+      error is `Contact entry 2 is null.`.
+   1. Repeat with a valid contact followed by a contact whose `tags` array is `["friends",null]`.<br>
+      Expected: The whole file is rejected, and the log identifies
+      `Contact entry 2 is invalid: Tag entry 2 is null.`. Positions count entries from 1 in saved-file order.
    1. Separately test `{"persons":[]}` and a valid older contact with omitted optional fields.<br>
       Expected: The empty list loads normally, and the older contact loads with unspecified optional details.
 

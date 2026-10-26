@@ -6,6 +6,7 @@ import static seedu.address.testutil.Assert.assertThrows;
 import static seedu.address.testutil.TypicalPersons.BENSON;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -150,7 +151,15 @@ public class JsonAdaptedPersonTest {
         JsonAdaptedPerson person =
                 new JsonAdaptedPerson(VALID_NAME, VALID_PHONE, VALID_EMAIL, VALID_ADDRESS, null, null, invalidTags);
 
-        assertThrows(IllegalValueException.class, JsonAdaptedPerson.MESSAGE_NULL_TAG, person::toModelType);
+        assertThrows(IllegalValueException.class, "Tag entry 3 is null.", person::toModelType);
+    }
+
+    @Test
+    public void toModelType_nullFirstTag_reportsFirstTagPosition() {
+        JsonAdaptedPerson person = new JsonAdaptedPerson(VALID_NAME, VALID_PHONE, VALID_EMAIL, VALID_ADDRESS,
+                null, null, Collections.singletonList(null));
+
+        assertThrows(IllegalValueException.class, "Tag entry 1 is null.", person::toModelType);
     }
 
     @Test

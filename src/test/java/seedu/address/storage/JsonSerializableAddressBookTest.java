@@ -6,6 +6,7 @@ import static seedu.address.testutil.Assert.assertThrows;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -14,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import seedu.address.commons.exceptions.IllegalValueException;
 import seedu.address.commons.util.JsonUtil;
 import seedu.address.model.AddressBook;
+import seedu.address.model.person.Email;
 import seedu.address.model.person.Person;
 import seedu.address.testutil.PersonBuilder;
 import seedu.address.testutil.TypicalPersons;
@@ -29,7 +31,7 @@ public class JsonSerializableAddressBookTest {
     public void toModelType_nullPerson_throwsIllegalValueException() {
         JsonSerializableAddressBook data = new JsonSerializableAddressBook(Collections.singletonList(null));
 
-        assertThrows(IllegalValueException.class, JsonSerializableAddressBook.MESSAGE_NULL_PERSON, data::toModelType);
+        assertThrows(IllegalValueException.class, "Contact entry 1 is null.", data::toModelType);
     }
 
     @Test
@@ -39,8 +41,32 @@ public class JsonSerializableAddressBookTest {
         persons.add(null);
         JsonSerializableAddressBook data = new JsonSerializableAddressBook(persons);
 
-        assertThrows(IllegalValueException.class, JsonSerializableAddressBook.MESSAGE_NULL_PERSON, data::toModelType);
-        assertThrows(IllegalValueException.class, JsonSerializableAddressBook.MESSAGE_NULL_PERSON, data::toModelType);
+        assertThrows(IllegalValueException.class, "Contact entry 2 is null.", data::toModelType);
+        assertThrows(IllegalValueException.class, "Contact entry 2 is null.", data::toModelType);
+    }
+
+    @Test
+    public void toModelType_nullPersonAfterManyValidPersons_reportsSavedPosition() {
+        List<JsonAdaptedPerson> persons = new ArrayList<>();
+        for (int i = 1; i < 10; i++) {
+            persons.add(new JsonAdaptedPerson(new PersonBuilder().withName("Saved Contact " + i).build()));
+        }
+        persons.add(null);
+        JsonSerializableAddressBook data = new JsonSerializableAddressBook(persons);
+
+        assertThrows(IllegalValueException.class, "Contact entry 10 is null.", data::toModelType);
+    }
+
+    @Test
+    public void toModelType_nullTagAfterDuplicateTags_reportsContactAndSavedTagPositions() {
+        JsonAdaptedPerson validPerson = new JsonAdaptedPerson(new PersonBuilder().build());
+        List<JsonAdaptedTag> tags = Arrays.asList(new JsonAdaptedTag("friends"), new JsonAdaptedTag("friends"), null);
+        JsonAdaptedPerson invalidPerson = new JsonAdaptedPerson("Second Contact", null, null, "NUS",
+                null, null, tags);
+        JsonSerializableAddressBook data = new JsonSerializableAddressBook(List.of(validPerson, invalidPerson));
+
+        assertThrows(IllegalValueException.class, "Contact entry 2 is invalid: Tag entry 3 is null.",
+                data::toModelType);
     }
 
     @Test
@@ -71,7 +97,8 @@ public class JsonSerializableAddressBookTest {
     public void toModelType_invalidPersonFile_throwsIllegalValueException() throws Exception {
         JsonSerializableAddressBook dataFromFile = JsonUtil.readJsonFile(INVALID_PERSON_FILE,
                 JsonSerializableAddressBook.class).get();
-        assertThrows(IllegalValueException.class, dataFromFile::toModelType);
+        assertThrows(IllegalValueException.class, "Contact entry 1 is invalid: " + Email.MESSAGE_CONSTRAINTS,
+                dataFromFile::toModelType);
     }
 
     @Test

@@ -646,8 +646,10 @@ Furthermore, certain edits can cause UniMate to behave in unexpected ways (e.g.,
 
 A file containing only `null`, a null contact entry such as `{"persons":[null]}`, or a null tag entry
 such as `"tags":[null]` is invalid. UniMate rejects the whole file, logs the loading error and opens
-with an empty contact list. Close the window without running a command before repairing or restoring
-the file. A valid empty address book (`{"persons":[]}`) and omitted optional contact fields remain supported.
+with an empty contact list. For null contact or tag entries, the logged error identifies their
+positions, counting from 1 in the saved arrays (not the GUI's displayed order). Close the window
+without running a command before repairing or restoring the file. A valid empty address book
+(`{"persons":[]}`) and omitted optional contact fields remain supported.
 
 --------------------------------------------------------------------------------------------------------------------
 

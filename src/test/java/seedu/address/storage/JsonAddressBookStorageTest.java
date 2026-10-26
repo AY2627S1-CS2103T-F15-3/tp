@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import seedu.address.commons.exceptions.DataLoadingException;
+import seedu.address.commons.exceptions.IllegalValueException;
 import seedu.address.commons.util.FileUtil;
 import seedu.address.model.AddressBook;
 import seedu.address.model.ReadOnlyAddressBook;
@@ -79,6 +80,31 @@ public class JsonAddressBookStorageTest {
             assertThrows(DataLoadingException.class, storage::readAddressBook);
             assertEquals(json, FileUtil.readFromFile(filePath));
         }
+    }
+
+    @Test
+    public void readAddressBook_nullPerson_preservesContactPositionInLoadingError() throws IOException {
+        Path filePath = testFolder.resolve("null-contact.json");
+        String json = "{\"persons\":[{\"name\":\"Saved Contact\",\"address\":\"NUS\"},null]}";
+        FileUtil.writeToFile(filePath, json);
+        JsonAddressBookStorage storage = new JsonAddressBookStorage(filePath);
+
+        assertThrows(DataLoadingException.class, IllegalValueException.class.getName() + ": Contact entry 2 is null.",
+                storage::readAddressBook);
+        assertEquals(json, FileUtil.readFromFile(filePath));
+    }
+
+    @Test
+    public void readAddressBook_nullTag_preservesContactAndTagPositionsInLoadingError() throws IOException {
+        Path filePath = testFolder.resolve("null-tag.json");
+        String json = "{\"persons\":[{\"name\":\"Saved Contact\",\"address\":\"NUS\"},"
+                + "{\"name\":\"Second Contact\",\"address\":\"NUS\",\"tags\":[\"friends\",null,\"classmates\"]}]}";
+        FileUtil.writeToFile(filePath, json);
+        JsonAddressBookStorage storage = new JsonAddressBookStorage(filePath);
+
+        assertThrows(DataLoadingException.class, IllegalValueException.class.getName()
+                + ": Contact entry 2 is invalid: Tag entry 2 is null.", storage::readAddressBook);
+        assertEquals(json, FileUtil.readFromFile(filePath));
     }
 
     @Test
