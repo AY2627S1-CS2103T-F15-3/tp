@@ -22,12 +22,17 @@ deactivate AddressBookHistory
 alt undoStates is empty
     AddressBookHistory --> ModelManager : false
 else else
-    AddressBookHistory -> AddressBookHistory : push currentState\nonto redoStates
+    AddressBookHistory -> AddressBookHistory : undone = undoStates.pop()
     activate AddressBookHistory
     AddressBookHistory --> AddressBookHistory
     deactivate AddressBookHistory
 
-    AddressBookHistory -> AddressBookHistory : restore(undoStates.pop())
+    AddressBookHistory -> AddressBookHistory : push currentState with\nundone's description onto redoStates
+    activate AddressBookHistory
+    AddressBookHistory --> AddressBookHistory
+    deactivate AddressBookHistory
+
+    AddressBookHistory -> AddressBookHistory : restore(undone's state)
     activate AddressBookHistory
 
     AddressBookHistory -> AddressBook : resetData(state)

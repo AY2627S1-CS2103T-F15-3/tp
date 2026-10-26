@@ -25,7 +25,10 @@ public class NoteCommand extends Command {
     public static final String MESSAGE_USAGE = COMMAND_WORD + ": Adds or overwrites a contact's note.\n"
             + "Parameters: INDEX (must be a positive integer) TEXT\n"
             + "Example: " + COMMAND_WORD + " 2 Met during CS2103T";
-    public static final String MESSAGE_SUCCESS = "Note saved for %1$s.";
+    public static final String MESSAGE_SUCCESS = "Note saved for %1$s.\nSaved note: %2$s";
+    public static final String MESSAGE_REPLACED = "Note replaced for %1$s. Use undo to restore the previous note."
+            + "\nPrevious note: %2$s\nSaved note: %3$s";
+    public static final String MESSAGE_UNCHANGED = "Note unchanged for %1$s.\nSaved note: %2$s";
 
     private final Index index;
     private final Notes notes;
@@ -48,10 +51,18 @@ public class NoteCommand extends Command {
             throw new CommandException(Messages.MESSAGE_INVALID_PERSON_DISPLAYED_INDEX);
         }
         Person person = displayedPersons.get(index.getZeroBased());
+        Notes previousNotes = person.getNotes();
+        if (previousNotes.equals(notes)) {
+            return new CommandResult(String.format(MESSAGE_UNCHANGED, person.getName(), notes.value));
+        }
+
         ReadOnlyAddressBook previousState = new AddressBook(model.getAddressBook());
         model.setPerson(person, person.withNotes(notes));
-        model.commitAddressBook(previousState);
-        return new CommandResult(String.format(MESSAGE_SUCCESS, person.getName()));
+        String message = previousNotes.isEmpty()
+                ? String.format(MESSAGE_SUCCESS, person.getName(), notes.value)
+                : String.format(MESSAGE_REPLACED, person.getName(), previousNotes.value, notes.value);
+        model.commitAddressBook(previousState, message);
+        return new CommandResult(message);
     }
 
     @Override

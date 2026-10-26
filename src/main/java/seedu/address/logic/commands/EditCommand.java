@@ -107,6 +107,7 @@ public class EditCommand extends Command {
         ReadOnlyAddressBook previousState = new AddressBook(model.getAddressBook());
         model.setPerson(personToEdit, editedPerson);
         model.updateFilteredPersonList(PREDICATE_SHOW_ALL_PERSONS);
+        String message = String.format(MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(editedPerson));
         // An edit that leaves the person unchanged is not recorded by the model.
         model.commitAddressBook(previousState);
         String feedback = String.format(MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(editedPerson));
