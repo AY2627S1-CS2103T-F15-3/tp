@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
+import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
@@ -186,6 +187,83 @@ public class CommandBoxTest {
             assertEquals("help", field.getText());
             press(field, KeyCode.DOWN);
             assertEquals("missing", field.getText());
+        });
+    }
+
+    @Test
+    public void historyPosition_duplicatesAndBoundaryPressesRestartFeedback() throws Exception {
+        runOnFxThread(() -> {
+            List<String> executed = new ArrayList<>();
+            CommandBox box = new CommandBox(command -> {
+                executed.add(command);
+                return new CommandResult("OK");
+            });
+            TextField field = field(box);
+            Label label = (Label) box.getRoot().lookup("#historyPositionLabel");
+            assertFalse(label.isVisible());
+            assertFalse(label.isManaged());
+            press(field, KeyCode.UP);
+            assertFalse(label.isVisible());
+            submit(field, "list");
+            submit(field, "list");
+            submit(field, "list");
+            field.setText("draft");
+            for (int position = 3; position >= 1; position--) {
+                press(field, KeyCode.UP);
+                assertEquals("list", field.getText());
+                assertEquals("History " + position + "/3", label.getText());
+                assertTrue(label.isVisible());
+                assertTrue(label.isManaged());
+            }
+            label.setOpacity(1.0);
+            press(field, KeyCode.UP);
+            assertEquals("History 1/3", label.getText());
+            assertEquals(0.35, label.getOpacity(), 0.001);
+            press(field, KeyCode.DOWN);
+            assertEquals("History 2/3", label.getText());
+            press(field, KeyCode.DOWN);
+            assertEquals("History 3/3", label.getText());
+            press(field, KeyCode.DOWN);
+            assertEquals("draft", field.getText());
+            assertFalse(label.isVisible());
+            assertFalse(label.isManaged());
+            press(field, KeyCode.DOWN);
+            assertFalse(label.isVisible());
+            press(field, KeyCode.UP);
+            submit(field, "help");
+            assertFalse(label.isVisible());
+            assertEquals(List.of("list", "list", "list", "help"), executed);
+        });
+    }
+
+    @Test
+    public void historyPosition_prefixUsesAbsolutePositionAndFailedSubmissionHidesLabel() throws Exception {
+        runOnFxThread(() -> {
+            CommandBox box = new CommandBox(command -> {
+                throw new ParseException("Invalid command");
+            });
+            TextField field = field(box);
+            Label label = (Label) box.getRoot().lookup("#historyPositionLabel");
+            submit(field, "add n/Alice");
+            submit(field, "list");
+            submit(field, "add n/Bob");
+            submit(field, "list");
+            field.setText("add ");
+            pressAlt(field, KeyCode.UP);
+            assertEquals("History 3/4", label.getText());
+            pressAlt(field, KeyCode.UP);
+            assertEquals("History 1/4", label.getText());
+            label.setOpacity(1.0);
+            pressAlt(field, KeyCode.UP);
+            assertEquals(0.35, label.getOpacity(), 0.001);
+            pressAlt(field, KeyCode.DOWN);
+            assertEquals("History 3/4", label.getText());
+            pressAlt(field, KeyCode.DOWN);
+            assertFalse(label.isVisible());
+            pressAlt(field, KeyCode.UP);
+            submit(field, "invalid");
+            assertFalse(label.isVisible());
+            assertTrue(field.getStyleClass().contains(CommandBox.ERROR_STYLE_CLASS));
         });
     }
 

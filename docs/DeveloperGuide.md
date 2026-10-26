@@ -1105,6 +1105,13 @@ search, Alt+Down is a no-op. Editing input, submitting a command or using chrono
 the prefix. `CommandBox` guards programmatic recalls so its text listener resets the search only for
 external edits. Switching navigation modes keeps the original draft and the current history position.
 
+`CommandHistory#getPosition()` exposes a one-based chronological index (zero at the draft), and
+`size()` includes all submissions, even duplicates. After each navigation event, `CommandBox` updates
+the adjacent `historyPositionLabel` to `History i/N`. A 200 ms `FadeTransition` restarts from 35% to
+full opacity on each press, including boundary presses and identical recalls. At the draft and on Enter,
+the transition stops and the label becomes invisible and unmanaged so the input reclaims its space.
+Failed submissions also hide the label. Prefix search displays absolute positions rather than match counts.
+
 <puml src="diagrams/CommandHistorySequenceDiagram.puml" alt="Sequence diagram for submissions, chronological navigation and optional prefix history search" />
 
 `CommandHistoryTest` covers boundaries, duplicates, exact prefixes, mode switching and draft state. `CommandBoxTest` exercises the real
@@ -1119,7 +1126,9 @@ For manual UI verification:
 5. Submit `add n/Alice`, `list`, `add n/Bob`, then `list`. Type `add ` and use Alt+Up twice:
    verify Bob then Alice is recalled, skipping List entries. Alt+Down twice restores Bob then `add `.
 6. Verify no matches leave input unchanged, and ordinary arrows still visit all entries after prefix search.
-7. Restart UniMate and verify both navigation modes leave the input unchanged until a command is submitted.
+7. Submit `list` three times. Press Up repeatedly and verify the label shows distinct absolute positions,
+   pulses even at the oldest entry, then disappears when Down restores the draft or Enter submits input.
+8. Restart UniMate and verify both navigation modes leave the input unchanged until a command is submitted.
 
 ## **Coming soon**
 

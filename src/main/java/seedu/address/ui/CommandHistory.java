@@ -93,6 +93,20 @@ public class CommandHistory {
     }
 
     /**
+     * Returns the one-based chronological position, or zero while at the draft.
+     */
+    public int getPosition() {
+        return position == commands.size() ? 0 : position + 1;
+    }
+
+    /**
+     * Returns the number of submitted commands, including duplicates.
+     */
+    public int size() {
+        return commands.size();
+    }
+
+    /**
      * Lets the next prefix search use the current input after editing or changing navigation mode.
      */
     public void resetPrefixSearch() {
