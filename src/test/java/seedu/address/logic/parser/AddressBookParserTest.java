@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Test;
 
 import seedu.address.logic.commands.AddCommand;
 import seedu.address.logic.commands.ClearCommand;
+import seedu.address.logic.commands.Command;
 import seedu.address.logic.commands.DeleteCommand;
 import seedu.address.logic.commands.DeleteNoteCommand;
 import seedu.address.logic.commands.EditCommand;
@@ -101,6 +102,111 @@ public class AddressBookParserTest {
                 Optional.of(new GraduationYear("2027")), Optional.of(new Tag("Classmate"))));
         assertEquals(expected, parser.parseCommand("filter m/Computer Science c/2027 t/Classmate"));
         assertEquals(expected, parser.parseCommand("  filter   t/Classmate c/2027 m/Computer Science  "));
+    }
+
+    @Test
+    public void parseCommand_unicodeSpaces_treatedAsSeparators() throws Exception {
+        // Command word followed by a Unicode space
+        assertTrue(parser.parseCommand("list\u2003") instanceof ListCommand);
+        assertTrue(parser.parseCommand("\u3000list\u00A0") instanceof ListCommand);
+
+        // Keywords separated by Unicode spaces
+        assertEquals(new FindCommand(new NameContainsKeywordsPredicate(List.of("Computer", "Science"))),
+                parser.parseCommand("find\u2003Computer\u2003Science"));
+
+        // Prefixes preceded by Unicode spaces, and Unicode spaces within values
+        FilterCommand expected = new FilterCommand(new ContactFilterPredicate(
+                Optional.of(new Major("Computer Science")),
+                Optional.of(new GraduationYear("2027")), Optional.empty()));
+        assertEquals(expected, parser.parseCommand("filter\u2003m/Computer\u2003Science\u00A0c/2027\u2003"));
+    }
+
+    @Test
+    public void parseCommand_unicodeSpaceVariants_sameResultAsAsciiSpaces() {
+        // Note text is kept as typed, so note inputs below only use spaces as separators.
+        List<String> asciiInputs = List.of(
+                "add n/Bob a/Main St", "add  n/Bob   a/Main St ",
+                "add n/Bob p/98765432 e/bob@example.com a/Main St m/Computer Science c/2027 t/friend t/CS",
+                "add n/Bob", "add",
+                "fav 1", "fav", "fav x", "fav 1 2", "unfav 1", "unfav",
+                "note 1 Hello", "note 1", "note x Hello", "note",
+                "shownote 1", "shownote", "delnote 1", "delnote",
+                "tag 1 t/NOC", "tag 1 d/1 t/NOC", "tag 1", "untag 1 t/NOC t/CS", "untag 1",
+                "tags", "tags x",
+                "edit 1 n/Bob m/Physics Honours", "edit 1 c/2028 t/", "edit 1", "edit",
+                "delete 1", "delete",
+                "clear", "exit", "help",
+                "sort name asc", "sort year desc", "sort name",
+                "filter m/Computer Science c/2027 t/Classmate", "filter",
+                "find alice bob", "find",
+                "list", "list x", "listfav", "listfav x",
+                "undo", "undo x", "redo", "redo x",
+                "foo bar", "LIST");
+
+        for (String asciiInput : asciiInputs) {
+            for (String space : new String[]{"\u00A0", "\u2003", "\u3000", "\u202F", "\t"}) {
+                String variant = asciiInput.replace(" ", space);
+                assertSameParseResult(asciiInput, variant);
+                assertSameParseResult(asciiInput, space + variant + space);
+            }
+        }
+    }
+
+    /**
+     * Asserts that {@code variant} parses to a command equal to that of {@code expectedInput},
+     * or fails with the same message.
+     */
+    private void assertSameParseResult(String expectedInput, String variant) {
+        Command expected;
+        try {
+            expected = parser.parseCommand(expectedInput);
+        } catch (ParseException e) {
+            assertThrows(ParseException.class, e.getMessage(), () -> parser.parseCommand(variant));
+            return;
+        }
+
+        try {
+            Command actual = parser.parseCommand(variant);
+            assertEquals(expected.getClass(), actual.getClass(), variant);
+            // Commands without fields do not override equals, so for those the type check above is enough.
+            if (overridesEquals(expected)) {
+                assertEquals(expected, actual, variant);
+            }
+        } catch (ParseException e) {
+            throw new AssertionError("Expected [" + variant + "] to parse like [" + expectedInput + "]", e);
+        }
+    }
+
+    private static boolean overridesEquals(Command command) {
+        try {
+            return command.getClass().getMethod("equals", Object.class).getDeclaringClass() != Object.class;
+        } catch (NoSuchMethodException e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    @Test
+    public void parseCommand_surroundingControlCharacters_stripped() throws Exception {
+        // Matches the previous String#trim() behaviour.
+        assertTrue(parser.parseCommand("\u0000list\u0001") instanceof ListCommand);
+        assertTrue(parser.parseCommand("list\u2003\u0001") instanceof ListCommand);
+    }
+
+    @Test
+    public void parseCommand_noteWithUnicodeSpaces_textNotNormalised() throws Exception {
+        assertEquals(new NoteCommand(INDEX_FIRST_PERSON, new Notes("Met at\u2003CS2103T")),
+                parser.parseCommand("note\u20031\u2003Met at\u2003CS2103T"));
+        assertEquals(new NoteCommand(INDEX_FIRST_PERSON, new Notes("Met at\u00A0CS2103T")),
+                parser.parseCommand("note\u00A01\u00A0Met at\u00A0CS2103T"));
+    }
+
+    @Test
+    public void parseCommand_uppercaseNoteWithUnicodeSpaces_textNotNormalised() throws Exception {
+        // Command words are case-insensitive, so any casing of note must keep the text as typed.
+        assertEquals(new NoteCommand(INDEX_FIRST_PERSON, new Notes("Met\u00A0at\u2003CS2103T")),
+                parser.parseCommand("NOTE 1 Met\u00A0at\u2003CS2103T"));
+        assertEquals(new NoteCommand(INDEX_FIRST_PERSON, new Notes("Met\u00A0at\u2003CS2103T")),
+                parser.parseCommand("Note 1 Met\u00A0at\u2003CS2103T"));
     }
 
     @Test
