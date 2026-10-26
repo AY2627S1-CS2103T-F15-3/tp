@@ -69,10 +69,10 @@ public class IncompleteTagDisplayTest {
                 for (Label label : tags(window)) {
                     label.applyCss();
                     if (label.getStyleClass().contains("system-tag")) {
-                        assertEquals(Color.web("#F4C542"), label.getBackground().getFills().get(0).getFill());
-                        assertEquals(Color.web("#222222"), label.getTextFill());
+                        assertEquals(Color.web("#433425"), label.getBackground().getFills().get(0).getFill());
+                        assertEquals(Color.web("#f1c58d"), label.getTextFill());
                     } else {
-                        assertEquals(Color.web("#3e7b91"), label.getBackground().getFills().get(0).getFill());
+                        assertEquals(Color.web("#30363c"), label.getBackground().getFills().get(0).getFill());
                     }
                 }
                 assertTrue(tags(window).stream().anyMatch(label -> label.getText().equals("incomplete (custom)")));

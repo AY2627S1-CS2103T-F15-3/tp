@@ -20,6 +20,7 @@ import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.control.skin.VirtualFlow;
 import javafx.stage.Stage;
 import seedu.address.logic.LogicManager;
 import seedu.address.logic.Messages;
@@ -166,7 +167,11 @@ public class SortUiTest {
         assertEquals(expected, list(window).getItems());
         for (int index = 0; index < expected.size(); index++) {
             list(window).scrollTo(index);
-            list(window).layout();
+            window.getRoot().getScene().getRoot().applyCss();
+            window.getRoot().getScene().getRoot().layout();
+            VirtualFlow<?> flow = (VirtualFlow<?>) list(window).lookup(".virtual-flow");
+            flow.scrollTo(index);
+            flow.layout();
             assertCard(window, expected.get(index), (index + 1) + ". ");
         }
     }
@@ -174,7 +179,10 @@ public class SortUiTest {
     private void assertCard(MainWindow window, Person person, String index) {
         ListCell<?> cell = list(window).lookupAll(".list-cell").stream()
                 .filter(node -> node instanceof ListCell<?> candidate && person.equals(candidate.getItem()))
-                .map(node -> (ListCell<?>) node).findFirst().orElseThrow();
+                .map(node -> (ListCell<?>) node).findFirst().orElseThrow(() -> new AssertionError(
+                        "Expected card " + person.getName() + "; visible indices: "
+                        + list(window).lookupAll(".list-cell").stream()
+                                .map(node -> ((ListCell<?>) node).getIndex()).toList()));
         assertEquals(index, ((Label) cell.getGraphic().lookup("#id")).getText());
         assertEquals(person.getName().fullName, ((Label) cell.getGraphic().lookup("#name")).getText());
     }
