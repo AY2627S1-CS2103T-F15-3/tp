@@ -210,6 +210,14 @@ public class AddressBookParserTest {
     }
 
     @Test
+    public void parseCommand_noteWithSurroundingUnicodeSpaces_trimsEdgesAndPreservesInternalSpaces() throws Exception {
+        NoteCommand expected = new NoteCommand(INDEX_FIRST_PERSON, new Notes("Hello\u00A0World"));
+        for (String commandWord : List.of("note", "NOTE", "Note")) {
+            assertEquals(expected, parser.parseCommand(commandWord + " 1 \u00A0Hello\u00A0World\u202F"));
+        }
+    }
+
+    @Test
     public void parseCommand_filterWithoutCriteria_throwsParseException() {
         String expectedMessage = String.format(MESSAGE_INVALID_COMMAND_FORMAT, FilterCommand.MESSAGE_USAGE);
         assertThrows(ParseException.class, expectedMessage, () -> parser.parseCommand("filter"));
