@@ -4,20 +4,22 @@ skinparam ClassFontColor #000000
 skinparam ClassBorderColor #000000
 skinparam ClassBackgroundColor #FFFFAA
 
-title After command "undo"
+title After commands "undo" and "add n/Beth Lim ..."
 
 package "undoStates" <<rectangle>> {
-    class U0 as "<u>ab0:AddressBook</u>"
+    class U0 as "<u>ab1:AddressBook</u>"
+    class U1 as "<u>ab0:AddressBook</u>"
 }
 
 package "currentState" <<rectangle>> {
-    class C as "<u>ab1:AddressBook</u>"
+    class C as "<u>ab3:AddressBook</u>"
 }
 
 package "redoStates" <<rectangle>> {
-    class R0 as "<u>ab2:AddressBook</u>"
+    class RE as "(empty)" #FFFFFF
 }
 
+U0 -[hidden]down-> U1
 U0 -[hidden]right-> C
-C -[hidden]right-> R0
+C -[hidden]right-> RE
 @enduml

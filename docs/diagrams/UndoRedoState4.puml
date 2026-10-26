@@ -4,7 +4,7 @@ skinparam ClassFontColor #000000
 skinparam ClassBorderColor #000000
 skinparam ClassBackgroundColor #FFFFAA
 
-title After command "redo"
+title After an unrecorded change
 
 package "undoStates" <<rectangle>> {
     class U0 as "<u>ab1:AddressBook</u>"
@@ -12,7 +12,7 @@ package "undoStates" <<rectangle>> {
 }
 
 package "currentState" <<rectangle>> {
-    class C as "<u>ab2:AddressBook</u>"
+    class C as "<u>ab3:AddressBook</u>"
 }
 
 package "redoStates" <<rectangle>> {
@@ -22,4 +22,9 @@ package "redoStates" <<rectangle>> {
 U0 -[hidden]down-> U1
 U0 -[hidden]right-> C
 C -[hidden]right-> RE
+
+package "Contacts in the model" <<rectangle>> {
+    class L as "<u>ab4:AddressBook</u>" #FFFFFF
+}
+C -[hidden]down-> L
 @enduml
