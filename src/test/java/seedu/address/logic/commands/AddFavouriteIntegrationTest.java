@@ -15,6 +15,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 import seedu.address.logic.Logic;
 import seedu.address.logic.LogicManager;
+import seedu.address.logic.Messages;
 import seedu.address.logic.commands.exceptions.CommandException;
 import seedu.address.logic.parser.exceptions.ParseException;
 import seedu.address.model.AddressBook;
@@ -52,9 +53,13 @@ public class AddFavouriteIntegrationTest {
     @Test
     public void execute_addFavourite_persistsAndCreatesOneUndoableChange() throws Exception {
         LocalDate before = LocalDate.now();
-        logic.execute("add n/Alice p/91234567 e/alice@example.com a/NUS m/Computing c/2027 f/ d/1");
+        String feedback = logic.execute("add n/Alice p/91234567 e/alice@example.com a/NUS m/Computing c/2027 f/ d/1")
+                .getFeedbackToUser();
         Person added = model.getAddressBook().getPersonList().get(1);
 
+        String expectedFeedback = "New favourite contact added: " + Messages.format(added);
+        assertEquals(expectedFeedback, feedback);
+        assertEquals(expectedFeedback, model.getUndoDescription().orElseThrow());
         assertTrue(added.isFavourite());
         assertTrue(added.getLastUpdated().equals(before) || added.getLastUpdated().equals(LocalDate.now()));
         assertEquals(new PersonBuilder().withName("Alice").withPhone("91234567").withEmail("alice@example.com")
@@ -70,13 +75,13 @@ public class AddFavouriteIntegrationTest {
         new ListFavCommand().execute(reopened);
         assertEquals(List.of(added), reopened.getFilteredPersonList());
 
-        logic.execute("undo");
+        assertEquals("Undid: " + expectedFeedback, logic.execute("undo").getFeedbackToUser());
         assertEquals(List.of(ordinary), model.getAddressBook().getPersonList());
         assertEquals(List.of(ordinary), storage.readAddressBook().orElseThrow().getPersonList());
         assertFalse(model.canUndoAddressBook());
         assertTrue(model.canRedoAddressBook());
 
-        logic.execute("redo");
+        assertEquals("Redid: " + expectedFeedback, logic.execute("redo").getFeedbackToUser());
         assertEquals(List.of(ordinary, added), model.getAddressBook().getPersonList());
         assertEquals(List.of(ordinary, added), storage.readAddressBook().orElseThrow().getPersonList());
         assertFalse(model.canRedoAddressBook());
@@ -84,13 +89,30 @@ public class AddFavouriteIntegrationTest {
 
     @Test
     public void execute_addWithoutFlag_remainsNotFavourite() throws Exception {
-        logic.execute("add n/Alice a/NUS");
+        String feedback = logic.execute("add n/Alice a/NUS").getFeedbackToUser();
         Person added = model.getAddressBook().getPersonList().get(1);
 
+        assertEquals("New person added: " + Messages.format(added), feedback);
         assertFalse(added.isFavourite());
         assertEquals(List.of(ordinary, added), storage.readAddressBook().orElseThrow().getPersonList());
         logic.execute("listfav");
         assertTrue(model.getFilteredPersonList().isEmpty());
+    }
+
+    @Test
+    public void execute_editPreservesFavouriteStatus_favAndUnfavChangeIt() throws Exception {
+        logic.execute("add n/Alice a/NUS f/");
+        logic.execute("edit 2 a/Updated NUS");
+        assertTrue(model.getAddressBook().getPersonList().get(1).isFavourite());
+
+        logic.execute("unfav 2");
+        assertFalse(model.getAddressBook().getPersonList().get(1).isFavourite());
+        logic.execute("edit 2 p/91234567");
+        assertFalse(model.getAddressBook().getPersonList().get(1).isFavourite());
+
+        logic.execute("fav 2");
+        assertTrue(model.getAddressBook().getPersonList().get(1).isFavourite());
+        assertEquals(model.getAddressBook(), storage.readAddressBook().orElseThrow());
     }
 
     @Test

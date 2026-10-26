@@ -97,10 +97,32 @@ public class AddCommandParserTest {
 
     @Test
     public void parse_favouriteFlagWithValue_failure() {
-        String expectedMessage = String.format(MESSAGE_INVALID_COMMAND_FORMAT, AddCommand.MESSAGE_USAGE);
+        String expectedMessage = "The f/ flag does not take a value. "
+                + "Use f/ alone to mark the new contact as a favourite.";
         for (String value : List.of("true", "false", "yes", "1", "extra text")) {
             assertParseFailure(parser, NAME_DESC_BOB + ADDRESS_DESC_BOB + " f/" + value, expectedMessage);
         }
+    }
+
+    @Test
+    public void parse_addressContainingEmbeddedFavouritePrefix_preservesAddressWithoutFavourite() {
+        Person expected = new PersonBuilder().withName("Alice").withAddress("Blockf/3")
+                .withPhone("").withEmail("").build();
+        assertParseSuccess(parser, " n/Alice a/Blockf/3", new AddCommand(expected));
+    }
+
+    @Test
+    public void parse_addressFollowedByFavouritePrefix_recognisesFlag() {
+        Person expected = new PersonBuilder().withName("Alice").withAddress("Block")
+                .withPhone("").withEmail("").withFavourite(true).build();
+        assertParseSuccess(parser, " n/Alice a/Block f/", new AddCommand(expected));
+        assertParseSuccess(parser, " n/Alice a/Block f/ p/91234567",
+                new AddCommand(new PersonBuilder(expected).withPhone("91234567").build()));
+    }
+
+    @Test
+    public void parse_addressContainingSpaceBeforeFavouritePrefixWithValue_failure() {
+        assertParseFailure(parser, " n/Alice a/Block f/3", AddCommandParser.MESSAGE_FAVOURITE_FLAG_VALUE);
     }
 
     @Test

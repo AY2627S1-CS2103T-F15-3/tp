@@ -53,6 +53,7 @@ public class AddCommand extends Command {
             + PREFIX_TAG + "owesMoney";
 
     public static final String MESSAGE_SUCCESS = "New person added: %1$s";
+    public static final String MESSAGE_FAVOURITE_SUCCESS = "New favourite contact added: %1$s";
     public static final String MESSAGE_DUPLICATE_PERSON =
             "This person already exists in the address book (names are compared ignoring case).";
 
@@ -85,7 +86,8 @@ public class AddCommand extends Command {
         ReadOnlyAddressBook previousState = new AddressBook(model.getAddressBook());
         Person addedPerson = toAdd.withLastUpdated(LocalDate.now(clock));
         model.addPerson(addedPerson);
-        String message = String.format(MESSAGE_SUCCESS, Messages.format(addedPerson));
+        String message = String.format(addedPerson.isFavourite() ? MESSAGE_FAVOURITE_SUCCESS : MESSAGE_SUCCESS,
+                Messages.format(addedPerson));
         model.commitAddressBook(previousState, message);
         return new CommandResult(message);
     }

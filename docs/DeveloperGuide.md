@@ -289,14 +289,22 @@ classified as an unknown parameter.
 
 For example, `add n/PrefixProbe a/NUS x/typo` supplies `NUS x/typo` to `ParserUtil.parseAddress`.
 That address is valid and is saved literally. The same text inside a more restricted field may fail
-that field's validation. Slash-containing addresses remain valid, so an unfamiliar `letter/` sequence
-does not reliably indicate a typo. The UG explains this behavior and how to correct a saved address.
+that field's validation. Slash-containing addresses remain valid unless a recognised prefix preceded
+by a space delimits a new argument. In `add`, `f/` is now a recognised prefix, so `a/Blockf/3` preserves
+the literal address without favouriting the contact, `a/Block f/` supplies address `Block` and marks
+the contact as a favourite, and `a/Block f/3` is rejected because the flag has a value. A space followed
+by `f/` cannot represent literal address text in `add`. The UG warning and `AddCommandParserTest`
+document and cover these boundaries.
 
-The optional `f/` prefix is a flag with no value. `AddCommandParser` rejects values and repeated
+The optional `f/` prefix is a flag with no value. `AddCommandParser` rejects values with the specific
+message `The f/ flag does not take a value. Use f/ alone to mark the new contact as a favourite.` and rejects repeated
 occurrences, then passes the flag's presence to the existing `Person` constructor as its initial
 favourite state. `AddCommand` saves this state in the same history snapshot as the new contact;
-no separate favourite command or history entry is needed. `AddFavouriteIntegrationTest` verifies
-saved data, favourites views, undo/redo, and rejected inputs, while `FavouriteIconTest` checks that
+no separate favourite command or history entry is needed. Its success message starts with
+`New favourite contact added:` for favourites and `New person added:` otherwise. The same message
+describes the addition in undo/redo history. After creation, `fav` and `unfav` change favourite status;
+`edit` preserves it. `AddFavouriteIntegrationTest` verifies these messages, saved data, favourites views,
+undo/redo, editing and rejected inputs, while `FavouriteIconTest` checks that
 the heart appears immediately after adding with the flag.
 
 ### Adding academic fields

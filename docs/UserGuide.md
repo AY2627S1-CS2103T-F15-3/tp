@@ -102,7 +102,14 @@ Major and class year are optional and can be supplied independently.
 **Check your field prefixes:** Use the prefixes shown in the command format above. Unknown prefix-like
 text can become part of the preceding field instead of producing an error. For example,
 `add n/PrefixProbe a/NUS x/typo` saves the address as `NUS x/typo`; `x/` does not start a separate field.
-Check the added contact's details. To correct this example, run `find PrefixProbe`, confirm the displayed
+
+Recognised prefixes start a new argument when preceded by a space, even within text intended as an address.
+In `add`, `f/` is a recognised flag: `add n/Alice a/Block f/` saves the address as `Block` and marks Alice
+as a favourite. `add n/Alice a/Block f/3` is rejected because the flag has a value. Without a space before
+`f/`, `add n/Alice a/Blockf/3` saves the full address `Blockf/3` and does not mark Alice as a favourite.
+A space followed by `f/` is reserved for the flag and cannot be included as literal address text in `add`.
+
+Check the added contact's details. To correct the `PrefixProbe` example, run `find PrefixProbe`, confirm the displayed
 contact, then `edit 1 a/NUS`.
 </box>
 
@@ -118,6 +125,11 @@ contact, then `edit 1 a/NUS`.
   The flag takes no value, may appear anywhere among the prefixed fields, and may appear only once.
   Inputs such as `f/true` and `f/false` are rejected. Omit `f/` to create a contact without favourite status.
   Favourite status is saved with the contact and included in the same undo/redo step as the addition.
+  The success message begins `New favourite contact added:` when `f/` is supplied, or `New person added:` otherwise.
+  A flag with a value reports `The f/ flag does not take a value. Use f/ alone to mark the new contact as a favourite.`
+* After creation, use [`fav INDEX`](#marking-a-favourite-contact-fav) or
+  [`unfav INDEX`](#removing-favourite-status-unfav) to change favourite status. `edit` preserves the current
+  favourite status and cannot change it.
 * Phone and email are independently optional. Omit `p/` or `e/` when unknown; do not supply an empty prefix in `add`. Non-empty values must satisfy the existing phone and email format rules. A contact without either receives the [automatic incomplete reminder](#automatic-incomplete-reminders).
 
 Examples:
@@ -479,7 +491,9 @@ Format: `edit INDEX [n/NAME] [p/PHONE] [e/EMAIL] [a/ADDRESS] [m/MAJOR] [c/CLASS_
 * A successful `edit` that changes the person's details can be reverted with [`undo`](#undoing-a-change-undo).
 * The result display shows `Edited person: ` followed by the updated details, and the command box is cleared.
   The contact card shows `Major: Not specified` or `Class year: Not specified` when an academic field is cleared.
-* Notes and favourite status are preserved. Changing a basic profile field refreshes the contact's update date;
+* Notes and favourite status are preserved. Use [`fav INDEX`](#marking-a-favourite-contact-fav) or
+  [`unfav INDEX`](#removing-favourite-status-unfav) to change favourite status; it cannot be changed with `edit`.
+  Changing a basic profile field refreshes the contact's update date;
   changing only tags does not refresh that date.
 * Invalid input, an index outside the displayed list, or a name already used by another contact leaves the
   contacts and current view unchanged. The result display shows the error and the command box keeps the input for correction.

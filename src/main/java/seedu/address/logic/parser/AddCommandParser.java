@@ -30,6 +30,9 @@ import seedu.address.model.tag.Tag;
  */
 public class AddCommandParser implements Parser<AddCommand> {
 
+    public static final String MESSAGE_FAVOURITE_FLAG_VALUE = "The f/ flag does not take a value. "
+            + "Use f/ alone to mark the new contact as a favourite.";
+
     /**
      * Parses the given {@code String} of arguments in the context of the AddCommand
      * and returns an AddCommand object for execution.
@@ -48,7 +51,7 @@ public class AddCommandParser implements Parser<AddCommand> {
         argMultimap.verifyNoDuplicatePrefixesFor(PREFIX_NAME, PREFIX_PHONE, PREFIX_EMAIL, PREFIX_ADDRESS,
                 PREFIX_MAJOR, PREFIX_GRADUATION_YEAR, PREFIX_FAVOURITE);
         if (!argMultimap.getValue(PREFIX_FAVOURITE).orElse("").isEmpty()) {
-            throw new ParseException(String.format(MESSAGE_INVALID_COMMAND_FORMAT, AddCommand.MESSAGE_USAGE));
+            throw new ParseException(MESSAGE_FAVOURITE_FLAG_VALUE);
         }
         Name name = ParserUtil.parseName(argMultimap.getValue(PREFIX_NAME).get());
         Phone phone = argMultimap.getValue(PREFIX_PHONE).isPresent()
