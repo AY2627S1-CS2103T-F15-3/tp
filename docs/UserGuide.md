@@ -97,6 +97,15 @@ Format: `add n/NAME [p/PHONE_NUMBER] [e/EMAIL] a/ADDRESS [m/MAJOR] [c/CLASS_YEAR
 Major and class year are optional and can be supplied independently.
 </box>
 
+<box type="warning" seamless>
+
+**Check your field prefixes:** Use the prefixes shown in the command format above. Unknown prefix-like
+text can become part of the preceding field instead of producing an error. For example,
+`add n/PrefixProbe a/NUS x/typo` saves the address as `NUS x/typo`; `x/` does not start a separate field.
+Check the added contact's details. To correct this example, run `find PrefixProbe`, confirm the displayed
+contact, then `edit 1 a/NUS`.
+</box>
+
 * `m/MAJOR` records the person's academic major. A supplied major must be non-blank text on one line.
 * `c/CLASS_YEAR` records the graduation year (class of 20XX). Enter exactly four digits from `2000` to `2099`.
 * Omit `m/` or `c/` if the value is unknown or does not apply; an empty supplied value is rejected.
@@ -307,7 +316,7 @@ Example (assuming at least one person is displayed):
 |--------------------|----------------|
 | Missing or invalid index, or extra arguments (e.g., `fav`, `fav 0`, `fav 1 extra`) | `Invalid command format!`, followed by the `fav` usage instructions. |
 | Index exceeds the displayed list size | `The person index provided is invalid.` |
-| Person is already favourited | `This person is already a favourite.` |
+| Person is already favourited | The selected contact's name followed by ` is already a favourite.`, e.g., `Alice is already a favourite.` |
 
 These errors leave contact data unchanged.
 
@@ -333,7 +342,7 @@ Example (assuming the first displayed person is favourited):
 |--------------------|----------------|
 | Missing or invalid index, or extra arguments (e.g., `unfav`, `unfav -1`, `unfav 1 extra`) | `Invalid command format!`, followed by the `unfav` usage instructions. |
 | Index exceeds the displayed list size | `The person index provided is invalid.` |
-| Person is not favourited | `This person is not a favourite.` |
+| Person is not favourited | The selected contact's name followed by ` is not a favourite.`, e.g., `Alice is not a favourite.` |
 
 These errors leave contact data unchanged. After `unfav` removes a person from the favourite list, check the new displayed indices before entering another indexed command.
 
@@ -413,7 +422,7 @@ Example: `delnote 2`
 
 The message area displays `Note deleted for NAME.`, and the note icon disappears. The current list filter is preserved. If the contact already has no note, the message is `This contact has no note to delete.` and its data stays unchanged.
 
-Deleting an existing note can be undone and redone. Deleting an already empty note does not create an undo step or clear any available redo history.
+Deleting an existing note can be [undone](#undoing-a-change-undo) and [redone](#redoing-a-change-redo). Deleting an already empty note does not create an undo step or clear any available redo history.
 
 For all three note commands, an index outside the displayed list reports `The person index provided is invalid.` Missing or invalid index syntax produces a usage error. `note INDEX` without text is also a usage error; use `delnote INDEX` to clear a note. `shownote` and `delnote` reject extra arguments. Invalid note text is rejected without changing the existing note.
 
@@ -520,6 +529,11 @@ Format: `filter [m/MAJOR] [c/CLASS_YEAR] [t/TAG]`
   error without changing the current results. Use `t/Friend` to filter a default tag; `d/` is not supported.
 * The result message shows the number of matching contacts. Zero matches displays an empty list;
   no contacts are deleted.
+* A persistent status line above the contact list shows the displayed/total contact counts, active
+  filter or search, and sort order. For example:
+  `Showing 3 of 20 contacts | Filter: Class year: 2027 | Sort: Name ascending`.
+  It stays visible when another command, such as `shownote`, replaces the result message.
+  Long criteria wrap onto additional lines. The status also identifies favourites views and empty results.
 * Each `filter` replaces the previous search or filter and retains the active sort order, or the saved
   contact order if no sort has been chosen. `find` replaces the filter; `list` shows all contacts again.
 * Indices refer to the currently displayed list. For example, `delete 1` targets the first filtered result.
@@ -542,9 +556,9 @@ Unlike `find Computer Science`, which searches for either word across names and 
 
 Orders the displayed contacts while keeping the current search or filter.
 
-Format: `sort FIELD DIRECTION`
+Format: `sort FIELD DIRECTION` or `sort reset`
 
-* Both arguments are required and must appear in this order. Field and direction keywords are case-insensitive; for example, `sort Name ASC` is accepted.
+* To choose a sort order, both arguments are required and must appear in this order. Keywords are case-insensitive; for example, `sort Name ASC` is accepted.
   Extra surrounding spaces and spaces between arguments are allowed.
 
   | Argument | Accepted values | Meaning |
@@ -556,6 +570,10 @@ Format: `sort FIELD DIRECTION`
 * Contacts with an unspecified major or class year appear **last** when sorting by that field,
   for both directions. Equal academic values, including unspecified values, use ascending name order.
   Names differing only in case compare equally.
+* `sort reset` removes the active sort and restores saved contact order, while keeping the current
+  search or filter. It takes no direction or other arguments and succeeds even if no sort is active.
+  Unlike `sort reset`, `list` removes the filter and keeps the current sort. Use `list`, then
+  `sort reset`, to show all contacts in saved order.
 * Sorting an empty list or a single contact succeeds. Sorting does not add or remove contacts.
 * `filter`, `find` and `list` retain the chosen sort order. A successful `add`, `edit`, `undo` or `redo`
   shows all contacts in that order; tag, untag and delete retain the current filter and sort.
@@ -570,6 +588,8 @@ Format: `sort FIELD DIRECTION`
 Examples:
 * `sort name asc` displays names from A to Z.
 * `sort major desc` displays majors from Z to A, with unspecified majors last.
+* `filter c/2027`, then `sort name asc`, then `sort reset` shows only class year `2027` contacts
+  in saved order. The status changes from `Sort: Name ascending` to `Sort: Saved order`.
 * `filter t/Classmate`, then `sort year asc`, shows only classmates, earliest class year first.
   `list` then shows all contacts in the same year order.
 
@@ -629,6 +649,7 @@ Format: `undo`
 
 * Every command that changes your contacts can be undone: `add`, `edit`, `delete`, `clear`, `tag`, `untag`, `fav`, `unfav`, `note` and `delnote`.
 * Restores your contacts to how they were before the most recent change that has not already been undone.
+* The message names the change that was undone: `Undid:` followed by the message that change showed when you made it, such as `Undid: Tagged person: …​` or `Undid: Deleted person: Alex Tan; …​`.
 * Run `undo` again to revert earlier changes one at a time, starting from the most recent.
 * After an undo, the full contact list is shown, even if you were viewing the results of `find`.
 * A command that leaves every detail unchanged, such as an `edit` with the same values or `tag` with a tag the person already has, does not count as a change.
@@ -641,10 +662,14 @@ Format: `undo`
 Examples:
 * `add n/Alex Tan p/91234567 e/alex@example.com a/10 Kent Ridge Road` followed by `undo` removes `Alex Tan` again.
 * `edit 2 p/98765432` followed by `undo` restores the 2nd person's previous phone number.
+* For a contact without a note, `note 1 Follow up` followed by `undo` removes the note again.
+* `note 1 Follow up`, then `note 1 Project teammate`, then `undo` restores the previous note, `Follow up`.
+* For a contact with an existing note, `delnote 1` followed by `undo` brings back the deleted note.
 * `add n/Alex Tan p/91234567 e/alex@example.com a/10 Kent Ridge Road`, then `edit 1 c/2027`, then `undo` twice first reverts the edit and then removes the added contact.
 * `delete 3` followed by `undo` brings the deleted person back.
 * `delete 1 3 5` followed by `undo` restores all three contacts in one step.
 * `edit 1 p/92345678`, then `fav 1`, then `undo` twice first removes the favourite status and then restores the previous phone number.
+* `fav 1`, then `tag 2 t/Friend`, then `undo` removes the `Friend` tag and shows `Undid: Tagged person: …​`, naming the 2nd person. Running `undo` again shows `Undid: Added to favourites: …​`.
 
 ### Redoing an undone change: `redo`
 
@@ -653,6 +678,7 @@ Reapplies the most recent change that was reverted by `undo`.
 Format: `redo`
 
 * The change undone most recently is redone first. Running `redo` repeatedly therefore reapplies undone changes in the order you originally made them.
+* The message names the change that was redone: `Redid:` followed by the message that change showed when you first made it, such as `Redid: Added to favourites: …​`.
 * After a redo, the full contact list is shown, even if you were viewing the results of `find`.
 * Undone changes can be redone only until you change your contacts again. After any command that changes your contacts, such as `add`, `delete` or `fav`, `redo` is no longer available.
 * Commands that fail, and commands that do not change contacts, such as `list`, `find`, `tags` and `help`, do not affect what `redo` reapplies.
@@ -662,8 +688,10 @@ Format: `redo`
 
 Examples:
 * `add n/Alex Tan p/91234567 e/alex@example.com a/10 Kent Ridge Road`, then `undo`, then `redo` adds `Alex Tan` back.
+* For a contact without a note, `note 1 Follow up`, then `undo`, then `redo` saves the note `Follow up` again.
+* For a contact with an existing note, `delnote 1`, then `undo`, then `redo` deletes the note again.
 * `edit 1 p/91234567`, then `undo`, then `redo` changes the 1st person's phone number to `91234567` again.
-* `clear`, then `undo`, then `redo` clears your contacts again.
+* `clear`, then `undo`, then `redo` clears your contacts again, showing `Redid: Address book has been cleared!`.
 
 <box type="tip" seamless>
 
@@ -757,7 +785,7 @@ Action     | Format, Examples
 **Edit**   | `edit INDEX [n/NAME] [p/PHONE_NUMBER] [e/EMAIL] [a/ADDRESS] [m/MAJOR] [c/CLASS_YEAR] [t/TAG]... `<br> e.g.,`edit 2 n/James Lee e/jameslee@example.com`
 **Find**   | `find KEYWORD [MORE_KEYWORDS]`<br> e.g., `find James Jake`, `find Computer Science`, `find 2027`
 **Filter** | `filter [m/MAJOR] [c/CLASS_YEAR] [t/TAG]` (at least one criterion)<br> e.g., `filter m/Computer Science c/2027 t/Classmate`
-**Sort**   | `sort FIELD DIRECTION`<br> e.g., `sort name asc`, `sort major desc`, `sort year asc`
+**Sort**   | `sort FIELD DIRECTION` or `sort reset`<br> e.g., `sort name asc`, `sort major desc`, `sort year asc`
 **List all saved contacts** | `list` (no parameters; clears the current filter and reports the total)
 **Favourite** | `fav INDEX`<br> e.g., `fav 1`
 **Unfavourite** | `unfav INDEX`<br> e.g., `unfav 1`

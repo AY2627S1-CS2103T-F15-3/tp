@@ -84,16 +84,23 @@ public class DeleteCommand extends Command {
         }
 
         ReadOnlyAddressBook previousState = new AddressBook(model.getAddressBook());
-        personsToDelete.forEach(model::deletePerson);
-        model.commitAddressBook(previousState);
+personsToDelete.forEach(model::deletePerson);
+
+        String message;
         if (personsToDelete.size() == 1) {
-            return new CommandResult(String.format(MESSAGE_DELETE_PERSON_SUCCESS,
-                    Messages.format(personsToDelete.get(0))));
+            message = String.format(MESSAGE_DELETE_PERSON_SUCCESS,
+                    Messages.format(personsToDelete.get(0)));
+        } else {
+            String deletedPersons = IntStream.range(0, personsToDelete.size())
+                    .mapToObj(i -> targetIndices.get(i).getOneBased() + ". "
+                            + Messages.format(personsToDelete.get(i)))
+                    .collect(Collectors.joining("\n"));
+            message = String.format(MESSAGE_DELETE_PERSONS_SUCCESS,
+                    personsToDelete.size(), deletedPersons);
         }
-        String deletedPersons = IntStream.range(0, personsToDelete.size())
-                .mapToObj(i -> targetIndices.get(i).getOneBased() + ". " + Messages.format(personsToDelete.get(i)))
-                .collect(Collectors.joining("\n"));
-        return new CommandResult(String.format(MESSAGE_DELETE_PERSONS_SUCCESS, personsToDelete.size(), deletedPersons));
+
+        model.commitAddressBook(previousState, message);
+        return new CommandResult(message);
     }
 
     @Override

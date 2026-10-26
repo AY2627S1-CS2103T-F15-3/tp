@@ -15,7 +15,7 @@ public class RedoCommand extends Command {
     public static final String MESSAGE_USAGE = COMMAND_WORD + ": Redoes the most recently undone change.\n"
             + "Usage: " + COMMAND_WORD;
 
-    public static final String MESSAGE_SUCCESS = "Restored the most recently undone change.";
+    public static final String MESSAGE_SUCCESS = "Redid: %s";
     public static final String MESSAGE_FAILURE = "There is no change to redo. An undone change cannot be redone "
             + "after another change has been made.";
 
@@ -27,8 +27,9 @@ public class RedoCommand extends Command {
             throw new CommandException(MESSAGE_FAILURE);
         }
 
+        String description = model.getRedoDescription().orElseThrow();
         model.redoAddressBook();
         model.updateFilteredPersonList(PREDICATE_SHOW_ALL_PERSONS);
-        return new CommandResult(MESSAGE_SUCCESS);
+        return new CommandResult(String.format(MESSAGE_SUCCESS, description));
     }
 }

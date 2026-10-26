@@ -8,6 +8,8 @@ import static seedu.address.testutil.TypicalPersons.ALICE;
 import static seedu.address.testutil.TypicalPersons.BENSON;
 import static seedu.address.testutil.TypicalPersons.CARL;
 
+import java.util.Optional;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -33,7 +35,11 @@ public class AddressBookHistoryTest {
     private void addAndCommit(Person person) {
         AddressBook previousState = new AddressBook(addressBook);
         addressBook.addPerson(person);
-        history.commit(previousState);
+        history.commit(previousState, describeAdd(person));
+    }
+
+    private static String describeAdd(Person person) {
+        return "Added " + person.getName();
     }
 
     @Test
@@ -49,7 +55,49 @@ public class AddressBookHistoryTest {
 
     @Test
     public void commit_null_throwsNullPointerException() {
-        assertThrows(NullPointerException.class, () -> history.commit(null));
+        assertThrows(NullPointerException.class, () -> history.commit(null, "change"));
+    }
+
+    @Test
+    public void commit_nullDescription_throwsNullPointerException() {
+        assertThrows(NullPointerException.class, () -> history.commit(new AddressBook(addressBook), null));
+    }
+
+    @Test
+    public void getUndoRedoDescription_emptyHistory_returnsEmpty() {
+        assertEquals(Optional.empty(), history.getUndoDescription());
+        assertEquals(Optional.empty(), history.getRedoDescription());
+    }
+
+    @Test
+    public void getUndoRedoDescription_multipleCommits_followUndoAndRedo() {
+        addAndCommit(BENSON);
+        addAndCommit(CARL);
+        assertEquals(Optional.of(describeAdd(CARL)), history.getUndoDescription());
+        assertEquals(Optional.empty(), history.getRedoDescription());
+
+        history.undo();
+        assertEquals(Optional.of(describeAdd(BENSON)), history.getUndoDescription());
+        assertEquals(Optional.of(describeAdd(CARL)), history.getRedoDescription());
+
+        history.undo();
+        assertEquals(Optional.empty(), history.getUndoDescription());
+        assertEquals(Optional.of(describeAdd(BENSON)), history.getRedoDescription());
+
+        history.redo();
+        assertEquals(Optional.of(describeAdd(BENSON)), history.getUndoDescription());
+        assertEquals(Optional.of(describeAdd(CARL)), history.getRedoDescription());
+    }
+
+    @Test
+    public void getUndoRedoDescription_staleHistory_returnsEmpty() {
+        addAndCommit(BENSON);
+        addAndCommit(CARL);
+        history.undo();
+        addressBook.removePerson(ALICE); // unrecorded change
+
+        assertEquals(Optional.empty(), history.getUndoDescription());
+        assertEquals(Optional.empty(), history.getRedoDescription());
     }
 
     @Test
@@ -66,7 +114,7 @@ public class AddressBookHistoryTest {
 
     @Test
     public void commit_dataUnchanged_doesNotCreateUndoableState() {
-        history.commit(new AddressBook(addressBook));
+        history.commit(new AddressBook(addressBook), "No change");
 
         assertFalse(history.canUndo());
         assertFalse(history.canRedo());
@@ -76,7 +124,7 @@ public class AddressBookHistoryTest {
     public void commit_previousStateModifiedAfterCommit_snapshotUnaffected() {
         AddressBook previousState = new AddressBook(addressBook);
         addressBook.addPerson(BENSON);
-        history.commit(previousState);
+        history.commit(previousState, describeAdd(BENSON));
 
         // Mutating the object passed in must not change the stored snapshot.
         previousState.addPerson(CARL);

@@ -58,12 +58,11 @@ public class NoteCommand extends Command {
 
         ReadOnlyAddressBook previousState = new AddressBook(model.getAddressBook());
         model.setPerson(person, person.withNotes(notes));
-        model.commitAddressBook(previousState);
-
-        if (previousNotes.isEmpty()) {
-            return new CommandResult(String.format(MESSAGE_SUCCESS, person.getName(), notes.value));
-        }
-        return new CommandResult(String.format(MESSAGE_REPLACED, person.getName(), previousNotes.value, notes.value));
+        String message = previousNotes.isEmpty()
+                ? String.format(MESSAGE_SUCCESS, person.getName(), notes.value)
+                : String.format(MESSAGE_REPLACED, person.getName(), previousNotes.value, notes.value);
+        model.commitAddressBook(previousState, message);
+        return new CommandResult(message);
     }
 
     @Override

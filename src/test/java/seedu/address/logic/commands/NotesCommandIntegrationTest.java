@@ -185,7 +185,7 @@ public class NotesCommandIntegrationTest {
             }
 
             @Override
-            public void commitAddressBook(ReadOnlyAddressBook previousState) {
+            public void commitAddressBook(ReadOnlyAddressBook previousState, String description) {
                 throw new AssertionError("An unchanged note must not commit history.");
             }
         };
