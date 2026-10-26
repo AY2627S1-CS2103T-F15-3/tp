@@ -278,6 +278,18 @@ Note creation, replacement and deletion are supported by the implemented [`undo`
 feedback, so these variations are described here rather than repeated in separate sequence diagrams.
 The history checks themselves are described under [Recording contact data history](#recording-contact-data-history).
 
+### Parsing add prefixes
+
+`AddCommandParser` passes the supported prefixes from `CliSyntax` to `ArgumentTokenizer`.
+Only those prefixes, preceded by a space, delimit fields. Unrecognised prefix-like text stays inside
+the preceding value and is validated as part of that field; it is not silently discarded or separately
+classified as an unknown parameter.
+
+For example, `add n/PrefixProbe a/NUS x/typo` supplies `NUS x/typo` to `ParserUtil.parseAddress`.
+That address is valid and is saved literally. The same text inside a more restricted field may fail
+that field's validation. Slash-containing addresses remain valid, so an unfamiliar `letter/` sequence
+does not reliably indicate a typo. The UG explains this behavior and how to correct a saved address.
+
 ### Adding academic fields
 
 `CliSyntax` defines `m/` for a major and `c/` for a graduation year. `AddCommandParser` recognises
@@ -1368,6 +1380,26 @@ testers are expected to do more *exploratory* testing.
       saved `ListValidation` contact remain unchanged.
    1. Run `  list  ` with surrounding spaces.<br>
       Expected: `ListValidation` is displayed and the count is `1 person(s) listed!`.
+
+### Adding contacts with prefix-like address text
+
+1. Unknown prefix-like text and correction
+
+   1. Prerequisites: Use a disposable test copy. Ensure no contacts named `PrefixProbe` or `SlashProbe`
+      already exist; choose different unique names if repeating the checks.
+   1. Run `add n/PrefixProbe a/NUS x/typo`.<br>
+      Expected: The contact is added successfully with address `NUS x/typo`. The success feedback and
+      contact card include that address; there is no automatic unknown-prefix warning.
+   1. Run `find PrefixProbe`, confirm the test contact is the only result, then `edit 1 a/NUS`.<br>
+      Expected: The address becomes `NUS`; the name and other contact details remain unchanged.
+
+1. Legitimate slash-containing address
+
+   1. Run `add n/SlashProbe a/Block A/B, Unit 01/02`.<br>
+      Expected: The contact is added with the complete address `Block A/B, Unit 01/02`.
+   1. Close and relaunch the disposable copy from the same folder, then run `find SlashProbe`.<br>
+      Expected: The complete slash-containing address remains saved. Run `find PrefixProbe` to verify
+      that its corrected address `NUS` also remains saved.
 
 ### Adding academic fields
 
