@@ -50,8 +50,9 @@ public class NoteCommand extends Command {
         Person person = displayedPersons.get(index.getZeroBased());
         ReadOnlyAddressBook previousState = new AddressBook(model.getAddressBook());
         model.setPerson(person, person.withNotes(notes));
-        model.commitAddressBook(previousState);
-        return new CommandResult(String.format(MESSAGE_SUCCESS, person.getName()));
+        String message = String.format(MESSAGE_SUCCESS, person.getName());
+        model.commitAddressBook(previousState, message);
+        return new CommandResult(message);
     }
 
     @Override

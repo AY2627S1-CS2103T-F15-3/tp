@@ -4,6 +4,7 @@ import static java.util.Objects.requireNonNull;
 import static seedu.address.commons.util.CollectionUtil.requireAllNonNull;
 
 import java.util.Comparator;
+import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.logging.Logger;
 
@@ -100,9 +101,9 @@ public class ModelManager implements Model {
     }
 
     @Override
-    public void commitAddressBook(ReadOnlyAddressBook previousState) {
-        requireNonNull(previousState);
-        addressBookHistory.commit(previousState);
+    public void commitAddressBook(ReadOnlyAddressBook previousState, String description) {
+        requireAllNonNull(previousState, description);
+        addressBookHistory.commit(previousState, description);
     }
 
     @Override
@@ -113,6 +114,16 @@ public class ModelManager implements Model {
     @Override
     public boolean canRedoAddressBook() {
         return addressBookHistory.canRedo();
+    }
+
+    @Override
+    public Optional<String> getUndoDescription() {
+        return addressBookHistory.getUndoDescription();
+    }
+
+    @Override
+    public Optional<String> getRedoDescription() {
+        return addressBookHistory.getRedoDescription();
     }
 
     @Override
