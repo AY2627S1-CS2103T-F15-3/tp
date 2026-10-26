@@ -99,10 +99,11 @@ public class LogicManagerTest {
         Path addressBookPath = temporaryFolder.resolve("addressBook.json");
         String addCommand = AddCommand.COMMAND_WORD + NAME_DESC_AMY + PHONE_DESC_AMY
                 + EMAIL_DESC_AMY + ADDRESS_DESC_AMY;
-        logic.execute(addCommand);
+        String addMessage = logic.execute(addCommand).getFeedbackToUser();
         assertEquals(1, logic.getFilteredPersonList().size());
 
-        assertCommandSuccess(UndoCommand.COMMAND_WORD, UndoCommand.MESSAGE_SUCCESS, new ModelManager());
+        assertCommandSuccess(UndoCommand.COMMAND_WORD, String.format(UndoCommand.MESSAGE_SUCCESS, addMessage),
+                new ModelManager());
 
         assertEquals(0, logic.getFilteredPersonList().size());
         ReadOnlyAddressBook savedAddressBook = new JsonAddressBookStorage(addressBookPath).readAddressBook()
