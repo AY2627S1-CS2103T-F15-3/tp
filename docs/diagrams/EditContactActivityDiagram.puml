@@ -1,0 +1,19 @@
+@startuml
+!include style.puml
+skinparam ArrowFontStyle plain
+start
+:Read the index on the displayed contact list;
+:Type edit INDEX followed by changed fields;
+:Press Enter in the command box;
+if (Input valid, index displayed
+and name not a duplicate?) then (yes)
+  :Update the contact and save automatically;
+  :Show Edited person feedback\nclear the command box;
+  :Show the full contact list
+with updated contact cards;
+else (no)
+  :Show an error in the result display\nkeep the input for correction;
+  :Keep contacts and current view unchanged;
+endif
+stop
+@enduml
