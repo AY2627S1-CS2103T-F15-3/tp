@@ -26,6 +26,7 @@ import org.junit.jupiter.api.io.TempDir;
 import seedu.address.logic.commands.AddCommand;
 import seedu.address.logic.commands.CommandResult;
 import seedu.address.logic.commands.EditCommand;
+import seedu.address.logic.commands.FavCommand;
 import seedu.address.logic.commands.ListCommand;
 import seedu.address.logic.commands.RedoCommand;
 import seedu.address.logic.commands.UndoCommand;
@@ -374,6 +375,19 @@ public class UndoRedoIntegrationTest {
     }
 
     @Test
+    public void favAlreadyFavouriteAfterUndo_redoStaysAvailable() throws Exception {
+        logic.execute("fav 1");
+        List<Person> afterFav = currentContacts();
+        logic.execute("edit 1 p/92345678");
+        List<Person> afterEdit = currentContacts();
+        assertUndoSuccess(afterFav);
+
+        // The rejected fav changes nothing, so the undone edit can still be redone.
+        assertCommandFailure("fav 1", CommandException.class, FavCommand.MESSAGE_ALREADY_FAVOURITE);
+        assertRedoSuccess(afterEdit);
+    }
+
+    @Test
     public void tagThenUntagAfterUndo_redoStaysUnavailable() throws Exception {
         // Steps from issue #135: reversing the tag change used to make the discarded redo available again.
         logic.execute("clear");
@@ -435,6 +449,25 @@ public class UndoRedoIntegrationTest {
         assertUndoSuccess(states.get(last - 3));
         assertRedoSuccess(afterNewTag);
         assertCommandFailure(RedoCommand.COMMAND_WORD, CommandException.class, RedoCommand.MESSAGE_FAILURE);
+    }
+
+    @Test
+    public void unfavInFavouritesList_undoRestoresFavouriteAndShowsAll() throws Exception {
+        logic.execute("fav 1");
+        List<Person> afterFav = currentContacts();
+        logic.execute("listfav");
+        assertEquals(List.of(afterFav.get(0)), model.getFilteredPersonList());
+
+        // The contact is no longer a favourite, so it disappears from the favourites list straight away.
+        logic.execute("unfav 1");
+        List<Person> afterUnfav = currentContacts();
+        assertTrue(model.getFilteredPersonList().isEmpty());
+
+        // Undo restores the favourite and shows every contact, not just the favourites.
+        assertUndoSuccess(afterFav);
+        assertTrue(model.getFilteredPersonList().get(0).isFavourite());
+        assertRedoSuccess(afterUnfav);
+        assertFalse(model.getFilteredPersonList().get(0).isFavourite());
     }
 
     /**
