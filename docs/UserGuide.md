@@ -158,7 +158,8 @@ Phone/email values are saved normally. Older JSON files with valid contact detai
 Every contact card shows `Last updated: YYYY-MM-DD` below the academic fields, including contacts
 without an `update` reminder. For example, `Last updated: 2026-10-20` means the contact was added
 or its basic information last changed on 20 October 2026. Use `list` to view all saved contacts and
-their dates, or `find` and `filter` to narrow the displayed contacts. No separate date command is needed.
+their dates, or `find` and `filter` to narrow the displayed contacts. Use `sort updated asc` to review
+the oldest updates first, or `sort updated desc` for the newest first.
 
 * A new contact receives the date when `add` succeeds, using your computer's local date.
 * A successful `edit` that changes the name, phone, email, address, major or class year records
@@ -174,9 +175,8 @@ Example: run `list`, identify the displayed index of the contact, then enter `ed
 If the first contact's phone changes, its card immediately shows today's date. If that phone was
 already `91234567`, the previous date remains.
 
-For files that predate date tracking, a missing or null date starts at the day the file is first
-loaded. This is a compatibility baseline, not a recovered historical edit date. It is written to
-the file after the next successful command; see [Older data files](#automatic-update-reminders).
+Contacts from older files without an update date show `Last updated: Unknown`. They stay last
+in both ascending and descending update-date sorting until an actual basic-profile edit records a date.
 
 ### Automatic update reminders
 
@@ -196,7 +196,8 @@ A custom tag named `update` is still supported and saved unchanged. It appears i
 
 **Older data files:**
 
-When loading a file without `lastUpdated`, UniMate uses the loading date as a compatibility baseline. This is not the contact's true historical modification date. The baseline is retained when the data is saved normally. A supplied invalid date is rejected rather than silently replaced.
+Missing or null `lastUpdated` values remain unknown after saving and restarting. An unknown date does
+not generate an age-based `update` reminder. A supplied invalid date is rejected rather than silently replaced.
 
 ### Listing default tags: `tags`
 
@@ -555,7 +556,7 @@ Examples:
 Unlike `find Computer Science`, which searches for either word across names and academic fields,
 `filter m/Computer Science` checks only the complete major value.
 
-### Sorting contacts by name, major or class year: `sort`
+### Sorting contacts by name, major, class year or update date: `sort`
 
 Orders the displayed contacts while keeping the current search or filter.
 
@@ -566,10 +567,13 @@ Format: `sort FIELD DIRECTION` or `sort reset`
 
   | Argument | Accepted values | Meaning |
   | --- | --- | --- |
-  | `FIELD` | `name`, `major`, `year` | Full name, full major or graduation year |
+  | `FIELD` | `name`, `major`, `year`, `updated` | Full name, full major, graduation year or latest update date |
   | `DIRECTION` | `asc`, `desc` | A–Z / earliest first, or Z–A / latest first |
 
-* Names and majors are compared case-insensitively. Class years are ordered chronologically.
+* Names and majors are compared case-insensitively. Class years and update dates are ordered chronologically.
+  For `updated`, `asc` puts the oldest dates first and `desc` puts the newest dates first.
+  Contacts with the same date use ascending, case-insensitive name order in both directions.
+  Contacts with unknown update dates stay last in both directions.
 * Contacts with an unspecified major or class year appear **last** when sorting by that field,
   for both directions. Equal academic values, including unspecified values, use ascending name order.
   Names differing only in case compare equally.
@@ -591,6 +595,9 @@ Format: `sort FIELD DIRECTION` or `sort reset`
 Examples:
 * `sort name asc` displays names from A to Z.
 * `sort major desc` displays majors from Z to A, with unspecified majors last.
+* `sort updated asc` brings contacts whose basic information has not changed for the longest time to the top.
+  `sort updated desc` shows the most recently added or updated contacts first. Several updates on the same day
+  share a date; this does not order individual changes within that day.
 * `filter c/2027`, then `sort name asc`, then `sort reset` shows only class year `2027` contacts
   in saved order. The status changes from `Sort: Name ascending` to `Sort: Saved order`.
 * `filter t/Classmate`, then `sort year asc`, shows only classmates, earliest class year first.
@@ -811,7 +818,7 @@ Action     | Format, Examples
 **Edit**   | `edit INDEX [n/NAME] [p/PHONE_NUMBER] [e/EMAIL] [a/ADDRESS] [m/MAJOR] [c/CLASS_YEAR] [t/TAG]... `<br> e.g.,`edit 2 n/James Lee e/jameslee@example.com`
 **Find**   | `find KEYWORD [MORE_KEYWORDS]`<br> e.g., `find James Jake`, `find Computer Science`, `find 2027`
 **Filter** | `filter [m/MAJOR] [c/CLASS_YEAR] [t/TAG]` (at least one criterion)<br> e.g., `filter m/Computer Science c/2027 t/Classmate`
-**Sort**   | `sort FIELD DIRECTION` or `sort reset`<br> e.g., `sort name asc`, `sort major desc`, `sort year asc`
+**Sort**   | `sort FIELD DIRECTION` or `sort reset`<br> e.g., `sort name asc`, `sort major desc`, `sort year asc`, `sort updated desc`
 **List all saved contacts** | `list` (rejects extra arguments; clears the current filter and reports the total)
 **Favourite** | `fav INDEX`<br> e.g., `fav 1`
 **Unfavourite** | `unfav INDEX`<br> e.g., `unfav 1`
