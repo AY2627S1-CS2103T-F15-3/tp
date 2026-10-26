@@ -375,7 +375,8 @@ optional behavior of major and class year.
 
 `DeleteCommand` identifies the target `Person` from `Model#getFilteredPersonList()` using the displayed index.
 Before deletion, it rejects an index outside that view with the supplied one-based index and the valid range,
-`1` to the displayed list size. An empty view reports that no contacts are displayed and suggests `list` when
+`1` to the displayed list size. When exactly one contact is displayed, the message instead states
+`The only valid index is 1.` An empty view reports that no contacts are displayed and suggests `list` when
 saved contacts exist; an empty address book instead suggests adding a contact. These checks throw a
 `CommandException` before any model mutation, preserving contacts, the current view and undo/redo history.
 Invalid index syntax still produces the parser's existing usage error.
@@ -1459,7 +1460,7 @@ testers are expected to do more *exploratory* testing.
 
 1. Rejecting invalid indices
 
-   1. Prerequisites: Run `list` with at least one contact present.
+   1. Prerequisites: Run `list` with at least two contacts present.
    1. Test cases: `delete 0`, `delete`, `delete x`.<br>
       Expected: An invalid-command-format error is shown and no contact is deleted.
    1. Run `delete` with a numeric index greater than the displayed list size.<br>
@@ -1469,7 +1470,7 @@ testers are expected to do more *exploratory* testing.
       Expected: `No contacts are currently displayed to delete. Use list to view all saved contacts.`
       Saved contacts and the empty displayed list remain unchanged.
    1. Run `list`, then `find` with a keyword matching exactly one saved contact. Run `delete 2`.<br>
-      Expected: `Index 2 is outside the current displayed list. Choose an index from 1 to 1.`
+      Expected: `Index 2 is outside the current displayed list. The only valid index is 1.`
       The matching contact remains displayed and no contact is deleted.
    1. In an empty disposable address book, run `delete 1`.<br>
       Expected: `There are no saved contacts to delete. Add a contact before using delete.`

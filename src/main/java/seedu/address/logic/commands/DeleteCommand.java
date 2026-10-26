@@ -26,6 +26,8 @@ public class DeleteCommand extends Command {
     public static final String MESSAGE_DELETE_PERSON_SUCCESS = "Deleted person: %1$s";
     public static final String MESSAGE_INVALID_INDEX = "Index %1$d is outside the current displayed list. "
             + "Choose an index from 1 to %2$d.";
+    public static final String MESSAGE_INVALID_INDEX_SINGLE_PERSON = "Index %1$d is outside "
+            + "the current displayed list. The only valid index is 1.";
     public static final String MESSAGE_NO_CONTACTS = "There are no saved contacts to delete. "
             + "Add a contact before using delete.";
     public static final String MESSAGE_NO_DISPLAYED_CONTACTS = "No contacts are currently displayed to delete. "
@@ -48,6 +50,10 @@ public class DeleteCommand extends Command {
         }
 
         if (targetIndex.getZeroBased() >= lastShownList.size()) {
+            if (lastShownList.size() == 1) {
+                throw new CommandException(String.format(MESSAGE_INVALID_INDEX_SINGLE_PERSON,
+                        targetIndex.getOneBased()));
+            }
             throw new CommandException(String.format(MESSAGE_INVALID_INDEX,
                     targetIndex.getOneBased(), lastShownList.size()));
         }

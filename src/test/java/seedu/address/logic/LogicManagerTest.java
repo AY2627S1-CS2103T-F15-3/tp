@@ -75,7 +75,7 @@ public class LogicManagerTest {
         ReadOnlyAddressBook savedContacts = storage.readAddressBook().orElseThrow();
         logic.execute("find Alpha");
 
-        String expectedMessage = "Index 2 is outside the current displayed list. Choose an index from 1 to 1.";
+        String expectedMessage = "Index 2 is outside the current displayed list. The only valid index is 1.";
         assertThrows(CommandException.class, expectedMessage, () -> logic.execute("delete 2"));
 
         assertEquals(savedContacts, model.getAddressBook());
