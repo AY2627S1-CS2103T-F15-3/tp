@@ -292,6 +292,13 @@ That address is valid and is saved literally. The same text inside a more restri
 that field's validation. Slash-containing addresses remain valid, so an unfamiliar `letter/` sequence
 does not reliably indicate a typo. The UG explains this behavior and how to correct a saved address.
 
+The optional `f/` prefix is a flag with no value. `AddCommandParser` rejects values and repeated
+occurrences, then passes the flag's presence to the existing `Person` constructor as its initial
+favourite state. `AddCommand` saves this state in the same history snapshot as the new contact;
+no separate favourite command or history entry is needed. `AddFavouriteIntegrationTest` verifies
+saved data, favourites views, undo/redo, and rejected inputs, while `FavouriteIconTest` checks that
+the heart appears immediately after adding with the flag.
+
 ### Adding academic fields
 
 `CliSyntax` defines `m/` for a major and `c/` for a graduation year. `AddCommandParser` recognises

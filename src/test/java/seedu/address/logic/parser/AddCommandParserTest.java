@@ -26,6 +26,7 @@ import static seedu.address.logic.commands.CommandTestUtil.VALID_TAG_FRIEND;
 import static seedu.address.logic.commands.CommandTestUtil.VALID_TAG_HUSBAND;
 import static seedu.address.logic.parser.CliSyntax.PREFIX_ADDRESS;
 import static seedu.address.logic.parser.CliSyntax.PREFIX_EMAIL;
+import static seedu.address.logic.parser.CliSyntax.PREFIX_FAVOURITE;
 import static seedu.address.logic.parser.CliSyntax.PREFIX_GRADUATION_YEAR;
 import static seedu.address.logic.parser.CliSyntax.PREFIX_MAJOR;
 import static seedu.address.logic.parser.CliSyntax.PREFIX_NAME;
@@ -69,6 +70,45 @@ public class AddCommandParserTest {
         assertParseSuccess(parser,
                 NAME_DESC_BOB + PHONE_DESC_BOB + EMAIL_DESC_BOB + ADDRESS_DESC_BOB + TAG_DESC_HUSBAND + TAG_DESC_FRIEND,
                 new AddCommand(expectedPersonMultipleTags));
+    }
+
+    @Test
+    public void parse_favouriteFlagInAnyPosition_success() {
+        String existingFields = NAME_DESC_BOB + PHONE_DESC_BOB + EMAIL_DESC_BOB + ADDRESS_DESC_BOB;
+        Person expected = new PersonBuilder(BOB).withTags(VALID_TAG_FRIEND).withFavourite(true).build();
+        for (String input : List.of(" f/" + existingFields + TAG_DESC_FRIEND,
+                NAME_DESC_BOB + " f/" + PHONE_DESC_BOB + EMAIL_DESC_BOB + ADDRESS_DESC_BOB + TAG_DESC_FRIEND,
+                existingFields + TAG_DESC_FRIEND + " f/  \t ")) {
+            assertParseSuccess(parser, input, new AddCommand(expected));
+        }
+    }
+
+    @Test
+    public void parse_favouriteFlagWithOtherOptionalFields_success() {
+        Person expected = new PersonBuilder().withName("Alice").withAddress("NUS").withPhone("").withEmail("")
+                .withMajor("Computer Science").withGraduationYear("2027").withTags("Friend", "classmate")
+                .withFavourite(true).build();
+        assertParseSuccess(parser, " n/Alice a/NUS f/ m/Computer Science c/2027 d/1 t/classmate",
+                new AddCommand(expected));
+        Person minimal = new PersonBuilder().withName("Alice").withAddress("NUS").withPhone("").withEmail("")
+                .withTags().withFavourite(true).build();
+        assertParseSuccess(parser, " n/Alice a/NUS f/", new AddCommand(minimal));
+    }
+
+    @Test
+    public void parse_favouriteFlagWithValue_failure() {
+        String expectedMessage = String.format(MESSAGE_INVALID_COMMAND_FORMAT, AddCommand.MESSAGE_USAGE);
+        for (String value : List.of("true", "false", "yes", "1", "extra text")) {
+            assertParseFailure(parser, NAME_DESC_BOB + ADDRESS_DESC_BOB + " f/" + value, expectedMessage);
+        }
+    }
+
+    @Test
+    public void parse_repeatedFavouriteFlag_failure() {
+        String expectedMessage = Messages.getErrorMessageForDuplicatePrefixes(PREFIX_FAVOURITE);
+        for (String flags : List.of(" f/ f/", " f/true f/", " f/ f/true")) {
+            assertParseFailure(parser, NAME_DESC_BOB + ADDRESS_DESC_BOB + flags, expectedMessage);
+        }
     }
 
     @Test
