@@ -27,11 +27,11 @@ public class NoteCommandParserTest {
 
     @Test
     public void parse_unicodeSpaceSeparators_parsesIndexAndKeepsText() {
-        NoteCommand expected = new NoteCommand(INDEX_FIRST_PERSON, new Notes("Met at CS2103T"));
-        assertParseSuccess(parser, " 1 Met at CS2103T", expected);
-        assertParseSuccess(parser, " 1 Met at CS2103T", expected);
-        assertParseSuccess(parser, "　 1   Met at CS2103T",
-                new NoteCommand(INDEX_FIRST_PERSON, new Notes("  Met at CS2103T")));
+        NoteCommand expected = new NoteCommand(INDEX_FIRST_PERSON, new Notes("Met at\u00a0CS2103T"));
+        assertParseSuccess(parser, "\u00a01\u00a0Met at\u00a0CS2103T", expected);
+        assertParseSuccess(parser, "\u20031\u2003Met at\u00a0CS2103T", expected);
+        assertParseSuccess(parser, "\u3000 1 \u00a0\u00a0Met at\u00a0CS2103T",
+                new NoteCommand(INDEX_FIRST_PERSON, new Notes("\u00a0\u00a0Met at\u00a0CS2103T")));
     }
 
     @Test

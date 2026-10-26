@@ -3,6 +3,8 @@ package seedu.address.model.person;
 import static java.util.Objects.requireNonNull;
 import static seedu.address.commons.util.AppUtil.checkArgument;
 
+import seedu.address.commons.util.StringUtil;
+
 /**
  * Represents a person's optional notes. An empty value means no note has been added.
  * Guarantees: immutable; is valid as declared in {@link #isValidNotes(String)}.
@@ -13,7 +15,7 @@ public class Notes {
     public static final String MESSAGE_CONSTRAINTS = "Notes must be a non-blank, single line of text with at most "
             + MAX_LENGTH + " characters when supplied.";
     public static final String VALIDATION_REGEX =
-            "(?=.*[^\\p{javaWhitespace}\\p{Z}])[^\\p{javaISOControl}\\p{Zl}\\p{Zp}]+";
+            "(?=.*" + StringUtil.VISIBLE_CHARACTER_REGEX + ")[^\\p{javaISOControl}\\p{Zl}\\p{Zp}]+";
     public static final Notes EMPTY = new Notes("");
 
     public final String value;
