@@ -217,8 +217,9 @@ notifications. Notes on the diagram identify the snapshot copy and the displayed
 
 1. `LogicManager` asks `AddressBookParser` to parse the command. `NoteCommandParser` validates the
    index and text, creates a `Notes` value, and returns a `NoteCommand`.
-1. The command checks the index against the displayed list and obtains that contact. It copies the
-   current address book before making any change.
+1. The command checks the index against the displayed list and obtains that contact. If the note
+   is identical, it returns unchanged feedback immediately. Otherwise, it copies the current
+   address book before making any change.
 1. `Person#withNotes` creates a replacement contact while retaining all other fields, including
    favourite status and `lastUpdated`. `Model#setPerson` installs the replacement without resetting
    the filter or sort order.
@@ -227,11 +228,19 @@ notifications. Notes on the diagram identify the snapshot copy and the displayed
 1. `LogicManager` saves the resulting address book through `Storage` before returning the feedback
    to its caller. The observable list supplies the updated contact to the UI's card rendering.
 
-`NoteCommand` retains the original immutable `Notes` value to classify its feedback after committing.
-A new note includes its saved text. Replacing different non-empty text includes both the previous
-and saved text, plus an `undo` reminder. Identical text produces `Note unchanged for NAME.` and the
-saved text; the existing history mechanism ignores the unchanged data. These messages use the
-standard `CommandResult` and existing result display without changing command syntax or storage.
+`NoteCommand` compares the original immutable `Notes` value before requesting an address-book
+snapshot or calling `setPerson` and `commitAddressBook`. Identical text immediately produces
+`Note unchanged for NAME.` and the saved text. Actual changes retain the snapshot-and-commit flow:
+a new note includes its saved text, while a replacement includes both the previous and saved text
+plus an `undo` reminder. These messages use the standard `CommandResult` and existing result display
+without changing command syntax or storage.
+
+`ResultDisplay.fxml` enables text wrapping, so long previous and saved notes can be read using
+vertical scrolling. At INFO level, `LogicManager` logs the parsed command type instead of raw input,
+and `MainWindow` logs `CommandResult#getLogSummary`, the feedback's first line, instead of its full
+contents. Failed commands are logged without their input. Full note text remains in the GUI feedback;
+this logging policy applies to INFO messages. `NoteFeedbackUiTest` checks long wrapped feedback at
+450- and 740-pixel window widths and captures INFO logs for successful and failing note commands.
 
 Malformed input fails during parsing; an index beyond the displayed list fails before the snapshot
 or replacement. Neither case changes contact data or history. If saving fails after execution,
@@ -241,7 +250,7 @@ or replacement. Neither case changes contact data or history. If saving fails af
 
 `NoteCommand` overwrites the contact's note. `DeleteNoteCommand` replaces it with `Notes.EMPTY`; deleting an already empty note reports an informational message. Both record actual data changes through the existing model history. `ShowNoteCommand` returns the note, or an empty-note message, in a standard `CommandResult`; it does not mutate contact data or history. `LogicManager` retains its normal save-after-success behaviour for all commands.
 
-Note creation, replacement and deletion are supported by the implemented [`undo` and `redo` commands](#undo-and-redo-commands). Saving identical note text is a no-op for history: `AddressBookHistory#commit` compares the previous and resulting data and returns without adding an undo state or clearing redo states. Deleting an already empty note returns before changing the model or committing. Saving unchanged note text, deleting an already empty note, and viewing a note with `shownote` preserve any available redo history.
+Note creation, replacement and deletion are supported by the implemented [`undo` and `redo` commands](#undo-and-redo-commands). Saving identical note text returns before copying the address book, replacing a person or committing history. Deleting an already empty note also returns before changing the model or committing. Saving unchanged note text, deleting an already empty note, and viewing a note with `shownote` preserve any available redo history.
 
 `delnote` follows the same snapshot, replacement and commit sequence when a note exists, using
 `Notes.EMPTY` instead of supplied text. `shownote` only reads the displayed contact and builds its
@@ -740,7 +749,7 @@ A command that fails validation, such as a duplicate `add`, throws before copyin
 
 `EditCommand#execute` follows the same pattern. It checks the displayed index and duplicate persons first, copies the data, calls `Model#setPerson`, and then commits. An edit that supplies the person's current values still returns the usual success message. Its commit is ignored because the data did not change, preserving both history stacks. The bare command `edit 1` is invalid because at least one field is required.
 
-`NoteCommand` and `DeleteNoteCommand` use the same snapshot-and-commit flow for actual note changes. An unchanged note produces equal before/after data, so the commit is ignored and redo remains available. `DeleteNoteCommand` returns immediately for an empty note. A new data-changing commit clears redo states; merely viewing a note does not.
+`NoteCommand` and `DeleteNoteCommand` use the same snapshot-and-commit flow for actual note changes. `NoteCommand` returns immediately for unchanged note text, without copying the address book, replacing the contact or committing history, so redo remains available. `DeleteNoteCommand` returns immediately for an empty note. A new data-changing commit clears redo states; merely viewing a note does not.
 
 `Model#undoAddressBook()` pushes `currentState` onto `redoStates`, pops the top of `undoStates`, and restores it. `Model#redoAddressBook()` does the reverse. Restoring calls `AddressBook#resetData` on the existing `AddressBook`, so:
 
@@ -1566,6 +1575,10 @@ Use a test contact for these checks. Run `list` and identify its displayed index
 1. Run `redo`, then `note 1 Project teammate`.<br>
    Expected: The replacement is restored. Saving the same text reports `Note unchanged for NAME.` and
    `Saved note: Project teammate` without adding an undo step.
+1. Save a long note, then replace it with another long note, each up to 500 characters. Narrow the window.<br>
+   Expected: The previous and saved text remain complete and wrap within the message area. Vertical
+   scrolling reveals the full feedback. New INFO log entries contain the replacement summary without
+   either note's text. Restore `note 1 Project teammate` before continuing.
 1. Edit the contact's phone, add a tag with `tag`, and remove it with `untag`, then run `shownote` using the contact's current index.<br>
    Expected: The note is still `Project teammate`.
 1. Restart the app, locate the same contact, and run `shownote`.<br>

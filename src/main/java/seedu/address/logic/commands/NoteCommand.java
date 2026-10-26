@@ -52,13 +52,14 @@ public class NoteCommand extends Command {
         }
         Person person = displayedPersons.get(index.getZeroBased());
         Notes previousNotes = person.getNotes();
+        if (previousNotes.equals(notes)) {
+            return new CommandResult(String.format(MESSAGE_UNCHANGED, person.getName(), notes.value));
+        }
+
         ReadOnlyAddressBook previousState = new AddressBook(model.getAddressBook());
         model.setPerson(person, person.withNotes(notes));
         model.commitAddressBook(previousState);
 
-        if (previousNotes.equals(notes)) {
-            return new CommandResult(String.format(MESSAGE_UNCHANGED, person.getName(), notes.value));
-        }
         if (previousNotes.isEmpty()) {
             return new CommandResult(String.format(MESSAGE_SUCCESS, person.getName(), notes.value));
         }

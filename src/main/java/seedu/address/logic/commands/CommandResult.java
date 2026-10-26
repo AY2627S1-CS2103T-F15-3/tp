@@ -40,6 +40,13 @@ public class CommandResult {
         return feedbackToUser;
     }
 
+    /**
+     * Returns the first line for logging, omitting multiline details such as saved and previous notes.
+     */
+    public String getLogSummary() {
+        return feedbackToUser.lines().findFirst().orElse("");
+    }
+
     public boolean isShowHelp() {
         return showHelp;
     }

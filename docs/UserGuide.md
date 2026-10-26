@@ -384,6 +384,9 @@ Previous note: Met during CS2103T
 Saved note: Met at hackathon
 ```
 
+Long feedback wraps within the message area. Scroll vertically to compare the complete previous
+and saved notes.
+
 A small note icon at the bottom right of the contact card indicates that a note is present.
 Use `shownote` to read it again.
 

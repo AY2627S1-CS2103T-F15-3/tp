@@ -2,6 +2,7 @@ package seedu.address.logic.commands;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static seedu.address.logic.Messages.MESSAGE_INVALID_PERSON_DISPLAYED_INDEX;
 import static seedu.address.testutil.Assert.assertThrows;
@@ -22,6 +23,7 @@ import seedu.address.logic.parser.exceptions.ParseException;
 import seedu.address.model.AddressBook;
 import seedu.address.model.Model;
 import seedu.address.model.ModelManager;
+import seedu.address.model.ReadOnlyAddressBook;
 import seedu.address.model.UserPrefs;
 import seedu.address.model.person.Notes;
 import seedu.address.model.person.Person;
@@ -164,6 +166,34 @@ public class NotesCommandIntegrationTest {
             assertEquals(alice.withNotes(new Notes(text)), model.getFilteredPersonList().get(0));
         }
         assertFalse(model.canRedoAddressBook());
+    }
+
+    @Test
+    public void execute_unchangedNote_skipsSnapshotsAndModelUpdates() throws Exception {
+        Person existing = alice.withNotes(new Notes("Existing note"));
+        AddressBook addressBook = new AddressBook();
+        addressBook.addPerson(existing);
+        Model unchangedModel = new ModelManager(addressBook, new UserPrefs()) {
+            @Override
+            public ReadOnlyAddressBook getAddressBook() {
+                throw new AssertionError("An unchanged note must not request a snapshot.");
+            }
+
+            @Override
+            public void setPerson(Person target, Person editedPerson) {
+                throw new AssertionError("An unchanged note must not replace the contact.");
+            }
+
+            @Override
+            public void commitAddressBook(ReadOnlyAddressBook previousState) {
+                throw new AssertionError("An unchanged note must not commit history.");
+            }
+        };
+
+        CommandResult result = new NoteCommand(INDEX_FIRST_PERSON, new Notes("Existing note")).execute(unchangedModel);
+
+        assertEquals("Note unchanged for Alice.\nSaved note: Existing note", result.getFeedbackToUser());
+        assertSame(existing, unchangedModel.getFilteredPersonList().get(0));
     }
 
     @Test
