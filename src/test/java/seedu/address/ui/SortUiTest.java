@@ -1,6 +1,7 @@
 package seedu.address.ui;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
@@ -153,6 +154,44 @@ public class SortUiTest {
                 enter(window, "list");
                 enter(window, "sort reset");
                 assertCards(window, List.of(charlie, bob, alice));
+            } finally {
+                window.getRoot().close();
+            }
+        });
+    }
+
+    @Test
+    public void commandBox_sharedDetailsWarning_addsContactAndShowsCurrentIndices() throws Exception {
+        runOnFxThread(() -> {
+            MainWindow window = createWindow();
+            try {
+                enter(window, "sort name asc");
+                enter(window, "filter t/Classmate");
+                Person aaron = new PersonBuilder().withName("Aaron").withPhone(PersonBuilder.DEFAULT_PHONE)
+                        .withEmail("aaron@example.com").withAddress("NUS").build();
+
+                enter(window, "add n/Aaron p/" + PersonBuilder.DEFAULT_PHONE + " e/aaron@example.com a/NUS");
+
+                String successMessage = String.format(AddCommand.MESSAGE_SUCCESS, Messages.format(aaron));
+                assertTrue(feedback(window).startsWith("Warning: Shared contact details found. "));
+                assertTrue(feedback(window).contains("The new contact was added; use undo if this was accidental."));
+                assertTrue(feedback(window).contains("Existing contact at displayed index 2 (same phone number):\n"
+                        + Messages.format(alice)));
+                assertTrue(feedback(window).contains("Existing contact at displayed index 3 (same phone number):\n"
+                        + Messages.format(bob)));
+                assertTrue(feedback(window).contains("Existing contact at displayed index 4 (same phone number):\n"
+                        + Messages.format(charlie)));
+                assertCards(window, List.of(aaron, alice, bob, charlie));
+                TextField input = (TextField) window.getRoot().getScene().lookup("#commandTextField");
+                assertEquals("", input.getText());
+                assertFalse(input.getStyleClass().contains(CommandBox.ERROR_STYLE_CLASS));
+
+                enter(window, "undo");
+                assertCards(window, List.of(alice, bob, charlie));
+                assertEquals("Undid: " + successMessage, feedback(window));
+                enter(window, "redo");
+                assertCards(window, List.of(aaron, alice, bob, charlie));
+                assertEquals("Redid: " + successMessage, feedback(window));
             } finally {
                 window.getRoot().close();
             }

@@ -12,6 +12,7 @@ import static seedu.address.logic.parser.CliSyntax.PREFIX_TAG;
 
 import java.time.Clock;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 import seedu.address.commons.util.ToStringBuilder;
@@ -57,6 +58,10 @@ public class AddCommand extends Command {
     public static final String MESSAGE_DUPLICATE_PERSON_HIDDEN = MESSAGE_DUPLICATE_PERSON
             + "\nExisting contact is hidden by the current filter (saved index %1$d):\n%2$s"
             + "\nRun list, then sort reset to view this contact at index %1$d.";
+    public static final String MESSAGE_SHARED_DETAILS_WARNING = "Warning: Shared contact details found. "
+            + "The new contact was added; use undo if this was accidental.\n%1$s\n%2$s";
+    public static final String MESSAGE_SHARED_DETAILS_MATCH =
+            "Existing contact at displayed index %1$d (same %2$s):\n%3$s";
 
     private final Person toAdd;
     private final Clock clock;
@@ -88,8 +93,38 @@ public class AddCommand extends Command {
         Person addedPerson = toAdd.withLastUpdated(LocalDate.now(clock));
         model.addPerson(addedPerson);
         String message = String.format(MESSAGE_SUCCESS, Messages.format(addedPerson));
+        String feedback = getAddFeedback(model, addedPerson, message);
         model.commitAddressBook(previousState, message);
-        return new CommandResult(message);
+        return new CommandResult(feedback);
+    }
+
+    /**
+     * Warns about shared non-empty phone/email details using indices from the refreshed display.
+     * Phone numbers match exactly; email matching ignores case for this advisory warning.
+     */
+    private String getAddFeedback(Model model, Person addedPerson, String successMessage) {
+        List<String> matches = new ArrayList<>();
+        List<Person> displayedPersons = model.getFilteredPersonList();
+        for (int i = 0; i < displayedPersons.size(); i++) {
+            Person existingPerson = displayedPersons.get(i);
+            if (addedPerson.isSamePerson(existingPerson)) {
+                continue;
+            }
+            List<String> sharedFields = new ArrayList<>();
+            if (!addedPerson.getPhone().value.isEmpty() && addedPerson.getPhone().equals(existingPerson.getPhone())) {
+                sharedFields.add("phone number");
+            }
+            if (!addedPerson.getEmail().value.isEmpty()
+                    && addedPerson.getEmail().value.equalsIgnoreCase(existingPerson.getEmail().value)) {
+                sharedFields.add("email address");
+            }
+            if (!sharedFields.isEmpty()) {
+                matches.add(String.format(MESSAGE_SHARED_DETAILS_MATCH,
+                        i + 1, String.join(" and ", sharedFields), Messages.format(existingPerson)));
+            }
+        }
+        return matches.isEmpty() ? successMessage
+                : String.format(MESSAGE_SHARED_DETAILS_WARNING, successMessage, String.join("\n", matches));
     }
 
     /**

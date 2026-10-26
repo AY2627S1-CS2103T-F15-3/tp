@@ -341,6 +341,37 @@ wrapped result display and retains the submitted command for correction.
 details, empty views, unchanged saved files and preserved undo/redo. `SortUiTest` checks the actual
 command box, result text, unchanged cards and the recovery instructions.
 
+### Warning about shared phone numbers or email addresses when adding
+
+After a successful addition, `AddCommand#getAddFeedback` scans the refreshed displayed list,
+skipping the added contact by `Person#isSamePerson`. `ModelManager#addPerson` has already cleared the
+filter while preserving the active sort order, so the scan includes all existing contacts and its
+indices match the current cards. Looking up indices before the add would be incorrect when the
+added contact changes the sorted positions.
+
+For each existing contact, the command checks non-empty phone numbers using `Phone#equals` and
+non-empty email values using `String#equalsIgnoreCase`. Email comparison ignores case only for this
+advisory warning; stored values, `Email#equals` and the duplicate-name rule are unchanged. Empty
+optional fields never count as matches. Every matching contact is listed once, with a reason
+identifying the shared phone number, email address or both. Different contacts may match different
+fields, and all matches are included in displayed order.
+
+When there are matches, the first feedback line states that the contact was added with a warning
+and suggests `undo` for accidental additions. The feedback includes the added contact's usual
+success message and each existing match's `Messages#format` details and displayed index. This uses
+the existing wrapped result display and follows the normal successful-command path, so the command
+box clears and is not styled as an error. A same-name duplicate still fails before this flow.
+
+The model records one snapshot with the ordinary addition message as its history description.
+The longer warning is returned only in the `CommandResult`; undo and redo describe the addition
+without repeating the advisory warning. Storage saves the new contact normally. Shared contacts
+are not merged or modified, and one undo removes only the new contact.
+
+`AddCommandIntegrationTest` checks phone-only, email-only, combined and multiple matches; email case;
+blank and distinct values; refreshed sorted indices; persistence; and one-step undo/redo.
+`SortUiTest` checks prominent feedback, matches hidden by the previous filter, current card indices,
+the successful command-box state and undo/redo through the GUI.
+
 ### Editing academic fields
 
 `EditCommandParser` recognises `m/` (major) and `c/` (graduation year) alongside existing edit prefixes.
@@ -1464,6 +1495,39 @@ testers are expected to do more *exploratory* testing.
    1. Run `find NoDuplicateFeedbackMatch`, ensuring it matches no contact, then repeat the duplicate `add`.<br>
       Expected: The empty view is preserved, and the error still identifies the same saved contact.
    1. Clean up the disposable contacts using `find DuplicateAlpha`, `delete 1`, then `find DuplicateBeta`, `delete 1`.
+
+### Shared phone or email warnings on add
+
+1. Multiple matches and refreshed displayed indices
+
+   1. Prerequisites: Use an empty disposable address book. Add:
+
+      * `add n/Zara p/91919191 e/zara172@example.com a/NUS`
+      * `add n/Charlie p/92929292 e/shared172@example.com a/Clementi`
+      * `add n/Morgan a/Dover`
+
+   1. Run `sort name asc`, then `find Charlie`.<br>
+      Expected: Only Charlie is displayed.
+   1. Run `add n/Amy p/91919191 e/SHARED172@EXAMPLE.COM a/NUS`.<br>
+      Expected: The addition succeeds. The first result line warns about shared contact details,
+      states that the new contact was added and suggests `undo` if accidental. The full list is
+      Amy, Charlie, Morgan, Zara. The warning identifies Charlie at displayed index 2 for the shared
+      email and Zara at displayed index 4 for the shared phone. Morgan's missing fields produce no match.
+   1. Run `undo`, then `redo`.<br>
+      Expected: One undo removes Amy and one redo restores Amy. Their feedback describes the addition
+      without repeating the warning, and Zara, Charlie and Morgan retain their original details.
+   1. Close and reopen the disposable copy, then run `find Amy`.<br>
+      Expected: Amy was saved with the entered phone and uppercase email. Sorting and filtering
+      return to their usual restart defaults.
+
+1. Empty details and both fields matching the same contact
+
+   1. Run `add n/NoDetails a/NUS`.<br>
+      Expected: The contact is added with the ordinary success feedback. Its missing phone and email
+      do not trigger a warning about Morgan's missing details.
+   1. Run `add n/AnotherZara p/91919191 e/zara172@example.com a/Dover`.<br>
+      Expected: The addition succeeds with a warning. Zara appears once with the reason
+      `same phone number and email address`; Amy is also listed for sharing the phone number.
 
 ### Adding contacts with prefix-like address text
 

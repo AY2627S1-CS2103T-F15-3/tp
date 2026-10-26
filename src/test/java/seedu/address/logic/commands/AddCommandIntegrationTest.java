@@ -139,6 +139,115 @@ public class AddCommandIntegrationTest {
     }
 
     @Test
+    public void execute_sharedPhone_addsContactAndIdentifiesExistingMatch() throws Exception {
+        Person toAdd = new PersonBuilder().withName("Shared Phone").withPhone(ALICE.getPhone().value)
+                .withEmail("new@example.com").build();
+
+        CommandResult result = new AddCommand(toAdd).execute(model);
+
+        assertEquals(warningMessage(toAdd, "Existing contact at displayed index 1 (same phone number):\n"
+                + Messages.format(ALICE)), result.getFeedbackToUser());
+        assertTrue(model.hasPerson(toAdd));
+    }
+
+    @Test
+    public void execute_sharedEmailIgnoringCase_addsContactAndIdentifiesExistingMatch() throws Exception {
+        Person toAdd = new PersonBuilder().withName("Shared Email").withPhone("99998888")
+                .withEmail("ALICE@EXAMPLE.COM").build();
+
+        CommandResult result = new AddCommand(toAdd).execute(model);
+
+        assertEquals(warningMessage(toAdd, "Existing contact at displayed index 1 (same email address):\n"
+                + Messages.format(ALICE)), result.getFeedbackToUser());
+        assertEquals("ALICE@EXAMPLE.COM", model.getAddressBook().getPersonList().getLast().getEmail().value);
+    }
+
+    @Test
+    public void execute_bothFieldsShared_listsExistingContactOnceWithBothReasons() throws Exception {
+        Person toAdd = new PersonBuilder(ALICE).withName("Another Alice").build();
+
+        CommandResult result = new AddCommand(toAdd).execute(model);
+
+        assertEquals(warningMessage(toAdd,
+                "Existing contact at displayed index 1 (same phone number and email address):\n"
+                        + Messages.format(ALICE)), result.getFeedbackToUser());
+    }
+
+    @Test
+    public void execute_phoneAndEmailMatchDifferentContacts_listsEveryMatch() throws Exception {
+        Person toAdd = new PersonBuilder().withName("Shared Details").withPhone(ALICE.getPhone().value)
+                .withEmail(BENSON.getEmail().value).build();
+
+        CommandResult result = new AddCommand(toAdd).execute(model);
+
+        assertEquals(warningMessage(toAdd, "Existing contact at displayed index 1 (same phone number):\n"
+                + Messages.format(ALICE) + "\nExisting contact at displayed index 2 (same email address):\n"
+                + Messages.format(BENSON)), result.getFeedbackToUser());
+    }
+
+    @Test
+    public void execute_blankOrDifferentContactDetails_doesNotWarn() throws Exception {
+        // Each row contains the existing phone/email followed by the new phone/email.
+        for (String[] details : new String[][]{{"", "", "", ""},
+            {"", "one@example.com", "", "two@example.com"}, {"1111", "", "2222", ""},
+            {"", "", "3333", "new@example.com"}, {"4444", "old@example.com", "", ""},
+            {"94351253", "alice@example.com", "943512530", "alice+new@example.com"}}) {
+            Person existing = new PersonBuilder().withName("Existing").withPhone(details[0])
+                    .withEmail(details[1]).build();
+            Person toAdd = new PersonBuilder().withName("Added").withPhone(details[2]).withEmail(details[3]).build();
+            AddressBook addressBook = new AddressBook();
+            addressBook.addPerson(existing);
+            Model separateModel = new ModelManager(addressBook, new UserPrefs());
+
+            CommandResult result = new AddCommand(toAdd).execute(separateModel);
+
+            assertEquals(String.format(AddCommand.MESSAGE_SUCCESS, Messages.format(toAdd)), result.getFeedbackToUser());
+            assertEquals(List.of(existing, toAdd), separateModel.getAddressBook().getPersonList());
+        }
+    }
+
+    @Test
+    public void execute_warningAfterFilteredSortedAdd_usesRefreshedIndicesAndPersists(@TempDir Path directory)
+            throws Exception {
+        Person zara = new PersonBuilder().withName("Zara").withPhone("12341234")
+                .withEmail("shared@example.com").build();
+        Person charlie = new PersonBuilder().withName("Charlie").withPhone("99990000")
+                .withEmail("charlie@example.com").build();
+        Person amy = new PersonBuilder().withName("Amy").withPhone("12341234")
+                .withEmail("shared@example.com").withAddress("NUS").build();
+        AddressBook addressBook = new AddressBook();
+        addressBook.setPersons(List.of(zara, charlie));
+        model = new ModelManager(addressBook, new UserPrefs());
+        JsonAddressBookStorage storage = new JsonAddressBookStorage(directory.resolve("contacts.json"));
+        LogicManager logic = new LogicManager(model, new StorageManager(storage,
+                new JsonUserPrefsStorage(directory.resolve("prefs.json"))));
+        logic.execute("sort name asc");
+        logic.execute("find Charlie");
+        assertEquals(List.of(charlie), model.getFilteredPersonList());
+
+        CommandResult result = logic.execute("add n/Amy p/12341234 e/shared@example.com a/NUS");
+
+        assertEquals(warningMessage(amy,
+                "Existing contact at displayed index 3 (same phone number and email address):\n"
+                        + Messages.format(zara)), result.getFeedbackToUser());
+        assertEquals(List.of(amy, charlie, zara), model.getFilteredPersonList());
+        assertEquals(List.of(zara, charlie, amy), model.getAddressBook().getPersonList());
+        assertEquals(model.getAddressBook(), storage.readAddressBook().orElseThrow());
+        String successMessage = String.format(AddCommand.MESSAGE_SUCCESS, Messages.format(amy));
+        assertEquals(successMessage, model.getUndoDescription().orElseThrow());
+
+        assertEquals("Undid: " + successMessage, logic.execute("undo").getFeedbackToUser());
+        assertEquals(addressBook, model.getAddressBook());
+        assertFalse(model.canUndoAddressBook());
+        assertEquals(model.getAddressBook(), storage.readAddressBook().orElseThrow());
+        assertEquals("Redid: " + successMessage, logic.execute("redo").getFeedbackToUser());
+        assertEquals(List.of(amy, charlie, zara), model.getFilteredPersonList());
+        assertFalse(model.canRedoAddressBook());
+        Model reloaded = new ModelManager(storage.readAddressBook().orElseThrow(), new UserPrefs());
+        assertEquals(List.of(zara, charlie, amy), reloaded.getFilteredPersonList());
+    }
+
+    @Test
     public void execute_newPerson_createsOneUndoableState() throws Exception {
         AddressBook originalAddressBook = new AddressBook(model.getAddressBook());
         Person validPerson = new PersonBuilder().build();
@@ -249,6 +358,11 @@ public class AddCommandIntegrationTest {
         assertTrue(model.undoAddressBook());
         assertEquals(originalState, model.getAddressBook());
         assertFalse(model.hasPerson(newPerson));
+    }
+
+    private static String warningMessage(Person addedPerson, String matches) {
+        return String.format(AddCommand.MESSAGE_SHARED_DETAILS_WARNING,
+                String.format(AddCommand.MESSAGE_SUCCESS, Messages.format(addedPerson)), matches);
     }
 
 }
