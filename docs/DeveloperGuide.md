@@ -369,7 +369,7 @@ matching over whole-word keywords in names, majors and graduation years.
 `AddressBookParser` routes `filter` to `FilterCommandParser`. `FilterCommand` then passes the predicate
 to `Model#updateFilteredPersonList` and reports the size of `Model#getFilteredPersonList`.
 The existing observable list updates `PersonListPanel`, including the displayed indices;
-no additional controls or storage fields are needed. Commands that use displayed indices continue
+no new storage fields are needed. Commands that use displayed indices continue
 to obtain their targets from that same list.
 
 The following sequence summarises filter parsing and execution; routing and Model internals are omitted.
@@ -385,11 +385,11 @@ is shown on restart.
 
 ### Sorting the displayed contacts
 
-`AddressBookParser` routes `sort` to `SortCommandParser`. The parser requires exactly two
-tokens: a field (`name`, `major`, `year`) and a direction (`asc`, `desc`). Each keyword is matched using
-`toLowerCase(Locale.ROOT)`, without changing contact data or prefix rules. It constructs `SortCommand`
-with `PersonSortComparator.SortField` and `SortDirection` values. Invalid input raises a `ParseException`
-with usage instructions before any view or data change.
+`AddressBookParser` routes `sort` to `SortCommandParser`. The parser accepts either two tokens
+(a field `name`, `major` or `year`, followed by `asc` or `desc`) or the single keyword `reset`.
+Keywords are case-insensitive. A field and direction produce `SortCommand` with
+`PersonSortComparator.SortField` and `SortDirection` values; `reset` produces `SortResetCommand`.
+Invalid input raises a `ParseException` with usage instructions before any view or data change.
 
 The following sequence summarises `sort year desc`; routing and Model internals are omitted.
 
@@ -406,6 +406,8 @@ AddressBook / UniquePersonList -> FilteredList -> SortedList -> UI and numbered 
 edit, delete, tag and untag obtain the same indexed `Person` that is shown on the matching contact card.
 The `SortedList` object is retained for the model's lifetime, keeping existing UI observers attached.
 Changing its comparator preserves the `FilteredList` predicate; changing the predicate preserves sorting.
+`SortResetCommand` calls `Model#resetSortedPersonList`, which sets the comparator to `null`.
+The same displayed list then follows source order without changing the predicate, saved data or history.
 
 The comparator uses case-insensitive full-value ordering for names and majors. Graduation years are
 four-digit strings, so their lexicographic order is chronological. Empty academic values become null
@@ -422,7 +424,25 @@ Restarting constructs a view without a comparator or predicate, restoring saved 
 
 Comparator, model, command and parser unit tests cover ordering and validation. `SortCommandIntegrationTest`
 checks command interactions, notes preservation and JSON persistence; `SortUiTest` checks the real command
-box, rendered card numbering and feedback. See [Sorting contacts](#sorting-contacts) for manual checks.
+box, rendered card numbering and feedback. `SortResetCommandTest` checks saved order, filter preservation
+and redo availability after resetting. See [Sorting contacts](#sorting-contacts) for manual checks.
+
+#### Persistent view status
+
+`ModelManager#viewStatusProperty` exposes a read-only string binding that observes the source list,
+displayed list, predicate and comparator. It reports both counts and the active view settings, even
+when changing a criterion or sort produces the same displayed contacts. `ContactFilterPredicate`,
+`NameContainsKeywordsPredicate` and `FavouritePredicate` implement `PersonFilter` to describe their
+criteria; `PersonSortComparator` describes its field and direction.
+
+`LogicManager` exposes the property through `Logic`. `MainWindow` passes it to `PersonListPanel`,
+whose status label binds to it independently of `ResultDisplay`. Source changes update the counts;
+commands that reset the predicate or comparator also update the status. The label wraps long criteria
+and reserves their preferred height. View settings remain session-local and are not stored in JSON.
+
+`ViewStatusTest` checks criteria, counts, command interactions and restart defaults.
+`ViewStatusUiTest` checks persistent status after `shownote`, rejected commands, reset behavior,
+favourites membership changes and long text in the actual JavaFX layout.
 
 ### Formatting academic fields in command messages
 
@@ -1512,7 +1532,7 @@ testers are expected to do more *exploratory* testing.
 1. Rejected input and displayed indices
 
    1. Run `sort name asc`. Try `sort`, `sort name`, `sort phone asc`, `sort year ascending`,
-      `sort NAME asc` and `sort major asc desc` separately.<br>
+      `sort reset asc` and `sort major asc desc` separately.<br>
       Expected: Usage errors; the same four demo contacts remain in ascending name order.
    1. Run `edit 2 c/2029`.<br>
       Expected: `SortBeta` changes year, even though it was third in the saved demo order.
@@ -1534,6 +1554,27 @@ testers are expected to do more *exploratory* testing.
    1. Close and relaunch UniMate from the same folder, then run `filter t/SortDemo`.<br>
       Expected: The demo contacts return in saved order: `SortGamma`, `SortBeta`, `sortAlpha`.
       The edit and deletion remain saved, while the previous sort and filter do not survive restarting.
+
+1. Reset order and persistent status
+
+   1. Prerequisites: Complete the sorting checks above in the disposable copy. The remaining demo
+      contacts are `SortGamma`, `SortBeta` and `sortAlpha` in saved order.
+   1. Run `filter t/SortDemo`, then `sort name asc`.<br>
+      Expected: `sortAlpha`, `SortBeta`, `SortGamma`. The status shows `Showing 3 of N contacts`
+      (`N` is the total saved count), `Filter: Tag: SortDemo` and `Sort: Name ascending`.
+   1. Run `shownote 1`.<br>
+      Expected: The result display shows the note or no-note feedback; the status remains unchanged.
+   1. Run `sort reset` twice.<br>
+      Expected: Both commands succeed. Only the three demo contacts remain visible, in saved order:
+      `SortGamma`, `SortBeta`, `sortAlpha`. The status shows `Sort: Saved order`.
+   1. Run `sort name desc`, then `list`.<br>
+      Expected: All contacts return, still sorted by descending name. The status shows equal counts,
+      `Filter: All contacts` and `Sort: Name descending`. Run `sort reset` to restore saved order.
+   1. Run `filter t/SortDemo`, then try `sort reset desc`.<br>
+      Expected: A usage error; the active filter, saved order and status remain unchanged.
+   1. Run `filter m/Computer Science and Information Systems c/2027 t/SortDemo` and narrow the window.<br>
+      Expected: Long status text wraps within the window; all criteria and the sort description remain
+      readable. Zero matches, if any, show `Showing 0 of N contacts` without deleting saved contacts.
 
 ### Deleting a person
 
