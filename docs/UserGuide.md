@@ -70,8 +70,11 @@ This guide describes the features available in v1.4.
   For example, if the command specifies `n/NAME p/PHONE_NUMBER`, `p/PHONE_NUMBER n/NAME` is also acceptable.
 
 * Extraneous parameters for `help`, `exit`, and `clear` are ignored.<br>
-  For example, `help 123` is interpreted as `help`.<br>
-  `list`, `listfav`, `tags`, `undo` and `redo` reject extra parameters, such as `list all` or `undo 1`.
+  For example, `help 123` is interpreted as `help`.
+
+* `list`, `listfav`, `tags`, `undo` and `redo` take no parameters and reject extra arguments.<br>
+  In particular, `list all` is rejected; use plain `list` to show all saved contacts.
+  See [Listing all persons](#listing-all-persons-list) for details.
 
 * If you are using a PDF version of this document, be careful when copying and pasting commands that span multiple lines as space characters surrounding line-breaks may be omitted when copied over to the application.
 </box>
@@ -719,6 +722,14 @@ Press **↑** again to browse older commands, or **↓** to browse newer command
 After the newest command, **↓** restores the draft you were typing before browsing.
 At the oldest command, further **↑** presses keep that command displayed.
 
+While browsing, a label beside the command box shows **History i/N**, where **1** is the oldest
+submission and **N** is the newest. Repeated identical commands occupy separate positions, so three
+`list` submissions show **History 3/3**, **2/3**, then **1/3** as you press ↑. The label briefly pulses
+on every history arrow press, including ↑ at the oldest entry, even when the command text stays the
+same. It disappears when you return to your draft or press Enter, including a failed submission.
+At the draft or with empty history the label stays hidden. Prefix search uses the same absolute
+positions among all submissions, so its displayed numbers may skip unrelated entries.
+
 Commands are recorded when you press Enter, including unsuccessful commands and repeated submissions.
 Empty input is not recorded. You can edit a recalled command and press Enter to submit it again;
 browsing alone does not execute commands. Edits made while browsing are not saved in the history.
@@ -733,7 +744,20 @@ For example, submit `list`, then `find Alice`. Type `edit 1 m/` without pressing
 Press **↑** twice to see `find Alice` then `list`; press **↓** twice to return through `find Alice`
 to your draft `edit 1 m/`. None of these arrow presses executes a command.
 
-<puml src="diagrams/CommandHistoryActivityDiagram.puml" alt="Activity diagram for navigating submitted commands and restoring a draft with Up and Down" width="600" />
+For optional prefix search, type a prefix such as `add ` (including the space), then press
+**Alt+↑** (**Option+↑** on macOS) to skip unrelated commands and recall older matching entries.
+**Alt+↓** (**Option+↓**) browses newer matches and restores your original draft after the last match.
+Matching is case-sensitive and includes spaces; an empty prefix matches all commands. Repeated shortcut
+presses keep the initial prefix. At the oldest match, or when there is no match, the input stays unchanged.
+Alt+↓ without an active search leaves input unchanged. Editing the text starts a new prefix search from
+that text at the current history position. Ordinary ↑/↓ continues chronologically from the current
+position and ends the prefix search. Both navigation modes preserve the draft saved when you first
+left the end of history, and neither executes commands.
+
+For example, submit `add n/Alice`, `list`, `add n/Bob`, then `list`. Type `add ` without pressing Enter.
+Alt+↑ recalls `add n/Bob`, then `add n/Alice`; Alt+↓ recalls `add n/Bob`, then restores `add `.
+
+<puml src="diagrams/CommandHistoryActivityDiagram.puml" alt="Activity diagram for chronological and prefix history navigation with draft restoration" />
 
 ### Saving the data
 
@@ -794,7 +818,7 @@ Action     | Format, Examples
 **Find**   | `find KEYWORD [MORE_KEYWORDS]`<br> e.g., `find James Jake`, `find Computer Science`, `find 2027`
 **Filter** | `filter [m/MAJOR] [c/CLASS_YEAR] [t/TAG]` (at least one criterion)<br> e.g., `filter m/Computer Science c/2027 t/Classmate`
 **Sort**   | `sort FIELD DIRECTION` or `sort reset`<br> e.g., `sort name asc`, `sort major desc`, `sort year asc`
-**List all saved contacts** | `list` (no parameters; clears the current filter and reports the total)
+**List all saved contacts** | `list` (rejects extra arguments; clears the current filter and reports the total)
 **Favourite** | `fav INDEX`<br> e.g., `fav 1`
 **Unfavourite** | `unfav INDEX`<br> e.g., `unfav 1`
 **List favourites** | `listfav`
