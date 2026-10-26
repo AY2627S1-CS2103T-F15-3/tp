@@ -20,6 +20,7 @@ public class CommandBox extends UiPart<Region> {
 
     private final CommandExecutor commandExecutor;
     private final CommandHistory commandHistory = new CommandHistory();
+    private boolean recallingHistory;
 
     @FXML
     private TextField commandTextField;
@@ -32,7 +33,12 @@ public class CommandBox extends UiPart<Region> {
         this.commandExecutor = commandExecutor;
         commandTextField.addEventFilter(KeyEvent.KEY_PRESSED, this::handleHistoryNavigation);
         // calls #setStyleToDefault() whenever there is a change to the text of the command box.
-        commandTextField.textProperty().addListener((unused1, unused2, unused3) -> setStyleToDefault());
+        commandTextField.textProperty().addListener((unused1, unused2, unused3) -> {
+            setStyleToDefault();
+            if (!recallingHistory) {
+                commandHistory.resetPrefixSearch();
+            }
+        });
     }
 
     /**
@@ -61,11 +67,22 @@ public class CommandBox extends UiPart<Region> {
         if (event.getCode() != KeyCode.UP && event.getCode() != KeyCode.DOWN) {
             return;
         }
-        String text = event.getCode() == KeyCode.UP
-                ? commandHistory.previous(commandTextField.getText()) : commandHistory.next();
+        String text;
+        if (event.isAltDown() && !event.isControlDown() && !event.isMetaDown() && !event.isShiftDown()) {
+            text = event.getCode() == KeyCode.UP
+                    ? commandHistory.previousMatching(commandTextField.getText()) : commandHistory.nextMatching();
+        } else {
+            text = event.getCode() == KeyCode.UP
+                    ? commandHistory.previous(commandTextField.getText()) : commandHistory.next();
+        }
         if (text != null) {
-            commandTextField.setText(text);
-            commandTextField.positionCaret(text.length());
+            recallingHistory = true;
+            try {
+                commandTextField.setText(text);
+                commandTextField.positionCaret(text.length());
+            } finally {
+                recallingHistory = false;
+            }
         }
         event.consume();
     }
