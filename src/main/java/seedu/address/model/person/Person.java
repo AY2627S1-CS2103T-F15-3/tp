@@ -13,7 +13,8 @@ import seedu.address.model.tag.Tag;
 
 /**
  * Represents a Person in the address book.
- * Guarantees: details are present and not null, field values are validated, immutable.
+ * Guarantees: contact details are not null, field values are validated, immutable.
+ * The last-updated date may be null for legacy contacts whose update date is unknown.
  */
 public class Person {
 
@@ -73,10 +74,11 @@ public class Person {
 
     /**
      * Creates a person preserving all contact state and the basic-profile date.
+     * A null date represents an unknown last update in legacy data.
      */
     public Person(Name name, Phone phone, Email email, Address address, Major major,
             GraduationYear graduationYear, Set<Tag> tags, Notes notes, boolean favourite, LocalDate lastUpdated) {
-        requireAllNonNull(name, phone, email, address, major, graduationYear, tags, notes, lastUpdated);
+        requireAllNonNull(name, phone, email, address, major, graduationYear, tags, notes);
         this.name = name;
         this.phone = phone;
         this.email = email;
@@ -126,6 +128,7 @@ public class Person {
 
     /**
      * Returns the date added or last actual change to the basic profile, excluding tags, notes and favourites.
+     * Returns null when no date was recorded in a legacy contact.
      */
     public LocalDate getLastUpdated() {
         return lastUpdated;
@@ -151,7 +154,7 @@ public class Person {
      */
     public boolean needsUpdate(LocalDate today) {
         java.util.Objects.requireNonNull(today);
-        return lastUpdated.isBefore(today) && lastUpdated.plusYears(1).isBefore(today);
+        return lastUpdated != null && lastUpdated.isBefore(today) && lastUpdated.plusYears(1).isBefore(today);
     }
 
     /**
@@ -206,7 +209,7 @@ public class Person {
                 && graduationYear.equals(otherPerson.graduationYear)
                 && notes.equals(otherPerson.notes)
                 && tags.equals(otherPerson.tags)
-                && lastUpdated.equals(otherPerson.lastUpdated)
+                && Objects.equals(lastUpdated, otherPerson.lastUpdated)
                 && favourite == otherPerson.favourite;
     }
 

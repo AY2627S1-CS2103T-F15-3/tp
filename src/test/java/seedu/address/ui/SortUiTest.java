@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.nio.file.Path;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
@@ -83,6 +84,33 @@ public class SortUiTest {
     }
 
     @Test
+    public void commandBox_updateDateSort_updatesCardsAndStatus() throws Exception {
+        Person alice = new PersonBuilder(this.alice).withLastUpdated(LocalDate.of(2024, 12, 31)).build();
+        Person bob = new PersonBuilder(this.bob).withLastUpdated(LocalDate.of(2024, 12, 31)).build();
+        Person charlie = new PersonBuilder(this.charlie).withLastUpdated(LocalDate.of(2025, 1, 1)).build();
+        runOnFxThread(() -> {
+            MainWindow window = createWindow(alice, bob, charlie);
+            try {
+                enter(window, "sort updated asc");
+                assertCards(window, List.of(alice, bob, charlie));
+                assertTrue(((Label) window.getRoot().getScene().lookup("#viewStatus"))
+                        .getText().endsWith("Sort: Last updated ascending"));
+                enter(window, "sort updated desc");
+                assertCards(window, List.of(charlie, alice, bob));
+                assertEquals("Sorted contacts by updated (desc).", feedback(window));
+                enter(window, "filter t/Classmate");
+                assertCards(window, List.of(charlie, bob));
+                enter(window, "sort reset");
+                assertCards(window, List.of(charlie, bob));
+                assertTrue(((Label) window.getRoot().getScene().lookup("#viewStatus"))
+                        .getText().endsWith("Sort: Saved order"));
+            } finally {
+                window.getRoot().close();
+            }
+        });
+    }
+
+    @Test
     public void commandBox_sortedFilteredMutations_targetDisplayedCardsAndRenumber() throws Exception {
         runOnFxThread(() -> {
             MainWindow window = createWindow();
@@ -100,6 +128,27 @@ public class SortUiTest {
                 assertTrue(feedback(window).startsWith("Deleted person: Bob"));
                 enter(window, "list");
                 assertCards(window, List.of(new PersonBuilder(charlie).withTags("Mentor").build(), alice));
+            } finally {
+                window.getRoot().close();
+            }
+        });
+    }
+
+    @Test
+    public void commandBox_batchDelete_usesOriginalIndicesAndRenumbersCards() throws Exception {
+        runOnFxThread(() -> {
+            MainWindow window = createWindow();
+            try {
+                enter(window, "sort name asc");
+                assertCards(window, List.of(alice, bob, charlie));
+                enter(window, "delete 1 3");
+                assertCards(window, List.of(bob));
+                assertEquals("Deleted 2 contacts:\n1. " + Messages.format(alice)
+                        + "\n3. " + Messages.format(charlie), feedback(window));
+                enter(window, "undo");
+                assertCards(window, List.of(alice, bob, charlie));
+                enter(window, "redo");
+                assertCards(window, List.of(bob));
             } finally {
                 window.getRoot().close();
             }
@@ -134,6 +183,10 @@ public class SortUiTest {
     }
 
     private MainWindow createWindow() {
+        return createWindow(alice, bob, charlie);
+    }
+
+    private MainWindow createWindow(Person alice, Person bob, Person charlie) {
         Model model = new ModelManager();
         model.addPerson(charlie);
         model.addPerson(bob);

@@ -97,11 +97,11 @@ Here's a (partial) class diagram of the `Logic` component:
 
 <puml src="diagrams/LogicClassDiagram.puml" width="550"/>
 
-The sequence diagram below illustrates a successful `execute("delete 1")` call within the `Logic`
+The sequence diagram below illustrates a successful `execute("delete 1 3 5")` call within the `Logic`
 component, including displayed-index resolution and feedback formatting. Detailed validation and
 storage interactions are omitted.
 
-<puml src="diagrams/DeleteSequenceDiagram.puml" alt="Interactions Inside the Logic Component for the `delete 1` Command" />
+<puml src="diagrams/DeleteSequenceDiagram.puml" alt="Interactions Inside the Logic Component for the `delete 1 3 5` Command" />
 
 <box type="info" seamless>
 
@@ -114,10 +114,12 @@ How the `Logic` component works:
 1. When `Logic` is called upon to execute a command, the command is passed to an `AddressBookParser` object, which in turn creates a parser that matches the command (e.g., `DeleteCommandParser`) and uses it to parse the command.
 1. This results in a `Command` object (more precisely, an object of one of its subclasses e.g., `DeleteCommand`) which is executed by the `LogicManager`.
 1. The command can communicate with the `Model` when it is executed. For deletion, it obtains the
-   filtered and sorted displayed list, checks the index, and passes the selected `Person` to
-   `Model#deletePerson`, not the index itself.
-1. `Messages#format` formats the deleted contact's details, including major and class year only when
-   specified. The command adds the `Deleted person: ` prefix and returns a `CommandResult`.
+   filtered and sorted displayed list, validates every supplied index and captures the selected
+   `Person` objects before deletion. It passes each captured contact to `Model#deletePerson` and
+   commits the whole batch as one history entry.
+1. `Messages#format` formats each deleted contact's details, including major and class year only when
+   specified. A single deletion keeps the `Deleted person: ` prefix. A batch reports its count and
+   details labelled with the original displayed indices in input order, then returns a `CommandResult`.
    `LogicManager` saves the updated address book through `Storage` before returning that result to
    its caller; the storage interactions are not shown in this diagram.
 
@@ -419,7 +421,7 @@ is shown on restart.
 ### Sorting the displayed contacts
 
 `AddressBookParser` routes `sort` to `SortCommandParser`. The parser accepts either two tokens
-(a field `name`, `major` or `year`, followed by `asc` or `desc`) or the single keyword `reset`.
+(a field `name`, `major`, `year` or `updated`, followed by `asc` or `desc`) or the single keyword `reset`.
 Keywords are case-insensitive. A field and direction produce `SortCommand` with
 `PersonSortComparator.SortField` and `SortDirection` values; `reset` produces `SortResetCommand`.
 Invalid input raises a `ParseException` with usage instructions before any view or data change.
@@ -448,6 +450,14 @@ sorting keys. Direction is applied to the value comparator **before** `Comparato
 that descending order does not move unspecified values to the front. Equal primary values use ascending
 case-insensitive name order; names differing only in case compare equally.
 
+For `UPDATED`, the comparator compares `Person#getLastUpdated()` as `LocalDate` values.
+Ascending puts older dates first; descending reverses only the date comparison, keeping the
+ascending name tie-break in both directions. Missing/null dates in older files remain unknown
+and sort last in both directions using `Comparator.nullsLast`; unknown-date ties use ascending names.
+The view status describes
+this field as `Last updated`. Replacing a contact after an edit or restoring it through undo/redo
+automatically reorders the displayed view using the restored date.
+
 Sorting the view rather than `UniquePersonList` preserves storage order and history snapshots. As with
 other successful commands, `LogicManager` still invokes storage, but the saved contacts remain in their
 underlying order. Sort commands do not call `commitAddressBook`, so undo and redo availability is preserved.
@@ -458,7 +468,9 @@ Restarting constructs a view without a comparator or predicate, restoring saved 
 Comparator, model, command and parser unit tests cover ordering and validation. `SortCommandIntegrationTest`
 checks command interactions, notes preservation and JSON persistence; `SortUiTest` checks the real command
 box, rendered card numbering and feedback. `SortResetCommandTest` checks saved order, filter preservation
-and redo availability after resetting. See [Sorting contacts](#sorting-contacts) for manual checks.
+and redo availability after resetting. `UpdatedSortIntegrationTest` covers date ordering, ties,
+filters, displayed-index editing, undo/redo and JSON reload; `SortUiTest` also checks date sorting
+through the command box and rendered cards. See [Sorting contacts](#sorting-contacts) for manual checks.
 
 #### Persistent view status
 
@@ -486,21 +498,42 @@ that field is omitted from the command message.
 This centralizes command-message formatting for add, edit, and delete results while preserving the independent
 optional behavior of major and class year.
 
-### Deleting contacts with academic fields
+### Deleting one or more contacts
 
-`DeleteCommand` identifies the target `Person` from `Model#getFilteredPersonList()` using the displayed index.
-Before deletion, it rejects an index outside that view with the supplied one-based index and the valid range,
+`DeleteCommandParser` accepts `delete INDEX [MORE_INDICES]`. It splits the arguments on whitespace and
+uses `ParserUtil#parseIndex` to validate every token as a positive integer. Empty input, zero, negative
+numbers, integer overflow, commas and ranges produce a usage error. `DeleteCommand` stores an
+immutable copy of the indices in input order; duplicates are rejected during command execution.
+
+`DeleteCommand` copies the filtered and sorted list returned by `Model#getFilteredPersonList()`.
+Before deletion, it rejects repeated indices and indices outside that view. An out-of-range error
+includes the supplied one-based index and the valid range,
 `1` to the displayed list size. When exactly one contact is displayed, the message instead states
 `The only valid index is 1.` An empty view reports that no contacts are displayed and suggests `list` when
 saved contacts exist; an empty address book instead suggests adding a contact. These checks throw a
 `CommandException` before any model mutation, preserving contacts, the current view and undo/redo history.
-Invalid index syntax still produces the parser's existing usage error.
+Both out-of-range messages explicitly state `No contacts were deleted.` so users know the entire
+batch was rejected, including any valid indices supplied before the invalid one.
+Duplicate detection uses the numeric index values, so `delete 1 01` also rejects the repeated index.
 
-For a valid index, it calls `Model#deletePerson`, which removes the entire `Person` object from the `AddressBook`,
-including the stored `Major`, `GraduationYear`, and tags.
+After all indices pass validation, the command has captured every selected `Person` from the original
+displayed list. It copies the address book once, calls `Model#deletePerson` for each captured contact,
+and calls `Model#commitAddressBook(previousState, message)` once after constructing the batch feedback.
+That feedback is stored as the history description. It never looks up a target using an index from
+the changing live list. This supports nonconsecutive, adjacent and reversed index lists
+without deleting the wrong contacts as indices shift. Contacts outside the selection, the active
+filter and the active sort order are preserved. A single `undo` or `redo` restores or reapplies the
+whole batch using the existing history mechanism; undo/redo shows the full list as usual.
 
-After deletion, `DeleteCommand` uses `Messages#format(Person)` to include the deleted contact's details in the
-command result.
+Each deletion removes the entire `Person`, including academic details, tags, favourite status and
+notes. `Messages#format(Person)` supplies the usual contact details for the result. A single deletion
+retains `Deleted person: ...`. Multiple deletions return `Deleted N contacts:` and one detail line per
+contact, prefixed with its original displayed index in input order. The GUI's existing result display
+wraps these lines and supports vertical scrolling. `LogicManager` saves the completed batch once.
+
+`DeleteCommandIntegrationTest` covers original displayed indices, filtered and sorted views, complete
+batch rejection, saved-file preservation, one-step undo/redo and persistence across reloads.
+`SortUiTest` checks the batch through the command box, including feedback and renumbered cards.
 
 ### Listing all saved contacts
 
@@ -609,14 +642,15 @@ duplicate-name rejection leave the stored contact unchanged. Undo and redo resto
 date, rather than calculating a new date when restoring a snapshot.
 
 `PersonCard` sets the always-visible `lastUpdated` label from `Person#getLastUpdated()` in
-`PersonListCard.fxml`, producing `Last updated: YYYY-MM-DD` for ordinary four-digit years. Its tooltip
+`PersonListCard.fxml`, producing `Last updated: YYYY-MM-DD` for ordinary four-digit years or
+`Last updated: Unknown` when no date was recorded. Its tooltip
 explains the scope of the date. Replacing a person updates the observable list cell, so edits,
 undo/redo and reloaded data all display the corresponding date. The label is independent of the
 derived `update` reminder and appears on recent contacts too.
 
 The existing JSON `lastUpdated` string and `LocalDate.parse` validation are reused. Missing/null
-dates receive the loading date as a migration baseline; this baseline becomes persistent after
-the next successful command saves the address book. Invalid supplied dates fail data loading.
+dates remain unknown and are saved as JSON null until an actual basic-profile edit records a date.
+Invalid supplied dates fail data loading.
 No new JSON property or user-supplied date prefix is introduced.
 
 `LastUpdatedDisplayTest` exercises actual JavaFX cards and list cells for recent and older dates,
@@ -650,15 +684,15 @@ The reminder is derived from a contact's basic-profile modification date rather 
 
 #### Date tracking and persistence
 
-The existing `Person` constructor overloads initialize unspecified dates using `LocalDate.now()`. The full constructor accepts notes, favourite status and an explicit date, allowing immutable copies to retain all independent contact state. The date participates in equality, hashing and contact history snapshots. `Person#withNotes` preserves it.
+The existing `Person` constructor overloads initialize new contacts using `LocalDate.now()`. The full constructor accepts a null date for legacy contacts with no recorded update date. Equality, hashing, immutable copies and history snapshots preserve this unknown state.
 
 `EditCommand#createEditedPerson` compares the resulting name, phone, email, address, major and graduation year with the original values. If at least one differs, it uses `LocalDate.now(clock)`; otherwise it retains the existing date. Tag-only edits and unsuccessful edits do not reset the date. Date injection makes anniversary tests reproducible. Tag, note and favourite changes retain the previous date, while read-only commands only change the view or feedback. Existing undo/redo restores the full recorded person, including the date.
 
-`JsonAdaptedPerson` serializes `lastUpdated` as an ISO string such as `2026-10-18` and parses it with `LocalDate.parse` on loading. Missing or null dates use the current loading date as a migration baseline, not a historical claim. Normal saving persists that baseline for subsequent loads. Invalid supplied dates raise `IllegalValueException`, which the existing storage loading path reports as invalid data. Notes, favourite status and ordinary tags retain their existing JSON properties and validation.
+`JsonAdaptedPerson` serializes known dates as ISO strings such as `2026-10-18` and unknown dates as JSON null. Missing or null dates remain unknown after loading and saving. Invalid supplied dates still raise `IllegalValueException` through the existing storage loading path.
 
 #### Reminder logic
 
-`Person#needsUpdate(today)` requires the saved date to precede today and its one-year anniversary to be strictly before today. Exactly one year produces no reminder. Calendar-year arithmetic uses `lastUpdated.plusYears(1)`, so a leap-day anniversary follows Java's calendar rule: `2024-02-29` reaches its anniversary on `2025-02-28`, with a reminder starting on `2025-03-01`.
+`Person#needsUpdate(today)` requires a known date preceding today and its one-year anniversary to be strictly before today. Unknown dates produce no age-based reminder. Exactly one year produces no reminder. Calendar-year arithmetic uses `lastUpdated.plusYears(1)`, so a leap-day anniversary follows Java's calendar rule: `2024-02-29` reaches its anniversary on `2025-02-28`, with a reminder starting on `2025-03-01`.
 
 `SystemTag.forPerson` appends one `UPDATE` reminder when the age condition applies, independently of `INCOMPLETE`. It does not mutate `Person#getTags` or write automatic labels to JSON. This representation can accommodate other system reminders later.
 
@@ -703,9 +737,9 @@ For `fav 1`, `AddressBookParser` selects `FavCommandParser`, which parses a one-
 
 For a valid state change, the command constructs a new `Person` from the original name, phone, email, address, major, graduation year, tags and notes, with `favourite` set to `true`. `Model#setPerson` replaces the stored person, and the result starts with `Added to favourites: ` followed by `Messages.format` output. `unfav` follows the same path through `UnfavCommandParser` and `UnfavCommand`, requires an existing favourite, sets the value to `false`, and returns `Removed from favourites: `.
 
-Invalid index syntax is reported as a `ParseException` containing the corresponding command's usage. An index beyond the current view produces `The person index provided is invalid.` Repeated state changes produce `This person is already a favourite.` or `This person is not a favourite.` Neither command resets the current filter.
+Invalid index syntax produces a `ParseException` with usage instructions; an out-of-range index produces `The person index provided is invalid.` Repeated `fav` and `unfav` errors include the selected contact's name, e.g., `Alice is already a favourite.` or `Alice is not a favourite.` This feedback change leaves favourite state transitions and Undo/Redo behaviour unchanged. Neither command resets the current filter.
 
-`AddressBookParser` accepts `listfav` only when its argument string is blank. `ListFavCommand#execute` calls `Model#updateFilteredPersonList(Person::isFavourite)` and reports the resulting count, or `No favourite contacts found.` This replaces any previous predicate. The existing `ListCommand` restores `PREDICATE_SHOW_ALL_PERSONS`. Both commands reuse the same filtered view; neither edits or deletes a contact. The source list order is retained.
+`AddressBookParser` accepts `listfav` only when its argument string is blank. `ListFavCommand#execute` calls `model.updateFilteredPersonList(new FavouritePredicate())` and reports the resulting count, or `No favourite contacts found.` This replaces any previous predicate. The existing `ListCommand` restores `PREDICATE_SHOW_ALL_PERSONS`. Both commands reuse the same filtered view; neither edits or deletes a contact. The current sorting is preserved.
 
 Because `fav` and `unfav` resolve their targets from that view, `unfav 1` after `listfav` acts on the first displayed favourite. Replacing it with a non-favourite causes the `FilteredList` to remove it immediately and reindex the remaining results. Existing `add` and `edit` behaviour still restores the full list; `tag` and `untag` retain the current predicate.
 
@@ -864,7 +898,16 @@ A command that fails validation, such as a duplicate `add`, throws before copyin
 
 `DeleteCommand`, `ClearCommand`, `TagCommand`, `UntagCommand`, `FavCommand` and `UnfavCommand` follow the same pattern: each copies the data after its validation checks, makes its change through the model (`Model#deletePerson`, `Model#setAddressBook` or `Model#setPerson`), and then commits. Changes that leave the data unchanged, such as `tag` with a tag the person already has, `untag` with a tag the person does not have, or `clear` on an empty contact list, are ignored by the commit, so no undo step is recorded and redo remains available. `fav` on a person who is already a favourite and `unfav` on one who is not fail before copying the data.
 
-`Model#undoAddressBook()` pops the top of `undoStates`, pushes `currentState` onto `redoStates` with the popped entry's description, and restores the popped state. `Model#redoAddressBook()` does the reverse. The description therefore moves with its change between the stacks, so a redo names the same change that the matching undo named. Restoring calls `AddressBook#resetData` on the existing `AddressBook`, so:
+A `DeleteCommand` with multiple indices captures all target contacts before mutation and commits
+only after every selected contact has been deleted. The whole batch consumes one undo step,
+with its feedback stored as the history description. Invalid or repeated indices preserve both
+history stacks.
+
+`Model#undoAddressBook()` pops the top of `undoStates`, pushes `currentState` onto `redoStates`
+with the popped entry's description, and restores the popped state. `Model#redoAddressBook()`
+does the reverse. The description therefore moves with its change between the stacks, so a redo
+names the same change that the matching undo named. Restoring calls `AddressBook#resetData`
+on the existing `AddressBook`, so:
 
 * the `AddressBook` object and the `FilteredList` built on it are the same objects before and after, and the UI updates through its existing observers;
 * restoring a state does not record a new history entry.
@@ -1081,18 +1124,38 @@ the current draft; Down past the newest entry restores it. Navigation stops at t
 Down at the draft position leaves input unchanged. Editing recalled input does not change stored entries.
 History is held in memory and is not written to contact data or preferences.
 
-<puml src="diagrams/CommandHistorySequenceDiagram.puml" alt="Sequence diagram for recording submissions and browsing command history in the GUI" />
+Alt+Up/Down (Option+Up/Down on macOS) calls `previousMatching` / `nextMatching` on the same
+history cursor. `previousMatching` captures the current input as a case-sensitive `startsWith` prefix;
+subsequent searches retain it, skipping unrelated entries. No older match leaves the cursor unchanged.
+After the newest match, `nextMatching` restores the saved draft and ends the search. Without an active
+search, Alt+Down is a no-op. Editing input, submitting a command or using chronological arrows resets
+the prefix. `CommandBox` guards programmatic recalls so its text listener resets the search only for
+external edits. Switching navigation modes keeps the original draft and the current history position.
 
-`CommandHistoryTest` covers boundaries, duplicates and draft state. `CommandBoxTest` exercises the real
+`CommandHistory#getPosition()` exposes a one-based chronological index (zero at the draft), and
+`size()` includes all submissions, even duplicates. After each navigation event, `CommandBox` updates
+the adjacent `historyPositionLabel` to `History i/N`. A 200 ms `FadeTransition` restarts from 35% to
+full opacity on each press, including boundary presses and identical recalls. At the draft and on Enter,
+the transition stops and the label becomes invisible and unmanaged so the input reclaims its space.
+Failed submissions also hide the label. Prefix search displays absolute positions rather than match counts.
+
+<puml src="diagrams/CommandHistorySequenceDiagram.puml" alt="Sequence diagram for submissions, chronological navigation and optional prefix history search" />
+
+`CommandHistoryTest` covers boundaries, duplicates, exact prefixes, mode switching and draft state. `CommandBoxTest` exercises the real
 FXML text field on the JavaFX thread: Up/Down event consumption, caret placement, draft restoration,
-failed submissions, error styling and the absence of executor calls during browsing.
+failed submissions, error styling, Alt shortcuts, edited prefixes and the absence of executor calls during browsing.
 For manual UI verification:
 
 1. Submit `list`, then an invalid command. Press Up twice and verify both can be recalled in reverse order.
 2. Press Up again at the oldest entry; verify it stays displayed. Press Down to return to the newest entry.
 3. Return to the draft position, type a partial command, then press Up and Down; verify the draft is restored.
 4. Edit a recalled command and submit it; verify the new submission is the newest entry.
-5. Restart UniMate and verify Up/Down leave the input unchanged until a command is submitted.
+5. Submit `add n/Alice`, `list`, `add n/Bob`, then `list`. Type `add ` and use Alt+Up twice:
+   verify Bob then Alice is recalled, skipping List entries. Alt+Down twice restores Bob then `add `.
+6. Verify no matches leave input unchanged, and ordinary arrows still visit all entries after prefix search.
+7. Submit `list` three times. Press Up repeatedly and verify the label shows distinct absolute positions,
+   pulses even at the oldest entry, then disappears when Down restores the draft or Enter submits input.
+8. Restart UniMate and verify both navigation modes leave the input unchanged until a command is submitted.
 
 ## **Coming soon**
 
@@ -1631,7 +1694,46 @@ testers are expected to do more *exploratory* testing.
       Expected: Long status text wraps within the window; all criteria and the sort description remain
       readable. Zero matches, if any, show `Showing 0 of N contacts` without deleting saved contacts.
 
-### Deleting a person
+1. Latest update date
+
+   1. Prerequisites: Use a disposable copy with no contacts named `UpdatedAlpha`, `UpdatedBeta` or
+      `UpdatedGamma`, and no tag `UpdateSortDemo`. Add contacts in this order:
+
+      * `add n/UpdatedGamma p/91234567 t/UpdateSortDemo`
+      * `add n/UpdatedBeta p/92345678 t/UpdateSortDemo`
+      * `add n/UpdatedAlpha p/93456789 t/UpdateSortDemo`
+
+      Close UniMate. In the disposable `data/unimate.json`, set only these contacts' `lastUpdated`
+      properties: `UpdatedGamma` to `2025-01-01`, and `UpdatedBeta` and `UpdatedAlpha` to `2024-12-31`.
+      Relaunch and run `filter t/UpdateSortDemo`. Confirm the dates on the cards before continuing.
+   1. Run `sort updated asc`, then `sort updated desc`.<br>
+      Expected: Ascending shows `UpdatedAlpha`, `UpdatedBeta`, `UpdatedGamma`; descending shows
+      `UpdatedGamma`, `UpdatedAlpha`, `UpdatedBeta`. Both directions break equal dates by ascending
+      names. Only the three matching contacts appear. Status ends with `Sort: Last updated ascending`
+      or `Sort: Last updated descending`, and card numbers match the displayed order.
+   1. Run `sort updated asc`, then `edit 1 p/99999999`, then `filter t/UpdateSortDemo`.<br>
+      Expected: `UpdatedAlpha` changes phone and receives today's date, moving after the two older contacts.
+      It was third in saved order but is targeted using the first displayed card.
+      Run `sort updated desc`: `UpdatedAlpha`, `UpdatedGamma`, `UpdatedBeta` appear.
+   1. Run `undo`, then `filter t/UpdateSortDemo`.<br>
+      Expected: `UpdatedAlpha` regains its original phone and date; descending order becomes
+      `UpdatedGamma`, `UpdatedAlpha`, `UpdatedBeta`. Run `sort updated asc`, then `redo`, then reapply
+      the filter: the edited phone/date return, with `UpdatedBeta`, `UpdatedGamma`, `UpdatedAlpha`
+      in ascending order. Sorting has not consumed undo history or cleared redo.
+   1. Try `sort updated`, `sort updated ascending` and `sort updated desc extra` separately.<br>
+      Expected: Usage errors; the filter, order, dates and status remain unchanged.
+      Run `sort reset`: only the matching contacts remain, in saved order
+      `UpdatedGamma`, `UpdatedBeta`, `UpdatedAlpha`.
+   1. Close and reopen UniMate, then run `filter t/UpdateSortDemo`.<br>
+      Expected: The same saved order and edited phone/date remain. The temporary sort is reset and
+      status ends with `Sort: Saved order`.
+
+   1. Close UniMate and remove `UpdatedGamma`'s `lastUpdated` property from the disposable data file.
+      Relaunch, run `filter t/UpdateSortDemo`, then try `sort updated asc` and `sort updated desc`.<br>
+      Expected: `UpdatedGamma` shows `Last updated: Unknown` and stays last in both directions.
+      Saving and restarting preserve its unknown date; an actual basic-profile edit records today's date.
+
+### Deleting contacts
 
 1. Deleting a contact with academic fields
 
@@ -1649,16 +1751,48 @@ testers are expected to do more *exploratory* testing.
    1. Test cases: `delete 0`, `delete`, `delete x`.<br>
       Expected: An invalid-command-format error is shown and no contact is deleted.
    1. Run `delete` with a numeric index greater than the displayed list size.<br>
-      Expected: `Index X is outside the current displayed list. Choose an index from 1 to N.`, where `X` is the
-      supplied index and `N` is the displayed list size. No contact is deleted.
+      Expected: The error states `Index X is outside the current displayed list. No contacts were deleted.`
+      and `Choose an index from 1 to N.`, where `X` is the supplied index and `N` is the displayed list size.
    1. Run `find DeleteIndexCheckNoMatch`, ensuring no saved contact matches, then `delete 1`.<br>
       Expected: `No contacts are currently displayed to delete. Use list to view all saved contacts.`
       Saved contacts and the empty displayed list remain unchanged.
    1. Run `list`, then `find` with a keyword matching exactly one saved contact. Run `delete 2`.<br>
-      Expected: `Index 2 is outside the current displayed list. The only valid index is 1.`
+      Expected: `Index 2 is outside the current displayed list. No contacts were deleted. The only valid index is 1.`
       The matching contact remains displayed and no contact is deleted.
    1. In an empty disposable address book, run `delete 1`.<br>
       Expected: `There are no saved contacts to delete. Add a contact before using delete.`
+
+1. Deleting multiple contacts using original displayed indices
+
+   1. Prerequisites: Use disposable test data and ensure these demo names do not already exist. Add:
+
+      * `add n/BatchDeleteA a/NUS t/BatchDeleteDemo`
+      * `add n/BatchDeleteB a/NUS t/BatchDeleteDemo`
+      * `add n/BatchDeleteC a/NUS t/BatchDeleteDemo`
+      * `add n/BatchDeleteD a/NUS t/BatchDeleteDemo`
+      * `add n/BatchDeleteE a/NUS t/BatchDeleteDemo`
+
+   1. Run `filter t/BatchDeleteDemo`, then `sort name asc`.<br>
+      Expected: The five demo contacts appear as A, B, C, D, E, numbered 1 to 5.
+   1. Run `delete 1 3 5`.<br>
+      Expected: Only A, C and E are deleted. B and D remain, renumbered 1 and 2. Feedback starts with
+      `Deleted 3 contacts:` and lists the original indices 1, 3 and 5 with the corresponding contact
+      details. Contacts outside the filter are unaffected.
+   1. Run `undo`, then `filter t/BatchDeleteDemo`.<br>
+      Expected: All five contacts return in one undo step. Run `redo`, then reapply the filter:
+      only B and D remain. The batch result is saved after each operation.
+   1. Run `undo`, reapply the filter, then run `delete 5 1 3`.<br>
+      Expected: The same A, C and E contacts are deleted. Feedback lists E, A and C using their
+      original indices 5, 1 and 3. Undo and reapply the filter before the next checks.
+   1. Try `delete 1 6`, `delete 1 0`, `delete 1 1`, `delete 1 01`, `delete 1,3` and `delete 1-3` separately.<br>
+      Expected: Each whole command is rejected; all five contacts remain displayed. Repeated numeric
+      indices report `Index 1 is repeated. Specify each displayed index only once. No contacts were deleted.`
+      The out-of-range error for `delete 1 6` also states `No contacts were deleted.`, confirming that
+      the valid contact at index 1 remains present.
+      The failed commands preserve the redo opportunity: run `redo` and reapply the filter to see
+      only B and D again.
+   1. Clean up: Run `undo`, reapply the filter, then `delete 1 2 3 4 5`.<br>
+      Expected: The demo results are empty and contacts outside the filter remain present.
 
 ### Tagging and untagging a person
 

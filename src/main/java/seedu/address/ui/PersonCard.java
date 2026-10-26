@@ -106,14 +106,18 @@ public class PersonCard extends UiPart<Region> {
         address.setText(person.getAddress().value);
         email.setText(getValueOrFallback(person.getEmail().value));
         setAcademicFieldTexts(person, major::setText, graduationYear::setText);
-        lastUpdated.setText(person.getLastUpdated().toString());
-        lastUpdated.setTooltip(new Tooltip(LAST_UPDATED_HELP));
+        lastUpdated.setText(person.getLastUpdated() == null
+                ? "Unknown" : person.getLastUpdated().toString());
+        lastUpdated.setTooltip(new Tooltip(
+                "Date added or last change to name, phone, email, address, "
+                + "major or class year. Tags, notes and favourites do not change this date. "
+                + "Older contacts without a saved date show Unknown and sort last in both date directions."));
     }
 
     private void configureIndicators(int displayedIndex) {
         favouriteIcon.setVisible(person.isFavourite());
         favouriteIcon.setManaged(person.isFavourite());
-        boolean hasNotes = !person.getNotes().isEmpty();
+      boolean hasNotes = !person.getNotes().isEmpty();
         noteIcon.setVisible(hasNotes);
         noteIcon.setManaged(hasNotes);
         noteIcon.setTooltip(new Tooltip("Use shownote " + displayedIndex + " to view this note."));
