@@ -1,0 +1,27 @@
+@startuml
+!include style.puml
+skinparam ArrowFontStyle plain
+start
+:Focus the command box;
+if (Press Up or Down?) then (Up)
+  if (Any submitted commands?) then (yes)
+    if (Currently at the draft?) then (yes)
+      :Save the current draft;
+    endif
+    :Show the previous command\nstay at the oldest entry at the boundary;
+    :Move the caret to the end;
+  else (no)
+    :Leave the input unchanged;
+  endif
+else (Down)
+  if (Currently browsing history?) then (yes)
+    :Show the next command, or restore
+the saved draft after the newest entry;
+    :Move the caret to the end;
+  else (no)
+    :Leave the input unchanged;
+  endif
+endif
+:Keep contacts and result feedback unchanged\nno command is executed;
+stop
+@enduml
