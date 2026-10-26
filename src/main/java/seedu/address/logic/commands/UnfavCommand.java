@@ -7,7 +7,9 @@ import java.util.List;
 import seedu.address.commons.core.index.Index;
 import seedu.address.logic.Messages;
 import seedu.address.logic.commands.exceptions.CommandException;
+import seedu.address.model.AddressBook;
 import seedu.address.model.Model;
+import seedu.address.model.ReadOnlyAddressBook;
 import seedu.address.model.person.Person;
 
 /**
@@ -44,7 +46,9 @@ public class UnfavCommand extends Command {
         Person updatedPerson = new Person(person.getName(), person.getPhone(), person.getEmail(), person.getAddress(),
                 person.getMajor(), person.getGraduationYear(), person.getTags(), person.getNotes(), false,
                 person.getLastUpdated());
+        ReadOnlyAddressBook previousState = new AddressBook(model.getAddressBook());
         model.setPerson(person, updatedPerson);
+        model.commitAddressBook(previousState);
         return new CommandResult(String.format(MESSAGE_SUCCESS, Messages.format(updatedPerson)));
     }
 

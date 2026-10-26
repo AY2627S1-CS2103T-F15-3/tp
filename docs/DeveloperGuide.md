@@ -143,7 +143,7 @@ The `Model` component,
   so the UI and numbered commands use the same displayed order. Both transformations observe the saved
   contact list, so data changes update the display.
 * stores a `UserPrefs` object that represents the user’s preferences (currently, just the GUI settings). This is exposed to the outside as a `ReadOnlyUserPrefs` object.
-* keeps an in-memory history of contact data states in an `AddressBookHistory` object. The `undo` and `redo` commands use it to revert and reapply successful `add` and `edit` changes. See [Recording contact data history](#recording-contact-data-history).
+* keeps an in-memory history of contact data states in an `AddressBookHistory` object. The `undo` and `redo` commands use it to revert and reapply every successful change to contact data. See [Recording contact data history](#recording-contact-data-history).
 * does not depend on any of the other three components (as the `Model` represents data entities of the domain, they should make sense on their own without depending on other components)
 
 
@@ -701,7 +701,7 @@ For command formats and user-facing examples, see [Adding tags](UserGuide.md#add
 
 #### Current implementation
 
-The model keeps an in-memory history of contact data states. Successful `add` and `edit` commands record the state from before their change, and the model can restore earlier or later states. The user-facing `undo` and `redo` commands are built on this history (see [Undo and redo commands](#undo-and-redo-commands)). The history lasts only for the current session: it is not saved to storage, and a newly launched app starts with no undo or redo history.
+The model keeps an in-memory history of contact data states. Every command that changes contact data records the state from before its change, and the model can restore earlier or later states. The user-facing `undo` and `redo` commands are built on this history (see [Undo and redo commands](#undo-and-redo-commands)). The history lasts only for the current session: it is not saved to storage, and a newly launched app starts with no undo or redo history.
 
 **Relevant classes:**
 
@@ -710,7 +710,7 @@ The model keeps an in-memory history of contact data states. Successful `add` an
 | `AddressBookHistory` | Stores defensive `AddressBook` snapshots in an undo stack and a redo stack, and restores them into the tracked `AddressBook`. |
 | `Model` | Declares `commitAddressBook(ReadOnlyAddressBook)`, `canUndoAddressBook()`, `canRedoAddressBook()`, `undoAddressBook()` and `redoAddressBook()`. |
 | `ModelManager` | Creates one `AddressBookHistory` for its `AddressBook` and delegates the methods above to it. |
-| `AddCommand`, `EditCommand`, `NoteCommand`, `DeleteNoteCommand` | Copy the contact data before changing it, then call `Model#commitAddressBook` with that copy. |
+| `AddCommand`, `EditCommand`, `DeleteCommand`, `ClearCommand`, `TagCommand`, `UntagCommand`, `FavCommand`, `UnfavCommand`, `NoteCommand`, `DeleteNoteCommand` | Copy the contact data before changing it, then call `Model#commitAddressBook` with that copy. |
 | `UndoCommand`, `RedoCommand` | Check history availability, restore the corresponding state through the model, and reset the displayed list to show all contacts. |
 
 `AddressBookHistory` holds:
@@ -742,6 +742,8 @@ A command that fails validation, such as a duplicate `add`, throws before copyin
 `EditCommand#execute` follows the same pattern. It checks the displayed index and duplicate persons first, copies the data, calls `Model#setPerson`, and then commits. An edit that supplies the person's current values still returns the usual success message. Its commit is ignored because the data did not change, preserving both history stacks. The bare command `edit 1` is invalid because at least one field is required.
 
 `NoteCommand` and `DeleteNoteCommand` use the same snapshot-and-commit flow for actual note changes. An unchanged note produces equal before/after data, so the commit is ignored and redo remains available. `DeleteNoteCommand` returns immediately for an empty note. A new data-changing commit clears redo states; merely viewing a note does not.
+
+`DeleteCommand`, `ClearCommand`, `TagCommand`, `UntagCommand`, `FavCommand` and `UnfavCommand` follow the same pattern: each copies the data after its validation checks, makes its change through the model (`Model#deletePerson`, `Model#setAddressBook` or `Model#setPerson`), and then commits. Changes that leave the data unchanged, such as `tag` with a tag the person already has, `untag` with a tag the person does not have, or `clear` on an empty contact list, are ignored by the commit, so no undo step is recorded and redo remains available. `fav` on a person who is already a favourite and `unfav` on one who is not fail before copying the data.
 
 `Model#undoAddressBook()` pushes `currentState` onto `redoStates`, pops the top of `undoStates`, and restores it. `Model#redoAddressBook()` does the reverse. Restoring calls `AddressBook#resetData` on the existing `AddressBook`, so:
 
@@ -786,23 +788,21 @@ Step 6. The user runs `undo` again, returning to the state in Step 4, and then r
 
 Commands that do not change contact data, such as `list` and `find`, and commands that fail before changing anything, record nothing and leave all three parts of the history unchanged.
 
-#### Commands that are not undoable
+#### Unrecorded changes
 
-`delete`, `tag`, `untag` and `clear` change contact data but do not call `Model#commitAddressBook`. If an old snapshot were restored after one of them, it would silently reverse that change as well. For example, after `add` and then `delete 1`, undoing the add would also bring back the deleted contact.
+Every current command that changes contact data commits its change. A future command that changes the data but forgets to call `Model#commitAddressBook` would be dangerous: restoring an old snapshot after it would silently reverse that change as well. For example, if such a command removed a contact after an `add`, undoing the add would also bring back the removed contact.
 
-To prevent this, `AddressBookHistory` compares `currentState` with the live contact data. If they differ, a change was made without being recorded, and the history is stale:
+As a safety net, `AddressBookHistory` compares `currentState` with the live contact data. If they differ, a change was made without being recorded, and the history is stale:
 
 * `canUndoAddressBook()` and `canRedoAddressBook()` return `false`.
 * `undoAddressBook()` and `redoAddressBook()` discard both stacks and return `false`, leaving the data unchanged.
 * The next data-changing commit discards the stale undo states before recording the new one.
 
-Continuing the example above, suppose the user now runs `delete 1`. `DeleteCommand` changes the contacts in the model to `ab4` without committing, so they no longer match `currentState`, `ab3`. The history is now stale: a following `undo` would discard both stacks and report that there is no change to undo, rather than restoring `ab1` and bringing the deleted contact back.
+Continuing the example above, suppose an unrecorded change now replaces the contacts in the model with `ab4`, so they no longer match `currentState`, `ab3`. The history is now stale: a following `undo` would discard both stacks and report that there is no change to undo, rather than restoring `ab1` and reversing the unrecorded change.
 
 <puml src="diagrams/UndoRedoState6.puml" alt="UndoRedoState6" />
 
-To the user, this means that after a `delete`, `tag`, `untag` or `clear` that changes contact data, `undo` reports that there is nothing to undo until another `add` or `edit` succeeds, and `redo` reports that there is nothing to redo until a later change is undone. A command that fails, or that leaves the data unchanged (such as `tag` with a tag the person already has), does not make the history stale.
-
-These commands therefore need no history code, and any future command that changes data without committing is handled the same way.
+To the user, such a change would only make `undo` and `redo` report that there is nothing to undo or redo, never restore the wrong data. `UndoCommandTest` covers this by changing the model directly without committing.
 
 #### Design considerations
 
@@ -824,20 +824,29 @@ These commands therefore need no history code, and any future command that chang
   * Pros: Keeps history and data in one object.
   * Cons: Discarding redo states requires trimming the list after the pointer, and `AddressBook` gains history responsibilities.
 
-**Aspect: How non-undoable commands affect history**
+**Aspect: Which commands are undoable**
+
+* **Alternative 1 (current choice):** Every command that changes contact data commits its change.
+  * Pros: Users can rely on one rule: any change can be undone, including `delete` and `clear`, where mistakes are most costly. Each command needs only a snapshot and a commit call.
+  * Cons: A full snapshot is stored for every change, including small ones such as `fav`.
+* **Alternative 2:** Only some commands, such as `add` and `edit`, are undoable; the others make earlier history unavailable.
+  * Pros: Fewer snapshots are stored.
+  * Cons: Users must remember which commands can be undone, and a non-undoable command also blocks undoing earlier changes. This was the earlier behaviour, and it was reported as confusing for `fav` and `unfav`.
+
+**Aspect: How unrecorded changes affect history**
 
 * **Alternative 1 (current choice):** Detect unrecorded changes by comparing the expected state with the live data.
-  * Pros: `delete`, `tag`, `untag` and `clear` are not modified, and future commands cannot leave stale history by mistake.
+  * Pros: A future command that forgets to commit cannot cause an old snapshot to silently reverse its change.
   * Cons: Each history check compares the whole contact list. If an unrecorded change is later reversed exactly, the history becomes valid again, which is safe because the data is identical.
-* **Alternative 2:** Have each non-undoable command explicitly clear the history.
-  * Pros: Makes the behaviour visible in each command.
-  * Cons: Every data-changing command must remember to do it, and `tag`, `untag` and `edit` all use `Model#setPerson`, so the model alone cannot tell them apart.
+* **Alternative 2:** Trust every data-changing command to commit, with no check.
+  * Pros: Avoids the comparison on every history check.
+  * Cons: A single missing commit would let `undo` restore the wrong data, and the model alone cannot detect it because many commands share `Model#setPerson`.
 
 ### Undo and redo commands
 
 #### Current implementation
 
-The `undo` and `redo` commands let users revert and reapply `add` and `edit` changes using the history described in [Recording contact data history](#recording-contact-data-history).
+The `undo` and `redo` commands let users revert and reapply any change to contact data using the history described in [Recording contact data history](#recording-contact-data-history).
 
 **Relevant classes:**
 
@@ -880,8 +889,8 @@ If saving fails after a successful undo or redo, the in-memory state has already
 |-----------|---------|
 | `undo` succeeds | `Rollback to before the most recent change.` |
 | `redo` succeeds | `Restored the most recently undone change.` |
-| Nothing to undo, including stale history | `There is no change to undo. Only add and edit can be undone, and not after a delete, tag, untag or clear.` |
-| Nothing to redo, including stale history | `There is no change to redo. Only an undone add or edit can be redone, and not after another change has been made.` |
+| Nothing to undo, including stale history | `There is no change to undo.` |
+| Nothing to redo, including stale history | `There is no change to redo. An undone change cannot be redone after another change has been made.` |
 | Arguments after `undo` or `redo` | `Invalid command format!`, followed by the command's usage |
 
 #### Design considerations
@@ -921,7 +930,7 @@ Undo and redo are tested at each layer:
 |------------|----------------|
 | `AddressBookHistoryTest`, `ModelManagerTest` | Committing, undoing and redoing snapshots, ignoring unchanged commits, clearing redo states on a new commit, and stale history after unrecorded changes. |
 | `AddCommandTest`, `AddCommandIntegrationTest`, `EditCommandTest` | Successful `add` and `edit` commands record exactly one history entry, while failed or unchanged ones record none. |
-| `UndoCommandTest`, `RedoCommandTest` | Each command on its own against a model: success and failure messages, the order of repeated undos and redos, redo invalidation, and resetting the filtered list. |
+| `UndoCommandTest`, `RedoCommandTest` | Each command on its own against a model: success and failure messages, the order of repeated undos and redos, redo invalidation, and resetting the filtered list. `UndoCommandTest` also undoes and redoes each of `delete`, `clear`, `tag`, `untag`, `fav`, `unfav` and `note`, checks that unchanged results such as `clear` on an empty list record nothing, and checks stale history after a change made directly through the model. |
 | `AddressBookParserTest` | `undo` and `redo` are parsed, and extra arguments are rejected with the usage message. |
 | `LogicManagerTest`, `UndoRedoIntegrationTest` | Full command strings through `LogicManager#execute`: parser, command, model history and JSON storage together. |
 
@@ -1008,7 +1017,7 @@ Priorities: High (must have) - `* * *`, Medium (nice to have) - `* *`, Low (unli
 | `* *`    | user           | add short notes to a contact                                                    | remember useful information, including how we met               |
 | `* *`    | user           | distinguish academic contacts from personal contacts                            | focus on the group relevant to my current activity              |
 | `* *`    | user           | mark and retrieve favourite contacts                                            | quickly access people I contact frequently                      |
-| `* *`    | user           | undo a recent contact change                                                    | recover from an accidental addition, edit or note change        |
+| `* *`    | user           | undo a recent contact change                                                    | recover from an accidental change, such as a deletion or clear  |
 | `* *`    | user           | redo an undone contact change                                                   | restore an intended change without entering it again            |
 | `* *`    | user           | recall previously entered commands                                              | repeat or modify commands without retyping them                 |
 | `* *`    | user           | use short command aliases                                                       | perform frequent operations with fewer keystrokes               |
@@ -1099,7 +1108,7 @@ Priorities: High (must have) - `* * *`, Medium (nice to have) - `* *`, Low (unli
 
 **MSS**
 
-1.  User adds or edits a contact.
+1.  User changes the contacts, for example by adding, editing, deleting, tagging or favouriting a contact.
 2.  User requests to undo the most recent change.
 3.  UniMate restores the contacts to their state before that change.
 4.  UniMate shows all contacts and informs the user that the change has been undone.
@@ -1108,7 +1117,7 @@ Priorities: High (must have) - `* * *`, Medium (nice to have) - `* *`, Low (unli
 
 **Extensions**
 
-* 2a. There is no add or edit to undo in the current session, or a delete, tag, untag or clear has changed the contacts since the most recent add or edit.
+* 2a. There is no change to undo in the current session.
 
     * 2a1. UniMate informs the user that there is no change to undo.
 
@@ -1120,7 +1129,7 @@ Priorities: High (must have) - `* * *`, Medium (nice to have) - `* *`, Low (unli
 
       Use case ends.
 
-* 4a. User wants to revert an earlier add or edit.
+* 4a. User wants to revert an earlier change.
 
     * 4a1. User requests to undo again.
 
@@ -1520,7 +1529,7 @@ Perform these scenarios in order; each one relies on the contacts left by the pr
    1. Close and relaunch the app from the same folder, then run `find UndoCheck`.<br>
       Expected: `UndoCheck` is present; the redone state was saved.
    1. Test case: `undo`.<br>
-      Expected: `There is no change to undo. Only add and edit can be undone, and not after a delete, tag, untag or clear.` Undo history is not kept between sessions, so `UndoCheck` remains.
+      Expected: `There is no change to undo.` Undo history is not kept between sessions, so `UndoCheck` remains.
 
 1. Undoing and redoing several edits
 
@@ -1537,7 +1546,7 @@ Perform these scenarios in order; each one relies on the contacts left by the pr
 1. Redo is unavailable after a new change
 
    1. Test case: `undo`, then `add n/RedoCheck p/92345678 e/redo@example.com a/20 Kent Ridge Road`, then `redo`.<br>
-      Expected: The `undo` restores `UndoCheck`'s `StudyGroup` tag and `RedoCheck` is then added. The `redo` fails with `There is no change to redo. Only an undone add or edit can be redone, and not after another change has been made.` and the contacts are unchanged.
+      Expected: The `undo` restores `UndoCheck`'s `StudyGroup` tag and `RedoCheck` is then added. The `redo` fails with `There is no change to redo. An undone change cannot be redone after another change has been made.` and the contacts are unchanged.
 
 1. Commands that do not affect history
 
@@ -1550,13 +1559,21 @@ Perform these scenarios in order; each one relies on the contacts left by the pr
    1. Test cases: `undo 1`, `redo 1`.<br>
       Expected: An invalid-command-format error with the command's usage is shown, and no contact changes.
 
-1. Commands that cannot be undone
+1. Undoing deletions, tags, favourites and clear
 
    1. Run `find RedoCheck` and confirm that it is the only result. Then run `delete 1`.<br>
       Expected: `RedoCheck` is deleted.
-   1. Test cases: `undo`, `redo`.<br>
-      Expected: Both report that there is no change to undo or redo. `RedoCheck` stays deleted and `UndoCheck` keeps its current details, even though earlier adds and edits were undoable before the deletion.
-   1. To clean up, run `find UndoCheck`, then `delete 1`.
+   1. Test case: `undo`.<br>
+      Expected: `RedoCheck` is back and the full contact list is shown.
+   1. Test case: `redo`.<br>
+      Expected: `RedoCheck` is deleted again.
+   1. Run `undo` to bring `RedoCheck` back, then `find RedoCheck`, `tag 1 t/Undoable`, then `fav 1`.<br>
+      Expected: `RedoCheck` has the tag `Undoable` and is a favourite.
+   1. Test case: `undo`, then `undo` again.<br>
+      Expected: The first `undo` removes the favourite status; the second removes the `Undoable` tag.
+   1. Test case: `clear`, then `undo`.<br>
+      Expected: All contacts are removed by `clear`, then restored by `undo`.
+   1. To clean up, run `find UndoCheck`, then `delete 1`, then `find RedoCheck`, then `delete 1`.
 
 ### Managing contact notes
 
