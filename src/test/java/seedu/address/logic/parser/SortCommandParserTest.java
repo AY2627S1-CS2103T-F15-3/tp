@@ -42,7 +42,8 @@ public class SortCommandParserTest {
     public void parse_missingUnsupportedRepeatedOrExtraArguments_showsUsage() {
         for (String input : new String[]{"", "   ", "name", "asc", "name asc extra", "name asc desc",
             "name name asc", "phone asc", "tag desc", "year ascending", "name 1", "asc name", "n/asc",
-            "name asc m/Computing", "graduationYear asc", "class year asc"}) {
+            "name asc m/Computing", "graduationYear asc", "class year asc", "updated", "updated ascending",
+            "updated desc extra", "updated updated asc"}) {
             assertParseFailure(parser, input,
                     String.format(MESSAGE_INVALID_COMMAND_FORMAT, SortCommand.MESSAGE_USAGE));
         }

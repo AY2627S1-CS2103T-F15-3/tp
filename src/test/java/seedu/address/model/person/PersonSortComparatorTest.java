@@ -7,6 +7,7 @@ import static seedu.address.model.person.PersonSortComparator.SortDirection.ASC;
 import static seedu.address.model.person.PersonSortComparator.SortDirection.DESC;
 import static seedu.address.model.person.PersonSortComparator.SortField.MAJOR;
 import static seedu.address.model.person.PersonSortComparator.SortField.NAME;
+import static seedu.address.model.person.PersonSortComparator.SortField.UPDATED;
 import static seedu.address.model.person.PersonSortComparator.SortField.YEAR;
 import static seedu.address.testutil.Assert.assertThrows;
 
@@ -87,6 +88,17 @@ public class PersonSortComparatorTest {
                 }
             }
         }
+    }
+
+    @Test
+    public void compare_updateDates_usesChronologicalOrderAndAscendingNameTies() {
+        Person olderAlice = new PersonBuilder(alice).withLastUpdated(LocalDate.of(2024, 12, 31)).build();
+        Person olderBob = new PersonBuilder(bob).withLastUpdated(LocalDate.of(2024, 12, 31)).build();
+        Person newerCharlie = new PersonBuilder(charlie).withLastUpdated(LocalDate.of(2025, 1, 1)).build();
+        assertEquals(List.of(olderAlice, olderBob, newerCharlie),
+                sorted(UPDATED, ASC, olderBob, newerCharlie, olderAlice));
+        assertEquals(List.of(newerCharlie, olderAlice, olderBob),
+                sorted(UPDATED, DESC, olderBob, olderAlice, newerCharlie));
     }
 
     @Test

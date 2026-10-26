@@ -11,7 +11,7 @@ import seedu.address.commons.util.ToStringBuilder;
  */
 public class PersonSortComparator implements Comparator<Person> {
     /** Fields available for sorting contacts. */
-    public enum SortField { NAME, MAJOR, YEAR }
+    public enum SortField { NAME, MAJOR, YEAR, UPDATED }
 
     /** Directions available for sorting contacts. */
     public enum SortDirection { ASC, DESC }
@@ -21,7 +21,7 @@ public class PersonSortComparator implements Comparator<Person> {
     private final Comparator<Person> comparator;
 
     /**
-     * Creates a case-insensitive comparator for {@code field} in {@code direction}.
+     * Creates a comparator for {@code field} in {@code direction}. Text comparisons ignore case.
      * Unspecified academic values sort last; ties use ascending case-insensitive names.
      */
     public PersonSortComparator(SortField field, SortDirection direction) {
@@ -30,20 +30,19 @@ public class PersonSortComparator implements Comparator<Person> {
         Comparator<String> byValue = direction == SortDirection.ASC
                 ? String.CASE_INSENSITIVE_ORDER : String.CASE_INSENSITIVE_ORDER.reversed();
         // Reverse the value comparison before adding nullsLast, so unspecified fields always stay last.
-        comparator = Comparator.comparing(this::sortValue, Comparator.nullsLast(byValue))
-                .thenComparing(person -> person.getName().fullName, String.CASE_INSENSITIVE_ORDER);
+        Comparator<Person> byField = switch (field) {
+            case NAME -> Comparator.comparing(person -> person.getName().fullName, byValue);
+            case MAJOR -> Comparator.comparing(person -> specifiedValue(person.getMajor().value),
+                    Comparator.nullsLast(byValue));
+            case YEAR -> Comparator.comparing(person -> specifiedValue(person.getGraduationYear().value),
+                    Comparator.nullsLast(byValue));
+            case UPDATED -> byUpdateDate(direction);
+        };
+        comparator = byField.thenComparing(person -> person.getName().fullName, String.CASE_INSENSITIVE_ORDER);
     }
 
-    /**
-     * Returns the selected value, using null only as an unspecified academic-field sorting key.
-     * Four-digit graduation years have the same lexicographic and chronological order.
-     */
-    private String sortValue(Person person) {
-        String value = switch (field) {
-            case NAME -> person.getName().fullName;
-            case MAJOR -> person.getMajor().value;
-            case YEAR -> person.getGraduationYear().value;
-        };
+    /** Returns null for an unspecified academic-field sorting key. */
+    private static String specifiedValue(String value) {
         return value.isEmpty() ? null : value;
     }
 
@@ -63,6 +62,7 @@ public class PersonSortComparator implements Comparator<Person> {
             case NAME -> "Name";
             case MAJOR -> "Major";
             case YEAR -> "Class year";
+            case UPDATED -> "Last updated";
         };
         return fieldName + (direction == SortDirection.ASC ? " ascending" : " descending");
     }
