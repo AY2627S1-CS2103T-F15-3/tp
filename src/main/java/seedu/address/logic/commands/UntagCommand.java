@@ -54,8 +54,9 @@ public class UntagCommand extends Command {
                 person.getNotes(), person.isFavourite(), person.getLastUpdated());
         ReadOnlyAddressBook previousState = new AddressBook(model.getAddressBook());
         model.setPerson(person, updatedPerson);
-        model.commitAddressBook(previousState);
-        return new CommandResult(String.format(MESSAGE_SUCCESS, Messages.format(updatedPerson)));
+        String message = String.format(MESSAGE_SUCCESS, Messages.format(updatedPerson));
+        model.commitAddressBook(previousState, message);
+        return new CommandResult(message);
     }
 
     @Override

@@ -48,8 +48,9 @@ public class DeleteNoteCommand extends Command {
         }
         ReadOnlyAddressBook previousState = new AddressBook(model.getAddressBook());
         model.setPerson(person, person.withNotes(Notes.EMPTY));
-        model.commitAddressBook(previousState);
-        return new CommandResult(String.format(MESSAGE_SUCCESS, person.getName()));
+        String message = String.format(MESSAGE_SUCCESS, person.getName());
+        model.commitAddressBook(previousState, message);
+        return new CommandResult(message);
     }
 
     @Override

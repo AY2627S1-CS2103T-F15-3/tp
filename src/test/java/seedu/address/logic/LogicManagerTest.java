@@ -1,7 +1,6 @@
 package seedu.address.logic;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static seedu.address.logic.Messages.MESSAGE_INVALID_PERSON_DISPLAYED_INDEX;
 import static seedu.address.logic.Messages.MESSAGE_UNKNOWN_COMMAND;
 import static seedu.address.logic.commands.CommandTestUtil.ADDRESS_DESC_AMY;
 import static seedu.address.logic.commands.CommandTestUtil.EMAIL_DESC_AMY;
@@ -20,6 +19,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 import seedu.address.logic.commands.AddCommand;
 import seedu.address.logic.commands.CommandResult;
+import seedu.address.logic.commands.DeleteCommand;
 import seedu.address.logic.commands.ListCommand;
 import seedu.address.logic.commands.UndoCommand;
 import seedu.address.logic.commands.exceptions.CommandException;
@@ -63,7 +63,33 @@ public class LogicManagerTest {
     @Test
     public void execute_commandExecutionError_throwsCommandException() {
         String deleteCommand = "delete 9";
-        assertCommandException(deleteCommand, MESSAGE_INVALID_PERSON_DISPLAYED_INDEX);
+        assertCommandException(deleteCommand, DeleteCommand.MESSAGE_NO_CONTACTS);
+    }
+
+    @Test
+    public void execute_invalidDeleteAfterFind_reportsDisplayedRangeAndPreservesSavedData() throws Exception {
+        logic.execute("add n/Alpha One a/NUS");
+        logic.execute("add n/Beta Two a/NUS");
+        JsonAddressBookStorage storage =
+                new JsonAddressBookStorage(temporaryFolder.resolve("addressBook.json"));
+        ReadOnlyAddressBook savedContacts = storage.readAddressBook().orElseThrow();
+        logic.execute("find Alpha");
+
+        String expectedMessage = "Index 2 is outside the current displayed list. "
+                + "No contacts were deleted. The only valid index is 1.";
+        assertThrows(CommandException.class, expectedMessage, () -> logic.execute("delete 2"));
+
+        assertEquals(savedContacts, model.getAddressBook());
+        assertEquals(savedContacts, storage.readAddressBook().orElseThrow());
+        assertEquals(1, logic.getFilteredPersonList().size());
+        assertEquals("Alpha One", logic.getFilteredPersonList().get(0).getName().fullName);
+
+        logic.execute("delete 1");
+
+        assertEquals(0, logic.getFilteredPersonList().size());
+        assertEquals(1, model.getAddressBook().getPersonList().size());
+        assertEquals("Beta Two", model.getAddressBook().getPersonList().get(0).getName().fullName);
+        assertEquals(model.getAddressBook(), storage.readAddressBook().orElseThrow());
     }
 
     @Test
@@ -99,10 +125,11 @@ public class LogicManagerTest {
         Path addressBookPath = temporaryFolder.resolve("addressBook.json");
         String addCommand = AddCommand.COMMAND_WORD + NAME_DESC_AMY + PHONE_DESC_AMY
                 + EMAIL_DESC_AMY + ADDRESS_DESC_AMY;
-        logic.execute(addCommand);
+        String addMessage = logic.execute(addCommand).getFeedbackToUser();
         assertEquals(1, logic.getFilteredPersonList().size());
 
-        assertCommandSuccess(UndoCommand.COMMAND_WORD, UndoCommand.MESSAGE_SUCCESS, new ModelManager());
+        assertCommandSuccess(UndoCommand.COMMAND_WORD, String.format(UndoCommand.MESSAGE_SUCCESS, addMessage),
+                new ModelManager());
 
         assertEquals(0, logic.getFilteredPersonList().size());
         ReadOnlyAddressBook savedAddressBook = new JsonAddressBookStorage(addressBookPath).readAddressBook()

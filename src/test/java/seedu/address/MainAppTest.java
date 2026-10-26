@@ -2,10 +2,14 @@ package seedu.address;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static seedu.address.testutil.TypicalPersons.getTypicalAddressBook;
 
 import java.io.IOException;
+import java.lang.reflect.Method;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -13,12 +17,16 @@ import org.junit.jupiter.api.io.TempDir;
 
 import javafx.stage.Stage;
 import seedu.address.commons.core.GuiSettings;
+import seedu.address.commons.util.FileUtil;
 import seedu.address.model.AddressBook;
+import seedu.address.model.Model;
 import seedu.address.model.ModelManager;
 import seedu.address.model.ReadOnlyUserPrefs;
 import seedu.address.model.UserPrefs;
+import seedu.address.model.util.SampleDataUtil;
 import seedu.address.storage.JsonAddressBookStorage;
 import seedu.address.storage.JsonUserPrefsStorage;
+import seedu.address.storage.Storage;
 import seedu.address.storage.StorageManager;
 import seedu.address.ui.Ui;
 
@@ -55,6 +63,59 @@ public class MainAppTest {
     }
 
     @Test
+    public void initModel_nullData_recoversAndStartsWithoutChangingFile() throws Exception {
+        Path filePath = addressBookStorage.getAddressBookFilePath();
+        String validPerson = "{\"name\":\"Saved Contact\",\"address\":\"NUS\",\"tags\":[]}";
+        String nullTagPerson = "{\"name\":\"Null Tag\",\"address\":\"NUS\",\"tags\":[null]}";
+        for (String json : List.of("null", "{\"persons\":[null]}", "{\"persons\":[" + nullTagPerson + "]}",
+                "{\"persons\":[" + validPerson + ",null]}",
+                "{\"persons\":[" + validPerson + "," + nullTagPerson + "]}")) {
+            FileUtil.writeToFile(filePath, json);
+
+            mainApp.model = initializeModel();
+
+            assertEquals(new AddressBook(), mainApp.model.getAddressBook());
+            assertEquals(0, mainApp.model.getFilteredPersonList().size());
+            assertEquals(json, FileUtil.readFromFile(filePath));
+            UiStub ui = new UiStub();
+            mainApp.ui = ui;
+            mainApp.start(null);
+            mainApp.stop();
+            assertEquals(1, ui.startCount);
+            assertEquals(json, FileUtil.readFromFile(filePath));
+        }
+    }
+
+    @Test
+    public void initModel_missingFile_usesSamplesWithoutCreatingDataFile() throws Exception {
+        Model initializedModel = initializeModel();
+
+        assertEquals(SampleDataUtil.getSampleAddressBook(), initializedModel.getAddressBook());
+        assertFalse(Files.exists(addressBookStorage.getAddressBookFilePath()));
+    }
+
+    @Test
+    public void initModel_validEmptyAddressBook_loadsEmptyWithoutUsingSamples() throws Exception {
+        Path filePath = addressBookStorage.getAddressBookFilePath();
+        FileUtil.writeToFile(filePath, "{\"persons\":[]}");
+
+        Model initializedModel = initializeModel();
+
+        assertEquals(new AddressBook(), initializedModel.getAddressBook());
+        assertEquals("{\"persons\":[]}", FileUtil.readFromFile(filePath));
+    }
+
+    @Test
+    public void initPrefs_nullRoot_recoversWithDefaultPreferences() throws Exception {
+        FileUtil.writeToFile(userPrefsStorage.getUserPrefsFilePath(), "null");
+
+        UserPrefs initializedPrefs = mainApp.initPrefs(userPrefsStorage);
+
+        assertEquals(new UserPrefs(), initializedPrefs);
+        assertEquals(initializedPrefs, userPrefsStorage.readUserPrefs().orElseThrow());
+    }
+
+    @Test
     public void stop_updatedPreferences_savesPreferencesWithoutChangingContacts() throws Exception {
         UserPrefs originalPrefs = new UserPrefs();
         originalPrefs.setGuiSettings(new GuiSettings(640, 480, 10, 20));
@@ -84,6 +145,16 @@ public class MainAppTest {
         assertEquals(1, failingStorage.saveCount);
         assertEquals(mainApp.model.getUserPrefs(), failingStorage.attemptedUserPrefs);
         assertEquals(originalPrefs, userPrefsStorage.readUserPrefs().orElseThrow());
+    }
+
+    /**
+     * Exercises startup model initialization using only the test's isolated storage.
+     */
+    private Model initializeModel() throws ReflectiveOperationException {
+        Method initializer = MainApp.class.getDeclaredMethod("initModelManager",
+                Storage.class, ReadOnlyUserPrefs.class);
+        initializer.setAccessible(true);
+        return (Model) initializer.invoke(mainApp, mainApp.storage, new UserPrefs());
     }
 
     /**

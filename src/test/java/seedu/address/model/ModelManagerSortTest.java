@@ -76,7 +76,7 @@ public class ModelManagerSortTest {
         AddressBook beforeAdd = new AddressBook(model.getAddressBook());
         Person zara = new PersonBuilder().withName("Zara").build();
         model.addPerson(zara);
-        model.commitAddressBook(beforeAdd);
+        model.commitAddressBook(beforeAdd, "Added Zara");
         assertTrue(model.undoAddressBook());
         model.updateSortedPersonList(new PersonSortComparator(NAME, DESC));
         assertTrue(model.canRedoAddressBook());

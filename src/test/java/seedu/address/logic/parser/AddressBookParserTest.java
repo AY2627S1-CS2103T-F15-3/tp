@@ -15,6 +15,7 @@ import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
 
+import seedu.address.commons.core.index.Index;
 import seedu.address.logic.commands.AddCommand;
 import seedu.address.logic.commands.ClearCommand;
 import seedu.address.logic.commands.Command;
@@ -70,6 +71,8 @@ public class AddressBookParserTest {
         DeleteCommand command = (DeleteCommand) parser.parseCommand(
                 DeleteCommand.COMMAND_WORD + " " + INDEX_FIRST_PERSON.getOneBased());
         assertEquals(new DeleteCommand(INDEX_FIRST_PERSON), command);
+        assertEquals(new DeleteCommand(INDEX_FIRST_PERSON, Index.fromOneBased(3), Index.fromOneBased(5)),
+                parser.parseCommand("DELETE\u00A01\u20073\u202F5"));
     }
 
     @Test
@@ -207,6 +210,14 @@ public class AddressBookParserTest {
                 parser.parseCommand("NOTE 1 Met\u00A0at\u2003CS2103T"));
         assertEquals(new NoteCommand(INDEX_FIRST_PERSON, new Notes("Met\u00A0at\u2003CS2103T")),
                 parser.parseCommand("Note 1 Met\u00A0at\u2003CS2103T"));
+    }
+
+    @Test
+    public void parseCommand_noteWithSurroundingUnicodeSpaces_trimsEdgesAndPreservesInternalSpaces() throws Exception {
+        NoteCommand expected = new NoteCommand(INDEX_FIRST_PERSON, new Notes("Hello\u00A0World"));
+        for (String commandWord : List.of("note", "NOTE", "Note")) {
+            assertEquals(expected, parser.parseCommand(commandWord + " 1 \u00A0Hello\u00A0World\u202F"));
+        }
     }
 
     @Test
