@@ -107,18 +107,18 @@ public class AddressBookParserTest {
     @Test
     public void parseCommand_unicodeSpaces_treatedAsSeparators() throws Exception {
         // Command word followed by a Unicode space
-        assertTrue(parser.parseCommand("list ") instanceof ListCommand);
-        assertTrue(parser.parseCommand("　list ") instanceof ListCommand);
+        assertTrue(parser.parseCommand("list\u2003") instanceof ListCommand);
+        assertTrue(parser.parseCommand("\u3000list\u00A0") instanceof ListCommand);
 
         // Keywords separated by Unicode spaces
         assertEquals(new FindCommand(new NameContainsKeywordsPredicate(List.of("Computer", "Science"))),
-                parser.parseCommand("find Computer Science"));
+                parser.parseCommand("find\u2003Computer\u2003Science"));
 
         // Prefixes preceded by Unicode spaces, and Unicode spaces within values
         FilterCommand expected = new FilterCommand(new ContactFilterPredicate(
                 Optional.of(new Major("Computer Science")),
                 Optional.of(new GraduationYear("2027")), Optional.empty()));
-        assertEquals(expected, parser.parseCommand("filter m/Computer Science c/2027 "));
+        assertEquals(expected, parser.parseCommand("filter\u2003m/Computer\u2003Science\u00A0c/2027\u2003"));
     }
 
     @Test
@@ -144,7 +144,7 @@ public class AddressBookParserTest {
                 "foo bar", "LIST");
 
         for (String asciiInput : asciiInputs) {
-            for (String space : new String[]{" ", " ", "　", " ", "\t"}) {
+            for (String space : new String[]{"\u00A0", "\u2003", "\u3000", "\u202F", "\t"}) {
                 String variant = asciiInput.replace(" ", space);
                 assertSameParseResult(asciiInput, variant);
                 assertSameParseResult(asciiInput, space + variant + space);
@@ -189,15 +189,15 @@ public class AddressBookParserTest {
     public void parseCommand_surroundingControlCharacters_stripped() throws Exception {
         // Matches the previous String#trim() behaviour.
         assertTrue(parser.parseCommand("\u0000list\u0001") instanceof ListCommand);
-        assertTrue(parser.parseCommand("list \u0001") instanceof ListCommand);
+        assertTrue(parser.parseCommand("list\u2003\u0001") instanceof ListCommand);
     }
 
     @Test
     public void parseCommand_noteWithUnicodeSpaces_textNotNormalised() throws Exception {
-        assertEquals(new NoteCommand(INDEX_FIRST_PERSON, new Notes("Met at CS2103T")),
-                parser.parseCommand("note 1 Met at CS2103T"));
-        assertEquals(new NoteCommand(INDEX_FIRST_PERSON, new Notes("Met at CS2103T")),
-                parser.parseCommand("note 1 Met at CS2103T"));
+        assertEquals(new NoteCommand(INDEX_FIRST_PERSON, new Notes("Met at\u2003CS2103T")),
+                parser.parseCommand("note\u20031\u2003Met at\u2003CS2103T"));
+        assertEquals(new NoteCommand(INDEX_FIRST_PERSON, new Notes("Met at\u00A0CS2103T")),
+                parser.parseCommand("note\u00A01\u00A0Met at\u00A0CS2103T"));
     }
 
     @Test

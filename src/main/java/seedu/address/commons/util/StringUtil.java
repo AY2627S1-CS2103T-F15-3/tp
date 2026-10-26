@@ -6,6 +6,7 @@ import static seedu.address.commons.util.AppUtil.checkArgument;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.Arrays;
+import java.util.regex.Pattern;
 
 /**
  * Helper functions for handling strings.
@@ -19,12 +20,29 @@ public class StringUtil {
     public static final String WHITESPACE_REGEX = "[\\p{javaWhitespace}\\p{Z}]";
 
     /**
+     * Matches a single character that is visible on its own: not whitespace, not a format character
+     * such as ZERO WIDTH SPACE (U+200B) and not a mark such as VARIATION SELECTOR-16 (U+FE0F).
+     * Format characters and marks are still allowed next to visible characters, e.g. in emoji sequences.
+     */
+    public static final String VISIBLE_CHARACTER_REGEX = "[^\\p{javaWhitespace}\\p{Z}\\p{Cf}\\p{M}]";
+
+    private static final Pattern VISIBLE_CHARACTER = Pattern.compile(VISIBLE_CHARACTER_REGEX);
+
+    /**
      * Returns {@code s} with every whitespace character (as defined by {@link #WHITESPACE_REGEX})
      * replaced by an ASCII space. The length and the number of spaces are preserved.
      */
     public static String normalizeWhitespace(String s) {
         requireNonNull(s);
         return s.replaceAll(WHITESPACE_REGEX, " ");
+    }
+
+    /**
+     * Returns true if {@code s} contains a character matched by {@link #VISIBLE_CHARACTER_REGEX}.
+     */
+    public static boolean hasVisibleCharacter(String s) {
+        requireNonNull(s);
+        return VISIBLE_CHARACTER.matcher(s).find();
     }
 
     /**
