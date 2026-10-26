@@ -47,6 +47,16 @@ public class PersonSortComparator implements Comparator<Person> {
         return value.isEmpty() ? null : value;
     }
 
+    /** Returns the selected field and direction for the view status. */
+    public String getDescription() {
+        String fieldName = switch (field) {
+            case NAME -> "Name";
+            case MAJOR -> "Major";
+            case YEAR -> "Class year";
+        };
+        return fieldName + (direction == SortDirection.ASC ? " ascending" : " descending");
+    }
+
     @Override
     public int compare(Person first, Person second) {
         return comparator.compare(first, second);

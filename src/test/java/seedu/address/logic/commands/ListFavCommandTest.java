@@ -69,7 +69,8 @@ public class ListFavCommandTest {
         parser.parseCommand("listfav").execute(model);
         CommandException duplicate = assertThrows(CommandException.class, () -> parser.parseCommand("fav 1")
                 .execute(model));
-        assertEquals(FavCommand.MESSAGE_ALREADY_FAVOURITE, duplicate.getMessage());
+        assertEquals(String.format(FavCommand.MESSAGE_ALREADY_FAVOURITE, first.getName().fullName),
+                duplicate.getMessage());
         parser.parseCommand("unfav 1").execute(model);
         assertEquals(List.of(second), model.getFilteredPersonList());
         Person unfavourited = new PersonBuilder(first).withFavourite(false).build();

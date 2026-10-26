@@ -4,6 +4,7 @@ import java.util.Comparator;
 import java.util.Optional;
 import java.util.function.Predicate;
 
+import javafx.beans.property.ReadOnlyStringProperty;
 import javafx.collections.ObservableList;
 import seedu.address.commons.core.GuiSettings;
 import seedu.address.model.person.Person;
@@ -111,6 +112,9 @@ public interface Model {
     /** Returns an unmodifiable view of contacts in the current filtered and sorted display order. */
     ObservableList<Person> getFilteredPersonList();
 
+    /** Returns the observable description of the current view, including counts, filter and sort. */
+    ReadOnlyStringProperty viewStatusProperty();
+
     /**
      * Updates the filter of the filtered person list to filter by the given {@code predicate}.
      * @throws NullPointerException if {@code predicate} is null.
@@ -122,4 +126,7 @@ public interface Model {
      * @throws NullPointerException if {@code comparator} is null.
      */
     void updateSortedPersonList(Comparator<Person> comparator);
+
+    /** Restores saved contact order without changing the filter, contact data or history. */
+    void resetSortedPersonList();
 }

@@ -1,7 +1,6 @@
 package seedu.address.model.person;
 
 import java.util.List;
-import java.util.function.Predicate;
 
 import seedu.address.commons.util.StringUtil;
 import seedu.address.commons.util.ToStringBuilder;
@@ -10,7 +9,7 @@ import seedu.address.commons.util.ToStringBuilder;
  * Tests that a {@code Person}'s {@code Name}, {@code Major} or {@code GraduationYear} matches any of the
  * keywords given.
  */
-public class NameContainsKeywordsPredicate implements Predicate<Person> {
+public class NameContainsKeywordsPredicate implements PersonFilter {
     private final List<String> keywords;
 
     public NameContainsKeywordsPredicate(List<String> keywords) {
@@ -23,6 +22,11 @@ public class NameContainsKeywordsPredicate implements Predicate<Person> {
                 .anyMatch(keyword -> StringUtil.containsWordIgnoreCase(person.getName().fullName, keyword)
                         || StringUtil.containsWordIgnoreCase(person.getMajor().value, keyword)
                         || StringUtil.containsWordIgnoreCase(person.getGraduationYear().value, keyword));
+    }
+
+    @Override
+    public String getDescription() {
+        return "Search: " + String.join(" OR ", keywords);
     }
 
     @Override
