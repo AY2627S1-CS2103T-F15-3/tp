@@ -109,7 +109,8 @@ public class UndoCommandTest {
     @Test
     public void execute_afterFailedAdd_failure() {
         Person existingPerson = model.getAddressBook().getPersonList().get(0);
-        assertCommandFailure(new AddCommand(existingPerson), model, AddCommand.MESSAGE_DUPLICATE_PERSON);
+        assertCommandFailure(new AddCommand(existingPerson), model,
+                String.format(AddCommand.MESSAGE_DUPLICATE_PERSON_DISPLAYED, 1, Messages.format(existingPerson)));
 
         assertCommandFailure(new UndoCommand(), model, UndoCommand.MESSAGE_FAILURE);
     }
@@ -127,7 +128,9 @@ public class UndoCommandTest {
     public void execute_failedCommandAfterAdd_undoesAddOnly() throws Exception {
         Person newPerson = new PersonBuilder().withName("Alex Tan").build();
         String addMessage = new AddCommand(newPerson).execute(model).getFeedbackToUser();
-        assertCommandFailure(new AddCommand(newPerson), model, AddCommand.MESSAGE_DUPLICATE_PERSON);
+        String expectedDuplicateMessage = String.format(AddCommand.MESSAGE_DUPLICATE_PERSON_DISPLAYED,
+                model.getFilteredPersonList().size(), Messages.format(newPerson));
+        assertCommandFailure(new AddCommand(newPerson), model, expectedDuplicateMessage);
 
         Model expectedModel = new ModelManager(getTypicalAddressBook(), new UserPrefs());
         assertCommandSuccess(new UndoCommand(), model, undoMessage(addMessage), expectedModel);
