@@ -24,6 +24,7 @@ import javafx.scene.control.ListView;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.control.skin.VirtualFlow;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
@@ -222,11 +223,11 @@ public class SortUiTest {
                 assertCards(window, List.of(alice, bob, charlie));
                 assertEquals("Undid: " + successMessage, feedback(window));
                 assertFalse(result.getStyleClass().contains(ResultDisplay.WARNING_STYLE_CLASS));
-                assertEquals(Color.WHITE, ((Text) result.lookup(".text")).getFill());
+                assertEquals(Color.web("#d5d8db"), ((Text) result.lookup(".text")).getFill());
                 enter(window, "redo");
                 assertCards(window, List.of(aaron, alice, bob, charlie));
                 assertEquals("Redid: " + successMessage, feedback(window));
-                assertEquals(Color.WHITE, ((Text) result.lookup(".text")).getFill());
+                assertEquals(Color.web("#d5d8db"), ((Text) result.lookup(".text")).getFill());
             } finally {
                 window.getRoot().close();
             }
@@ -240,7 +241,9 @@ public class SortUiTest {
             try {
                 window.getRoot().setWidth(640);
                 window.getRoot().getScene().getRoot().resize(620, 700);
-                enter(window, "add n/Aaron p/" + PersonBuilder.DEFAULT_PHONE + " e/aaron@example.com a/NUS");
+                String longAddress = "Lower Kent Ridge Road ".repeat(30).strip();
+                enter(window, "add n/Aaron p/" + PersonBuilder.DEFAULT_PHONE
+                        + " e/aaron@example.com a/" + longAddress);
 
                 TextArea result = (TextArea) window.getRoot().getScene().lookup("#resultDisplay");
                 assertTrue(result.isWrapText());
@@ -262,7 +265,7 @@ public class SortUiTest {
 
                 enter(window, "add n/Zara p/96667777 e/zara@example.com a/NUS");
                 assertFalse(result.getStyleClass().contains(ResultDisplay.WARNING_STYLE_CLASS));
-                assertEquals(Color.WHITE, ((Text) result.lookup(".text")).getFill());
+                assertEquals(Color.web("#d5d8db"), ((Text) result.lookup(".text")).getFill());
                 assertTrue(feedback(window).startsWith("New person added: Zara"));
 
                 enter(window, "add n/AnotherAaron p/" + PersonBuilder.DEFAULT_PHONE + " a/NUS");
@@ -275,7 +278,7 @@ public class SortUiTest {
                 assertEquals(String.format(Messages.MESSAGE_INVALID_COMMAND_FORMAT, SortCommand.MESSAGE_USAGE),
                         feedback(window));
                 assertFalse(result.getStyleClass().contains(ResultDisplay.WARNING_STYLE_CLASS));
-                assertEquals(Color.WHITE, ((Text) result.lookup(".text")).getFill());
+                assertEquals(Color.web("#d5d8db"), ((Text) result.lookup(".text")).getFill());
             } finally {
                 window.getRoot().close();
             }
@@ -347,7 +350,11 @@ public class SortUiTest {
         assertEquals(expected, list(window).getItems());
         for (int index = 0; index < expected.size(); index++) {
             list(window).scrollTo(index);
-            list(window).layout();
+            window.getRoot().getScene().getRoot().applyCss();
+            window.getRoot().getScene().getRoot().layout();
+            VirtualFlow<?> flow = (VirtualFlow<?>) list(window).lookup(".virtual-flow");
+            flow.scrollTo(index);
+            flow.layout();
             assertCard(window, expected.get(index), (index + 1) + ". ");
         }
     }
@@ -355,7 +362,10 @@ public class SortUiTest {
     private void assertCard(MainWindow window, Person person, String index) {
         ListCell<?> cell = list(window).lookupAll(".list-cell").stream()
                 .filter(node -> node instanceof ListCell<?> candidate && person.equals(candidate.getItem()))
-                .map(node -> (ListCell<?>) node).findFirst().orElseThrow();
+                .map(node -> (ListCell<?>) node).findFirst().orElseThrow(() -> new AssertionError(
+                        "Expected card " + person.getName() + "; visible indices: "
+                        + list(window).lookupAll(".list-cell").stream()
+                                .map(node -> ((ListCell<?>) node).getIndex()).toList()));
         assertEquals(index, ((Label) cell.getGraphic().lookup("#id")).getText());
         assertEquals(person.getName().fullName, ((Label) cell.getGraphic().lookup("#name")).getText());
     }

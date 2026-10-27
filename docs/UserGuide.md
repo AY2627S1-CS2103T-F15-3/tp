@@ -26,7 +26,7 @@ This guide describes the features available in v1.4.
 
 1. Open a terminal, `cd` to the folder containing the JAR file, and run `java -jar unimate.jar`.<br>
    A GUI similar to the one below should appear in a few seconds. Note how the app contains some sample data.<br>
-   ![Ui](images/Ui.png)
+   ![UniMate contact list with charcoal panels and orange accents](images/Ui.png)
 
 1. Type a command in the command box and press Enter to execute it. For example, type **`help`** and press Enter to open the help window.<br>
    Some example commands you can try:
@@ -44,6 +44,42 @@ This guide describes the features available in v1.4.
    * `exit` : Exits the app.
 
 1. Refer to the [Features](#features) section below for details of each command.
+
+--------------------------------------------------------------------------------------------------------------------
+
+## Using the contact list
+
+Contact details appear in two columns when the window is wide enough. In a narrow window, the academic
+fields move below the phone, address and email fields.
+
+* Long names and field values show `...` when they cannot fit. Click a shortened value to expand it,
+  then click again to collapse it. This also applies to shortened tags.
+* Use the scrollbar on the right of the contact list to reach other contacts or the bottom of an
+  expanded card. Drag the thumb or use its arrow buttons for smaller movements.
+* Expanding a value changes only its display; the saved contact details remain unchanged.
+* Expanded values stay open while scrolling or resizing. Changing a contact resets its expanded
+  values; restarting the app also resets expansion. A command that leaves the contact unchanged
+  keeps its expansion state.
+
+**Keyboard navigation**
+
+| Key | Action |
+| --- | --- |
+| Tab from the command box | Focus the contact list, keeping the selection or selecting the first contact. |
+| Up / Down while the list is focused | Select the previous / next contact. The selected card has an orange border. |
+| Tab from the list | Focus the selected contact's first expandable value. If none exist, return to the command box. |
+| Tab from an expandable value | Focus the next expandable value on that contact; after the last, return to the command box. |
+| Shift+Tab from the command box | Focus the selected contact's last expandable value, or the list if none exist. |
+| Shift+Tab from an expandable value | Focus the previous expandable value; before the first, return to the list. |
+| Shift+Tab from the list | Return to the command box. |
+| Enter / Space on an expandable value | Expand or collapse that value. |
+
+Expandable values, including long tags, have an orange dotted outline when focused. Their order is:
+name, tags from left to right, phone, address, email, major, class year, last updated. Short values and
+other contacts are skipped. The list scrolls to keep the focused value visible; for a value taller
+than the viewport, it shows the start of that value. With an empty list, Tab and Shift+Tab keep focus
+in the command box.
+Up/Down in the command box still recalls command history.
 
 --------------------------------------------------------------------------------------------------------------------
 
@@ -143,7 +179,7 @@ contact, then `edit 1 a/NUS`.
 * Adding a different name with a shared phone number or email succeeds with the usual
   `New person added: ...` feedback and an additional warning line in the same feedback box.
   For example: `Warning - duplicate details detected: #2 Alice (phone); #3 Bob (email)`.
-  The complete message is amber when a warning is present; ordinary success feedback remains white.
+  The complete message is amber when a warning is present; ordinary success feedback remains light grey.
   There is no coloured border or additional warning control.
   Every matching contact is listed by current displayed index and name, with `phone`, `email` or
   `phone and email` identifying the shared fields. The original feedback box supports wrapping, text
@@ -164,7 +200,7 @@ Examples:
 
 ### Automatic incomplete reminders
 
-UniMate shows a yellow `incomplete` reminder when **both phone and email are missing**, so you can identify contacts without a recorded way to reach them. This is automatic: there is no `incomplete` command.
+UniMate shows an amber `incomplete` reminder when **both phone and email are missing**, so you can identify contacts without a recorded way to reach them. This is automatic: there is no `incomplete` command.
 
 | Phone | Email | Reminder |
 |-------|-------|----------|
@@ -185,9 +221,9 @@ Address, major, class year, tags and notes do not affect this check. Missing pho
 
 **GUI and custom tags:**
 
-The reminder uses the existing rectangular tag style, with background `#F4C542` and text `#222222`. Ordinary tags remain blue and favourite hearts remain red. `update` and `incomplete` may appear together, once each, when their independent conditions apply.
+Reminders use amber text on a dark brown background. Ordinary tags are grey, and favourite hearts remain red. `update` and `incomplete` may appear together, once each, when their independent conditions apply.
 
-System reminders are not saved as ordinary tags. Removing a user tag with `untag` cannot remove the date-based or incomplete reminder. An existing custom tag named `incomplete` remains saved under its original name and is displayed in blue as `incomplete (custom)`; manage it using `t/incomplete`. It can coexist with the yellow reminder, just as `update (custom)` can coexist with `update`.
+System reminders are not saved as ordinary tags. Removing a user tag with `untag` cannot remove the date-based or incomplete reminder. An existing custom tag named `incomplete` remains saved under its original name and is displayed as a grey tag labelled `incomplete (custom)`; manage it using `t/incomplete`. It can coexist with the amber reminder, just as `update (custom)` can coexist with `update`.
 
 Phone/email values are saved normally. Older JSON files with valid contact details remain compatible; absent, null or empty phone/email fields are treated as unspecified. Other required fields and non-empty contact-value validation remain unchanged.
 
@@ -220,7 +256,7 @@ in both ascending and descending update-date sorting until an actual basic-profi
 
 UniMate automatically reminds you to check a contact whose basic information has not been updated for **more than one calendar year**. No new command or manual tag is required.
 
-* A yellow rectangular `update` label appears beside the contact's ordinary tags. Its background is `#F4C542` and its text is `#222222`, with the same size and shape as ordinary tags. Existing tags remain blue, and favourite heart icons are unchanged.
+* An amber `update` label on a dark brown background appears beside the contact's grey ordinary tags. Favourite hearts remain red.
 * The reminder is calculated from the contact's saved `lastUpdated` date. Exactly one year does not trigger it: if today is `2026-10-18`, a date of `2025-10-18` has no reminder, while `2025-10-17` does.
 * New contacts start with today's date. Successfully changing the name, phone, email, address, major or class year through `edit` records today's date and removes the reminder. For example, `edit 1 p/98765432` clears the reminder if it changes the first displayed contact's phone number.
 * Entering the same basic values again, editing only tags, changing notes, or using `tag`, `untag`, `fav`, `unfav`, `list`, `listfav` or `find` does not reset the date.
@@ -228,9 +264,9 @@ UniMate automatically reminds you to check a contact whose basic information has
 
 **System reminders and custom tags:**
 
-The yellow `update` reminder is generated from the date and is never added to your ordinary tag collection. You cannot permanently remove it with `untag`; update the contact's basic information instead.
+The amber `update` reminder is generated from the date and is never added to your ordinary tag collection. You cannot permanently remove it with `untag`; update the contact's basic information instead.
 
-A custom tag named `update` is still supported and saved unchanged. It appears in blue as `update (custom)` to distinguish it from the yellow system reminder. Use `t/update` to manage that custom tag as before. Adding or removing it does not create, overwrite or clear the system reminder. Both can be displayed together without duplicate system reminders.
+A custom tag named `update` is still supported and saved unchanged. It appears as a grey `update (custom)` tag to distinguish it from the amber system reminder. Use `t/update` to manage that custom tag as before. Adding or removing it does not create, overwrite or clear the system reminder. Both can be displayed together without duplicate system reminders.
 
 **Older data files:**
 
@@ -290,9 +326,12 @@ These input errors leave all contacts unchanged. If any supplied tag is invalid,
 
 #### Viewing long tag names
 
-Tag names longer than 20 characters are shown on contact cards as their first 20 characters followed by `...`. Hover over a tag to immediately see its complete original name in a tooltip; move the pointer away to close it. Long tooltip text wraps for readability. Names of 20 characters or fewer are displayed in full.
+Tag names longer than 20 characters initially show their first 20 characters followed by `...`.
+Click a tag to expand or collapse its full name inside the card. You can also hover over it to see the
+complete name in a tooltip; move the pointer away to close it. Tags may be shortened further when
+space is limited.
 
-This affects display only: the stored tag name and validation rules are unchanged. Use the complete original name with `tag`, `untag` or tag filtering, rather than the abbreviated display text. Existing tag colours and system-reminder styling remain unchanged; custom tags that share a system-reminder name retain their `(custom)` marker.
+This affects display only: the stored tag name and validation rules are unchanged. Use the complete original name with `tag`, `untag` or tag filtering, rather than the abbreviated display text. Custom tags that share a system-reminder name retain their `(custom)` marker.
 
 ### Removing tags from a person: `untag`
 
@@ -441,7 +480,7 @@ Saved note: Met at hackathon
 Long feedback wraps within the message area. Scroll vertically to compare the complete previous
 and saved notes.
 
-A small note icon at the bottom right of the contact card indicates that a note is present.
+A small orange note icon at the top right of the contact card indicates that a note is present.
 Use `shownote` to read it again.
 
 ### Viewing a contact's note: `shownote`
@@ -533,7 +572,7 @@ Format: `edit INDEX [n/NAME] [p/PHONE] [e/EMAIL] [a/ADDRESS] [m/MAJOR] [c/CLASS_
   If `t/` is also supplied, the tag replacement summary appears between the normal success message
   and the warning; neither is dropped. The complete message appears amber in the original feedback
   box, without a coloured border or an additional warning control. Feedback without a warning remains
-  white, including tag-only edits. Indices identify matching contacts in the refreshed full list,
+  light grey, including tag-only edits. Indices identify matching contacts in the refreshed full list,
   including matches hidden before the edit. The edited contact's updated name and details remain in
   the normal success message. All matches are retained; long feedback wraps and can be scrolled.
 * Warning comparisons match non-empty phone numbers exactly and email addresses ignoring case.

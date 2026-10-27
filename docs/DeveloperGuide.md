@@ -80,6 +80,8 @@ The UI consists of a `MainWindow` and its parts, such as `CommandBox`, `ResultDi
 
 The `UI` component uses the JavaFX UI framework. The layouts of these UI parts are defined in matching `.fxml` files in `src/main/resources/view`. For example, [`MainWindow.fxml`](https://github.com/AY2627S1-CS2103T-F15-3/tp/tree/master/src/main/resources/view/MainWindow.fxml) specifies the layout of [`MainWindow`](https://github.com/AY2627S1-CS2103T-F15-3/tp/tree/master/src/main/java/seedu/address/ui/MainWindow.java).
 
+Contact-card layout and expansion are described under [Contact card layout](#contact-card-layout).
+
 The `UI` component,
 
 * executes user commands using the `Logic` component.
@@ -142,8 +144,9 @@ The `Model` component,
   Each `Person` includes `Major`, `GraduationYear` and 'Notes' value objects in addition to its existing contact details and tags.
 * selects contacts using a `FilteredList<Person>` and orders that view using a `SortedList<Person>`.
   `getFilteredPersonList()` returns `sortedPersons` as an unmodifiable `ObservableList<Person>`,
-  so the UI and numbered commands use the same displayed order. Both transformations observe the saved
-  contact list, so data changes update the display.
+  so the UI and numbered commands use the same displayed order. The filtered view takes its source
+  from `addressBook.getPersonList()`, and the sorted view takes the filtered view as its source.
+  Changes to the saved contact list therefore update the display.
 * stores a `UserPrefs` object that represents the user’s preferences (currently, just the GUI settings). This is exposed to the outside as a `ReadOnlyUserPrefs` object.
 * keeps an in-memory history of contact data states in an `AddressBookHistory` object. The `undo` and `redo` commands use it to revert and reapply every successful change to contact data. See [Recording contact data history](#recording-contact-data-history).
 * does not depend on any of the other three components (as the `Model` represents data entities of the domain, they should make sense on their own without depending on other components)
@@ -199,6 +202,35 @@ Classes used by multiple components are in the `seedu.address.commons` package.
 
 This section describes some noteworthy details on how certain features are implemented.
 
+### Contact card layout
+
+`PersonListCard.fxml` groups contact details and academic fields separately, with captions styled
+independently from their values in `DarkTheme.css`.
+
+* `PersonCard` populates values, tags and presence indicators. `PersonListCell` creates each card using
+  its displayed index and binds its preferred width to the list width, reserving space for the scrollbar.
+* `ExpandableText` handles ellipses and click, Enter or Space expansion. `PersonListPanel` shares each
+  contact's expanded-field state across recreated cells. This state is kept only in memory and does
+  not change contact data or undo/redo history. The map uses `Person` values as keys: replacing a
+  contact with different data starts with collapsed fields, while an unchanged contact retains its
+  state. Restarting the app clears the map.
+* `ContactListNavigation` filters Tab and Shift+Tab at the window root. It builds the route from the
+  command box, list and selected cell's expandable values, skipping the result display and other cards.
+  `PersonCard` supplies values in reading order; focusable tags are included. The route is rebuilt on
+  each press because scrolling and resizing can recycle cells or change which values are shortened.
+  The list skin's JavaFX `VirtualFlow.scrollPixels` brings focused values into view.
+  Shift+Tab reverses the route. An empty list returns focus to the command box. Up/Down selection uses
+  JavaFX's list behaviour; command-history keys and Enter/Space expansion keep their existing handlers.
+* `PersonCardPane` measures the card at its available width and stacks the detail groups below
+  560 logical pixels of content width. `TagPane` measures and places tag rows using the same wrapping
+  calculation. Cell and card clips prevent content from painting over neighbouring cards.
+
+`PersonCardEdgeCaseTest` covers all 128 combinations of optional fields and 12 long-value cases.
+`PersonCardLayoutTest` checks field captions and values at different widths. `ExpandableContactListTest`
+checks expansion, collapse, cell recycling, resizing and scrolling to the end of expanded content.
+`ContactListNavigationTest` checks forward/reverse traversal, selected-contact boundaries, arrow-key
+selection, empty lists and focused long-tag styling.
+
 ### Contact notes
 
 #### Structure and responsibilities
@@ -217,9 +249,10 @@ that it will apply; all three note commands override `Command#execute(Model)` an
 
 `JsonAdaptedPerson` saves the text under `notes`. Missing or null values in older files become empty notes. Invalid stored note text produces the usual data-loading failure. The UI's presence indicator derives from `Person#getNotes().isEmpty()` and updates when the observable contact list replaces a person; note text is displayed through ordinary command feedback.
 
-`PersonCard` holds the displayed contact and its `noteIcon` label. The label is an indicator, not a
-control that opens or expands the note. Its tooltip uses the card's current displayed index to suggest
-the corresponding `shownote` command.
+`PersonCard` holds the displayed contact and its `noteIcon` label, whose JavaFX `SVGPath` graphic
+appears at the top right of the card. The label is an indicator, not a control that opens or expands
+the note. Its tooltip uses the card's current displayed index to suggest the corresponding `shownote`
+command.
 
 #### Adding or replacing a note
 
@@ -394,7 +427,7 @@ the ordinary success message's first line without logging the appended match lis
 for warning results, and `DarkTheme.css` makes the text amber (`#ffcf66`). There is no additional
 warning control or scrollbar. JavaFX `TextArea` uses one text colour for its content, so both the
 success and appended warning appear amber, with no coloured border. Feedback without a warning
-remains white, including subsequent ordinary results, undo/redo and errors. Its existing
+remains light grey, including subsequent ordinary results, undo/redo and errors. Its existing
 100-pixel area retains wrapping, selection and vertical scrolling for long feedback. Each new result
 replaces the previous text and resets the caret and scroll position. The command follows the
 successful path, so input clears and is not styled as an error. A same-name duplicate still fails
@@ -411,7 +444,7 @@ blank and distinct values; refreshed sorted indices; persistence; and one-step u
 matches hidden by the previous filter, current card indices, the successful command-box state and
 undo/redo through the GUI. It also checks wrapping, selectable text and scrollable overflow in the
 fixed-height result area in a narrowed window, and that subsequent normal feedback and errors replace
-the previous warning and restore white text. It also verifies that no additional warning text area is created.
+the previous warning and restore light grey text. It also verifies that no additional warning text area is created.
 
 ### Editing academic fields
 
@@ -485,7 +518,7 @@ the same format as add:
 The complete message appears amber in the original feedback text area; no extra control, coloured border or
 command-input error style is added. Warning indices identify the other matching contacts, not the
 edited contact itself. The edit remains successful and is saved normally. Duplicate-name and
-invalid-index errors still occur before mutation. Results without a warning remain white, including
+invalid-index errors still occur before mutation. Results without a warning remain light grey, including
 ordinary edits and errors displayed after a warning.
 
 The history description remains the ordinary `Edited person: ...` message, so one undo restores the
@@ -499,7 +532,7 @@ and base-only history descriptions. Additional cases cover clearing or resupplyi
 alongside a shared phone, and tag-only edits to already-shared contacts without a warning.
 `EditContactUiTest` checks the same combined case in the
 original feedback box with amber text, successful input clearing, preserved icons, refreshed sorted card
-indices and a return to white for ordinary edits, undo/redo and errors. `SharedContactDetailsWarningTest`
+indices and a return to light grey for ordinary edits, undo/redo and errors. `SharedContactDetailsWarningTest`
 checks that appending a warning preserves complete multiline success feedback and alternative add-success
 headers rather than replacing them. Supplemental feedback is composed before calling the warning helper;
 the helper does not generate tag summaries or change favourite semantics itself.
@@ -537,7 +570,8 @@ The existing observable list updates `PersonListPanel`, including the displayed 
 no new storage fields are needed. Commands that use displayed indices continue
 to obtain their targets from that same list.
 
-The following sequence summarises filter parsing and execution; routing and Model internals are omitted.
+The sequence below shows how valid filter criteria become a predicate and are applied through the Model API.
+Routing, validation details and Model internals are omitted.
 
 <puml src="diagrams/FilterSequenceDiagram.puml" alt="Filter command parsing and execution" />
 
@@ -556,9 +590,10 @@ Keywords are case-insensitive. A field and direction produce `SortCommand` with
 `PersonSortComparator.SortField` and `SortDirection` values; `reset` produces `SortResetCommand`.
 Invalid input raises a `ParseException` with usage instructions before any view or data change.
 
-The following sequence summarises `sort year desc`; routing and Model internals are omitted.
+The sequence below traces `sort year desc` from parsing to the Model sorting API.
+It shows how the command supplies a comparator; list transformations and comparison rules are explained below.
 
-<puml src="diagrams/SortSequenceDiagram.puml" alt="Sort command parsing and execution" />
+<puml src="diagrams/SortSequenceDiagram.puml" alt="Parsing sort year desc and applying its comparator through the Model API" />
 
 `SortCommand#execute` supplies a `PersonSortComparator` to `Model#updateSortedPersonList`.
 `ModelManager` maintains this observable transformation chain:
@@ -699,14 +734,10 @@ both displayed and persisted contacts. See [Listing all persons](UserGuide.md#li
 
 ### Displaying academic fields in the contact list
 
-`ListCommand` resets the model's filtered person list to `PREDICATE_SHOW_ALL_PERSONS`. `PersonListPanel` observes
-that list and creates a `PersonCard` for every visible `Person`, so the card layout determines which fields appear
-after `list` as well as in filtered results produced by `find`.
-
-`PersonCard` reads the existing `Major` and `GraduationYear` value objects and formats them as labeled rows.
-`PersonListCard.fxml` places those rows below the contact details. Because both fields are optional, an empty value
-is rendered as `Not specified` instead of leaving an ambiguous blank line. This is a presentation-only change:
-`ListCommand`, the model, and the JSON storage format are unchanged.
+Contact cards display major and class year alongside the contact details when space allows,
+and below them in narrow windows. Unspecified values appear as `Not specified`.
+This affects display only; stored values are unchanged.
+See [Contact card layout](#contact-card-layout) for layout and expansion behaviour.
 
 ### Automatic incomplete reminders
 
@@ -740,9 +771,9 @@ Phone and email objects remain non-null throughout the model. `Phone.isValidPhon
 
 #### System tags, rendering and refresh
 
-`SystemTag.forPerson` evaluates the age and completeness predicates independently and returns at most one of each reminder. A profile may therefore have both labels. `PersonCard#refreshTags` clears and rebuilds the pane, preserving ordinary blue labels, and appends each derived reminder with the existing `system-tag` CSS class. The existing yellow background (`#F4C542`), dark text (`#222222`), padding, font and corner radii are reused without changing favourite or note icons. Missing phone/email display as `Not specified`.
+`SystemTag.forPerson` evaluates the age and completeness predicates independently and returns at most one of each reminder. A profile may therefore have both labels. `PersonCard#refreshTags` clears and rebuilds the pane, preserving ordinary grey labels, and appends each derived reminder with the existing `system-tag` CSS class. The `system-tag` style uses amber text on a dark brown background, with the same padding, font and corner radii as ordinary tags. Missing phone/email display as `Not specified`.
 
-`SystemTag.isSystemLabel` distinguishes both reserved display names. A user's stored `incomplete` tag is shown as blue `incomplete (custom)` with a tooltip explaining `t/incomplete`; it is neither renamed nor removed from JSON. Tag commands still operate only on user tags. The incomplete reminder has a contact-detail tooltip rather than the date tooltip used by `UPDATE`.
+`SystemTag.isSystemLabel` distinguishes both reserved display names. A user's stored `incomplete` tag is shown as a grey `incomplete (custom)` tag with a tooltip explaining `t/incomplete`; it is neither renamed nor removed from JSON. Tag commands still operate only on user tags. The incomplete reminder has a contact-detail tooltip rather than the date tooltip used by `UPDATE`.
 
 Successful commands use the existing `MainWindow` to `PersonListPanel.refresh` path, and model replacements update the observable list. Filling either contact method removes `INCOMPLETE`; clearing the last one adds it. A successful actual basic-field edit also refreshes the profile date and can independently remove `UPDATE`. If the edit leaves both methods empty, `INCOMPLETE` remains applicable.
 
@@ -828,9 +859,9 @@ The existing `Person` constructor overloads initialize new contacts using `Local
 
 #### GUI implementation
 
-`PersonCard#refreshTags` clears the tag pane, recreates the sorted user labels and appends the current `SystemTag` labels. Each system label has the `system-tag` style class and a tooltip showing the recorded date. `#tags .label.system-tag` in `DarkTheme.css` overrides only background (`#F4C542`) and text (`#222222`), inheriting ordinary tag padding, font size and corner radii. Favourite and note icons remain independent.
+`PersonCard#refreshTags` clears the tag pane, recreates the sorted user labels and appends the current `SystemTag` labels. Each update reminder has the `system-tag` style class and a tooltip showing the recorded date. `#tags .label.system-tag` in `DarkTheme.css` sets the dark brown background, amber border and text, inheriting ordinary tag padding, font size and corner radii. Favourite and note icons remain independent.
 
-An ordinary tag whose exact stored name is `update` is rendered as blue `update (custom)`, with a tooltip explaining that it is managed using `t/update`. The underlying name, validation, filtering and storage remain unchanged. Rebuilding the pane prevents duplicate system labels and lets a custom tag coexist with the reminder.
+An ordinary tag whose exact stored name is `update` is rendered as a grey `update (custom)` tag, with a tooltip explaining that it is managed using `t/update`. The underlying name, validation, filtering and storage remain unchanged. Rebuilding the pane prevents duplicate system labels and lets a custom tag coexist with the reminder.
 
 After `LogicManager#execute` succeeds, `MainWindow` calls `PersonListPanel#refresh`, which calls `ListView#refresh`. Recreated cards evaluate the current date again even when the contact data did not change. An actual basic-profile edit both replaces the model person and triggers this refresh, removing an outdated reminder immediately. No timer refreshes an idle window.
 
@@ -889,7 +920,8 @@ Notes and favourite status are preserved together by the combined `Person` const
 
 `DarkTheme.css` styles `#favouriteIcon` with `#e63946` for both text and the one-pixel circular border, a radius of 12, and a transparent background. The ID selector overrides the general list-cell label colour, including for selected cells. Ordinary tag styles are unaffected.
 
-The existing `PersonListPanel` observes the filtered list and creates a new `PersonCard` in `PersonListViewCell#updateItem`, using `getIndex() + 1` for numbering. Model replacement therefore updates the heart immediately; removing a person from the favourite filter updates the visible cards and indices without a separate favourite list or refresh command.
+`PersonListPanel` observes the displayed list. Its `PersonListCell#updateItem` creates a new
+`PersonCard`, using `getIndex() + 1` for numbering. Model replacement therefore updates the heart immediately; removing a person from the favourite filter updates the visible cards and indices without a separate favourite list or refresh command.
 
 #### Design considerations
 
@@ -968,7 +1000,8 @@ The current `EditCommand` still supports replacing the entire tag set through `e
 
 #### Long tag display and hover access
 
-`PersonCard#refreshTags` abbreviates ordinary tag names longer than `MAX_DISPLAYED_TAG_CHARACTERS` (20) before constructing their JavaFX `Label`: the first 20 characters are followed by `...`. The full value remains in `Person#getTags`; custom/system name collisions retain their `(custom)` display suffix. This explicit character threshold keeps display behaviour consistent despite platform font metrics. The tag pane and labels can shrink, and each label's maximum width is bound to the pane's content width (excluding its insets). `OverrunStyle.ELLIPSIS` supplies a further layout safeguard if even the abbreviated text cannot fit.
+`PersonCard#refreshTags` abbreviates ordinary tag names longer than `MAX_DISPLAYED_TAG_CHARACTERS` (20) before constructing their JavaFX `Label`: the first 20 characters are followed by `...`. The full value remains in `Person#getTags`; custom/system name collisions retain their `(custom)` display suffix. This explicit character threshold keeps display behaviour consistent despite platform font metrics. `TagPane` limits each tag to the available content width. `ExpandableText` applies
+`OverrunStyle.ELLIPSIS` while collapsed and wraps the full name when expanded.
 
 `PersonCard#installTagTooltip` retains the complete original name in a wrapping tooltip with a maximum popup width of 400 logical pixels. It keeps the Label's tooltip property for accessibility, uninstalls the default delayed mouse behaviour, and uses mouse-enter/exit/press handlers to show immediately and hide on exit or press. Labels participate in mouse picking. Existing explanatory tooltips for custom names that match system reminders are retained. `Tag` and its validation, equality and JSON representation are unchanged; only the presentation is abbreviated.
 
@@ -1651,7 +1684,7 @@ testers are expected to do more *exploratory* testing.
       scrollable within its unchanged 100-pixel height. Both lines can be selected and copied together.
    1. Run `undo`, then `redo`.<br>
       Expected: One undo removes Amy and one redo restores Amy. Their feedback describes the addition
-      in white without repeating the warning, and Zara, Charlie and Morgan retain their original details.
+      in light grey without repeating the warning, and Zara, Charlie and Morgan retain their original details.
    1. Close and reopen the disposable copy, then run `find Amy`.<br>
       Expected: Amy was saved with the entered phone and uppercase email. Sorting and filtering
       return to their usual restart defaults.
@@ -1659,14 +1692,14 @@ testers are expected to do more *exploratory* testing.
 1. Empty details and both fields matching the same contact
 
    1. Run `add n/NoDetails a/NUS`.<br>
-      Expected: The contact is added with ordinary white success feedback. Its missing phone and email
+      Expected: The contact is added with ordinary light grey success feedback. Its missing phone and email
       do not trigger a warning about Morgan's missing details.
    1. Run `add n/AnotherZara p/91919191 e/zara172@example.com a/Dover`.<br>
       Expected: The addition succeeds with a warning. Zara appears once with the reason
       `phone and email`; Amy is also listed for sharing the phone number.
    1. While a warning is showing, run `sort name sideways`, then `list`.<br>
-      Expected: The invalid command replaces the warning with the usual white error feedback and input
-      styling. `list` shows ordinary white success feedback. Neither command changes saved contacts.
+      Expected: The invalid command replaces the warning with the usual light grey error feedback and input
+      styling. `list` shows ordinary light grey success feedback. Neither command changes saved contacts.
    1. Repeat a shared-details addition with long names or many matching contacts in the disposable copy.<br>
       Expected: The complete ordinary success message and appended warning appear amber in the
       original text area, starting at the top. All names, displayed indices and reasons remain
@@ -1689,7 +1722,7 @@ testers are expected to do more *exploratory* testing.
       with no coloured border or additional warning control.
    1. Run `undo`, then `redo`.<br>
       Expected: One undo restores Bob's previous phone and one redo restores the shared phone.
-      Both use ordinary white edit-history feedback without repeating the warning. Alice remains unchanged.
+      Both use ordinary light grey edit-history feedback without repeating the warning. Alice remains unchanged.
    1. Run `find EditWarning`, confirm Bob's displayed index, then edit that index with
       `e/ALICE.EDITWARNING@EXAMPLE.COM t/StudyGroup`.<br>
       Expected: The normal success message shows the new email and `StudyGroup` tag. The next line is
@@ -1698,7 +1731,7 @@ testers are expected to do more *exploratory* testing.
       lines appear amber in the original feedback box. The uppercase email and replacement tags are saved unchanged.
    1. Run `undo`, then `redo`.<br>
       Expected: One undo restores both Bob's previous email and tags; redo restores both changes.
-      Feedback remains white and includes only the base edited-contact details, not the tag summary
+      Feedback remains light grey and includes only the base edited-contact details, not the tag summary
       or duplicate-details warning.
    1. Rename Bob while changing a contact method to another shared value, then inspect the full sorted list.<br>
       Expected: The normal success feedback identifies his new name and saved details; the warning
@@ -1709,12 +1742,12 @@ testers are expected to do more *exploratory* testing.
    1. Before each check, find the edited contact and use its actual displayed index.
    1. Repeat the current phone value, change only the major with `m/Mathematics`, or change only
       the email's capitalization.<br>
-      Expected: Ordinary white edit feedback, not a warning about existing shared values. An unchanged
+      Expected: Ordinary light grey edit feedback, not a warning about existing shared values. An unchanged
       edit does not create another undo step or clear redo availability.
    1. Clear a contact method with `p/` or `e/`.<br>
-      Expected: Ordinary white success feedback; empty values do not match other empty contact methods.
+      Expected: Ordinary light grey success feedback; empty values do not match other empty contact methods.
    1. Change only tags with `t/StudyGroup`, then clear them with `t/`, checking the displayed index before each edit.<br>
-      Expected: Each result includes its actual removed/added tag summary in white, with `None` for
+      Expected: Each result includes its actual removed/added tag summary in light grey, with `None` for
       empty differences. Existing shared phone/email values do not trigger a warning for these tag-only edits.
    1. Close and reopen the disposable copy.<br>
       Expected: Edited values persist; the warnings did not modify or merge any other contact.
@@ -2147,7 +2180,7 @@ Use a test contact for these checks. Run `list` and identify its displayed index
    Expected: `No notes have been added to this contact.` No note icon is visible.
 1. Run `note 1 Met during CS2103T` and inspect its feedback, then run `shownote 1`.<br>
    Expected: The feedback starts with `Note saved for NAME.` and includes `Saved note: Met during CS2103T`.
-   A note icon appears at the bottom right of the card, and `shownote` displays the saved text.
+   An orange note icon appears at the top right of the card, and `shownote` displays the saved text.
 1. Run `note 1 Project teammate` and inspect its feedback.<br>
    Expected: The feedback starts with `Note replaced for NAME. Use undo to restore the previous note.`
    It includes `Previous note: Met during CS2103T` and `Saved note: Project teammate` on separate lines.

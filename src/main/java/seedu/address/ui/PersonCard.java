@@ -1,22 +1,25 @@
 package seedu.address.ui;
 
+import static java.util.Objects.requireNonNull;
+
 import java.time.Clock;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.function.Consumer;
 
-import javafx.beans.binding.Bindings;
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
-import javafx.scene.control.OverrunStyle;
 import javafx.scene.control.Tooltip;
-import javafx.scene.layout.FlowPane;
-import javafx.scene.layout.HBox;
+import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Region;
-import seedu.address.model.person.GraduationYear;
-import seedu.address.model.person.Major;
+import javafx.scene.layout.VBox;
 import seedu.address.model.person.Person;
 import seedu.address.model.tag.SystemTag;
+import seedu.address.model.tag.Tag;
 
 /**
  * A UI component that displays information of a {@code Person}.
@@ -26,19 +29,17 @@ public class PersonCard extends UiPart<Region> {
     private static final String FXML = "PersonListCard.fxml";
     private static final int MAX_DISPLAYED_TAG_CHARACTERS = 20;
 
-    /**
-     * Note: Certain keywords such as "location" and "resources" are reserved keywords in JavaFX.
-     * As a consequence, UI elements' variable names cannot be set to such keywords
-     * or an exception will be thrown by JavaFX during runtime.
-     *
-     * @see <a href="https://github.com/se-edu/addressbook-level4/issues/336">The issue on AddressBook level 4</a>
-     */
+    private static final String LAST_UPDATED_HELP = "Date added or last change to name, phone, email, address, "
+            + "major or class year. Tags, notes and favourites do not change this date. "
+            + "Older contacts without a saved date show Unknown and sort last in both date directions.";
 
     public final Person person;
     private final Clock clock;
+    private final Set<String> expandedFields;
+    private Runnable onContentChanged = () -> { };
 
     @FXML
-    private HBox cardPane;
+    private PersonCardPane cardPane;
     @FXML
     private Label name;
     @FXML
@@ -58,7 +59,13 @@ public class PersonCard extends UiPart<Region> {
     @FXML
     private Label lastUpdated;
     @FXML
-    private FlowPane tags;
+    private TagPane tags;
+    @FXML
+    private GridPane details;
+    @FXML
+    private VBox contactDetails;
+    @FXML
+    private VBox academicDetails;
     @FXML
     private Label noteIcon;
 
@@ -73,27 +80,64 @@ public class PersonCard extends UiPart<Region> {
      * Creates a card with a clock used to recalculate date-based reminders.
      */
     public PersonCard(Person person, int displayedIndex, Clock clock) {
+        this(person, displayedIndex, clock, new HashSet<>());
+    }
+
+    PersonCard(Person person, int displayedIndex, Clock clock, Set<String> expandedFields) {
         super(FXML);
-        this.person = person;
-        this.clock = java.util.Objects.requireNonNull(clock);
+        this.person = requireNonNull(person);
+        this.clock = requireNonNull(clock);
+        this.expandedFields = requireNonNull(expandedFields);
+        populateDetails(displayedIndex);
+        configureIndicators(displayedIndex);
+        cardPane.configureDetails(details, contactDetails, academicDetails);
+        configureExpandableValues();
+        refreshTags();
+    }
+
+    void setOnContentChanged(Runnable handler) {
+        onContentChanged = requireNonNull(handler);
+    }
+
+    /** Returns expandable values in reading order, including tags between the name and details. */
+    List<Label> getExpandableValues() {
+        List<Label> values = new ArrayList<>();
+        values.add(name);
+        tags.getChildren().stream().map(Label.class::cast).forEach(values::add);
+        values.addAll(List.of(phone, address, email, major, graduationYear, lastUpdated));
+        return values.stream().filter(Label::isFocusTraversable).toList();
+    }
+
+    private void populateDetails(int displayedIndex) {
         id.setText(displayedIndex + ". ");
         name.setText(person.getName().fullName);
-        favouriteIcon.setVisible(person.isFavourite());
-        favouriteIcon.setManaged(person.isFavourite());
         phone.setText(getValueOrFallback(person.getPhone().value));
         address.setText(person.getAddress().value);
         email.setText(getValueOrFallback(person.getEmail().value));
         setAcademicFieldTexts(person, major::setText, graduationYear::setText);
-        lastUpdated.setText("Last updated: " + (person.getLastUpdated() == null ? "Unknown" : person.getLastUpdated()));
-        lastUpdated.setTooltip(new Tooltip("Date added or last change to name, phone, email, address, "
-                + "major or class year. Tags, notes and favourites do not change this date. "
-                + "Older contacts without a saved date show Unknown and sort last in both date directions."));
+        lastUpdated.setText(person.getLastUpdated() == null ? "Unknown" : person.getLastUpdated().toString());
+        lastUpdated.setTooltip(new Tooltip(LAST_UPDATED_HELP));
+    }
+
+    private void configureIndicators(int displayedIndex) {
+        favouriteIcon.setVisible(person.isFavourite());
+        favouriteIcon.setManaged(person.isFavourite());
         boolean hasNotes = !person.getNotes().isEmpty();
         noteIcon.setVisible(hasNotes);
         noteIcon.setManaged(hasNotes);
         noteIcon.setTooltip(new Tooltip("Use shownote " + displayedIndex + " to view this note."));
-        tags.setMinWidth(0);
-        refreshTags();
+    }
+
+    private void configureExpandableValues() {
+        for (Label value : List.of(name, phone, address, email, major, graduationYear, lastUpdated)) {
+            new ExpandableText(value, value.getId(), value.getText(), value.getText(),
+                    expandedFields, this::requestContentLayout);
+        }
+    }
+
+    private void requestContentLayout() {
+        cardPane.requestLayout();
+        onContentChanged.run();
     }
 
     /**
@@ -103,25 +147,8 @@ public class PersonCard extends UiPart<Region> {
         tags.getChildren().clear();
         person.getTags().stream()
                 .sorted(Comparator.comparing(tag -> tag.tagName))
-                .forEach(tag -> {
-                    boolean conflictsWithReminder = SystemTag.isSystemLabel(tag.tagName);
-                    String displayedName = formatTagName(tag.tagName);
-                    Label label = new Label(conflictsWithReminder ? displayedName + " (custom)" : displayedName);
-                    label.setMinWidth(0);
-                    label.setTextOverrun(OverrunStyle.ELLIPSIS);
-                    label.setEllipsisString("...");
-                    label.maxWidthProperty().bind(Bindings.createDoubleBinding(() ->
-                            Math.max(0, tags.getWidth() - tags.getInsets().getLeft()
-                                    - tags.getInsets().getRight()),
-                            tags.widthProperty(), tags.insetsProperty()));
-                    Tooltip tooltip = new Tooltip(tag.tagName);
-                    if (conflictsWithReminder) {
-                        tooltip.setText("Custom tag: " + tag.tagName + ". Use t/" + tag.tagName
-                                + " to manage this tag.");
-                    }
-                    installTagTooltip(label, tooltip);
-                    tags.getChildren().add(label);
-                });
+                .map(this::createTagLabel)
+                .forEach(tags.getChildren()::add);
         for (SystemTag reminder : SystemTag.forPerson(person, LocalDate.now(clock))) {
             Label label = new Label(reminder.label);
             label.getStyleClass().add("system-tag");
@@ -130,6 +157,20 @@ public class PersonCard extends UiPart<Region> {
                     : "Basic profile last updated: " + person.getLastUpdated()));
             tags.getChildren().add(label);
         }
+    }
+
+    private Label createTagLabel(Tag tag) {
+        boolean conflictsWithReminder = SystemTag.isSystemLabel(tag.tagName);
+        String suffix = conflictsWithReminder ? " (custom)" : "";
+        Label label = new Label(formatTagName(tag.tagName) + suffix);
+        label.setMinWidth(0);
+        Tooltip tooltip = new Tooltip(conflictsWithReminder
+                ? "Custom tag: " + tag.tagName + ". Use t/" + tag.tagName + " to manage this tag."
+                : tag.tagName);
+        installTagTooltip(label, tooltip);
+        new ExpandableText(label, "tag:" + tag.tagName, tag.tagName + suffix, label.getText(),
+                expandedFields, this::requestContentLayout);
+        return label;
     }
 
     /**
@@ -158,16 +199,8 @@ public class PersonCard extends UiPart<Region> {
 
     static void setAcademicFieldTexts(Person person, Consumer<String> majorTextSetter,
             Consumer<String> graduationYearTextSetter) {
-        majorTextSetter.accept(formatMajor(person.getMajor()));
-        graduationYearTextSetter.accept(formatGraduationYear(person.getGraduationYear()));
-    }
-
-    private static String formatMajor(Major major) {
-        return "Major: " + getValueOrFallback(major.value);
-    }
-
-    private static String formatGraduationYear(GraduationYear graduationYear) {
-        return "Class year: " + getValueOrFallback(graduationYear.value);
+        majorTextSetter.accept(getValueOrFallback(person.getMajor().value));
+        graduationYearTextSetter.accept(getValueOrFallback(person.getGraduationYear().value));
     }
 
     private static String getValueOrFallback(String value) {

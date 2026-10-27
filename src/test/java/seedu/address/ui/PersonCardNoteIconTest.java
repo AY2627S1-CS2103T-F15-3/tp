@@ -8,7 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
-import java.net.URL;
 import java.util.List;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
@@ -23,8 +22,8 @@ import javafx.scene.control.ContentDisplay;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.SVGPath;
 import seedu.address.logic.parser.AddressBookParser;
 import seedu.address.model.Model;
 import seedu.address.model.ModelManager;
@@ -79,23 +78,20 @@ public class PersonCardNoteIconTest {
     }
 
     @Test
-    public void constructor_withNotes_loadsPackagedNoteImage() throws Exception {
+    public void constructor_withNotes_showsThemedNoteGlyph() throws Exception {
         runOnFxThread(() -> {
             PersonCard card = new PersonCard(new PersonBuilder().withNotes("Follow up next week").build(), 1);
             Label icon = noteIcon(card.getRoot());
-            ImageView graphic = assertInstanceOf(ImageView.class, icon.getGraphic());
-            Image image = graphic.getImage();
-            URL resource = PersonCard.class.getResource("/images/noteicon.png");
+            Scene scene = new Scene(card.getRoot());
+            scene.getStylesheets().add(getClass().getResource("/view/DarkTheme.css").toExternalForm());
+            card.getRoot().applyCss();
+            SVGPath graphic = assertInstanceOf(SVGPath.class, icon.getGraphic());
 
-            assertNotNull(resource, "The note image must be available on the application classpath");
-            assertNotNull(image);
-            assertFalse(image.isError());
-            assertTrue(image.getWidth() > 0);
-            assertTrue(image.getHeight() > 0);
-            assertEquals(resource.toExternalForm(), image.getUrl());
-            assertEquals(24.0, graphic.getFitWidth());
-            assertEquals(24.0, graphic.getFitHeight());
-            assertTrue(graphic.isPreserveRatio());
+            assertFalse(graphic.getContent().isBlank());
+            assertTrue(graphic.getLayoutBounds().getWidth() > 0);
+            assertTrue(graphic.getLayoutBounds().getHeight() > 0);
+            assertEquals(Color.TRANSPARENT, graphic.getFill());
+            assertEquals(Color.web("#d99664"), graphic.getStroke());
             assertEquals(ContentDisplay.GRAPHIC_ONLY, icon.getContentDisplay());
         });
     }
