@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import seedu.address.commons.core.index.Index;
 import seedu.address.commons.util.CollectionUtil;
@@ -108,10 +109,15 @@ public class EditCommand extends Command {
         model.setPerson(personToEdit, editedPerson);
         model.updateFilteredPersonList(PREDICATE_SHOW_ALL_PERSONS);
         String message = String.format(MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(editedPerson));
-        CommandResult result = getEditResult(model, personToEdit, editedPerson, message);
         // An edit that leaves the person unchanged is not recorded by the model.
         model.commitAddressBook(previousState, message);
-        return result;
+        String feedback = message;
+        if (editPersonDescriptor.getTags().isPresent()) {
+            feedback += "\nTags replaced. Removed: "
+                    + formatTagDifference(personToEdit.getTags(), editedPerson.getTags())
+                    + ". Added: " + formatTagDifference(editedPerson.getTags(), personToEdit.getTags()) + ".";
+        }
+        return getEditResult(model, personToEdit, editedPerson, feedback);
     }
 
     /**
@@ -125,6 +131,13 @@ public class EditCommand extends Command {
         String matches = SharedContactDetailsWarning.describeMatches(
                 editedPerson, model.getFilteredPersonList(), phoneChanged, emailChanged);
         return SharedContactDetailsWarning.appendTo(successMessage, matches);
+    }
+
+    /** Returns sorted tag names present only in the first set, or "None". */
+    private static String formatTagDifference(Set<Tag> tags, Set<Tag> otherTags) {
+        String names = tags.stream().filter(tag -> !otherTags.contains(tag))
+                .map(tag -> tag.tagName).sorted().collect(Collectors.joining(", "));
+        return names.isEmpty() ? "None" : names;
     }
 
     /**

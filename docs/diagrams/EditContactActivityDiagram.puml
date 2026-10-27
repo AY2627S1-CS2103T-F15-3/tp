@@ -10,16 +10,21 @@ and name not a duplicate?) then (yes)
   :Update the contact and save automatically;
   :Show the full contact list
 with updated contact cards;
-  :Show Edited person feedback
+  :Build Edited person feedback
 with all updated contact details;
+  if (Tags supplied, including empty t/?) then (yes)
+    :Compare old and new tags;
+    :Append sorted Removed / Added summary\n(use None for empty differences);
+  endif
   if (Changed phone or email
 matches another contact?) then (yes)
     :Append Warning - duplicate details detected
 with matching contacts' current indices;
   endif
+  :Show complete feedback\n(amber with a warning, white otherwise);
   :Clear the command box;
 else (no)
-  :Show an error in the result display\nkeep the input for correction;
+  :Show an error in the result display\nEmail errors include no consecutive special characters\nkeep the input for correction;
   :Keep contacts and current view unchanged;
 endif
 stop

@@ -80,7 +80,8 @@ public class EditContactUiTest {
                 assertEquals("Bob", edited.getName().fullName);
                 assertEquals(bob.getNotes(), edited.getNotes());
                 assertTrue(edited.isFavourite());
-                assertEquals("Edited person: " + Messages.format(edited), feedback(window));
+                assertEquals("Edited person: " + Messages.format(edited)
+                        + "\nTags replaced. Removed: Classmate. Added: StudyGroup.", feedback(window));
                 TextArea result = (TextArea) window.getRoot().getScene().lookup("#resultDisplay");
                 assertFalse(result.getStyleClass().contains(ResultDisplay.WARNING_STYLE_CLASS));
                 assertEquals(Color.WHITE, ((Text) result.lookup(".text")).getFill());
@@ -127,7 +128,8 @@ public class EditContactUiTest {
                 Person edited = new PersonBuilder(bob).withName("Aaron").withTags("Project").build();
                 assertEquals(List.of(charlie, alice, edited), list(window).getItems());
                 String description = String.format(EditCommand.MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(edited));
-                assertEquals(description + "\nWarning - duplicate details detected: "
+                assertEquals(description + "\nTags replaced. Removed: Classmate. Added: Project."
+                        + "\nWarning - duplicate details detected: "
                         + "#1 Charlie (phone and email); #2 Alice (phone and email)", feedback(window));
                 TextArea result = (TextArea) window.getRoot().getScene().lookup("#resultDisplay");
                 assertTrue(result.getStyleClass().contains(ResultDisplay.WARNING_STYLE_CLASS));

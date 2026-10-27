@@ -71,9 +71,12 @@ public class UndoCommandTest {
         model.setPerson(original, withUniversityFields);
         AddressBook stateBeforeEdit = new AddressBook(model.getAddressBook());
 
-        String editMessage = new EditCommand(INDEX_FIRST_PERSON, new EditPersonDescriptorBuilder()
+        new EditCommand(INDEX_FIRST_PERSON, new EditPersonDescriptorBuilder()
                 .withMajor("Computer Science").withGraduationYear("2027").withTags("teammate").build())
-                .execute(model).getFeedbackToUser();
+                .execute(model);
+        Person editedPerson = new PersonBuilder(withUniversityFields).withMajor("Computer Science")
+                .withGraduationYear("2027").withTags("teammate").build();
+        String editMessage = String.format(EditCommand.MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(editedPerson));
 
         Model expectedModel = new ModelManager(stateBeforeEdit, new UserPrefs());
         assertCommandSuccess(new UndoCommand(), model, undoMessage(editMessage), expectedModel);

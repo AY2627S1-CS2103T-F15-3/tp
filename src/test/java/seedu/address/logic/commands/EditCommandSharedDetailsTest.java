@@ -101,14 +101,61 @@ public class EditCommandSharedDetailsTest {
                 new EditPersonDescriptorBuilder().withEmail("ALICE@EXAMPLE.COM").build(),
                 new EditPersonDescriptorBuilder().withName("Bobby").build(),
                 new EditPersonDescriptorBuilder().withAddress("NUS").build(),
-                new EditPersonDescriptorBuilder().withMajor("Mathematics").build(),
-                new EditPersonDescriptorBuilder().withTags("StudyGroup").build());
+                new EditPersonDescriptorBuilder().withMajor("Mathematics").build());
 
         for (EditPersonDescriptor descriptor : descriptors) {
             model = modelWith(alice, sharedBob, carol);
 
             assertOrdinaryEdit(edit(descriptor));
         }
+    }
+
+    @Test
+    public void execute_tagOnlyEditWithExistingSharedDetails_reportsTagChangesWithoutWarning() throws Exception {
+        Person sharedBob = new PersonBuilder(bob).withPhone(alice.getPhone().value)
+                .withEmail(alice.getEmail().value).withTags("Keep", "Old").build();
+        model = modelWith(alice, sharedBob, carol);
+
+        CommandResult result = edit(new EditPersonDescriptorBuilder().withTags("Keep", "Project").build());
+
+        Person edited = new PersonBuilder(sharedBob).withTags("Keep", "Project").build();
+        String description = String.format(EditCommand.MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(edited));
+        assertEquals(description + "\nTags replaced. Removed: Old. Added: Project.", result.getFeedbackToUser());
+        assertFalse(result.isWarning());
+        assertEquals(edited, model.getAddressBook().getPersonList().get(1));
+        assertEquals(description, model.getUndoDescription().orElseThrow());
+    }
+
+    @Test
+    public void execute_sharedPhoneAndClearedTags_keepsRemovalSummaryBeforeWarning() throws Exception {
+        model = modelWith(alice, new PersonBuilder(bob).withTags("Old", "Keep").build(), carol);
+
+        CommandResult result = edit(new EditPersonDescriptorBuilder()
+                .withPhone(alice.getPhone().value).withTags().build());
+
+        Person edited = new PersonBuilder(bob).withPhone(alice.getPhone().value).withTags().build();
+        String description = String.format(EditCommand.MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(edited));
+        assertEquals(description + "\nTags replaced. Removed: Keep, Old. Added: None."
+                + "\nWarning - duplicate details detected: #1 Alice (phone)", result.getFeedbackToUser());
+        assertTrue(result.isWarning());
+        assertEquals(edited, model.getAddressBook().getPersonList().get(1));
+        assertEquals(description, model.getUndoDescription().orElseThrow());
+    }
+
+    @Test
+    public void execute_sharedPhoneAndUnchangedTags_keepsNoneSummaryBeforeWarning() throws Exception {
+        Person taggedBob = new PersonBuilder(bob).withTags("Keep").build();
+        model = modelWith(alice, taggedBob, carol);
+
+        CommandResult result = edit(new EditPersonDescriptorBuilder()
+                .withPhone(alice.getPhone().value).withTags("Keep").build());
+
+        Person edited = new PersonBuilder(taggedBob).withPhone(alice.getPhone().value).build();
+        String description = String.format(EditCommand.MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(edited));
+        assertEquals(description + "\nTags replaced. Removed: None. Added: None."
+                + "\nWarning - duplicate details detected: #1 Alice (phone)", result.getFeedbackToUser());
+        assertTrue(result.isWarning());
+        assertEquals(edited, model.getAddressBook().getPersonList().get(1));
     }
 
     @Test
@@ -155,7 +202,7 @@ public class EditCommandSharedDetailsTest {
     }
 
     @Test
-    public void execute_filteredSortedEdit_warnsWithRefreshedIndicesAndPersistsOneUndoStep(@TempDir Path directory)
+    public void execute_filteredSortedEdit_combinesTagSummaryAndWarningAndPersistsOneUndoStep(@TempDir Path directory)
             throws Exception {
         Person original = new PersonBuilder(bob).withTags("Old").build();
         model = modelWith(alice, original, carol);
@@ -171,11 +218,15 @@ public class EditCommandSharedDetailsTest {
 
         Person edited = new PersonBuilder(bob).withName("Aaron").withPhone(alice.getPhone().value)
                 .withEmail(carol.getEmail().value).withTags("Project").build();
-        assertWarning("#2 Alice (phone); #3 Carol (email)", result);
+        String description = String.format(EditCommand.MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(edited));
+        assertEquals(description + "\nTags replaced. Removed: Old. Added: Project."
+                + "\nWarning - duplicate details detected: #2 Alice (phone); #3 Carol (email)",
+                result.getFeedbackToUser());
+        assertTrue(result.isWarning());
+        assertEquals(description, result.getLogSummary());
         assertEquals(List.of(edited, alice, carol), model.getFilteredPersonList());
         assertEquals(List.of(alice, edited, carol), model.getAddressBook().getPersonList());
         assertEquals(model.getAddressBook(), storage.readAddressBook().orElseThrow());
-        String description = String.format(EditCommand.MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(edited));
         assertEquals(description, model.getUndoDescription().orElseThrow());
 
         CommandResult undo = logic.execute("undo");
