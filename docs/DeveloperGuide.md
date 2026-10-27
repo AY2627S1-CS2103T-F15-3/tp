@@ -472,20 +472,29 @@ the previous state for undo (unchanged data does not create another history entr
 still applies. `LogicManager` saves the updated address book before returning the result.
 `MainWindow#executeCommand` refreshes the list and writes the feedback to `ResultDisplay`;
 `CommandBox` then clears its text. `PersonListPanel` observes the model's list and builds `PersonCard`s
-with the current indices. Cleared academic fields render as `Major: Not specified` and
-`Class year: Not specified`.
+with the current indices. Cleared academic fields render as `Not specified` in the major and class year labels.
 
-When the descriptor contains tags (including an empty set), `EditCommand` appends a separate
-`Tags replaced. Removed: ... . Added: ... .` line to the success message. Set differences between
-the original and replacement tags identify actual removals/additions, sorted by tag name;
-empty differences display `None`. Omitted tags produce no summary. This does not change replacement
-semantics. The base `Edited person: ...` message is passed to
-`Model#commitAddressBook(previousState, message)` before the tag summary is appended to the returned
-feedback. Undo/redo descriptions therefore retain the edited contact details without repeating the
-replacement summary or any duplicate-details warning. Only after composing the ordinary success text
-and optional tag summary does `EditCommand#getEditResult` append a shared-details warning, if needed.
-`UndoRedoIntegrationTest` verifies exact edit, undo and redo feedback and persisted contact data for
-both tag replacement and clearing.
+`EditCommand` compares the replacement `Person` with the original before mutation. If they are equal,
+it resets the displayed list to all contacts and returns `No changes made to NAME. The supplied values
+match the existing details.` without replacing the person or committing history. The date and both
+history stacks, including any available redo, are preserved.
+
+For an actual change, `formatChanges` returns `Edited NAME:` followed by changed fields in a fixed order:
+name, phone, email, address, major and class year. Each line uses `Field: old value → new value`;
+empty optional values display `Not specified`. Supplied fields whose values match are omitted.
+If the tag sets differ, a `Tags replaced. Removed: ... . Added: ... .` line lists the sorted set differences
+(`None` for an empty difference). An unchanged tag set adds no line, including when `t/` was supplied.
+
+The existing full-contact `Edited person: ...` description is still passed to
+`Model#commitAddressBook(previousState, message)`. Immediate change summaries are not stored in history;
+undo/redo feedback and state restoration retain their previous behavior. `UndoRedoIntegrationTest`
+verifies exact edit, undo and redo feedback and persisted contact data for tag replacement, clearing and
+repeated edits, including no-op preservation of redo. Unit tests check field summaries and update dates;
+`EditContactUiTest` checks rendered clearing feedback and successful no-op submissions.
+After composing the change summary, `EditCommand#getEditResult` appends a shared-details warning
+for changed phone/email values, using the refreshed displayed indices. Warnings are excluded
+from the stored history description and do not block the edit.
+
 `Email.MESSAGE_CONSTRAINTS` uses short newline-separated rules and
 explicitly forbids consecutive local-part special characters; the validation regex is unchanged.
 `ResultDisplay.fxml` enables text wrapping so narrow windows do not require horizontal scrolling.
@@ -1022,7 +1031,7 @@ The model keeps an in-memory history of contact data states. Every command that 
 | `AddressBookHistory` | Stores defensive `AddressBook` snapshots, each paired with a description of its change, in an undo stack and a redo stack, and restores them into the tracked `AddressBook`. |
 | `Model` | Declares `commitAddressBook(ReadOnlyAddressBook, String)`, `canUndoAddressBook()`, `canRedoAddressBook()`, `getUndoDescription()`, `getRedoDescription()`, `undoAddressBook()` and `redoAddressBook()`. |
 | `ModelManager` | Creates one `AddressBookHistory` for its `AddressBook` and delegates the methods above to it. |
-| `AddCommand`, `EditCommand`, `DeleteCommand`, `ClearCommand`, `TagCommand`, `UntagCommand`, `FavCommand`, `UnfavCommand`, `NoteCommand`, `DeleteNoteCommand` | Copy the contact data before changing it, then call `Model#commitAddressBook` with that copy and the command's base success message as the description (excluding tag replacement summaries and duplicate-details warnings). |
+| `AddCommand`, `EditCommand`, `DeleteCommand`, `ClearCommand`, `TagCommand`, `UntagCommand`, `FavCommand`, `UnfavCommand`, `NoteCommand`, `DeleteNoteCommand` | Copy the contact data before changing it, then call `Model#commitAddressBook` with that copy and the command's history description (`edit` retains the full-contact description, excluding its immediate change summary and duplicate-details warning). |
 | `UndoCommand`, `RedoCommand` | Check history availability, read the description of the change being reversed or reapplied, restore the corresponding state through the model, and reset the displayed list to show all contacts. |
 
 `AddressBookHistory` holds:
@@ -1055,7 +1064,7 @@ The activity diagram below summarises what happens when a command commits:
 
 A command that fails validation, such as a duplicate `add`, throws before copying the data and never reaches this flow.
 
-`EditCommand#execute` follows the same pattern. It checks the displayed index and duplicate persons first, copies the data, calls `Model#setPerson`, and then commits. An edit that supplies the person's current values still returns the usual success message. Its commit is ignored because the data did not change, preserving both history stacks. The bare command `edit 1` is invalid because at least one field is required.
+`EditCommand#execute` follows the same pattern. It checks the displayed index and duplicate persons first, copies the data, calls `Model#setPerson`, and then commits. An edit that supplies the person's current values returns the no-change message before snapshotting or committing, preserving both history stacks and the existing update date. The bare command `edit 1` is invalid because at least one field is required.
 
 `NoteCommand` and `DeleteNoteCommand` use the same snapshot-and-commit flow for actual note changes. `NoteCommand` returns immediately for unchanged note text, without copying the address book, replacing the contact or committing history, so redo remains available. `DeleteNoteCommand` returns immediately for an empty note. A new data-changing commit clears redo states; merely viewing a note does not.
 
@@ -1217,8 +1226,8 @@ If saving fails after a successful undo or redo, the in-memory state has already
 
 | Situation | Message |
 |-----------|---------|
-| `undo` succeeds | `Undid: ` followed by the undone command's base success message (excluding tag summaries and duplicate-details warnings), e.g. `Undid: Tagged person: …​` |
-| `redo` succeeds | `Redid: ` followed by the redone command's base success message (excluding tag summaries and duplicate-details warnings), e.g. `Redid: Added to favourites: …​` |
+| `undo` succeeds | `Undid: ` followed by the undone command's stored description (`edit` uses full contact details, without the change summary or duplicate-details warning), e.g. `Undid: Tagged person: …​` |
+| `redo` succeeds | `Redid: ` followed by the redone command's stored description (`edit` uses full contact details, without the change summary or duplicate-details warning), e.g. `Redid: Added to favourites: …​` |
 | Nothing to undo, including stale history | `There is no change to undo.` |
 | Nothing to redo, including stale history | `There is no change to redo. An undone change cannot be redone after another change has been made.` |
 | Arguments after `undo` or `redo` | `Invalid command format!`, followed by the command's usage |
@@ -1236,8 +1245,8 @@ If saving fails after a successful undo or redo, the in-memory state has already
 
 **Aspect: How the undone or redone change is described**
 
-* **Alternative 1 (current choice):** Each command passes its base success message (excluding tag summaries and duplicate-details warnings) to `commitAddressBook`, and the history stores it with the snapshot.
-  * Pros: Each command already formats this message, so no new wording is needed, and undo names the change exactly as the user saw it when it was made.
+* **Alternative 1 (current choice):** Each command passes its history description (`edit` uses full contact details rather than its immediate change summary) to `commitAddressBook`, and the history stores it with the snapshot.
+  * Pros: Most commands reuse their success message without new wording. Edit retains its established full-contact description so undo/redo identifies the affected contact without repeating field or tag differences.
   * Cons: Messages that include a full `Messages#format` of the person are long. Each command must remember to pass a description, although the two-argument signature makes it impossible to commit without one.
 * **Alternative 2:** Work out the description by comparing the two snapshots, e.g. finding the contact that was added or removed.
   * Pros: Commands need no change.
@@ -2130,9 +2139,9 @@ Perform these scenarios in order; each one relies on the contacts left by the pr
 
    1. Before **each** edit below, run `find UndoCheck` and confirm that it is the only result. Successful edits return the display to the full contact list, so the search must be repeated before editing index `1` again.
    1. Run `edit 1 p/98765432 c/2028`.<br>
-      Expected: The status message starts with `Edited person: UndoCheck`. `UndoCheck` has phone `98765432` and class year `2028`, and still has the tag `StudyGroup`. The full contact list is shown.
+      Expected: The status message starts with `Edited UndoCheck:` and lists only actual changes. `UndoCheck` has phone `98765432` and class year `2028`, and still has the tag `StudyGroup`. The full contact list is shown.
    1. Run `find UndoCheck`, then `edit 1 t/Mentor`.<br>
-      Expected: The status message starts with `Edited person: UndoCheck`. Running `find UndoCheck` again shows phone `98765432`, class year `2028` and only the tag `Mentor`. No other contact has changed.
+      Expected: The status message starts with `Edited UndoCheck:` and lists only actual changes. Running `find UndoCheck` again shows phone `98765432`, class year `2028` and only the tag `Mentor`. No other contact has changed.
    1. Test case: `undo`.<br>
       Expected: The tag `StudyGroup` replaces `Mentor`; the phone and class year stay `98765432` and `2028`. The full contact list is shown instead of the search result.
    1. Test case: `undo` again.<br>

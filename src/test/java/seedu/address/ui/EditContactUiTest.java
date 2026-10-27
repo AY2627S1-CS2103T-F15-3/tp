@@ -80,7 +80,7 @@ public class EditContactUiTest {
                 assertEquals("Bob", edited.getName().fullName);
                 assertEquals(bob.getNotes(), edited.getNotes());
                 assertTrue(edited.isFavourite());
-                assertEquals("Edited person: " + Messages.format(edited)
+                assertEquals("Edited Bob:\nMajor: Computer Science → Mathematics\nClass year: 2027 → 2028"
                         + "\nTags replaced. Removed: Classmate. Added: StudyGroup.", feedback(window));
                 TextArea result = (TextArea) window.getRoot().getScene().lookup("#resultDisplay");
                 assertFalse(result.getStyleClass().contains(ResultDisplay.WARNING_STYLE_CLASS));
@@ -95,7 +95,16 @@ public class EditContactUiTest {
                 enter(window, "find Bob");
                 enter(window, "edit 1 m/ c/");
                 Person cleared = (Person) list(window).getItems().get(1);
+                assertEquals("Edited Bob:\nMajor: Mathematics → Not specified\nClass year: 2028 → Not specified",
+                        feedback(window));
                 assertAcademicCard(window, cleared, "Not specified", "Not specified");
+                enter(window, "find Bob");
+                enter(window, "edit 1 m/ c/");
+                assertEquals("No changes made to Bob. The supplied values match the existing details.",
+                        feedback(window));
+                assertEquals("", input(window).getText());
+                assertFalse(input(window).getStyleClass().contains(CommandBox.ERROR_STYLE_CLASS));
+                assertEquals(3, list(window).getItems().size());
                 try {
                     Person saved = new JsonAddressBookStorage(directory.resolve("contacts.json"))
                             .readAddressBook().orElseThrow().getPersonList().get(1);
@@ -128,7 +137,9 @@ public class EditContactUiTest {
                 Person edited = new PersonBuilder(bob).withName("Aaron").withTags("Project").build();
                 assertEquals(List.of(charlie, alice, edited), list(window).getItems());
                 String description = String.format(EditCommand.MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(edited));
-                assertEquals(description + "\nTags replaced. Removed: Classmate. Added: Project."
+                assertEquals("Edited Aaron:\nName: Bob → Aaron\nPhone: 93334444 → " + PersonBuilder.DEFAULT_PHONE
+                        + "\nEmail: bob.editwarn@example.com → " + PersonBuilder.DEFAULT_EMAIL
+                        + "\nTags replaced. Removed: Classmate. Added: Project."
                         + "\nWarning - duplicate details detected: "
                         + "#1 Charlie (phone and email); #2 Alice (phone and email)", feedback(window));
                 TextArea result = (TextArea) window.getRoot().getScene().lookup("#resultDisplay");
@@ -157,7 +168,7 @@ public class EditContactUiTest {
                 enter(window, "edit 3 m/Mathematics");
                 assertFalse(result.getStyleClass().contains(ResultDisplay.WARNING_STYLE_CLASS));
                 assertEquals(Color.web("#d5d8db"), ((Text) result.lookup(".text")).getFill());
-                assertTrue(feedback(window).startsWith("Edited person: Aaron"));
+                assertTrue(feedback(window).startsWith("Edited Aaron:"));
 
                 enter(window, "edit 3 p/93334444");
                 enter(window, "edit 3 p/" + PersonBuilder.DEFAULT_PHONE);
@@ -195,7 +206,7 @@ public class EditContactUiTest {
                 assertEquals(Color.web("#ffcf66"), ((Text) result.lookup(".text")).getFill());
 
                 enter(window, "edit 2 m/Mathematics");
-                assertTrue(feedback(window).startsWith("Edited person: Bob"));
+                assertTrue(feedback(window).startsWith("Edited Bob:"));
                 assertFalse(result.getStyleClass().contains(ResultDisplay.WARNING_STYLE_CLASS));
                 assertEquals(Color.web("#d5d8db"), ((Text) result.lookup(".text")).getFill());
             } finally {

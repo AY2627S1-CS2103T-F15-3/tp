@@ -59,6 +59,9 @@ public class EditCommand extends Command {
             + PREFIX_PHONE + "91234567 "
             + PREFIX_EMAIL + "johndoe@example.com";
 
+    public static final String MESSAGE_NO_CHANGES = "No changes made to %1$s. "
+            + "The supplied values match the existing details.";
+    // Keep the existing description for undo/redo; immediate feedback lists actual changes.
     public static final String MESSAGE_EDIT_PERSON_SUCCESS = "Edited person: %1$s";
     public static final String MESSAGE_NOT_EDITED = "At least one field to edit must be provided.";
     public static final String MESSAGE_DUPLICATE_PERSON =
@@ -105,19 +108,44 @@ public class EditCommand extends Command {
             throw new CommandException(MESSAGE_DUPLICATE_PERSON);
         }
 
+        if (personToEdit.equals(editedPerson)) {
+            model.updateFilteredPersonList(PREDICATE_SHOW_ALL_PERSONS);
+            return new CommandResult(String.format(MESSAGE_NO_CHANGES, personToEdit.getName()));
+        }
+
         ReadOnlyAddressBook previousState = new AddressBook(model.getAddressBook());
         model.setPerson(personToEdit, editedPerson);
         model.updateFilteredPersonList(PREDICATE_SHOW_ALL_PERSONS);
         String message = String.format(MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(editedPerson));
-        // An edit that leaves the person unchanged is not recorded by the model.
+        // Keep the full-contact history description separate from immediate change feedback.
         model.commitAddressBook(previousState, message);
-        String feedback = message;
-        if (editPersonDescriptor.getTags().isPresent()) {
-            feedback += "\nTags replaced. Removed: "
-                    + formatTagDifference(personToEdit.getTags(), editedPerson.getTags())
-                    + ". Added: " + formatTagDifference(editedPerson.getTags(), personToEdit.getTags()) + ".";
+        return getEditResult(model, personToEdit, editedPerson, formatChanges(personToEdit, editedPerson));
+    }
+
+    /** Lists only changed fields, with explicit values for cleared optional fields. */
+    private static String formatChanges(Person original, Person edited) {
+        StringBuilder feedback = new StringBuilder("Edited ").append(edited.getName()).append(":");
+        appendChange(feedback, "Name", original.getName().fullName, edited.getName().fullName);
+        appendChange(feedback, "Phone", original.getPhone().value, edited.getPhone().value);
+        appendChange(feedback, "Email", original.getEmail().value, edited.getEmail().value);
+        appendChange(feedback, "Address", original.getAddress().value, edited.getAddress().value);
+        appendChange(feedback, "Major", original.getMajor().value, edited.getMajor().value);
+        appendChange(feedback, "Class year", original.getGraduationYear().value, edited.getGraduationYear().value);
+        if (!original.getTags().equals(edited.getTags())) {
+            feedback.append("\nTags replaced. Removed: ")
+                    .append(formatTagDifference(original.getTags(), edited.getTags()))
+                    .append(". Added: ").append(formatTagDifference(edited.getTags(), original.getTags())).append(".");
         }
-        return getEditResult(model, personToEdit, editedPerson, feedback);
+        return feedback.toString();
+    }
+
+    /** Appends one changed field, displaying an unspecified value explicitly. */
+    private static void appendChange(StringBuilder feedback, String label, String before, String after) {
+        if (!before.equals(after)) {
+            feedback.append("\n").append(label).append(": ")
+                    .append(before.isEmpty() ? "Not specified" : before).append(" → ")
+                    .append(after.isEmpty() ? "Not specified" : after);
+        }
     }
 
     /**

@@ -50,7 +50,7 @@ public class EditCommandSharedDetailsTest {
     public void execute_changedPhone_warnsWithoutRejectingOrChangingOtherContacts() throws Exception {
         CommandResult result = edit(new EditPersonDescriptorBuilder().withPhone(alice.getPhone().value).build());
 
-        assertWarning("#1 Alice (phone)", result);
+        assertWarning("Edited Bob:\nPhone: 93334444 → 91112222", "#1 Alice (phone)", result);
         assertEquals(new PersonBuilder(bob).withPhone(alice.getPhone().value).build(),
                 model.getAddressBook().getPersonList().get(1));
         assertEquals(alice, model.getAddressBook().getPersonList().get(0));
@@ -61,7 +61,7 @@ public class EditCommandSharedDetailsTest {
     public void execute_changedEmail_matchesIgnoringCaseAndPreservesEnteredCase() throws Exception {
         CommandResult result = edit(new EditPersonDescriptorBuilder().withEmail("ALICE@EXAMPLE.COM").build());
 
-        assertWarning("#1 Alice (email)", result);
+        assertWarning("Edited Bob:\nEmail: bob@example.com → ALICE@EXAMPLE.COM", "#1 Alice (email)", result);
         assertEquals("ALICE@EXAMPLE.COM", model.getAddressBook().getPersonList().get(1).getEmail().value);
     }
 
@@ -70,7 +70,8 @@ public class EditCommandSharedDetailsTest {
         CommandResult result = edit(new EditPersonDescriptorBuilder()
                 .withPhone(alice.getPhone().value).withEmail(alice.getEmail().value).build());
 
-        assertWarning("#1 Alice (phone and email)", result);
+        assertWarning("Edited Bob:\nPhone: 93334444 → 91112222\nEmail: bob@example.com → alice@example.com",
+                "#1 Alice (phone and email)", result);
     }
 
     @Test
@@ -78,7 +79,8 @@ public class EditCommandSharedDetailsTest {
         CommandResult result = edit(new EditPersonDescriptorBuilder()
                 .withPhone(alice.getPhone().value).withEmail(carol.getEmail().value).build());
 
-        assertWarning("#1 Alice (phone); #3 Carol (email)", result);
+        assertWarning("Edited Bob:\nPhone: 93334444 → 91112222\nEmail: bob@example.com → carol@example.com",
+                "#1 Alice (phone); #3 Carol (email)", result);
     }
 
     @Test
@@ -88,7 +90,7 @@ public class EditCommandSharedDetailsTest {
 
         CommandResult result = edit(new EditPersonDescriptorBuilder().withPhone(alice.getPhone().value).build());
 
-        assertWarning("#1 Alice (phone); #3 Carol (phone)", result);
+        assertWarning("Edited Bob:\nPhone: 93334444 → 91112222", "#1 Alice (phone); #3 Carol (phone)", result);
     }
 
     @Test
@@ -103,10 +105,17 @@ public class EditCommandSharedDetailsTest {
                 new EditPersonDescriptorBuilder().withAddress("NUS").build(),
                 new EditPersonDescriptorBuilder().withMajor("Mathematics").build());
 
-        for (EditPersonDescriptor descriptor : descriptors) {
+        List<String> feedback = List.of(
+                String.format(EditCommand.MESSAGE_NO_CHANGES, "Bob"),
+                String.format(EditCommand.MESSAGE_NO_CHANGES, "Bob"),
+                "Edited Bob:\nEmail: alice@example.com → ALICE@EXAMPLE.COM",
+                "Edited Bobby:\nName: Bob → Bobby",
+                "Edited Bob:\nAddress: " + bob.getAddress().value + " → NUS",
+                "Edited Bob:\nMajor: Not specified → Mathematics");
+        for (int i = 0; i < descriptors.size(); i++) {
             model = modelWith(alice, sharedBob, carol);
 
-            assertOrdinaryEdit(edit(descriptor));
+            assertOrdinaryEdit(feedback.get(i), edit(descriptors.get(i)));
         }
     }
 
@@ -120,7 +129,7 @@ public class EditCommandSharedDetailsTest {
 
         Person edited = new PersonBuilder(sharedBob).withTags("Keep", "Project").build();
         String description = String.format(EditCommand.MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(edited));
-        assertEquals(description + "\nTags replaced. Removed: Old. Added: Project.", result.getFeedbackToUser());
+        assertEquals("Edited Bob:\nTags replaced. Removed: Old. Added: Project.", result.getFeedbackToUser());
         assertFalse(result.isWarning());
         assertEquals(edited, model.getAddressBook().getPersonList().get(1));
         assertEquals(description, model.getUndoDescription().orElseThrow());
@@ -135,7 +144,8 @@ public class EditCommandSharedDetailsTest {
 
         Person edited = new PersonBuilder(bob).withPhone(alice.getPhone().value).withTags().build();
         String description = String.format(EditCommand.MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(edited));
-        assertEquals(description + "\nTags replaced. Removed: Keep, Old. Added: None."
+        assertEquals("Edited Bob:\nPhone: 93334444 → 91112222"
+                + "\nTags replaced. Removed: Keep, Old. Added: None."
                 + "\nWarning - duplicate details detected: #1 Alice (phone)", result.getFeedbackToUser());
         assertTrue(result.isWarning());
         assertEquals(edited, model.getAddressBook().getPersonList().get(1));
@@ -143,7 +153,7 @@ public class EditCommandSharedDetailsTest {
     }
 
     @Test
-    public void execute_sharedPhoneAndUnchangedTags_keepsNoneSummaryBeforeWarning() throws Exception {
+    public void execute_sharedPhoneAndUnchangedTags_omitsTagSummaryBeforeWarning() throws Exception {
         Person taggedBob = new PersonBuilder(bob).withTags("Keep").build();
         model = modelWith(alice, taggedBob, carol);
 
@@ -151,8 +161,7 @@ public class EditCommandSharedDetailsTest {
                 .withPhone(alice.getPhone().value).withTags("Keep").build());
 
         Person edited = new PersonBuilder(taggedBob).withPhone(alice.getPhone().value).build();
-        String description = String.format(EditCommand.MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(edited));
-        assertEquals(description + "\nTags replaced. Removed: None. Added: None."
+        assertEquals("Edited Bob:\nPhone: 93334444 → 91112222"
                 + "\nWarning - duplicate details detected: #1 Alice (phone)", result.getFeedbackToUser());
         assertTrue(result.isWarning());
         assertEquals(edited, model.getAddressBook().getPersonList().get(1));
@@ -166,12 +175,12 @@ public class EditCommandSharedDetailsTest {
 
         CommandResult phoneResult = edit(new EditPersonDescriptorBuilder().withPhone(carol.getPhone().value).build());
 
-        assertWarning("#3 Carol (phone)", phoneResult);
+        assertWarning("Edited Bob:\nPhone: 91112222 → 95556666", "#3 Carol (phone)", phoneResult);
 
         model = modelWith(alice, sharedBob, carol);
         CommandResult emailResult = edit(new EditPersonDescriptorBuilder().withEmail(carol.getEmail().value).build());
 
-        assertWarning("#3 Carol (email)", emailResult);
+        assertWarning("Edited Bob:\nEmail: alice@example.com → carol@example.com", "#3 Carol (email)", emailResult);
     }
 
     @Test
@@ -183,10 +192,15 @@ public class EditCommandSharedDetailsTest {
                 new EditPersonDescriptorBuilder().withPhone("").withEmail("").build(),
                 new EditPersonDescriptorBuilder().withPhone("911122220").withEmail("alice+new@example.com").build());
 
-        for (EditPersonDescriptor descriptor : descriptors) {
+        List<String> feedback = List.of(
+                "Edited Bob:\nPhone: 93334444 → Not specified",
+                "Edited Bob:\nEmail: bob@example.com → Not specified",
+                "Edited Bob:\nPhone: 93334444 → Not specified\nEmail: bob@example.com → Not specified",
+                "Edited Bob:\nPhone: 93334444 → 911122220\nEmail: bob@example.com → alice+new@example.com");
+        for (int i = 0; i < descriptors.size(); i++) {
             model = modelWith(alice, bob, carol, empty);
 
-            assertOrdinaryEdit(edit(descriptor));
+            assertOrdinaryEdit(feedback.get(i), edit(descriptors.get(i)));
         }
     }
 
@@ -219,11 +233,12 @@ public class EditCommandSharedDetailsTest {
         Person edited = new PersonBuilder(bob).withName("Aaron").withPhone(alice.getPhone().value)
                 .withEmail(carol.getEmail().value).withTags("Project").build();
         String description = String.format(EditCommand.MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(edited));
-        assertEquals(description + "\nTags replaced. Removed: Old. Added: Project."
+        assertEquals("Edited Aaron:\nName: Bob → Aaron\nPhone: 93334444 → 91112222"
+                + "\nEmail: bob@example.com → carol@example.com\nTags replaced. Removed: Old. Added: Project."
                 + "\nWarning - duplicate details detected: #2 Alice (phone); #3 Carol (email)",
                 result.getFeedbackToUser());
         assertTrue(result.isWarning());
-        assertEquals(description, result.getLogSummary());
+        assertEquals("Edited Aaron:", result.getLogSummary());
         assertEquals(List.of(edited, alice, carol), model.getFilteredPersonList());
         assertEquals(List.of(alice, edited, carol), model.getAddressBook().getPersonList());
         assertEquals(model.getAddressBook(), storage.readAddressBook().orElseThrow());
@@ -263,7 +278,7 @@ public class EditCommandSharedDetailsTest {
 
         CommandResult result = logic.execute("edit 2 p/91112222");
 
-        assertOrdinaryEdit(result);
+        assertOrdinaryEdit(String.format(EditCommand.MESSAGE_NO_CHANGES, "Bob"), result);
         assertEquals(before, model.getAddressBook());
         assertEquals(fileBefore, FileUtil.readFromFile(storage.getAddressBookFilePath()));
         assertEquals(undoBefore, model.getUndoDescription().orElseThrow());
@@ -276,16 +291,12 @@ public class EditCommandSharedDetailsTest {
         return new EditCommand(INDEX_SECOND_PERSON, descriptor).execute(model);
     }
 
-    private void assertOrdinaryEdit(CommandResult result) {
-        Person edited = model.getAddressBook().getPersonList().get(1);
-        assertEquals(String.format(EditCommand.MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(edited)),
-                result.getFeedbackToUser());
+    private void assertOrdinaryEdit(String expectedFeedback, CommandResult result) {
+        assertEquals(expectedFeedback, result.getFeedbackToUser());
         assertFalse(result.isWarning());
     }
 
-    private void assertWarning(String matches, CommandResult result) {
-        Person edited = model.getAddressBook().getPersonList().get(1);
-        String success = String.format(EditCommand.MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(edited));
+    private void assertWarning(String success, String matches, CommandResult result) {
         assertEquals(success + "\nWarning - duplicate details detected: " + matches, result.getFeedbackToUser());
         assertTrue(result.isWarning());
     }
