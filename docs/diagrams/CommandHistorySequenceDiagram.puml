@@ -9,15 +9,15 @@ participant ":CommandExecutor" as Executor UI_COLOR
 participant ":TextField" as Field UI_COLOR
 end box
 
-[-> Box : handleCommandEntered()
+[-> Box : user pass in a command
 activate Box
 
-Box -> History : add(commandText)
+Box -> History : record command
 activate History
 History --> Box
 deactivate History
 
-Box -> Executor : execute(commandText)
+Box -> Executor : execute command
 activate Executor
 Executor --> Box
 deactivate Executor
@@ -25,16 +25,16 @@ deactivate Executor
 [<-- Box
 deactivate Box
 
-[-> Box : handleHistoryNavigation(Alt+Up)
+[-> Box : user press Alt + Up
 activate Box
 
-Box -> History : previousMatching(input)
+Box -> History : find older command\nstarting with input
 activate History
 History --> Box : match
 deactivate History
 
-opt match is not null
-    Box -> Field : setText(match)
+opt match found
+    Box -> Field : show match
     activate Field
     Field --> Box
     deactivate Field

@@ -854,7 +854,7 @@ Given below is the flow for a successful `add n/Alex Tan …​`:
    1. pushes a copy of `previousState` with `message` onto `undoStates`, clears `redoStates`, and sets `currentState` to a copy of the current data.
 1. The command returns the same message as its `CommandResult`. `LogicManager` saves the contact data to storage as before. The history itself is not saved.
 
-The activity diagram below summarises what happens when a command commits:
+The activity diagram below summarises what happens when a command commits. The check for unrecorded changes is described in [Unrecorded changes](#unrecorded-changes).
 
 <puml src="diagrams/CommitActivityDiagram.puml" width="300" alt="CommitActivityDiagram" />
 
@@ -880,13 +880,7 @@ on the existing `AddressBook`, so:
 * the `AddressBook` object and the `FilteredList` built on it are the same objects before and after, and the UI updates through its existing observers;
 * restoring a state does not record a new history entry.
 
-Both methods return `true` if a state was restored. They return `false` and leave the data unchanged if there is nothing to restore.
-
-The sequence diagram below shows how `Model#undoAddressBook()` works within the `Model` component:
-
-<puml src="diagrams/UndoSequenceDiagram-Model.puml" alt="UndoSequenceDiagram-Model" />
-
-`Model#redoAddressBook()` follows the same sequence through `AddressBookHistory#redo()`, with the two stacks swapped: `currentState` is pushed onto `undoStates`, and the top of `redoStates` is popped and restored.
+Both methods return `true` if a state was restored. They return `false` and leave the data unchanged if there is nothing to restore. The example below shows how the stacks change.
 
 #### Example usage scenario
 
@@ -997,14 +991,9 @@ Given below is the flow for `undo`:
 1. Otherwise, the command reads the description of the change about to be reversed with `Model#getUndoDescription()`, then calls `Model#undoAddressBook()`, which restores the previous state in place. It then calls `Model#updateFilteredPersonList(PREDICATE_SHOW_ALL_PERSONS)` so that every restored contact is visible, even if a `find` filter was active, and returns a `CommandResult` with `UndoCommand.MESSAGE_SUCCESS` formatted with that description.
 1. `LogicManager` saves the restored contact data through `Storage#saveAddressBook`, as it does for every successful command.
 
-The sequence diagram below shows these steps for `execute("undo")`, including the failure path when there is nothing to undo:
+The sequence diagram below shows steps 1 to 4 for `execute("undo")`, including the failure path when there is nothing to undo. The save to storage in step 5 is omitted.
 
 <puml src="diagrams/UndoSequenceDiagram-Logic.puml" alt="Interactions inside the Logic component for the `undo` command" />
-
-<box type="info" seamless>
-
-**Note:** The lifeline for `UndoCommand` should end at the destroy marker (X), but due to a limitation of PlantUML, the lifeline continues till the end of diagram.
-</box>
 
 `redo` follows the same flow using `RedoCommand`, `Model#canRedoAddressBook()`, `Model#getRedoDescription()` and `Model#redoAddressBook()`.
 
