@@ -6,13 +6,13 @@ import seedu.address.commons.util.StringUtil;
 import seedu.address.commons.util.ToStringBuilder;
 
 /**
- * Tests that a {@code Person}'s {@code Name}, {@code Major} or {@code GraduationYear} matches any of the
- * keywords given.
+ * Tests that a {@code Person}'s {@code Name}, {@code Major} or {@code GraduationYear} contains any of the
+ * keywords given as a whole word, ignoring case.
  */
-public class NameContainsKeywordsPredicate implements PersonFilter {
+public class PersonContainsKeywordsPredicate implements PersonFilter {
     private final List<String> keywords;
 
-    public NameContainsKeywordsPredicate(List<String> keywords) {
+    public PersonContainsKeywordsPredicate(List<String> keywords) {
         this.keywords = keywords;
     }
 
@@ -36,11 +36,11 @@ public class NameContainsKeywordsPredicate implements PersonFilter {
         }
 
         // instanceof handles nulls
-        if (!(other instanceof NameContainsKeywordsPredicate otherNameContainsKeywordsPredicate)) {
+        if (!(other instanceof PersonContainsKeywordsPredicate otherPersonContainsKeywordsPredicate)) {
             return false;
         }
 
-        return keywords.equals(otherNameContainsKeywordsPredicate.keywords);
+        return keywords.equals(otherPersonContainsKeywordsPredicate.keywords);
     }
 
     @Override

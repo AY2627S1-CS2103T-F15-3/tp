@@ -292,9 +292,9 @@ Examples (assuming at least one person is displayed):
 
 These input errors leave all contacts unchanged. If any supplied tag is invalid, none of the tags in that command are removed. Unlike `edit 1 t/`, `untag 1 t/` does not clear the tag collection.
 
-For both commands, UniMate saves the updated data automatically. A saving failure reports `Could not save data due to the following error: ...` or `Could not save data to file ... due to insufficient permissions to write to the file or the folder.` If the tags changed, the message adds that the change has still been applied in UniMate but not saved. The error does not mean the change was rolled back. See [Saving the data](#saving-the-data).
+For both commands, UniMate saves the updated data automatically. A saving failure reports `Could not save data due to the following error: ...` or `Could not save data to file ... due to insufficient permissions to write to the file or the folder.` If the tags changed, the message adds that the change has been applied but not saved to the local data file. The error does not mean the change was rolled back. See [Saving the data](#saving-the-data).
 
-A `tag` or `untag` that changes a person's tags can be [undone](#undoing-a-change-undo) and [redone](#redoing-a-change-redo). Adding a tag the person already has, or removing one they do not have, changes nothing and does not create an undo step.
+A `tag` or `untag` that changes a person's tags can be [undone](#undoing-a-change-undo) and [redone](#redoing-an-undone-change-redo). Adding a tag the person already has, or removing one they do not have, changes nothing and does not create an undo step.
 
 ### Marking a favourite contact: `fav`
 
@@ -307,7 +307,7 @@ Format: `fav INDEX`
 * A successful command shows `Added to favourites: ` followed by the updated person's details.
 * A favourited contact displays a solid heart (`♥`) inside a small circular border to the right of their name. Both the heart and border are red (`#e63946`), with a transparent background. The icon is a visual indicator and cannot be clicked.
 * Favourite status is saved automatically and retained after restarting UniMate. New contacts and contacts loaded from older files without favourite status start as not favourited.
-* Marking a favourite can be [undone](#undoing-a-change-undo) and [redone](#redoing-a-change-redo).
+* Marking a favourite can be [undone](#undoing-a-change-undo) and [redone](#redoing-an-undone-change-redo).
 
 Example (assuming at least one person is displayed):
 
@@ -333,7 +333,7 @@ Format: `unfav INDEX`
 * A successful command shows `Removed from favourites: ` followed by the person's details, and the circular heart disappears immediately.
 * All other contact fields are preserved. The updated favourite status is saved automatically and remains removed after restarting UniMate.
 * When viewing favourites using `listfav`, the person immediately disappears from that filtered view. The contact remains stored and can be seen again using `list`.
-* Removing favourite status can be [undone](#undoing-a-change-undo) and [redone](#redoing-a-change-redo).
+* Removing favourite status can be [undone](#undoing-a-change-undo) and [redone](#redoing-an-undone-change-redo).
 
 Example (assuming the first displayed person is favourited):
 
@@ -379,7 +379,7 @@ Format: `note INDEX TEXT`
 * Everything after the index is note text. No field prefix or quotation marks are needed; text such as `n/` or `t/` is saved literally.
 * The contact's other details and the current list filter are preserved.
 * Notes are saved automatically with contact data and remain available after restarting UniMate. New contacts have no note; use `note` after `add`.
-* Adding or replacing a note can be [undone](#undoing-a-change-undo) and [redone](#redoing-a-change-redo). Saving the same text again does not create an undo step or clear any available redo history, because the note has not changed.
+* Adding or replacing a note can be [undone](#undoing-a-change-undo) and [redone](#redoing-an-undone-change-redo). Saving the same text again does not create an undo step or clear any available redo history, because the note has not changed.
 
 Example: `note 2 Met during CS2103T`
 
@@ -425,7 +425,7 @@ Example: `delnote 2`
 
 The message area displays `Note deleted for NAME.`, and the note icon disappears. The current list filter is preserved. If the contact already has no note, the message is `This contact has no note to delete.` and its data stays unchanged.
 
-Deleting an existing note can be [undone](#undoing-a-change-undo) and [redone](#redoing-a-change-redo). Deleting an already empty note does not create an undo step or clear any available redo history.
+Deleting an existing note can be [undone](#undoing-a-change-undo) and [redone](#redoing-an-undone-change-redo). Deleting an already empty note does not create an undo step or clear any available redo history.
 
 For all three note commands, an index outside the displayed list reports `The person index provided is invalid.` Missing or invalid index syntax produces a usage error. `note INDEX` without text is also a usage error; use `delnote INDEX` to clear a note. `shownote` and `delnote` reject extra arguments. Invalid note text is rejected without changing the existing note.
 
@@ -499,19 +499,25 @@ Examples:
 
 Finds persons whose names, majors or class years contain any of the given keywords.
 
-Format: `find KEYWORD [MORE_KEYWORDS]`
+Format: `find KEYWORD [MORE_KEYWORDS]...`
 
+* Separate keywords with spaces. At least one keyword is required; `find` on its own is rejected with the command's usage, and the displayed list is unchanged.
 * The search is case-insensitive; for example, `hans` matches `Hans`.
-* Keyword order does not matter; for example, `Hans Bo` matches `Bo Hans`.
-* The search considers only names, majors and graduation years.
-* Only full words match; for example, `Han` does not match `Hans`, and `Comp` does not match `Computer Science`. Partial words and prefixes are not supported, so `find Comp` finds no one unless `Comp` appears as a whole word.
-* Persons matching at least one keyword in any of these fields are returned (an `OR` search); for example, `Hans Bo` returns `Hans Gruber` and `Bo Yang`. Each keyword is searched for separately, so `find Computer Science` also returns a `Data Science` major, or a contact with `Science` in their name.
+* The search considers only names, majors and class years. Phone numbers, emails, addresses, tags and notes are not searched; for example, `find friends` does not match a contact tagged `friends`. Use [`filter t/TAG`](#filtering-contacts-by-major-class-year-and-tag-filter) to find contacts by tag.
+* Only whole words match; for example, `Han` does not match `Hans`, `Comp` does not match `Computer Science`, and `27` does not match the class year `2027`. Partial words and prefixes are not supported.
+* Words in a contact's details are separated only by spaces, so punctuation stays part of the word it is attached to. For example, for the major `Computer Science (Hons)`, `find Hons` does not match but `find (Hons)` does; for `Data Science, Analytics`, `find Science` does not match but `find Science,` does.
+* Persons matching at least one keyword in any of these fields are returned (an `OR` search); for example, `Hans Bo` returns `Hans Gruber` and `Bo Yang`. Each keyword is searched for separately, so `find Computer Science` also returns a `Data Science` major, or a contact with `Science` in their name. Keyword order and repeated keywords make no difference.
+* Prefixes such as `n/` or `m/` are not supported. They are treated as part of the keyword, so `find n/Alex` looks for the whole word `n/Alex` and usually finds no one.
 * Contacts without a major or class year are not matched on that field.
+* Each `find` searches **all** saved contacts, not only the ones currently displayed, and replaces any previous `find`, `filter` or `listfav` view. The order chosen with [`sort`](#sorting-contacts-by-name-major-or-class-year-sort) is kept.
+* The result message is `N person(s) listed!`, where `N` is the number of matching contacts, which may be `0`. The status bar shows the keywords, e.g. `Filter: Search: alex OR david`.
+* The results are numbered from `1`. Commands that take an `INDEX`, such as `edit`, `delete` and `fav`, use these numbers until the displayed list changes. Run [`list`](#listing-all-persons-list) to show all contacts again.
+* `find` does not change any contacts, so it does not affect [`undo`](#undoing-a-change-undo) or [`redo`](#redoing-an-undone-change-redo).
 
 Examples:
 * `find John` returns `john` and `John Doe`
-* `find Computer Science` returns persons whose major contains `Computer` or `Science`, such as `Computer Science` and `Computer Engineering`
-* `find 2027` returns persons whose graduation year is `2027`
+* `find Computer Science` returns persons whose major contains the word `Computer` or `Science`, such as `Computer Science` and `Computer Engineering`
+* `find 2027` returns persons whose class year is `2027`
 * `find alex david` returns `Alex Yeoh`, `David Li`<br>
   ![result for 'find alex david'](images/findAlexDavidResult.png)
 
@@ -628,7 +634,7 @@ Format: `delete INDEX [MORE_INDICES]`
   displayed indices in the order you entered them. Major and class year are included when specified.
 * Deletion preserves the current filter and sort order. Contacts outside the displayed results are unaffected.
 * One [undo](#undoing-a-change-undo) restores the entire batch, and one
-  [redo](#redoing-a-change-redo) deletes that batch again.
+  [redo](#redoing-an-undone-change-redo) deletes that batch again.
 
 Examples:
 
@@ -659,12 +665,15 @@ Format: `undo`
 
 * Every command that changes your contacts can be undone: `add`, `edit`, `delete`, `clear`, `tag`, `untag`, `fav`, `unfav`, `note` and `delnote`.
 * Restores your contacts to how they were before the most recent change that has not already been undone.
+* Each `undo` reverts exactly one command. A command that changed several contacts at once, such as `delete 1 3 5` or `clear`, is reverted as a whole.
 * The message names the change that was undone: `Undid:` followed by the message that change showed when you made it, such as `Undid: Tagged person: …​` or `Undid: Deleted person: Alex Tan; …​`.
-* Run `undo` again to revert earlier changes one at a time, starting from the most recent.
-* After an undo, the full contact list is shown. Any `find`, `filter` or `listfav` view is cleared, so run it again if you need it. The order chosen with `sort` is kept.
-* A command that leaves every detail unchanged, such as an `edit` with the same values or `tag` with a tag the person already has, does not count as a change.
+  * The details in this message are the ones shown when the change was made, **not** the restored values. For example, after `edit 2 p/98765432`, `undo` shows `Undid: Edited person: …​; Phone: 98765432; …​` while restoring the previous phone number. Check the contact list to see the restored details.
+  * For a replaced note, the `Use undo to restore the previous note.` hint is left out, so the message is `Undid: Note replaced for NAME.` followed by the previous and saved notes.
+* Run `undo` again to revert earlier changes one at a time, starting from the most recent. There is no limit on how many changes you can undo within a session.
+* After an undo, the full contact list is shown. Any `find`, `filter` or `listfav` view is cleared, so run it again if you need it. The order chosen with `sort` is kept. Indices in later commands refer to this full list.
+* A command that leaves every detail unchanged does not count as a change, even if it shows a success message. Examples are an `edit` with the same values, `tag` with a tag the person already has, `untag` with a tag the person does not have, `note` with the same text, and `clear` when there are no contacts. `undo` skips over them and reverts the change made before them.
 * Commands that fail, such as an `add` rejected as a duplicate, and commands that do not change contacts, such as `list`, `find`, `filter`, `sort`, `listfav`, `shownote`, `tags` and `help`, do not affect what `undo` reverts.
-* `undo` does not take any parameters. Unlike `help`, extra input such as `undo 1` is rejected and nothing is undone.
+* `undo` does not take any parameters. Unlike `help`, extra input such as `undo 1` is rejected with `Invalid command format!` and the usage of `undo`, and nothing is undone.
 * If there is nothing to undo, UniMate shows `There is no change to undo.` and your contacts are unchanged.
 * Undo history is kept only while UniMate is open. It is cleared when you close UniMate, so changes from an earlier session cannot be undone.
 * The restored contacts are saved automatically.
@@ -689,11 +698,12 @@ Reapplies the most recent change that was reverted by `undo`.
 Format: `redo`
 
 * The change undone most recently is redone first. Running `redo` repeatedly therefore reapplies undone changes in the order you originally made them.
-* The message names the change that was redone: `Redid:` followed by the message that change showed when you first made it, such as `Redid: Added to favourites: …​`.
-* After a redo, the full contact list is shown. Any `find`, `filter` or `listfav` view is cleared, so run it again if you need it. The order chosen with `sort` is kept.
-* Undone changes can be redone only until you change your contacts again. After any command that changes your contacts, such as `add`, `delete` or `fav`, `redo` is no longer available.
-* Commands that fail, and commands that do not change contacts, such as `list`, `find`, `tags` and `help`, do not affect what `redo` reapplies.
-* `redo` does not take any parameters. Extra input such as `redo 1` is rejected and nothing is redone.
+* Each `redo` reapplies exactly one undone command. A redone change can be undone again with `undo`.
+* The message names the change that was redone: `Redid:` followed by the message that change showed when you first made it, such as `Redid: Added to favourites: …​`. As with `undo`, a replaced note's message leaves out the `Use undo to restore the previous note.` hint.
+* After a redo, the full contact list is shown. Any `find`, `filter` or `listfav` view is cleared, so run it again if you need it. The order chosen with `sort` is kept. Indices in later commands refer to this full list.
+* Undone changes can be redone only until you change your contacts again. After any command that changes your contacts, such as `add`, `delete` or `fav`, the earlier undone changes can no longer be redone, even if you then `undo` that new change. For example, `tag 1 t/Friend`, `undo`, `fav 2`, `undo`, then `redo` reapplies only the `fav`; a second `redo` shows the "no change to redo" message and the tag is not reapplied.
+* Commands that fail, commands that leave every detail unchanged (see [`undo`](#undoing-a-change-undo)), and commands that do not change contacts, such as `list`, `find`, `filter`, `sort`, `shownote`, `tags` and `help`, do not affect what `redo` reapplies.
+* `redo` does not take any parameters. Extra input such as `redo 1` is rejected with `Invalid command format!` and the usage of `redo`, and nothing is redone.
 * If there is nothing to redo, UniMate shows `There is no change to redo. An undone change cannot be redone after another change has been made.` and your contacts are unchanged.
 * Like undo history, redo history is cleared when you close UniMate. The restored contacts are saved automatically.
 
@@ -774,7 +784,7 @@ If UniMate cannot write the data file, for example because the file or its folde
 
 If the command changed your contacts, the error continues on the next line:
 
-`The change made by this command has still been applied in UniMate, but it is not saved to the data file. Running undo now would revert this change. If you close UniMate now, this change will be lost. To keep it, fix the problem, then run any command, such as list, to save it.`
+`The change made by this command has been applied, but it is not saved to the local data file. Running undo now would revert this change. If you close UniMate now, this change will be lost. To keep it, fix the error, then run any command, such as list, to save the change locally.`
 
 If the failed command was itself an `undo`, the message names `redo` instead, because `redo` reverts an undo. Commands that do not change your contacts, such as `list`, show only the first line.
 
@@ -838,7 +848,7 @@ Action     | Format, Examples
 **Clear**  | `clear`
 **Delete** | `delete INDEX [MORE_INDICES]`<br> e.g., `delete 1 3 5`
 **Edit**   | `edit INDEX [n/NAME] [p/PHONE_NUMBER] [e/EMAIL] [a/ADDRESS] [m/MAJOR] [c/CLASS_YEAR] [t/TAG]... `<br> e.g.,`edit 2 n/James Lee e/jameslee@example.com`
-**Find**   | `find KEYWORD [MORE_KEYWORDS]`<br> e.g., `find James Jake`, `find Computer Science`, `find 2027`
+**Find**   | `find KEYWORD [MORE_KEYWORDS]...`<br> e.g., `find James Jake`, `find Computer Science`, `find 2027`
 **Filter** | `filter [m/MAJOR] [c/CLASS_YEAR] [t/TAG]` (at least one criterion)<br> e.g., `filter m/Computer Science c/2027 t/Classmate`
 **Sort**   | `sort FIELD DIRECTION` or `sort reset`<br> e.g., `sort name asc`, `sort major desc`, `sort year asc`
 **List all saved contacts** | `list` (rejects extra arguments; clears the current filter and reports the total)

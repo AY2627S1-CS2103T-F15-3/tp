@@ -36,7 +36,12 @@ activate Model
 Model --> UndoCommand : canUndo
 deactivate Model
 
-alt [canUndo]
+alt canUndo
+    UndoCommand -> Model : get description of the change to undo
+    activate Model
+    Model --> UndoCommand : description
+    deactivate Model
+
     UndoCommand -> Model : restore the previous contact data
     activate Model
     Model --> UndoCommand
@@ -55,9 +60,10 @@ alt [canUndo]
 
     UndoCommand --> LogicManager
     [<-- LogicManager
-else [else]
+else else
     UndoCommand --> LogicManager : throw CommandException
     [<-- LogicManager
+end
 deactivate UndoCommand
 deactivate LogicManager
 

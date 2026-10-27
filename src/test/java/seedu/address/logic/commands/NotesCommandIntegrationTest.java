@@ -106,6 +106,16 @@ public class NotesCommandIntegrationTest {
     }
 
     @Test
+    public void execute_undoRedoReplacement_omitsUndoHint() throws Exception {
+        execute("note 1 Follow up");
+        execute("note 1 Project teammate");
+        String description = "Note replaced for Alice.\nPrevious note: Follow up\nSaved note: Project teammate";
+
+        assertEquals("Undid: " + description, execute("undo").getFeedbackToUser());
+        assertEquals("Redid: " + description, execute("redo").getFeedbackToUser());
+    }
+
+    @Test
     public void execute_replacementFeedback_preservesUnicodeAndLiteralText() throws Exception {
         String previousText = "Met\u00A0at CS2103T; n/Alice 100%";
         String savedText = "t/Friend https://example.com/\u03B1  keep  spaces";

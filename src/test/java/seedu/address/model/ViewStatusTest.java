@@ -30,8 +30,8 @@ import seedu.address.logic.parser.exceptions.ParseException;
 import seedu.address.model.person.ContactFilterPredicate;
 import seedu.address.model.person.GraduationYear;
 import seedu.address.model.person.Major;
-import seedu.address.model.person.NameContainsKeywordsPredicate;
 import seedu.address.model.person.Person;
+import seedu.address.model.person.PersonContainsKeywordsPredicate;
 import seedu.address.model.person.PersonSortComparator;
 import seedu.address.model.tag.Tag;
 import seedu.address.testutil.EditPersonDescriptorBuilder;
@@ -56,7 +56,7 @@ public class ViewStatusTest {
                 + " AND Tag: Classmate | Sort: Name ascending");
         new SortCommand(NAME, DESC).execute(model);
         assertTrue(status().endsWith("Sort: Name descending"));
-        new FindCommand(new NameContainsKeywordsPredicate(List.of("Bob", "Computing"))).execute(model);
+        new FindCommand(new PersonContainsKeywordsPredicate(List.of("Bob", "Computing"))).execute(model);
         assertStatus("Showing 1 of 2 contacts | Filter: Search: Bob OR Computing | Sort: Name descending");
         new ListFavCommand().execute(model);
         assertStatus("Showing 1 of 2 contacts | Filter: Favourites | Sort: Name descending");
@@ -89,7 +89,7 @@ public class ViewStatusTest {
     public void status_addEditAndUndoResetFilterButPreserveSort() throws Exception {
         new AddCommand(bob).execute(model);
         new SortCommand(NAME, ASC).execute(model);
-        new FindCommand(new NameContainsKeywordsPredicate(List.of("Nobody"))).execute(model);
+        new FindCommand(new PersonContainsKeywordsPredicate(List.of("Nobody"))).execute(model);
         new AddCommand(alice).execute(model);
         assertStatus("Showing 2 of 2 contacts | Filter: All contacts | Sort: Name ascending");
         new ListFavCommand().execute(model);
@@ -104,7 +104,7 @@ public class ViewStatusTest {
     @Test
     public void status_failedFilterPreservesViewAndFreshModelResetsSettings() {
         model.addPerson(bob);
-        new FindCommand(new NameContainsKeywordsPredicate(List.of("Bob"))).execute(model);
+        new FindCommand(new PersonContainsKeywordsPredicate(List.of("Bob"))).execute(model);
         new SortCommand(NAME, DESC).execute(model);
         String before = status();
         assertThrows(ParseException.class, () -> new FilterCommandParser().parse(" c/2100"));

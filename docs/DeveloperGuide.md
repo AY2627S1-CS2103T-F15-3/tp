@@ -359,14 +359,25 @@ filtered indices, clearing fields, preserved notes/favourite status, invalid edi
 
 ### Searching by academic fields
 
-`FindCommandParser` splits the input into keywords and passes them to `NameContainsKeywordsPredicate`.
-Despite its name, the predicate matches a `Person` if any keyword matches a full word in the person's
-`Name`, `Major` or `GraduationYear`, using `StringUtil.containsWordIgnoreCase`. Matching is therefore
-case-insensitive, whole-word and `OR`-based across all three fields. Partial words do not match, so `find Comp`
-does not match `Computer Science`. Each keyword is matched on its own, so `find Computer Science` also returns
-a contact whose major is `Data Science`. Exact matching on a whole field value is provided by `filter` instead.
-An empty `Major` or `GraduationYear` never matches a keyword. `FindCommand` applies the predicate through `Model#updateFilteredPersonList`;
-the model and storage format are unchanged.
+`FindCommandParser` trims the input and splits it on whitespace into keywords, which it passes to
+`PersonContainsKeywordsPredicate`. Blank input throws a `ParseException` with `FindCommand.MESSAGE_USAGE`.
+Prefixes are not tokenized, so `find n/Alex` searches for the literal word `n/Alex`.
+
+The predicate matches a `Person` if any keyword matches a full word in the person's `Name`, `Major` or
+`GraduationYear`, using `StringUtil.containsWordIgnoreCase`. Matching is therefore case-insensitive,
+whole-word and `OR`-based across all three fields. Partial words do not match, so `find Comp` does not match
+`Computer Science`. Each keyword is matched on its own, so `find Computer Science` also returns a contact whose
+major is `Data Science`. Exact matching on a whole field value is provided by `filter` instead.
+`containsWordIgnoreCase` splits field values on whitespace only, so punctuation stays attached to a word:
+`find Hons` does not match the major `Computer Science (Hons)`, but `find (Hons)` does. Names are alphanumeric,
+so this affects only majors. An empty `Major` or `GraduationYear` never matches a keyword.
+
+`FindCommand` applies the predicate through `Model#updateFilteredPersonList`. This replaces the previous
+predicate, so every `find` searches all saved contacts, not just the displayed ones, and replaces any `filter`
+or `listfav` view. The `SortedList` comparator is untouched, so an active sort is kept. The predicate implements
+`PersonFilter`, and its description (`Search: alex OR david`) appears in the view status. `find` changes no
+contact data and never calls `Model#commitAddressBook`, so undo and redo availability is preserved.
+The model and storage format are unchanged.
 
 ### Filtering contacts by academic fields and tags
 
@@ -379,7 +390,7 @@ As with other prefixed commands, prefix-like tokens are reserved syntax rather t
 `ContactFilterPredicate` holds the optional `Major`, `GraduationYear` and `Tag` criteria.
 Its `test(Person)` combines them using AND. Major and tag comparisons use full-value,
 case-insensitive matching; graduation years use exact equality. A tag criterion succeeds if any of
-that person's tags matches. This differs from `NameContainsKeywordsPredicate`, which uses OR
+that person's tags matches. This differs from `PersonContainsKeywordsPredicate`, which uses OR
 matching over whole-word keywords in names, majors and graduation years.
 
 `AddressBookParser` routes `filter` to `FilterCommandParser`. `FilterCommand` then passes the predicate
@@ -448,7 +459,7 @@ and redo availability after resetting. See [Sorting contacts](#sorting-contacts)
 `ModelManager#viewStatusProperty` exposes a read-only string binding that observes the source list,
 displayed list, predicate and comparator. It reports both counts and the active view settings, even
 when changing a criterion or sort produces the same displayed contacts. `ContactFilterPredicate`,
-`NameContainsKeywordsPredicate` and `FavouritePredicate` implement `PersonFilter` to describe their
+`PersonContainsKeywordsPredicate` and `FavouritePredicate` implement `PersonFilter` to describe their
 criteria; `PersonSortComparator` describes its field and direction.
 
 `LogicManager` exposes the property through `Logic`. `MainWindow` passes it to `PersonListPanel`,
@@ -829,16 +840,16 @@ The model keeps an in-memory history of contact data states. Every command that 
 | `AddressBookHistory` | Stores defensive `AddressBook` snapshots, each paired with a description of its change, in an undo stack and a redo stack, and restores them into the tracked `AddressBook`. |
 | `Model` | Declares `commitAddressBook(ReadOnlyAddressBook, String)`, `canUndoAddressBook()`, `canRedoAddressBook()`, `getUndoDescription()`, `getRedoDescription()`, `undoAddressBook()` and `redoAddressBook()`. |
 | `ModelManager` | Creates one `AddressBookHistory` for its `AddressBook` and delegates the methods above to it. |
-| `AddCommand`, `EditCommand`, `DeleteCommand`, `ClearCommand`, `TagCommand`, `UntagCommand`, `FavCommand`, `UnfavCommand`, `NoteCommand`, `DeleteNoteCommand` | Copy the contact data before changing it, then call `Model#commitAddressBook` with that copy and the command's success message as the description. |
+| `AddCommand`, `EditCommand`, `DeleteCommand`, `ClearCommand`, `TagCommand`, `UntagCommand`, `FavCommand`, `UnfavCommand`, `NoteCommand`, `DeleteNoteCommand` | Copy the contact data before changing it, then call `Model#commitAddressBook` with that copy and the command's success message as the description. The one exception is a note replacement: `NoteCommand` commits `MESSAGE_REPLACED_DESCRIPTION`, which omits the `Use undo to restore the previous note.` hint, because the hint would be misleading in `Undid:` and `Redid:` messages. |
 | `UndoCommand`, `RedoCommand` | Check history availability, read the description of the change being reversed or reapplied, restore the corresponding state through the model, and reset the displayed list to show all contacts. |
 
 `AddressBookHistory` holds:
 
 * `undoStates`: the contact data from before each recorded change, most recent on top.
 * `redoStates`: the contact data that has been undone, most recent on top.
+* `currentState`: a copy of the contact data the tracked `AddressBook` is expected to contain.
 
 Each entry in either stack is a private `Change` record holding the snapshot and a short description of the change between it and the adjacent state, such as `Tagged person: …​`. `getUndoDescription()` and `getRedoDescription()` return the description at the top of the corresponding stack, or an empty `Optional` if there is no valid state to restore.
-* `currentState`: a copy of the contact data the tracked `AddressBook` is expected to contain.
 
 Every stored state is a copy made with `new AddressBook(...)`. `Person` and its fields are immutable, so later changes to the model cannot alter a stored snapshot.
 
@@ -984,7 +995,7 @@ Given below is the flow for `undo`:
 1. `LogicManager#execute` passes the input to `AddressBookParser#parseCommand`. If anything follows the command word, such as in `undo 1`, a `ParseException` is thrown and the model is never reached.
 1. The parser returns a new `UndoCommand`, and `LogicManager` calls `UndoCommand#execute(model)`.
 1. The command checks `Model#canUndoAddressBook()`. If it returns `false`, the command throws a `CommandException` with `UndoCommand.MESSAGE_FAILURE`. The exception propagates out of `LogicManager#execute` before the save step, so neither the data nor the data file changes.
-1. Otherwise, the command reads the description of the change about to be reversed with `Model#getUndoDescription()`, then calls `Model#undoAddressBook()`, which restores the previous state in place. It then calls `Model#updateFilteredPersonList(PREDICATE_SHOW_ALL_PERSONS)` so that every restored contact is visible, even if a `find` filter was active, and returns a `CommandResult` with `UndoCommand.MESSAGE_SUCCESS` formatted with that description.
+1. Otherwise, the command reads the description of the change about to be reversed with `Model#getUndoDescription()`, then calls `Model#undoAddressBook()`, which restores the previous state in place. It then calls `Model#updateFilteredPersonList(PREDICATE_SHOW_ALL_PERSONS)` so that every restored contact is visible, even if a `find`, `filter` or `listfav` view was active, and returns a `CommandResult` with `UndoCommand.MESSAGE_SUCCESS` formatted with that description.
 1. `LogicManager` saves the restored contact data through `Storage#saveAddressBook`, as it does for every successful command.
 
 The sequence diagram below shows steps 1 to 4 for `execute("undo")`, including the failure path when there is nothing to undo. The save to storage in step 5 is omitted.
@@ -1001,7 +1012,7 @@ If saving fails after a successful undo or redo, the in-memory state has already
 
 | Situation | Message |
 |-----------|---------|
-| `undo` succeeds | `Undid: ` followed by the undone command's success message, e.g. `Undid: Tagged person: …​` |
+| `undo` succeeds | `Undid: ` followed by the undone command's success message, e.g. `Undid: Tagged person: …​`. The message describes the state right after the original change, not the restored state. |
 | `redo` succeeds | `Redid: ` followed by the redone command's success message, e.g. `Redid: Added to favourites: …​` |
 | Nothing to undo, including stale history | `There is no change to undo.` |
 | Nothing to redo, including stale history | `There is no change to redo. An undone change cannot be redone after another change has been made.` |
@@ -1528,6 +1539,27 @@ testers are expected to do more *exploratory* testing.
       Expected: Both test contacts appear because matching any keyword is sufficient.
    1. Test case: `find comp`.<br>
       Expected: Neither test contact appears; partial words do not match `Computer` or `SearchComputing`.
+   1. Test case: `find 28`.<br>
+      Expected: `SearchBusiness` does not appear; `28` is not a whole word of the class year `2028`.
+   1. Test case: `find n/SearchComputing`.<br>
+      Expected: `0 person(s) listed!`. Prefixes are not supported, so `n/SearchComputing` is searched for as one word.
+   1. Test case: `find 91234567`.<br>
+      Expected: `SearchComputing` does not appear; phone numbers are not searched.
+   1. Test case: `find`.<br>
+      Expected: `Invalid command format!` with the usage of `find`. The displayed list is unchanged.
+
+1. Punctuation in majors
+
+   1. Prerequisites: `add n/SearchHonours a/NUS m/Computer Science (Hons)`.
+   1. Test case: `find Hons`, then `find (Hons)`.<br>
+      Expected: `find Hons` does not list `SearchHonours`; `find (Hons)` does. Words are separated by spaces only.
+
+1. Searching all contacts, not just the displayed ones
+
+   1. Test case: `find SearchBusiness`, then `find SearchComputing`.<br>
+      Expected: The second command lists `SearchComputing` even though it was hidden by the first search.
+   1. Test case: `sort name desc`, then `find SearchComputing SearchBusiness`.<br>
+      Expected: `SearchComputing` is listed before `SearchBusiness`; the sort is kept. Run `sort reset` afterwards.
    1. Test case: `list`.<br>
       Expected: The full contact list is displayed again, including both test contacts and contacts without academic fields.
 
@@ -1749,9 +1781,9 @@ Perform these scenarios in order; each one relies on the contacts left by the pr
 1. Undoing and redoing an add
 
    1. Test case: `add n/UndoCheck p/91234567 e/undo@example.com a/10 Kent Ridge Road m/Computer Science c/2027 t/StudyGroup`, then `undo`.<br>
-      Expected: `UndoCheck` is removed and the full contact list is shown. The status message is `Rollback to before the most recent change.`
+      Expected: `UndoCheck` is removed and the full contact list is shown. The status message is `Undid: New person added: UndoCheck; …​`.
    1. Test case: `redo`.<br>
-      Expected: `UndoCheck` reappears with all of its details, including its major, class year and tag. The status message is `Restored the most recently undone change.`
+      Expected: `UndoCheck` reappears with all of its details, including its major, class year and tag. The status message is `Redid: New person added: UndoCheck; …​`.
    1. Close and relaunch the app from the same folder, then run `find UndoCheck`.<br>
       Expected: `UndoCheck` is present; the redone state was saved.
    1. Test case: `undo`.<br>
@@ -1765,7 +1797,7 @@ Perform these scenarios in order; each one relies on the contacts left by the pr
    1. Run `find UndoCheck`, then `edit 1 t/Mentor`.<br>
       Expected: The status message starts with `Edited person: UndoCheck`. Running `find UndoCheck` again shows phone `98765432`, class year `2028` and only the tag `Mentor`. No other contact has changed.
    1. Test case: `undo`.<br>
-      Expected: The tag `StudyGroup` replaces `Mentor`; the phone and class year stay `98765432` and `2028`. The full contact list is shown instead of the search result.
+      Expected: The tag `StudyGroup` replaces `Mentor`; the phone and class year stay `98765432` and `2028`. The full contact list is shown instead of the search result. The message is `Undid: Edited person: UndoCheck; …​; Tags: [Mentor]`: it shows the details from after the undone edit, not the restored ones.
    1. Test case: `undo` again.<br>
       Expected: The phone and class year return to `91234567` and `2027`.
    1. Test case: `redo`, then `redo` again.<br>
@@ -1841,7 +1873,7 @@ Use a test contact for these checks. Run `list` and identify its displayed index
 1. Try `note 1`, `note 0 Text`, `shownote 1 extra`, `delnote 1 extra`, and a `note` containing more than 500 characters. Also try an index beyond the displayed list.<br>
    Expected: An appropriate usage, note-constraint or invalid-index error; existing notes and other contact details are unchanged.
 
-### Undoing and redoing contact changes
+### Undoing and redoing note changes
 
 Use test contacts and run `list` before each scenario. The examples below use the first displayed contact. Do not run unrelated data-changing commands between the steps.
 
@@ -1849,7 +1881,7 @@ Use test contacts and run `list` before each scenario. The examples below use th
 
    1. Run `delnote 1` to start with an empty note, then `note 1 First note`, `note 1 Second note`, and `delnote 1`.
    1. Run `undo` three times, checking `shownote 1` after each.<br>
-      Expected: The note changes to `Second note`, then `First note`, then no note. The icon is present only when the note is non-empty.
+      Expected: The note changes to `Second note`, then `First note`, then no note. The icon is present only when the note is non-empty. The second `undo` shows `Undid: Note replaced for NAME.`, followed by the previous and saved notes, without the `Use undo to restore the previous note.` hint.
    1. Run `redo` three times, checking `shownote 1` after each.<br>
       Expected: The note changes to `First note`, then `Second note`, then no note. Other contact details stay unchanged.
 
