@@ -13,6 +13,7 @@ import static seedu.address.logic.parser.CliSyntax.PREFIX_TAG;
 
 import java.time.Clock;
 import java.time.LocalDate;
+import java.util.Optional;
 
 import seedu.address.commons.util.ToStringBuilder;
 import seedu.address.logic.Messages;
@@ -56,6 +57,12 @@ public class AddCommand extends Command {
     public static final String MESSAGE_FAVOURITE_SUCCESS = "New favourite contact added: %1$s";
     public static final String MESSAGE_DUPLICATE_PERSON =
             "This person already exists in the address book (names are compared ignoring case).";
+    public static final String MESSAGE_DUPLICATE_PERSON_DISPLAYED = MESSAGE_DUPLICATE_PERSON
+            + "\nExisting contact at displayed index %1$d:\n%2$s";
+    public static final String MESSAGE_DUPLICATE_PERSON_HIDDEN = MESSAGE_DUPLICATE_PERSON
+            + "\nExisting contact is hidden by the current filter (saved index %1$d):\n%2$s"
+            + "\nRun " + ListCommand.COMMAND_WORD + ", then " + SortCommand.COMMAND_WORD
+            + " reset to view this contact at index %1$d.";
 
     private final Person toAdd;
     private final Clock clock;
@@ -79,8 +86,10 @@ public class AddCommand extends Command {
     public CommandResult execute(Model model) throws CommandException {
         requireNonNull(model);
 
-        if (model.hasPerson(toAdd)) {
-            throw new CommandException(MESSAGE_DUPLICATE_PERSON);
+        Optional<Person> existingPerson = model.getAddressBook().getPersonList().stream()
+                .filter(toAdd::isSamePerson).findFirst();
+        if (existingPerson.isPresent()) {
+            throw new CommandException(getDuplicateMessage(model, existingPerson.get()));
         }
 
         ReadOnlyAddressBook previousState = new AddressBook(model.getAddressBook());
@@ -90,6 +99,19 @@ public class AddCommand extends Command {
                 Messages.format(addedPerson));
         model.commitAddressBook(previousState, message);
         return new CommandResult(message);
+    }
+
+    /**
+     * Identifies the existing contact using its displayed index, or a labelled saved index if hidden.
+     */
+    private String getDuplicateMessage(Model model, Person existingPerson) {
+        int displayedIndex = model.getFilteredPersonList().indexOf(existingPerson);
+        if (displayedIndex >= 0) {
+            return String.format(MESSAGE_DUPLICATE_PERSON_DISPLAYED,
+                    displayedIndex + 1, Messages.format(existingPerson));
+        }
+        return String.format(MESSAGE_DUPLICATE_PERSON_HIDDEN,
+                model.getAddressBook().getPersonList().indexOf(existingPerson) + 1, Messages.format(existingPerson));
     }
 
     @Override

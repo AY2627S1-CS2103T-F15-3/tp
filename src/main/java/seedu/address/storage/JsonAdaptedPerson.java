@@ -108,7 +108,7 @@ class JsonAdaptedPerson {
         major = source.getMajor().value;
         graduationYear = source.getGraduationYear().value;
         notes = source.getNotes().value;
-        lastUpdated = source.getLastUpdated().toString();
+        lastUpdated = source.getLastUpdated() == null ? null : source.getLastUpdated().toString();
         favourite = source.isFavourite();
         tags.addAll(source.getTags().stream()
                 .map(JsonAdaptedTag::new)
@@ -183,8 +183,8 @@ class JsonAdaptedPerson {
         final Set<Tag> modelTags = new HashSet<>(personTags);
         LocalDate modelLastUpdated;
         try {
-            // A missing date is a migration baseline, not a claim about the historical edit date.
-            modelLastUpdated = lastUpdated == null ? LocalDate.now() : LocalDate.parse(lastUpdated);
+            // Preserve unknown legacy dates instead of inventing a recent update.
+            modelLastUpdated = lastUpdated == null ? null : LocalDate.parse(lastUpdated);
         } catch (DateTimeParseException e) {
             throw new IllegalValueException("Last updated date must be a valid ISO date (YYYY-MM-DD).", e);
         }

@@ -219,7 +219,8 @@ public class UndoRedoIntegrationTest {
 
         // Rejected while executing: a contact with this name already exists.
         assertCommandFailure("add n/Alice Pauline p/99990000 e/other@example.com a/Clementi",
-                CommandException.class, AddCommand.MESSAGE_DUPLICATE_PERSON);
+                CommandException.class, String.format(AddCommand.MESSAGE_DUPLICATE_PERSON_DISPLAYED, 1,
+                        Messages.format(ALICE)));
         // Rejected while parsing: the phone, email and address are missing.
         assertCommandFailure("add n/Beth Lim", ParseException.class,
                 String.format(MESSAGE_INVALID_COMMAND_FORMAT, AddCommand.MESSAGE_USAGE));
