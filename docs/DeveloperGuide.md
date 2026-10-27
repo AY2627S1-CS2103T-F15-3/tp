@@ -347,32 +347,39 @@ instructions.
 
 ### Warning about shared phone numbers or email addresses when adding
 
-After a successful addition, `AddCommand#getAddResult` scans the refreshed displayed list,
-skipping the added contact by `Person#isSamePerson`. `ModelManager#addPerson` has already cleared the
+After a successful addition, `AddCommand#getAddResult` delegates matching to
+`SharedContactDetailsWarning#describeMatches`, which scans the refreshed displayed list and skips
+the added contact by `Person#isSamePerson`. `ModelManager#addPerson` has already cleared the
 filter while preserving the active sort order, so the scan includes all existing contacts and its
 indices match the current cards. Looking up indices before the add would be incorrect when the
 added contact changes the sorted positions.
 
-For each existing contact, the command checks non-empty phone numbers using `Phone#equals` and
+For each existing contact, the shared helper checks non-empty phone numbers using `Phone#equals` and
 non-empty email values using `String#equalsIgnoreCase`. Email comparison ignores case only for this
 advisory warning; stored values, `Email#equals` and the duplicate-name rule are unchanged. Empty
 optional fields never count as matches. Every matching contact is listed once, with a reason
 identifying the shared phone number, email address or both. Different contacts may match different
 fields, and all matches are included in displayed order.
 
-When there are matches, the ordinary `New person added: ...` message remains complete and white.
+When there are matches, the ordinary `New person added: ...` message remains complete.
 An additional line reads, for example, `Warning - duplicate details detected: #2 Alice (phone);
 #3 Bob (email)`. The reason is `phone and email` when both fields match the
 same contact. All matching names and current indices are retained.
 
-`AddCommand` joins the ordinary success message and advisory text with a newline and returns them
-in a single `CommandResult.warning`. `getFeedbackToUser()` supplies the complete plain-text message.
-The warning flag is metadata only; it does not change the text colour. `getLogSummary()` retains
+`SharedContactDetailsWarning#appendTo` joins the ordinary success message and advisory text with a
+newline and returns them in a single `CommandResult.warning`. Both add and edit use this method,
+so their warning wording and appended position stay consistent. `getFeedbackToUser()` supplies the
+complete plain-text message. Existing success text is preserved verbatim, including any additional
+summary lines or command-specific success header; only the warning is appended at the bottom.
+The warning flag selects amber feedback styling. `getLogSummary()` retains
 the ordinary success message's first line without logging the appended match list.
 
-`MainWindow` passes that complete message to the original `ResultDisplay` text area. There is no
-additional warning control or scrollbar. JavaFX `TextArea` uses one text colour for its content,
-so both the success and appended warning remain white, with no coloured border. Its existing
+`MainWindow` passes that complete message and `CommandResult#isWarning()` to the original
+`ResultDisplay` text area. `ResultDisplay#setFeedbackToUser` applies the `warning` style class only
+for warning results, and `DarkTheme.css` makes the text amber (`#ffcf66`). There is no additional
+warning control or scrollbar. JavaFX `TextArea` uses one text colour for its content, so both the
+success and appended warning appear amber, with no coloured border. Feedback without a warning
+remains white, including subsequent ordinary results, undo/redo and errors. Its existing
 100-pixel area retains wrapping, selection and vertical scrolling for long feedback. Each new result
 replaces the previous text and resets the caret and scroll position. The command follows the
 successful path, so input clears and is not styled as an error. A same-name duplicate still fails
@@ -385,11 +392,11 @@ are not merged or modified, and one undo removes only the new contact.
 
 `AddCommandIntegrationTest` checks phone-only, email-only, combined and multiple matches; email case;
 blank and distinct values; refreshed sorted indices; persistence; and one-step undo/redo.
-`SortUiTest` checks unchanged white success text followed by the warning in the same original text area,
+`SortUiTest` checks complete success text followed by the warning in the same original amber-text area,
 matches hidden by the previous filter, current card indices, the successful command-box state and
 undo/redo through the GUI. It also checks wrapping, selectable text and scrollable overflow in the
 fixed-height result area in a narrowed window, and that subsequent normal feedback and errors replace
-the previous warning. It also verifies that no additional warning text area is created.
+the previous warning and restore white text. It also verifies that no additional warning text area is created.
 
 ### Editing academic fields
 
@@ -427,8 +434,10 @@ empty differences display `None`. Omitted tags produce no summary. This does not
 semantics. The base `Edited person: ...` message is passed to
 `Model#commitAddressBook(previousState, message)` before the tag summary is appended to the returned
 feedback. Undo/redo descriptions therefore retain the edited contact details without repeating the
-replacement summary. `UndoRedoIntegrationTest` verifies exact edit, undo and redo feedback and persisted
-contact data for both tag replacement and clearing.
+replacement summary or any duplicate-details warning. Only after composing the ordinary success text
+and optional tag summary does `EditCommand#getEditResult` append a shared-details warning, if needed.
+`UndoRedoIntegrationTest` verifies exact edit, undo and redo feedback and persisted contact data for
+both tag replacement and clearing.
 `Email.MESSAGE_CONSTRAINTS` uses short newline-separated rules and
 explicitly forbids consecutive local-part special characters; the validation regex is unchanged.
 `ResultDisplay.fxml` enables text wrapping so narrow windows do not require horizontal scrolling.
@@ -442,6 +451,45 @@ it does not roll back the in-memory edit.
 GUI regression coverage is in `EditContactUiTest`: submissions through `MainWindow`, rendered fields,
 filtered indices, clearing fields, preserved notes/favourite status, invalid edits and saved JSON.
 `EditCommandTest` and `EditCommandParserTest` cover command and parser boundaries.
+
+#### Warning when an edit introduces shared contact details
+
+`EditCommand#getEditResult` checks the edited contact after `setPerson` and the full-list refresh,
+so the shared helper's indices follow the retained sort order even after a rename. It enables phone
+comparison only when `Phone#equals` reports a changed value, and email comparison only when the
+old and new email values differ ignoring case. It then calls
+`SharedContactDetailsWarning#describeMatches`, reusing the add warning's non-empty matching rules,
+self-exclusion, compact formatting and displayed order. The helper skips scanning when neither
+contact method changed. Pre-existing shared values are not reported for unrelated or unchanged edits.
+
+A match is passed to `SharedContactDetailsWarning#appendTo` with the complete success feedback.
+The ordinary `Edited person: ...` message, including the edited contact's new name and saved fields,
+remains first, followed by the tag replacement summary when `t/` was supplied. A final line uses
+the same format as add:
+`Warning - duplicate details detected: #1 Alice (phone); #3 Carol (email)`.
+The complete message appears amber in the original feedback text area; no extra control, coloured border or
+command-input error style is added. Warning indices identify the other matching contacts, not the
+edited contact itself. The edit remains successful and is saved normally. Duplicate-name and
+invalid-index errors still occur before mutation. Results without a warning remain white, including
+ordinary edits and errors displayed after a warning.
+
+The history description remains the ordinary `Edited person: ...` message, so one undo restores the
+complete previous contact and redo restores the edit without repeating the tag summary or warning feedback. No-op
+edits still preserve both history stacks. Notes, favourite status and all omitted fields are retained.
+`EditCommandSharedDetailsTest` covers changed phone/email values, case-insensitive matches, multiple
+matches, self-exclusion, empty fields, unchanged and unrelated edits, persistence and one-step history.
+Its combined edit changes the name, phone, email and tags together, checking the exact order of
+normal saved details, the actual removed/added tag summary and the warning, plus persisted data
+and base-only history descriptions. Additional cases cover clearing or resupplying unchanged tags
+alongside a shared phone, and tag-only edits to already-shared contacts without a warning.
+`EditContactUiTest` checks the same combined case in the
+original feedback box with amber text, successful input clearing, preserved icons, refreshed sorted card
+indices and a return to white for ordinary edits, undo/redo and errors. `SharedContactDetailsWarningTest`
+checks that appending a warning preserves complete multiline success feedback and alternative add-success
+headers rather than replacing them. Supplemental feedback is composed before calling the warning helper;
+the helper does not generate tag summaries or change favourite semantics itself.
+
+The manual procedures are in [Shared phone or email warnings on edit](#shared-phone-or-email-warnings-on-edit).
 
 ### Searching by academic fields
 
@@ -926,7 +974,7 @@ The model keeps an in-memory history of contact data states. Every command that 
 | `AddressBookHistory` | Stores defensive `AddressBook` snapshots, each paired with a description of its change, in an undo stack and a redo stack, and restores them into the tracked `AddressBook`. |
 | `Model` | Declares `commitAddressBook(ReadOnlyAddressBook, String)`, `canUndoAddressBook()`, `canRedoAddressBook()`, `getUndoDescription()`, `getRedoDescription()`, `undoAddressBook()` and `redoAddressBook()`. |
 | `ModelManager` | Creates one `AddressBookHistory` for its `AddressBook` and delegates the methods above to it. |
-| `AddCommand`, `EditCommand`, `DeleteCommand`, `ClearCommand`, `TagCommand`, `UntagCommand`, `FavCommand`, `UnfavCommand`, `NoteCommand`, `DeleteNoteCommand` | Copy the contact data before changing it, then call `Model#commitAddressBook` with that copy and the command's base success message as the description (`edit` excludes the tag replacement summary). |
+| `AddCommand`, `EditCommand`, `DeleteCommand`, `ClearCommand`, `TagCommand`, `UntagCommand`, `FavCommand`, `UnfavCommand`, `NoteCommand`, `DeleteNoteCommand` | Copy the contact data before changing it, then call `Model#commitAddressBook` with that copy and the command's base success message as the description (excluding tag replacement summaries and duplicate-details warnings). |
 | `UndoCommand`, `RedoCommand` | Check history availability, read the description of the change being reversed or reapplied, restore the corresponding state through the model, and reset the displayed list to show all contacts. |
 
 `AddressBookHistory` holds:
@@ -1121,8 +1169,8 @@ If saving fails after a successful undo or redo, the in-memory state has already
 
 | Situation | Message |
 |-----------|---------|
-| `undo` succeeds | `Undid: ` followed by the undone command's base success message (excluding an edit tag summary), e.g. `Undid: Tagged person: …​` |
-| `redo` succeeds | `Redid: ` followed by the redone command's base success message (excluding an edit tag summary), e.g. `Redid: Added to favourites: …​` |
+| `undo` succeeds | `Undid: ` followed by the undone command's base success message (excluding tag summaries and duplicate-details warnings), e.g. `Undid: Tagged person: …​` |
+| `redo` succeeds | `Redid: ` followed by the redone command's base success message (excluding tag summaries and duplicate-details warnings), e.g. `Redid: Added to favourites: …​` |
 | Nothing to undo, including stale history | `There is no change to undo.` |
 | Nothing to redo, including stale history | `There is no change to redo. An undone change cannot be redone after another change has been made.` |
 | Arguments after `undo` or `redo` | `Invalid command format!`, followed by the command's usage |
@@ -1140,7 +1188,7 @@ If saving fails after a successful undo or redo, the in-memory state has already
 
 **Aspect: How the undone or redone change is described**
 
-* **Alternative 1 (current choice):** Each command passes its base success message (excluding any edit tag summary) to `commitAddressBook`, and the history stores it with the snapshot.
+* **Alternative 1 (current choice):** Each command passes its base success message (excluding tag summaries and duplicate-details warnings) to `commitAddressBook`, and the history stores it with the snapshot.
   * Pros: Each command already formats this message, so no new wording is needed, and undo names the change exactly as the user saw it when it was made.
   * Cons: Messages that include a full `Messages#format` of the person are long. Each command must remember to pass a description, although the two-argument signature makes it impossible to commit without one.
 * **Alternative 2:** Work out the description by comparing the two snapshots, e.g. finding the contact that was added or removed.
@@ -1580,15 +1628,15 @@ testers are expected to do more *exploratory* testing.
    1. Run `sort name asc`, then `find Charlie`.<br>
       Expected: Only Charlie is displayed.
    1. Run `add n/Amy p/91919191 e/SHARED172@EXAMPLE.COM a/NUS`.<br>
-      Expected: The addition succeeds. The normal `New person added: ...` message remains white and
-      includes Amy's saved details. An appended white line in the same feedback box reads
+      Expected: The addition succeeds. The normal `New person added: ...` message remains complete and
+      includes Amy's saved details. An appended line in the same feedback box reads
       `Warning - duplicate details detected: #2 Charlie (email); #4 Zara (phone)`.
-      There is no coloured border. The full list is Amy, Charlie, Morgan, Zara. Morgan's missing fields
-      produce no match. Narrow the window to about 640 pixels: the original text area remains
+      Both lines are amber with no coloured border. The full list is Amy, Charlie, Morgan, Zara.
+      Morgan's missing fields produce no match. Narrow the window to about 640 pixels: the original text area remains
       scrollable within its unchanged 100-pixel height. Both lines can be selected and copied together.
    1. Run `undo`, then `redo`.<br>
       Expected: One undo removes Amy and one redo restores Amy. Their feedback describes the addition
-      without repeating the warning, and Zara, Charlie and Morgan retain their original details.
+      in white without repeating the warning, and Zara, Charlie and Morgan retain their original details.
    1. Close and reopen the disposable copy, then run `find Amy`.<br>
       Expected: Amy was saved with the entered phone and uppercase email. Sorting and filtering
       return to their usual restart defaults.
@@ -1596,18 +1644,65 @@ testers are expected to do more *exploratory* testing.
 1. Empty details and both fields matching the same contact
 
    1. Run `add n/NoDetails a/NUS`.<br>
-      Expected: The contact is added with the ordinary success feedback. Its missing phone and email
+      Expected: The contact is added with ordinary white success feedback. Its missing phone and email
       do not trigger a warning about Morgan's missing details.
    1. Run `add n/AnotherZara p/91919191 e/zara172@example.com a/Dover`.<br>
       Expected: The addition succeeds with a warning. Zara appears once with the reason
       `phone and email`; Amy is also listed for sharing the phone number.
    1. While a warning is showing, run `sort name sideways`, then `list`.<br>
-      Expected: The invalid command replaces the warning with the usual error feedback and input
-      styling. `list` restores ordinary success feedback. Neither command changes saved contacts.
+      Expected: The invalid command replaces the warning with the usual white error feedback and input
+      styling. `list` shows ordinary white success feedback. Neither command changes saved contacts.
    1. Repeat a shared-details addition with long names or many matching contacts in the disposable copy.<br>
-      Expected: The complete ordinary success message and appended warning remain white in the
+      Expected: The complete ordinary success message and appended warning appear amber in the
       original text area, starting at the top. All names, displayed indices and reasons remain
       complete; the existing vertical scrollbar reveals any wrapped overflow.
+
+### Shared phone or email warnings on edit
+
+1. Changed methods and refreshed indices
+
+   1. Prerequisites: Use a disposable copy with no contacts named `EditWarning Alice` or `EditWarning Bob`.
+      Add `add n/EditWarning Alice p/91112222 e/alice.editwarning@example.com a/NUS`, then
+      `add n/EditWarning Bob p/93334444 e/bob.editwarning@example.com a/NUS`.
+   1. Run `find EditWarning`, then `sort name asc`.<br>
+      Expected: Alice is index 1 and Bob is index 2 within the two-contact view.
+   1. Run `edit 2 p/91112222`.<br>
+      Expected: The edit succeeds and the input clears. The normal `Edited person: ...` message
+      remains complete, followed by `Warning - duplicate details detected: #N EditWarning Alice (phone)`.
+      `N` is Alice's current displayed index in the refreshed full sorted list, not necessarily her
+      previous index in the two-contact view. Both lines appear amber in the original feedback box,
+      with no coloured border or additional warning control.
+   1. Run `undo`, then `redo`.<br>
+      Expected: One undo restores Bob's previous phone and one redo restores the shared phone.
+      Both use ordinary white edit-history feedback without repeating the warning. Alice remains unchanged.
+   1. Run `find EditWarning`, confirm Bob's displayed index, then edit that index with
+      `e/ALICE.EDITWARNING@EXAMPLE.COM t/StudyGroup`.<br>
+      Expected: The normal success message shows the new email and `StudyGroup` tag. The next line is
+      `Tags replaced. Removed: None. Added: StudyGroup.` The final warning line identifies Alice for
+      `(email)` only; the already-shared unchanged phone is not reported as newly shared. All three
+      lines appear amber in the original feedback box. The uppercase email and replacement tags are saved unchanged.
+   1. Run `undo`, then `redo`.<br>
+      Expected: One undo restores both Bob's previous email and tags; redo restores both changes.
+      Feedback remains white and includes only the base edited-contact details, not the tag summary
+      or duplicate-details warning.
+   1. Rename Bob while changing a contact method to another shared value, then inspect the full sorted list.<br>
+      Expected: The normal success feedback identifies his new name and saved details; the warning
+      still uses the matching contacts' refreshed indices even if the renamed contact has moved.
+
+1. Unchanged, unrelated and empty values
+
+   1. Before each check, find the edited contact and use its actual displayed index.
+   1. Repeat the current phone value, change only the major with `m/Mathematics`, or change only
+      the email's capitalization.<br>
+      Expected: Ordinary white edit feedback, not a warning about existing shared values. An unchanged
+      edit does not create another undo step or clear redo availability.
+   1. Clear a contact method with `p/` or `e/`.<br>
+      Expected: Ordinary white success feedback; empty values do not match other empty contact methods.
+   1. Change only tags with `t/StudyGroup`, then clear them with `t/`, checking the displayed index before each edit.<br>
+      Expected: Each result includes its actual removed/added tag summary in white, with `None` for
+      empty differences. Existing shared phone/email values do not trigger a warning for these tag-only edits.
+   1. Close and reopen the disposable copy.<br>
+      Expected: Edited values persist; the warnings did not modify or merge any other contact.
 
 ### Adding contacts with prefix-like address text
 

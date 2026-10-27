@@ -209,7 +209,8 @@ public class SortUiTest {
                         + "#2 Alice (phone); #3 Bob (phone); #4 Charlie (phone)";
                 assertEquals(successMessage + "\n" + advisory, feedback(window));
                 TextArea result = (TextArea) window.getRoot().getScene().lookup("#resultDisplay");
-                assertEquals(Color.WHITE, ((Text) result.lookup(".text")).getFill());
+                assertTrue(result.getStyleClass().contains(ResultDisplay.WARNING_STYLE_CLASS));
+                assertEquals(Color.web("#ffcf66"), ((Text) result.lookup(".text")).getFill());
                 assertTrue(result.getBorder() == null || result.getBorder().getStrokes().isEmpty());
                 assertNull(window.getRoot().getScene().lookup("#warningDisplay"));
                 assertCards(window, List.of(aaron, alice, bob, charlie));
@@ -220,9 +221,12 @@ public class SortUiTest {
                 enter(window, "undo");
                 assertCards(window, List.of(alice, bob, charlie));
                 assertEquals("Undid: " + successMessage, feedback(window));
+                assertFalse(result.getStyleClass().contains(ResultDisplay.WARNING_STYLE_CLASS));
+                assertEquals(Color.WHITE, ((Text) result.lookup(".text")).getFill());
                 enter(window, "redo");
                 assertCards(window, List.of(aaron, alice, bob, charlie));
                 assertEquals("Redid: " + successMessage, feedback(window));
+                assertEquals(Color.WHITE, ((Text) result.lookup(".text")).getFill());
             } finally {
                 window.getRoot().close();
             }
@@ -250,16 +254,28 @@ public class SortUiTest {
                 assertTrue(result.lookup(".content").getLayoutBounds().getHeight()
                         > scrollPane.getViewportBounds().getHeight(), "Long feedback remains scrollable.");
                 assertEquals(0, result.getScrollTop());
+                assertEquals(Color.web("#ffcf66"), ((Text) result.lookup(".text")).getFill());
                 result.selectAll();
                 assertEquals(result.getText(), result.getSelectedText());
                 result.positionCaret(0);
                 result.setScrollTop(0);
+
+                enter(window, "add n/Zara p/96667777 e/zara@example.com a/NUS");
+                assertFalse(result.getStyleClass().contains(ResultDisplay.WARNING_STYLE_CLASS));
+                assertEquals(Color.WHITE, ((Text) result.lookup(".text")).getFill());
+                assertTrue(feedback(window).startsWith("New person added: Zara"));
+
+                enter(window, "add n/AnotherAaron p/" + PersonBuilder.DEFAULT_PHONE + " a/NUS");
+                assertTrue(result.getStyleClass().contains(ResultDisplay.WARNING_STYLE_CLASS));
+                assertEquals(Color.web("#ffcf66"), ((Text) result.lookup(".text")).getFill());
 
                 enter(window, "sort name sideways");
                 TextField input = (TextField) window.getRoot().getScene().lookup("#commandTextField");
                 assertTrue(input.getStyleClass().contains(CommandBox.ERROR_STYLE_CLASS));
                 assertEquals(String.format(Messages.MESSAGE_INVALID_COMMAND_FORMAT, SortCommand.MESSAGE_USAGE),
                         feedback(window));
+                assertFalse(result.getStyleClass().contains(ResultDisplay.WARNING_STYLE_CLASS));
+                assertEquals(Color.WHITE, ((Text) result.lookup(".text")).getFill());
             } finally {
                 window.getRoot().close();
             }

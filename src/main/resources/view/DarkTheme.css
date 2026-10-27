@@ -168,6 +168,10 @@
     -fx-text-fill: black !important;
 }
 
+.result-display.warning {
+    -fx-text-fill: #ffcf66;
+}
+
 .status-bar .label {
     -fx-font-family: "Segoe UI Light";
     -fx-text-fill: white;
