@@ -757,7 +757,11 @@ left the end of history, and neither executes commands.
 For example, submit `add n/Alice`, `list`, `add n/Bob`, then `list`. Type `add ` without pressing Enter.
 Alt+↑ recalls `add n/Bob`, then `add n/Alice`; Alt+↓ recalls `add n/Bob`, then restores `add `.
 
-<puml src="diagrams/CommandHistoryActivityDiagram.puml" alt="Activity diagram for chronological and prefix history navigation with draft restoration" />
+The diagrams below show what happens when you press **↑** and **↓**.
+
+<puml src="diagrams/CommandHistoryUpActivityDiagram.puml" alt="Activity diagram for recalling older commands with Up and Alt+Up" />
+
+<puml src="diagrams/CommandHistoryDownActivityDiagram.puml" alt="Activity diagram for recalling newer commands with Down and Alt+Down" />
 
 ### Saving the data
 
