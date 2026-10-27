@@ -8,11 +8,15 @@ start
 if (Input valid, index displayed
 and name not a duplicate?) then (yes)
   :Update the contact and save automatically;
-  :Show Edited person feedback\nclear the command box;
+  if (Tags supplied?) then (yes)
+    :Compare old and new tags;
+    :Build sorted Removed / Added summary\n(use None for empty differences);
+  endif
+  :Show Edited person feedback and tag summary if supplied\nclear the command box;
   :Show the full contact list
 with updated contact cards;
 else (no)
-  :Show an error in the result display\nkeep the input for correction;
+  :Show an error in the result display\nEmail errors include no consecutive special characters\nkeep the input for correction;
   :Keep contacts and current view unchanged;
 endif
 stop

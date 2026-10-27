@@ -12,14 +12,15 @@ participant "storage:Storage" as Storage STORAGE_COLOR
 
 note over Box, Storage
   Successful edit of the first displayed contact.
+  Email parsing errors include no consecutive special characters.
   Parsing, invalid-index and duplicate-name errors stop before mutation.
 end note
-Box -> Window : executeCommand("edit 1 m/Mathematics c/")
+Box -> Window : executeCommand("edit 1 m/Mathematics c/ t/Project")
 activate Window
 Window -> Logic : execute(commandText)
 activate Logic
 Logic -> Parser : parseCommand(commandText)
-Parser -> EditParser : parse(" 1 m/Mathematics c/")
+Parser -> EditParser : parse(" 1 m/Mathematics c/ t/Project")
 create Edit
 EditParser -> Edit : new EditCommand(index, descriptor)
 EditParser --> Parser : edit
@@ -43,8 +44,19 @@ Model --> Edit : contact data to snapshot
 Edit -> Edit : previousState = new AddressBook(contact data)
 Edit -> Model : setPerson(person, editedPerson)
 Edit -> Model : updateFilteredPersonList(PREDICATE_SHOW_ALL_PERSONS)
-Edit -> Model : commitAddressBook(previousState)
-Edit --> Logic : CommandResult("Edited person: ...")
+Edit -> Edit : message = "Edited person: ..."
+Edit -> Model : commitAddressBook(previousState, message)
+opt Tags supplied (including empty t/)
+  Edit -> Edit : formatTagDifference(oldTags, newTags)
+  Edit -> Edit : formatTagDifference(newTags, oldTags)
+  note right of Edit
+    Append Tags replaced. Removed: ... . Added: ... .
+    Sorted actual differences; None when empty.
+    Summary appears only in immediate edit feedback.
+    Undo/redo description retains the base message.
+  end note
+end
+Edit --> Logic : CommandResult("Edited person: ..." + tag summary if supplied)
 deactivate Edit
 Logic -> Model : getAddressBook()
 Model --> Logic : updated contact data
