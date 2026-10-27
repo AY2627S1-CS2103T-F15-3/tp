@@ -179,7 +179,7 @@ contact, then `edit 1 a/NUS`.
 * Adding a different name with a shared phone number or email succeeds with the usual
   `New person added: ...` feedback and an additional warning line in the same feedback box.
   For example: `Warning - duplicate details detected: #2 Alice (phone); #3 Bob (email)`.
-  The complete message is amber when a warning is present; ordinary success feedback remains white.
+  The complete message is amber when a warning is present; ordinary success feedback remains light grey.
   There is no coloured border or additional warning control.
   Every matching contact is listed by current displayed index and name, with `phone`, `email` or
   `phone and email` identifying the shared fields. The original feedback box supports wrapping, text
@@ -572,7 +572,7 @@ Format: `edit INDEX [n/NAME] [p/PHONE] [e/EMAIL] [a/ADDRESS] [m/MAJOR] [c/CLASS_
   If `t/` is also supplied, the tag replacement summary appears between the normal success message
   and the warning; neither is dropped. The complete message appears amber in the original feedback
   box, without a coloured border or an additional warning control. Feedback without a warning remains
-  white, including tag-only edits. Indices identify matching contacts in the refreshed full list,
+  light grey, including tag-only edits. Indices identify matching contacts in the refreshed full list,
   including matches hidden before the edit. The edited contact's updated name and details remain in
   the normal success message. All matches are retained; long feedback wraps and can be scrolled.
 * Warning comparisons match non-empty phone numbers exactly and email addresses ignoring case.

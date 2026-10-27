@@ -84,7 +84,7 @@ public class EditContactUiTest {
                         + "\nTags replaced. Removed: Classmate. Added: StudyGroup.", feedback(window));
                 TextArea result = (TextArea) window.getRoot().getScene().lookup("#resultDisplay");
                 assertFalse(result.getStyleClass().contains(ResultDisplay.WARNING_STYLE_CLASS));
-                assertEquals(Color.WHITE, ((Text) result.lookup(".text")).getFill());
+                assertEquals(Color.web("#d5d8db"), ((Text) result.lookup(".text")).getFill());
                 assertEquals("", input(window).getText());
                 assertAcademicCard(window, edited, "Mathematics", "2028");
                 assertTrue(card(window, edited).lookup("#favouriteIcon").isVisible());
@@ -140,7 +140,7 @@ public class EditContactUiTest {
                 assertFalse(input(window).getStyleClass().contains(CommandBox.ERROR_STYLE_CLASS));
                 list(window).scrollTo(2);
                 list(window).layout();
-                assertAcademicCard(window, edited, "Major: Computer Science", "Class year: 2027");
+                assertAcademicCard(window, edited, "Computer Science", "2027");
                 assertTrue(card(window, edited).lookup("#favouriteIcon").isVisible());
                 assertTrue(card(window, edited).lookup("#noteIcon").isVisible());
 
@@ -148,15 +148,15 @@ public class EditContactUiTest {
                 assertEquals(List.of(charlie, beforeEdit, alice), list(window).getItems());
                 assertEquals("Undid: " + description, feedback(window));
                 assertFalse(result.getStyleClass().contains(ResultDisplay.WARNING_STYLE_CLASS));
-                assertEquals(Color.WHITE, ((Text) result.lookup(".text")).getFill());
+                assertEquals(Color.web("#d5d8db"), ((Text) result.lookup(".text")).getFill());
                 enter(window, "redo");
                 assertEquals(List.of(charlie, alice, edited), list(window).getItems());
                 assertEquals("Redid: " + description, feedback(window));
-                assertEquals(Color.WHITE, ((Text) result.lookup(".text")).getFill());
+                assertEquals(Color.web("#d5d8db"), ((Text) result.lookup(".text")).getFill());
 
                 enter(window, "edit 3 m/Mathematics");
                 assertFalse(result.getStyleClass().contains(ResultDisplay.WARNING_STYLE_CLASS));
-                assertEquals(Color.WHITE, ((Text) result.lookup(".text")).getFill());
+                assertEquals(Color.web("#d5d8db"), ((Text) result.lookup(".text")).getFill());
                 assertTrue(feedback(window).startsWith("Edited person: Aaron"));
 
                 enter(window, "edit 3 p/93334444");
@@ -167,7 +167,7 @@ public class EditContactUiTest {
                 enter(window, "edit 4 m/Mathematics");
                 assertEquals(Messages.MESSAGE_INVALID_PERSON_DISPLAYED_INDEX, feedback(window));
                 assertFalse(result.getStyleClass().contains(ResultDisplay.WARNING_STYLE_CLASS));
-                assertEquals(Color.WHITE, ((Text) result.lookup(".text")).getFill());
+                assertEquals(Color.web("#d5d8db"), ((Text) result.lookup(".text")).getFill());
             } finally {
                 window.getRoot().close();
             }
@@ -175,7 +175,7 @@ public class EditContactUiTest {
     }
 
     @Test
-    public void edit_warningThenUnchangedOrUnrelatedEdit_restoresWhiteFeedback() throws Exception {
+    public void edit_warningThenUnchangedOrUnrelatedEdit_restoresNormalFeedback() throws Exception {
         runOnFxThread(() -> {
             MainWindow window = createWindow();
             try {
@@ -187,7 +187,7 @@ public class EditContactUiTest {
 
                 enter(window, "edit 2 p/" + PersonBuilder.DEFAULT_PHONE);
                 assertFalse(result.getStyleClass().contains(ResultDisplay.WARNING_STYLE_CLASS));
-                assertEquals(Color.WHITE, ((Text) result.lookup(".text")).getFill());
+                assertEquals(Color.web("#d5d8db"), ((Text) result.lookup(".text")).getFill());
 
                 enter(window, "edit 2 e/bob.editwarn@example.com");
                 enter(window, "edit 2 e/" + PersonBuilder.DEFAULT_EMAIL);
@@ -197,7 +197,7 @@ public class EditContactUiTest {
                 enter(window, "edit 2 m/Mathematics");
                 assertTrue(feedback(window).startsWith("Edited person: Bob"));
                 assertFalse(result.getStyleClass().contains(ResultDisplay.WARNING_STYLE_CLASS));
-                assertEquals(Color.WHITE, ((Text) result.lookup(".text")).getFill());
+                assertEquals(Color.web("#d5d8db"), ((Text) result.lookup(".text")).getFill());
             } finally {
                 window.getRoot().close();
             }

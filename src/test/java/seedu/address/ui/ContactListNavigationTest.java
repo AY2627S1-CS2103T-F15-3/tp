@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 
 import javafx.animation.PauseTransition;
 import javafx.collections.FXCollections;
+import javafx.css.PseudoClass;
 import javafx.geometry.Bounds;
 import javafx.scene.Node;
 import javafx.scene.Scene;
@@ -117,6 +118,10 @@ public class ContactListNavigationTest {
                 view.press(KeyCode.TAB, false);
                 Label tag = (Label) view.focused();
                 assertEquals(LONG_TAG, tag.getTooltip().getText());
+                assertSame(tag, view.focused());
+                // Check focus styling independently of the desktop activating the test window.
+                tag.pseudoClassStateChanged(PseudoClass.getPseudoClass("focused"), true);
+                FxTestUtil.layout(view.root);
                 assertEquals(Color.web("#d99664"), tag.getBorder().getStrokes().get(0).getTopStroke());
                 view.press(KeyCode.ENTER, false);
                 assertTrue(tag.isWrapText());

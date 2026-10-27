@@ -223,11 +223,11 @@ public class SortUiTest {
                 assertCards(window, List.of(alice, bob, charlie));
                 assertEquals("Undid: " + successMessage, feedback(window));
                 assertFalse(result.getStyleClass().contains(ResultDisplay.WARNING_STYLE_CLASS));
-                assertEquals(Color.WHITE, ((Text) result.lookup(".text")).getFill());
+                assertEquals(Color.web("#d5d8db"), ((Text) result.lookup(".text")).getFill());
                 enter(window, "redo");
                 assertCards(window, List.of(aaron, alice, bob, charlie));
                 assertEquals("Redid: " + successMessage, feedback(window));
-                assertEquals(Color.WHITE, ((Text) result.lookup(".text")).getFill());
+                assertEquals(Color.web("#d5d8db"), ((Text) result.lookup(".text")).getFill());
             } finally {
                 window.getRoot().close();
             }
@@ -241,7 +241,9 @@ public class SortUiTest {
             try {
                 window.getRoot().setWidth(640);
                 window.getRoot().getScene().getRoot().resize(620, 700);
-                enter(window, "add n/Aaron p/" + PersonBuilder.DEFAULT_PHONE + " e/aaron@example.com a/NUS");
+                String longAddress = "Lower Kent Ridge Road ".repeat(30).strip();
+                enter(window, "add n/Aaron p/" + PersonBuilder.DEFAULT_PHONE
+                        + " e/aaron@example.com a/" + longAddress);
 
                 TextArea result = (TextArea) window.getRoot().getScene().lookup("#resultDisplay");
                 assertTrue(result.isWrapText());
@@ -263,7 +265,7 @@ public class SortUiTest {
 
                 enter(window, "add n/Zara p/96667777 e/zara@example.com a/NUS");
                 assertFalse(result.getStyleClass().contains(ResultDisplay.WARNING_STYLE_CLASS));
-                assertEquals(Color.WHITE, ((Text) result.lookup(".text")).getFill());
+                assertEquals(Color.web("#d5d8db"), ((Text) result.lookup(".text")).getFill());
                 assertTrue(feedback(window).startsWith("New person added: Zara"));
 
                 enter(window, "add n/AnotherAaron p/" + PersonBuilder.DEFAULT_PHONE + " a/NUS");
@@ -276,7 +278,7 @@ public class SortUiTest {
                 assertEquals(String.format(Messages.MESSAGE_INVALID_COMMAND_FORMAT, SortCommand.MESSAGE_USAGE),
                         feedback(window));
                 assertFalse(result.getStyleClass().contains(ResultDisplay.WARNING_STYLE_CLASS));
-                assertEquals(Color.WHITE, ((Text) result.lookup(".text")).getFill());
+                assertEquals(Color.web("#d5d8db"), ((Text) result.lookup(".text")).getFill());
             } finally {
                 window.getRoot().close();
             }

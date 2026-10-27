@@ -427,7 +427,7 @@ the ordinary success message's first line without logging the appended match lis
 for warning results, and `DarkTheme.css` makes the text amber (`#ffcf66`). There is no additional
 warning control or scrollbar. JavaFX `TextArea` uses one text colour for its content, so both the
 success and appended warning appear amber, with no coloured border. Feedback without a warning
-remains white, including subsequent ordinary results, undo/redo and errors. Its existing
+remains light grey, including subsequent ordinary results, undo/redo and errors. Its existing
 100-pixel area retains wrapping, selection and vertical scrolling for long feedback. Each new result
 replaces the previous text and resets the caret and scroll position. The command follows the
 successful path, so input clears and is not styled as an error. A same-name duplicate still fails
@@ -444,7 +444,7 @@ blank and distinct values; refreshed sorted indices; persistence; and one-step u
 matches hidden by the previous filter, current card indices, the successful command-box state and
 undo/redo through the GUI. It also checks wrapping, selectable text and scrollable overflow in the
 fixed-height result area in a narrowed window, and that subsequent normal feedback and errors replace
-the previous warning and restore white text. It also verifies that no additional warning text area is created.
+the previous warning and restore light grey text. It also verifies that no additional warning text area is created.
 
 ### Editing academic fields
 
@@ -518,7 +518,7 @@ the same format as add:
 The complete message appears amber in the original feedback text area; no extra control, coloured border or
 command-input error style is added. Warning indices identify the other matching contacts, not the
 edited contact itself. The edit remains successful and is saved normally. Duplicate-name and
-invalid-index errors still occur before mutation. Results without a warning remain white, including
+invalid-index errors still occur before mutation. Results without a warning remain light grey, including
 ordinary edits and errors displayed after a warning.
 
 The history description remains the ordinary `Edited person: ...` message, so one undo restores the
@@ -532,7 +532,7 @@ and base-only history descriptions. Additional cases cover clearing or resupplyi
 alongside a shared phone, and tag-only edits to already-shared contacts without a warning.
 `EditContactUiTest` checks the same combined case in the
 original feedback box with amber text, successful input clearing, preserved icons, refreshed sorted card
-indices and a return to white for ordinary edits, undo/redo and errors. `SharedContactDetailsWarningTest`
+indices and a return to light grey for ordinary edits, undo/redo and errors. `SharedContactDetailsWarningTest`
 checks that appending a warning preserves complete multiline success feedback and alternative add-success
 headers rather than replacing them. Supplemental feedback is composed before calling the warning helper;
 the helper does not generate tag summaries or change favourite semantics itself.
@@ -1684,7 +1684,7 @@ testers are expected to do more *exploratory* testing.
       scrollable within its unchanged 100-pixel height. Both lines can be selected and copied together.
    1. Run `undo`, then `redo`.<br>
       Expected: One undo removes Amy and one redo restores Amy. Their feedback describes the addition
-      in white without repeating the warning, and Zara, Charlie and Morgan retain their original details.
+      in light grey without repeating the warning, and Zara, Charlie and Morgan retain their original details.
    1. Close and reopen the disposable copy, then run `find Amy`.<br>
       Expected: Amy was saved with the entered phone and uppercase email. Sorting and filtering
       return to their usual restart defaults.
@@ -1692,14 +1692,14 @@ testers are expected to do more *exploratory* testing.
 1. Empty details and both fields matching the same contact
 
    1. Run `add n/NoDetails a/NUS`.<br>
-      Expected: The contact is added with ordinary white success feedback. Its missing phone and email
+      Expected: The contact is added with ordinary light grey success feedback. Its missing phone and email
       do not trigger a warning about Morgan's missing details.
    1. Run `add n/AnotherZara p/91919191 e/zara172@example.com a/Dover`.<br>
       Expected: The addition succeeds with a warning. Zara appears once with the reason
       `phone and email`; Amy is also listed for sharing the phone number.
    1. While a warning is showing, run `sort name sideways`, then `list`.<br>
-      Expected: The invalid command replaces the warning with the usual white error feedback and input
-      styling. `list` shows ordinary white success feedback. Neither command changes saved contacts.
+      Expected: The invalid command replaces the warning with the usual light grey error feedback and input
+      styling. `list` shows ordinary light grey success feedback. Neither command changes saved contacts.
    1. Repeat a shared-details addition with long names or many matching contacts in the disposable copy.<br>
       Expected: The complete ordinary success message and appended warning appear amber in the
       original text area, starting at the top. All names, displayed indices and reasons remain
@@ -1722,7 +1722,7 @@ testers are expected to do more *exploratory* testing.
       with no coloured border or additional warning control.
    1. Run `undo`, then `redo`.<br>
       Expected: One undo restores Bob's previous phone and one redo restores the shared phone.
-      Both use ordinary white edit-history feedback without repeating the warning. Alice remains unchanged.
+      Both use ordinary light grey edit-history feedback without repeating the warning. Alice remains unchanged.
    1. Run `find EditWarning`, confirm Bob's displayed index, then edit that index with
       `e/ALICE.EDITWARNING@EXAMPLE.COM t/StudyGroup`.<br>
       Expected: The normal success message shows the new email and `StudyGroup` tag. The next line is
@@ -1731,7 +1731,7 @@ testers are expected to do more *exploratory* testing.
       lines appear amber in the original feedback box. The uppercase email and replacement tags are saved unchanged.
    1. Run `undo`, then `redo`.<br>
       Expected: One undo restores both Bob's previous email and tags; redo restores both changes.
-      Feedback remains white and includes only the base edited-contact details, not the tag summary
+      Feedback remains light grey and includes only the base edited-contact details, not the tag summary
       or duplicate-details warning.
    1. Rename Bob while changing a contact method to another shared value, then inspect the full sorted list.<br>
       Expected: The normal success feedback identifies his new name and saved details; the warning
@@ -1742,12 +1742,12 @@ testers are expected to do more *exploratory* testing.
    1. Before each check, find the edited contact and use its actual displayed index.
    1. Repeat the current phone value, change only the major with `m/Mathematics`, or change only
       the email's capitalization.<br>
-      Expected: Ordinary white edit feedback, not a warning about existing shared values. An unchanged
+      Expected: Ordinary light grey edit feedback, not a warning about existing shared values. An unchanged
       edit does not create another undo step or clear redo availability.
    1. Clear a contact method with `p/` or `e/`.<br>
-      Expected: Ordinary white success feedback; empty values do not match other empty contact methods.
+      Expected: Ordinary light grey success feedback; empty values do not match other empty contact methods.
    1. Change only tags with `t/StudyGroup`, then clear them with `t/`, checking the displayed index before each edit.<br>
-      Expected: Each result includes its actual removed/added tag summary in white, with `None` for
+      Expected: Each result includes its actual removed/added tag summary in light grey, with `None` for
       empty differences. Existing shared phone/email values do not trigger a warning for these tag-only edits.
    1. Close and reopen the disposable copy.<br>
       Expected: Edited values persist; the warnings did not modify or merge any other contact.
