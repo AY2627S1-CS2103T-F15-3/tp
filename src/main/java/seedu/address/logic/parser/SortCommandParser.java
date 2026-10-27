@@ -34,6 +34,7 @@ public class SortCommandParser implements Parser<Command> {
             case "name" -> SortField.NAME;
             case "major" -> SortField.MAJOR;
             case "year" -> SortField.YEAR;
+            case "updated" -> SortField.UPDATED;
             default -> throw invalidFormat("Unsupported sort field");
         };
         SortDirection direction = switch (tokens[1].toLowerCase(Locale.ROOT)) {
