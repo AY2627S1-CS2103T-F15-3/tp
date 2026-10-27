@@ -87,13 +87,13 @@ public class TagOverflowTest {
                 assertTrue(longLabel.getTooltip().isWrapText());
                 assertEquals(400, longLabel.getTooltip().getMaxWidth());
                 assertEquals("Friend", renderedText(tag(root, "Friend")));
-                assertEquals(Color.web("#3e7b91"), longLabel.getBackground().getFills().get(0).getFill());
+                assertEquals(Color.web("#30363c"), longLabel.getBackground().getFills().get(0).getFill());
             }
             for (String reminder : List.of("update", "incomplete")) {
                 assertTrue(tag(root, reminder + " (custom)").getTooltip().getText().contains("t/" + reminder));
                 Label systemLabel = tag(root, reminder);
                 assertTrue(systemLabel.getStyleClass().contains("system-tag"));
-                assertEquals(Color.web("#F4C542"), systemLabel.getBackground().getFills().get(0).getFill());
+                assertEquals(Color.web("#433425"), systemLabel.getBackground().getFills().get(0).getFill());
             }
             Label heart = (Label) root.lookup("#favouriteIcon");
             assertTrue(heart.isVisible());

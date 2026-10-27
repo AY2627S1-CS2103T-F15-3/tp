@@ -66,6 +66,7 @@ public class EditCommand extends Command {
     public static final String MESSAGE_NOT_EDITED = "At least one field to edit must be provided.";
     public static final String MESSAGE_DUPLICATE_PERSON =
             "This person already exists in the address book (names are compared ignoring case).";
+    public static final String MESSAGE_SHARED_DETAILS_WARNING = SharedContactDetailsWarning.MESSAGE_WARNING;
 
     private final Index index;
     private final EditPersonDescriptor editPersonDescriptor;
@@ -118,7 +119,7 @@ public class EditCommand extends Command {
         String message = String.format(MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(editedPerson));
         // Keep the full-contact history description separate from immediate change feedback.
         model.commitAddressBook(previousState, message);
-        return new CommandResult(formatChanges(personToEdit, editedPerson));
+        return getEditResult(model, personToEdit, editedPerson, formatChanges(personToEdit, editedPerson));
     }
 
     /** Lists only changed fields, with explicit values for cleared optional fields. */
@@ -145,6 +146,19 @@ public class EditCommand extends Command {
                     .append(before.isEmpty() ? "Not specified" : before).append(" → ")
                     .append(after.isEmpty() ? "Not specified" : after);
         }
+    }
+
+    /**
+     * Warns only when a changed contact method matches another contact after refreshing the display.
+     * Changing only an email's capitalization does not introduce a new shared value.
+     */
+    private CommandResult getEditResult(Model model, Person originalPerson, Person editedPerson,
+            String successMessage) {
+        boolean phoneChanged = !originalPerson.getPhone().equals(editedPerson.getPhone());
+        boolean emailChanged = !originalPerson.getEmail().value.equalsIgnoreCase(editedPerson.getEmail().value);
+        String matches = SharedContactDetailsWarning.describeMatches(
+                editedPerson, model.getFilteredPersonList(), phoneChanged, emailChanged);
+        return SharedContactDetailsWarning.appendTo(successMessage, matches);
     }
 
     /** Returns sorted tag names present only in the first set, or "None". */

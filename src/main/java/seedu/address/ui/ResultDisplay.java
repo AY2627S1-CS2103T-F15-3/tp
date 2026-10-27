@@ -11,6 +11,8 @@ import javafx.scene.layout.Region;
  */
 public class ResultDisplay extends UiPart<Region> {
 
+    public static final String WARNING_STYLE_CLASS = "warning";
+
     private static final String FXML = "ResultDisplay.fxml";
 
     @FXML
@@ -21,10 +23,22 @@ public class ResultDisplay extends UiPart<Region> {
     }
 
     /**
-     * Shows the complete feedback in the original text area, starting at the top of the message.
+     * Shows ordinary feedback using the normal theme colour, clearing previous warning styling.
      */
     public void setFeedbackToUser(String feedbackToUser) {
+        setFeedbackToUser(feedbackToUser, false);
+    }
+
+    /**
+     * Shows the complete feedback in the original text area, starting at the top of the message.
+     * A warning uses amber text; other feedback uses the normal theme colour without a warning border.
+     */
+    public void setFeedbackToUser(String feedbackToUser, boolean warning) {
         requireNonNull(feedbackToUser);
+        resultDisplay.getStyleClass().remove(WARNING_STYLE_CLASS);
+        if (warning) {
+            resultDisplay.getStyleClass().add(WARNING_STYLE_CLASS);
+        }
         resultDisplay.setText(feedbackToUser);
         resultDisplay.positionCaret(0);
         resultDisplay.setScrollTop(0);

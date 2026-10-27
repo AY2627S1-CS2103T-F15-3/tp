@@ -3,11 +3,13 @@
 <?import java.net.URL?>
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.Scene?>
+<?import javafx.scene.control.Label?>
 <?import javafx.scene.control.Menu?>
 <?import javafx.scene.control.MenuBar?>
 <?import javafx.scene.control.MenuItem?>
-<?import javafx.scene.control.SplitPane?>
 <?import javafx.scene.image.Image?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 
@@ -24,14 +26,19 @@
       </stylesheets>
 
       <VBox>
-        <MenuBar fx:id="menuBar" VBox.vgrow="NEVER">
-          <Menu mnemonicParsing="false" text="File">
-            <MenuItem mnemonicParsing="false" onAction="#handleExit" text="Exit" />
-          </Menu>
-          <Menu mnemonicParsing="false" text="Help">
-            <MenuItem fx:id="helpMenuItem" mnemonicParsing="false" onAction="#handleHelp" text="Help" />
-          </Menu>
-        </MenuBar>
+        <HBox alignment="CENTER_LEFT" spacing="12" styleClass="app-header">
+          <Label text="UniMate" styleClass="app-title" />
+          <Label text="CONTACTS" styleClass="app-section" />
+          <Region HBox.hgrow="ALWAYS" />
+          <MenuBar fx:id="menuBar">
+            <Menu mnemonicParsing="false" text="File">
+              <MenuItem mnemonicParsing="false" onAction="#handleExit" text="Exit" />
+            </Menu>
+            <Menu mnemonicParsing="false" text="Help">
+              <MenuItem fx:id="helpMenuItem" mnemonicParsing="false" onAction="#handleHelp" text="Help" />
+            </Menu>
+          </MenuBar>
+        </HBox>
 
         <StackPane VBox.vgrow="NEVER" fx:id="commandBoxPlaceholder" styleClass="pane-with-border">
           <padding>

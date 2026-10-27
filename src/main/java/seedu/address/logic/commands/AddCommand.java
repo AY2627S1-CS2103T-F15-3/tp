@@ -4,6 +4,7 @@ import static java.util.Objects.requireNonNull;
 import static seedu.address.logic.parser.CliSyntax.PREFIX_ADDRESS;
 import static seedu.address.logic.parser.CliSyntax.PREFIX_DEFAULT_TAG;
 import static seedu.address.logic.parser.CliSyntax.PREFIX_EMAIL;
+import static seedu.address.logic.parser.CliSyntax.PREFIX_FAVOURITE;
 import static seedu.address.logic.parser.CliSyntax.PREFIX_GRADUATION_YEAR;
 import static seedu.address.logic.parser.CliSyntax.PREFIX_MAJOR;
 import static seedu.address.logic.parser.CliSyntax.PREFIX_NAME;
@@ -12,8 +13,6 @@ import static seedu.address.logic.parser.CliSyntax.PREFIX_TAG;
 
 import java.time.Clock;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Optional;
 
 import seedu.address.commons.util.ToStringBuilder;
@@ -39,8 +38,10 @@ public class AddCommand extends Command {
             + PREFIX_ADDRESS + "ADDRESS "
             + "[" + PREFIX_MAJOR + "MAJOR] "
             + "[" + PREFIX_GRADUATION_YEAR + "CLASS_YEAR] "
+            + "[" + PREFIX_FAVOURITE + "] "
             + "[" + PREFIX_TAG + "TAG]... "
             + "[" + PREFIX_DEFAULT_TAG + "DEFAULT_INDEX]...\n"
+            + "Use " + PREFIX_FAVOURITE + " without a value to mark the new contact as a favourite.\n"
             + "Example: " + COMMAND_WORD + " "
             + PREFIX_NAME + "John Doe "
             + PREFIX_PHONE + "98765432 "
@@ -48,10 +49,12 @@ public class AddCommand extends Command {
             + PREFIX_ADDRESS + "311, Clementi Ave 2, #02-25 "
             + PREFIX_MAJOR + "Computer Science "
             + PREFIX_GRADUATION_YEAR + "2027 "
+            + PREFIX_FAVOURITE + " "
             + PREFIX_TAG + "friends "
             + PREFIX_TAG + "owesMoney";
 
     public static final String MESSAGE_SUCCESS = "New person added: %1$s";
+    public static final String MESSAGE_FAVOURITE_SUCCESS = "New favourite contact added: %1$s";
     public static final String MESSAGE_DUPLICATE_PERSON =
             "This person already exists in the address book (names are compared ignoring case).";
     public static final String MESSAGE_DUPLICATE_PERSON_DISPLAYED = MESSAGE_DUPLICATE_PERSON
@@ -60,9 +63,8 @@ public class AddCommand extends Command {
             + "\nExisting contact is hidden by the current filter (saved index %1$d):\n%2$s"
             + "\nRun " + ListCommand.COMMAND_WORD + ", then " + SortCommand.COMMAND_WORD
             + " reset to view this contact at index %1$d.";
-    public static final String MESSAGE_SHARED_DETAILS_WARNING =
-            "Warning - duplicate details detected: %1$s";
-    public static final String MESSAGE_SHARED_DETAILS_MATCH = "#%1$d %2$s (%3$s)";
+    public static final String MESSAGE_SHARED_DETAILS_WARNING = SharedContactDetailsWarning.MESSAGE_WARNING;
+    public static final String MESSAGE_SHARED_DETAILS_MATCH = SharedContactDetailsWarning.MESSAGE_MATCH;
 
     private final Person toAdd;
     private final Clock clock;
@@ -95,7 +97,9 @@ public class AddCommand extends Command {
         ReadOnlyAddressBook previousState = new AddressBook(model.getAddressBook());
         Person addedPerson = toAdd.withLastUpdated(LocalDate.now(clock));
         model.addPerson(addedPerson);
-        String message = String.format(MESSAGE_SUCCESS, Messages.format(addedPerson));
+        String message = String.format(
+                addedPerson.isFavourite() ? MESSAGE_FAVOURITE_SUCCESS : MESSAGE_SUCCESS,
+                Messages.format(addedPerson));
         CommandResult result = getAddResult(model, addedPerson, message);
         model.commitAddressBook(previousState, message);
         return result;
@@ -106,29 +110,9 @@ public class AddCommand extends Command {
      * Phone numbers match exactly; email matching ignores case for this advisory warning.
      */
     private CommandResult getAddResult(Model model, Person addedPerson, String successMessage) {
-        List<String> matches = new ArrayList<>();
-        List<Person> displayedPersons = model.getFilteredPersonList();
-        for (int i = 0; i < displayedPersons.size(); i++) {
-            Person existingPerson = displayedPersons.get(i);
-            if (addedPerson.isSamePerson(existingPerson)) {
-                continue;
-            }
-            List<String> sharedFields = new ArrayList<>();
-            if (!addedPerson.getPhone().value.isEmpty() && addedPerson.getPhone().equals(existingPerson.getPhone())) {
-                sharedFields.add("phone");
-            }
-            if (!addedPerson.getEmail().value.isEmpty()
-                    && addedPerson.getEmail().value.equalsIgnoreCase(existingPerson.getEmail().value)) {
-                sharedFields.add("email");
-            }
-            if (!sharedFields.isEmpty()) {
-                matches.add(String.format(MESSAGE_SHARED_DETAILS_MATCH,
-                        i + 1, existingPerson.getName().fullName, String.join(" and ", sharedFields)));
-            }
-        }
-        return matches.isEmpty() ? new CommandResult(successMessage)
-                : CommandResult.warning(successMessage + "\n"
-                        + String.format(MESSAGE_SHARED_DETAILS_WARNING, String.join("; ", matches)));
+        String matches = SharedContactDetailsWarning.describeMatches(
+                addedPerson, model.getFilteredPersonList(), true, true);
+        return SharedContactDetailsWarning.appendTo(successMessage, matches);
     }
 
     /**

@@ -94,7 +94,7 @@ public class LastUpdatedDisplayTest {
                 PersonCard card = new PersonCard(person, 1, CLOCK);
                 Label label = dateLabel(card.getRoot());
 
-                assertEquals("Last updated: " + date, label.getText());
+                assertEquals(date.toString(), label.getText());
                 assertTrue(label.isVisible());
                 assertTrue(label.isManaged());
                 assertNotNull(label.getTooltip());
@@ -112,7 +112,7 @@ public class LastUpdatedDisplayTest {
             PersonCard card = new PersonCard(unknown, 1, CLOCK);
             String tooltip = dateLabel(card.getRoot()).getTooltip().getText();
 
-            assertEquals("Last updated: Unknown", dateLabel(card.getRoot()).getText());
+            assertEquals("Unknown", dateLabel(card.getRoot()).getText());
             assertTrue(tooltip.contains("Older contacts without a saved date show Unknown"));
             assertTrue(tooltip.contains("sort last in both date directions"));
             assertEquals(0, card.getRoot().lookupAll(".system-tag").size());
@@ -228,7 +228,7 @@ public class LastUpdatedDisplayTest {
                 .map(node -> (ListCell<?>) node)
                 .findFirst().orElseThrow();
         Label label = dateLabel(cell.getGraphic());
-        assertEquals("Last updated: " + person.getLastUpdated(), label.getText());
+        assertEquals(person.getLastUpdated().toString(), label.getText());
         assertTrue(label.isVisible());
         assertTrue(label.isManaged());
         assertTrue(label.getHeight() > 0);

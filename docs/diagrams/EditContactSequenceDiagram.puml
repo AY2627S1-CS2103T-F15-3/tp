@@ -67,7 +67,13 @@ opt Tags changed
     Undo/redo description retains the base message.
   end note
 end
-Edit --> Logic : CommandResult(change summary)
+Edit -> Edit : getEditResult(model, person, editedPerson, change summary)
+note right of Edit
+  Append a warning for shared changed phone/email values.
+  Use refreshed displayed indices; preserve the change summary.
+  This academic-field and tag edit does not trigger a warning.
+end note
+Edit --> Logic : CommandResult(feedback)
 end
 deactivate Edit
 Logic -> Model : getAddressBook()
@@ -77,7 +83,7 @@ Storage --> Logic
 Logic --> Window : CommandResult
 deactivate Logic
 Window -> Window : personListPanel.refresh()
-Window -> Window : resultDisplay.setFeedbackToUser(feedback)
+Window -> Window : resultDisplay.setFeedbackToUser(feedback, isWarning)
 Window --> Box : CommandResult
 deactivate Window
 note over Box : Clear the command text after success.

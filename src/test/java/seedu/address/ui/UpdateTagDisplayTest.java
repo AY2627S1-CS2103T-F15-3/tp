@@ -78,13 +78,13 @@ public class UpdateTagDisplayTest {
             assertEquals(1, root.lookupAll(".system-tag").size());
             Label system = (Label) root.lookup(".system-tag");
             assertEquals("update", system.getText());
-            assertEquals(Color.web("#F4C542"), system.getBackground().getFills().get(0).getFill());
-            assertEquals(Color.web("#222222"), system.getTextFill());
+            assertEquals(Color.web("#433425"), system.getBackground().getFills().get(0).getFill());
+            assertEquals(Color.web("#f1c58d"), system.getTextFill());
             List<Label> labels = root.lookupAll("#tags .label").stream().map(node -> (Label) node).toList();
             assertEquals(3, labels.size());
             Label custom = labels.stream().filter(label -> label.getText().equals("update (custom)"))
                     .findFirst().orElseThrow();
-            assertEquals(Color.web("#3e7b91"), custom.getBackground().getFills().get(0).getFill());
+            assertEquals(Color.web("#30363c"), custom.getBackground().getFills().get(0).getFill());
             assertEquals(system.getPadding(), custom.getPadding());
             assertEquals(system.getFont().getSize(), custom.getFont().getSize());
             assertEquals(system.getBackground().getFills().get(0).getRadii(),
@@ -141,7 +141,7 @@ public class UpdateTagDisplayTest {
                 assertTrue(tags.stream().anyMatch(label -> label.getText().equals("Friend")));
                 for (Label label : tags) {
                     label.applyCss();
-                    assertEquals(Color.web("#3e7b91"), label.getBackground().getFills().get(0).getFill());
+                    assertEquals(Color.web("#30363c"), label.getBackground().getFills().get(0).getFill());
                 }
                 assertEquals(edited, new JsonAddressBookStorage(data).readAddressBook().orElseThrow()
                         .getPersonList().get(0));
