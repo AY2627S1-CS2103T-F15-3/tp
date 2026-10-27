@@ -1,58 +1,24 @@
 @startuml
 !include style.puml
 skinparam ArrowFontStyle plain
-start
-:Focus the command box;
-if (Alt+Up or Alt+Down?\nOption on macOS) then (yes)
-  if (Up?) then (yes)
-    :Capture current input as prefix\nif no search is active;
-    :Save draft if at the end of history;
-    :Search older entries with\ncase-sensitive startsWith(prefix);
-    if (Older match exists?) then (yes)
-      :Move to and show the match;
-    else (no)
-      :Leave input and position unchanged;
-    endif
-  else (Down)
-    if (Active search and browsing history?) then (yes)
-      :Search newer matching entries;
-      if (Newer match exists?) then (yes)
-        :Move to and show the match;
-      else (no)
-        :Return to end, restore saved draft\nand reset prefix search;
-      endif
-    else (no)
-      :Leave input unchanged;
-    endif
-  endif
-else (ordinary Up/Down)
-  :Reset prefix search, keep cursor and draft;
-  if (Up?) then (yes)
-    if (Any submitted commands?) then (yes)
-      :Save draft if at the end of history;
-      :Show previous chronological command\nstay at oldest entry at boundary;
-    else (no)
-      :Leave input unchanged;
-    endif
-  else (Down)
-    if (Currently browsing history?) then (yes)
-      :Show next chronological command, or\nrestore saved draft after newest entry;
-    else (no)
-      :Leave input unchanged;
-    endif
-  endif
-endif
-:For recalled text, move caret to end\nwithout resetting search in text listener;
-if (At the draft?) then (yes)
-  :Stop feedback and hide position label
-release its layout space;
-else (no)
-  :Show History i/N beside command box
-1 = oldest, N = total submissions;
-  :Restart 200 ms opacity pulse
-even for duplicates or boundary presses;
-endif
-:Consume arrow event;
-:Keep contacts and result feedback unchanged\nno command is executed;
-stop
+skinparam Participant {
+    FontColor #222222
+    BackgroundColor #F4F4F4
+    BorderColor #666666
+}
+
+participant "Older\ncommand" as Older
+participant "Most recent\ncommand" as Recent
+participant "Your draft\n(not submitted)" as Draft
+
+Draft -> Recent : Up (draft kept)
+Recent -> Older : Up
+Older -> Recent : Down
+Recent -> Draft : Down (draft restored)
+
+legend bottom
+  Arrow keys recall text; press Enter to run it.
+  Alt+Up/Down recalls commands starting with
+  your typed prefix (Option on macOS).
+endlegend
 @enduml

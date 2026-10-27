@@ -29,10 +29,12 @@
 * [Home]({{ baseUrl }}/index.html)
 * [User Guide]({{ baseUrl }}/UserGuide.html) :expanded:
   * [Quick Start]({{ baseUrl }}/UserGuide.html#quick-start)
+  * [Contact List]({{ baseUrl }}/UserGuide.html#using-the-contact-list)
+  * [Field Reference]({{ baseUrl }}/UserGuide.html#contact-field-reference)
   * [Features]({{ baseUrl }}/UserGuide.html#features)
   * [Coming soon]({{ baseUrl }}/UserGuide.html#coming-soon)
   * [FAQ]({{ baseUrl }}/UserGuide.html#faq)
-  * [Command Summary]({{ baseUrl }}/UserGuide.html#faq)
+  * [Command Summary]({{ baseUrl }}/UserGuide.html#command-summary)
 * [Developer Guide]({{ baseUrl }}/DeveloperGuide.html) :expanded:
   * [Acknowledgements]({{ baseUrl }}/DeveloperGuide.html#acknowledgements)
   * [Setting Up]({{ baseUrl }}/DeveloperGuide.html#setting-up-getting-started)
