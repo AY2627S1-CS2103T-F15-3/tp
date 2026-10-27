@@ -140,7 +140,8 @@ Here are the other classes in `Logic` (omitted from the class diagram above) tha
 <puml src="diagrams/ParserClasses.puml" width="600"/>
 
 How the parsing works:
-* `AddressBookParser#parseCommand` dispatches on `commandWord.toLowerCase(Locale.ROOT)`, so all command words are case-insensitive regardless of the system locale. Only the command word is normalized; the argument string is passed unchanged to the selected parser. Prefix matching and argument validation retain their existing rules, and `Tag` equality remains case-sensitive.
+* `AddressBookParser#parseCommand` dispatches on `commandWord.toLowerCase(Locale.ROOT)`, so all command words are case-insensitive regardless of the system locale. Argument capitalization is retained. Whitespace is normalized before dispatch except for `note`,
+  whose parser receives the raw arguments so that internal note whitespace can be preserved. Prefix matching and argument validation retain their existing rules, and `Tag` equality remains case-sensitive.
 * When called upon to parse a user command, the `AddressBookParser` class creates an `XYZCommandParser` (`XYZ` is a placeholder for the specific command name, e.g., `AddCommandParser`). The parser uses the other classes shown above to parse the user command and create an `XYZCommand` object (e.g., `AddCommand`). The `AddressBookParser` returns that object as a `Command` object.
 * All `XYZCommandParser` classes, such as `AddCommandParser` and `DeleteCommandParser`, implement the `Parser` interface so they can be treated similarly where appropriate, for example during testing.
 
@@ -223,9 +224,9 @@ independently from their values in `DarkTheme.css`.
   its displayed index and binds its preferred width to the list width, reserving space for the scrollbar.
 * `ExpandableText` handles ellipses and click, Enter or Space expansion. `PersonListPanel` shares each
   contact's expanded-field state across recreated cells. This state is kept only in memory and does
-  not change contact data or undo/redo history. The map uses `Person` values as keys: replacing a
-  contact with different data starts with collapsed fields, while an unchanged contact retains its
-  state. Restarting the app clears the map.
+  not change contact data or undo/redo history. The map uses value-equal `Person` objects as keys.
+  A new contact state starts collapsed; an unchanged contact retains its state. Undo can reuse
+  the entry for an earlier contact state and restore its expansion. Restarting the app clears the map.
 * `ContactListNavigation` filters Tab and Shift+Tab at the window root. It builds the route from the
   command box, list and selected cell's expandable values, skipping the result display and other cards.
   `PersonCard` supplies values in reading order; focusable tags are included. The route is rebuilt on
@@ -307,8 +308,8 @@ without changing command syntax or storage.
 vertical scrolling. At INFO level, `LogicManager` logs the parsed command type instead of raw input,
 and `MainWindow` logs `CommandResult#getLogSummary`, the feedback's first line, instead of its full
 contents. Failed commands are logged without their input. Full note text remains in the GUI feedback;
-this logging policy applies to INFO messages. `NoteFeedbackUiTest` checks long wrapped feedback at
-450- and 740-pixel window widths and captures INFO logs for successful and failing note commands.
+this logging policy applies to INFO messages. Manual feedback checks are listed under
+[Managing contact notes](#managing-contact-notes).
 
 Malformed input fails during parsing; an index beyond the displayed list fails before the snapshot
 or replacement. Neither case changes contact data or history. If saving fails after execution,
@@ -534,8 +535,8 @@ self-exclusion, compact formatting and displayed order. The helper skips scannin
 contact method changed. Pre-existing shared values are not reported for unrelated or unchanged edits.
 
 A match is passed to `SharedContactDetailsWarning#appendTo` with the complete success feedback.
-The ordinary `Edited person: ...` message, including the edited contact's new name and saved fields,
-remains first, followed by the tag replacement summary when `t/` was supplied. A final line uses
+The `Edited NAME:` summary appears first and lists only fields whose values changed.
+A tag replacement summary follows only when the tag sets differ. A final line uses
 the same format as add:
 `Warning - duplicate details detected: #1 Alice (phone); #3 Carol (email)`.
 The complete message appears amber in the original feedback text area; no extra control, coloured border or
@@ -550,7 +551,7 @@ edits still preserve both history stacks. Notes, favourite status and all omitte
 `EditCommandSharedDetailsTest` covers changed phone/email values, case-insensitive matches, multiple
 matches, self-exclusion, empty fields, unchanged and unrelated edits, persistence and one-step history.
 Its combined edit changes the name, phone, email and tags together, checking the exact order of
-normal saved details, the actual removed/added tag summary and the warning, plus persisted data
+changed fields, the actual removed/added tag summary and the warning, plus persisted data
 and base-only history descriptions. Additional cases cover clearing or resupplying unchanged tags
 alongside a shared phone, and tag-only edits to already-shared contacts without a warning.
 `EditContactUiTest` checks the same combined case in the
@@ -699,7 +700,7 @@ optional behavior of major and class year.
 
 ### Deleting one or more contacts
 
-`DeleteCommandParser` accepts `delete INDEX [MORE_INDICES]`. It splits the arguments on whitespace and
+`DeleteCommandParser` accepts `delete INDEX [INDEX]...`. It splits the arguments on whitespace and
 uses `ParserUtil#parseIndex` to validate every token as a positive integer. Empty input, zero, negative
 numbers, integer overflow, commas and ranges produce a usage error. `DeleteCommand` stores an
 immutable copy of the indices in input order; duplicates are rejected during command execution.
@@ -1115,9 +1116,10 @@ Both methods return `true` if a state was restored. They return `false` and leav
 
 The diagrams below show how the history changes as a user enters a sequence of commands. Each `abN` is an `AddressBook` snapshot, and each stack is drawn with its top entry first.
 
-Step 1. The user launches UniMate. `currentState` is a copy of the loaded contacts, `ab0`, and both stacks are empty.
+Step 1. The user launches a disposable, empty address book. `currentState` is a copy of its contacts,
+`ab0`, and both stacks are empty. The example uses a name that is not already saved.
 
-Step 2. The user runs `add n/Alex Tan …​`, then `edit 1 p/91234567`. Each command commits the state from before its change: `add` pushes `ab0` onto `undoStates` and `currentState` becomes `ab1`; `edit` then pushes `ab1` and `currentState` becomes `ab2`.
+Step 2. The user runs `add n/Alex Tan a/NUS`, then `find Alex Tan`, then `edit 1 p/91234567`. Each command commits the state from before its change: `add` pushes `ab0` onto `undoStates` and `currentState` becomes `ab1`; `edit` then pushes `ab1` and `currentState` becomes `ab2`.
 
 <puml src="diagrams/UndoRedoState0.puml" alt="History after add and edit" />
 
@@ -1149,7 +1151,8 @@ To the user, such a change would only make `undo` and `redo` report that there i
 
 #### Known limitations
 
-* **The history has no size limit.** Every recorded change stores a full copy of the contact list, and nothing is ever dropped from `undoStates` until the app closes or the history becomes stale. Memory use grows with the number of contacts times the number of changes in a session. This is acceptable for the expected size of a student's contact list. A future version could cap the number of entries and drop the oldest snapshot when the cap is reached.
+* **The history has no size limit.** Every recorded change stores a full copy of the contact list, with no automatic cap or eviction of the oldest snapshots. Undo and redo still move entries
+  between the stacks, and a new change clears the redo branch. Memory use grows with the number of contacts times the number of changes in a session. This is acceptable for the expected size of a student's contact list. A future version could cap the number of entries and drop the oldest snapshot when the cap is reached.
 * **A failed save does not roll back the change.** Commands commit to the history in `Command#execute`. `LogicManager#execute` saves to storage only afterwards. If saving throws an `IOException`, `LogicManager` throws a `CommandException` with `FILE_OPS_ERROR_FORMAT` or `FILE_OPS_PERMISSION_ERROR_FORMAT`. The in-memory change and its history entry remain, and the UI shows only the save error instead of the command's success message. A following `undo` therefore reverts that change. To make this clear, `LogicManager` copies the person list (a shallow copy, as `Person` is immutable) before running the command. If the list changed, it appends `MESSAGE_UNSAVED_CHANGE` to the save error. The note says the change is applied but not saved, that it is lost if the app closes now, and which command would revert it: `redo` after a failed `undo`, otherwise `undo`. Commands that leave the data unchanged, such as `list`, get no note, because they have no change to describe. Any later successful command, including `list`, saves the current data again. The user guide documents this under [Saving the data](UserGuide.md#saving-the-data).
 
 #### Design considerations
@@ -1245,9 +1248,9 @@ The description names the original change, not the restored values. Note replace
 
 * **Alternative 1 (current choice):** The command checks `canUndoAddressBook()` or `canRedoAddressBook()` first and throws a `CommandException` if it returns `false`.
   * Pros: The failure is reported through the usual command error path. The `boolean` returned by `undoAddressBook()` and `redoAddressBook()` only acts as a safety net.
-  * Cons: Each command makes two model calls.
+  * Cons: The command makes an extra availability-check call before restoring history.
 * **Alternative 2:** Call `undoAddressBook()` or `redoAddressBook()` directly and use the returned `boolean` to choose the message.
-  * Pros: One model call.
+  * Pros: No separate availability-check call. Description lookup and view reset are still needed.
   * Cons: The command's decision depends on the result of a call that may also discard stale history as a side effect, which is harder to follow.
 
 **Aspect: How the undone or redone change is described**
@@ -1337,7 +1340,7 @@ For manual UI verification:
 2. Press Up again at the oldest entry; verify it stays displayed. Press Down to return to the newest entry.
 3. Return to the draft position, type a partial command, then press Up and Down; verify the draft is restored.
 4. Edit a recalled command and submit it; verify the new submission is the newest entry.
-5. Submit `add n/Alice`, `list`, `add n/Bob`, then `list`. Type `add ` and use Alt+Up twice:
+5. Submit `add n/Alice a/NUS`, `list`, `add n/Bob a/NUS`, then `list`. Type `add ` and use Alt+Up twice:
    verify Bob then Alice is recalled, skipping List entries. Alt+Down twice restores Bob then `add `.
 6. Verify no matches leave input unchanged, and ordinary arrows still visit all entries after prefix search.
 7. Submit `list` three times. Press Up repeatedly and verify the label shows distinct absolute positions,
