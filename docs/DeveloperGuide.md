@@ -888,21 +888,19 @@ The diagrams below show how the history changes as a user enters a sequence of c
 
 Step 1. The user launches UniMate. `currentState` is a copy of the loaded contacts, `ab0`, and both stacks are empty.
 
-<puml src="diagrams/UndoRedoState0.puml" alt="UndoRedoState0" />
-
 Step 2. The user runs `add n/Alex Tan …​`, then `edit 1 p/91234567`. Each command commits the state from before its change: `add` pushes `ab0` onto `undoStates` and `currentState` becomes `ab1`; `edit` then pushes `ab1` and `currentState` becomes `ab2`.
 
-<puml src="diagrams/UndoRedoState1.puml" alt="UndoRedoState1" />
+<puml src="diagrams/UndoRedoState0.puml" alt="History after add and edit" />
 
 Step 3. The user runs `undo`. `currentState`, `ab2`, is pushed onto `redoStates`, and `ab1` is popped from `undoStates` and restored.
 
-<puml src="diagrams/UndoRedoState2.puml" alt="UndoRedoState2" />
+<puml src="diagrams/UndoRedoState1.puml" alt="History after undo" />
 
 Step 4. The user runs `redo`. This reverses Step 3: `ab1` is pushed back onto `undoStates`, and `ab2` is popped from `redoStates` and restored. The history is again as shown after Step 2.
 
 Step 5. The user runs `undo` again, returning to the state after Step 3, and then runs `add n/Beth Lim …​`. The new commit pushes `ab1` and clears `redoStates`, so the undone edit, `ab2`, can no longer be redone. `currentState` becomes `ab3`.
 
-<puml src="diagrams/UndoRedoState3.puml" alt="UndoRedoState3" />
+<puml src="diagrams/UndoRedoState2.puml" alt="History after undo, then a new add" />
 
 Commands that do not change contact data, such as `list` and `find`, and commands that fail before changing anything, record nothing and leave all three parts of the history unchanged.
 
@@ -917,8 +915,6 @@ As a safety net, `AddressBookHistory` compares `currentState` with the live cont
 * The next data-changing commit discards the stale undo states before recording the new one.
 
 Continuing the example above, suppose an unrecorded change now replaces the contacts in the model with `ab4`, so they no longer match `currentState`, `ab3`. The history is now stale: a following `undo` would discard both stacks and report that there is no change to undo, rather than restoring `ab1` and reversing the unrecorded change.
-
-<puml src="diagrams/UndoRedoState4.puml" alt="UndoRedoState4" />
 
 To the user, such a change would only make `undo` and `redo` report that there is nothing to undo or redo, never restore the wrong data. `UndoCommandTest` covers this by changing the model directly without committing.
 

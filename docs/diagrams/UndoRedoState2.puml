@@ -4,20 +4,24 @@ skinparam ClassFontColor #000000
 skinparam ClassBorderColor #000000
 skinparam ClassBackgroundColor #FFFFAA
 
-title After command "undo"
+title After undo, perform a new add
 
-package "undoStates" <<rectangle>> {
-    class U0 as "<u>ab0:AddressBook</u>"
+package "undoStates (stack)" <<rectangle>> {
+    class U0 as "<u>ab1:AddressBook</u>\nAlex"
+    class U1 as "<u>ab0:AddressBook</u>"
 }
 
 package "currentState" <<rectangle>> {
-    class C as "<u>ab1:AddressBook</u>"
+    class C as "<u>ab3:AddressBook</u>\nAlex, Beth"
 }
 
-package "redoStates" <<rectangle>> {
-    class R0 as "<u>ab2:AddressBook</u>"
+package "redoStates (stack)" <<rectangle>> {
+    class RE as "empty" #FFFFFF
 }
 
+U0 -[hidden]down-> U1
 U0 -[hidden]right-> C
-C -[hidden]right-> R0
+C -[hidden]right-> RE
+
+caption The new commit clears redoStates, so ab2 can no longer be redone.
 @enduml
