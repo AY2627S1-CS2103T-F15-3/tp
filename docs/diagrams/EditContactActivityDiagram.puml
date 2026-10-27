@@ -10,12 +10,12 @@ and name not a duplicate?) then (yes)
   :Update the contact and save automatically;
   :Show the full contact list
 with updated contact cards;
+  :Show Edited person feedback
+with all updated contact details;
   if (Changed phone or email
 matches another contact?) then (yes)
-    :Show a compact amber warning
-with current indices and an undo hint;
-  else (no)
-    :Show Edited person feedback;
+    :Append Warning - duplicate details detected
+with matching contacts' current indices;
   endif
   :Clear the command box;
 else (no)

@@ -21,6 +21,18 @@ public class CommandResultTest {
     }
 
     @Test
+    public void warning_appendedLine_preservesSuccessFeedbackAndLogSummary() {
+        String primary = "New person added: Alice";
+        String advisory = "Warning - duplicate details detected: #2 Bob (phone)";
+        CommandResult result = CommandResult.warning(primary + "\n" + advisory);
+        assertEquals(primary + "\n" + advisory, result.getFeedbackToUser());
+        assertEquals(primary, result.getLogSummary());
+        assertTrue(result.isWarning());
+        assertFalse(result.isShowHelp());
+        assertFalse(result.isExit());
+    }
+
+    @Test
     public void getLogSummary_omitsDetailedNoteTextWithoutChangingFeedback() {
         String feedback = "Note replaced for Alice. Use undo to restore the previous note."
                 + "\nPrevious note: Private previous text\nSaved note: Private saved text";
@@ -58,7 +70,7 @@ public class CommandResultTest {
         // different exit value -> returns false
         assertFalse(commandResult.equals(new CommandResult("feedback", false, true)));
 
-        // warning styling is part of the result, not inferred from the feedback text
+        // warning classification is part of the result, not inferred from the feedback text
         assertFalse(commandResult.equals(CommandResult.warning("feedback")));
         assertTrue(CommandResult.warning("feedback").equals(CommandResult.warning("feedback")));
     }

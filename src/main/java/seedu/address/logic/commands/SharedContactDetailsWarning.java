@@ -9,9 +9,18 @@ import seedu.address.model.person.Person;
  * Describes other contacts that share selected non-empty contact methods in the current display.
  */
 final class SharedContactDetailsWarning {
-    private static final String MESSAGE_MATCH = "#%1$d %2$s (%3$s)";
+    static final String MESSAGE_WARNING = "Warning - duplicate details detected: %1$s";
+    static final String MESSAGE_MATCH = "#%1$d %2$s (%3$s)";
 
     private SharedContactDetailsWarning() {}
+
+    /**
+     * Appends an advisory after all existing success feedback, preserving any additional summary lines.
+     */
+    static CommandResult appendTo(String successFeedback, String matches) {
+        return matches.isEmpty() ? new CommandResult(successFeedback)
+                : CommandResult.warning(successFeedback + "\n" + String.format(MESSAGE_WARNING, matches));
+    }
 
     /**
      * Returns compact matches in displayed order, excluding {@code person} itself.

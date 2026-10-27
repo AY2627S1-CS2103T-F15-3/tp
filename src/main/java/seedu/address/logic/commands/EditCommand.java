@@ -62,8 +62,7 @@ public class EditCommand extends Command {
     public static final String MESSAGE_NOT_EDITED = "At least one field to edit must be provided.";
     public static final String MESSAGE_DUPLICATE_PERSON =
             "This person already exists in the address book (names are compared ignoring case).";
-    public static final String MESSAGE_SHARED_DETAILS_WARNING = "Warning: Contact edited. Use undo if unintended."
-            + "\nShared details: %1$s";
+    public static final String MESSAGE_SHARED_DETAILS_WARNING = SharedContactDetailsWarning.MESSAGE_WARNING;
 
     private final Index index;
     private final EditPersonDescriptor editPersonDescriptor;
@@ -125,8 +124,7 @@ public class EditCommand extends Command {
         boolean emailChanged = !originalPerson.getEmail().value.equalsIgnoreCase(editedPerson.getEmail().value);
         String matches = SharedContactDetailsWarning.describeMatches(
                 editedPerson, model.getFilteredPersonList(), phoneChanged, emailChanged);
-        return matches.isEmpty() ? new CommandResult(successMessage)
-                : CommandResult.warning(String.format(MESSAGE_SHARED_DETAILS_WARNING, matches));
+        return SharedContactDetailsWarning.appendTo(successMessage, matches);
     }
 
     /**

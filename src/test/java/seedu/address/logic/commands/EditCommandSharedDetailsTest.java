@@ -157,18 +157,20 @@ public class EditCommandSharedDetailsTest {
     @Test
     public void execute_filteredSortedEdit_warnsWithRefreshedIndicesAndPersistsOneUndoStep(@TempDir Path directory)
             throws Exception {
+        Person original = new PersonBuilder(bob).withTags("Old").build();
+        model = modelWith(alice, original, carol);
         AddressBook before = new AddressBook(model.getAddressBook());
         JsonAddressBookStorage storage = new JsonAddressBookStorage(directory.resolve("contacts.json"));
         LogicManager logic = new LogicManager(model, new StorageManager(storage,
                 new JsonUserPrefsStorage(directory.resolve("prefs.json"))));
         logic.execute("sort name asc");
         logic.execute("find Bob");
-        assertEquals(List.of(bob), model.getFilteredPersonList());
+        assertEquals(List.of(original), model.getFilteredPersonList());
 
-        CommandResult result = logic.execute("edit 1 n/Aaron p/91112222 e/carol@example.com");
+        CommandResult result = logic.execute("edit 1 n/Aaron p/91112222 e/carol@example.com t/Project");
 
         Person edited = new PersonBuilder(bob).withName("Aaron").withPhone(alice.getPhone().value)
-                .withEmail(carol.getEmail().value).build();
+                .withEmail(carol.getEmail().value).withTags("Project").build();
         assertWarning("#2 Alice (phone); #3 Carol (email)", result);
         assertEquals(List.of(edited, alice, carol), model.getFilteredPersonList());
         assertEquals(List.of(alice, edited, carol), model.getAddressBook().getPersonList());
@@ -230,9 +232,10 @@ public class EditCommandSharedDetailsTest {
         assertFalse(result.isWarning());
     }
 
-    private static void assertWarning(String matches, CommandResult result) {
-        assertEquals("Warning: Contact edited. Use undo if unintended.\nShared details: " + matches,
-                result.getFeedbackToUser());
+    private void assertWarning(String matches, CommandResult result) {
+        Person edited = model.getAddressBook().getPersonList().get(1);
+        String success = String.format(EditCommand.MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(edited));
+        assertEquals(success + "\nWarning - duplicate details detected: " + matches, result.getFeedbackToUser());
         assertTrue(result.isWarning());
     }
 

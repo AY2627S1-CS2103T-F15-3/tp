@@ -22,12 +22,16 @@ public class ResultDisplay extends UiPart<Region> {
         super(FXML);
     }
 
+    /**
+     * Shows ordinary feedback in white, clearing any previous warning styling.
+     */
     public void setFeedbackToUser(String feedbackToUser) {
         setFeedbackToUser(feedbackToUser, false);
     }
 
     /**
-     * Shows feedback with optional warning styling, starting at the top even after a long previous result.
+     * Shows the complete feedback in the original text area, starting at the top of the message.
+     * A warning uses amber text; other feedback uses the normal white text without a warning border.
      */
     public void setFeedbackToUser(String feedbackToUser, boolean warning) {
         requireNonNull(feedbackToUser);

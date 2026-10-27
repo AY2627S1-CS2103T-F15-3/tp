@@ -12,7 +12,7 @@ import static seedu.address.logic.parser.CliSyntax.PREFIX_TAG;
 
 import java.time.Clock;
 import java.time.LocalDate;
-import java.util.List;
+import java.util.Optional;
 
 import seedu.address.commons.util.ToStringBuilder;
 import seedu.address.logic.Messages;
@@ -56,9 +56,10 @@ public class AddCommand extends Command {
             + "\nExisting contact at displayed index %1$d:\n%2$s";
     public static final String MESSAGE_DUPLICATE_PERSON_HIDDEN = MESSAGE_DUPLICATE_PERSON
             + "\nExisting contact is hidden by the current filter (saved index %1$d):\n%2$s"
-            + "\nRun list, then sort reset to view this contact at index %1$d.";
-    public static final String MESSAGE_SHARED_DETAILS_WARNING = "Warning: Contact added. Use undo if unintended."
-            + "\nShared details: %1$s";
+            + "\nRun " + ListCommand.COMMAND_WORD + ", then " + SortCommand.COMMAND_WORD
+            + " reset to view this contact at index %1$d.";
+    public static final String MESSAGE_SHARED_DETAILS_WARNING = SharedContactDetailsWarning.MESSAGE_WARNING;
+    public static final String MESSAGE_SHARED_DETAILS_MATCH = SharedContactDetailsWarning.MESSAGE_MATCH;
 
     private final Person toAdd;
     private final Clock clock;
@@ -82,8 +83,10 @@ public class AddCommand extends Command {
     public CommandResult execute(Model model) throws CommandException {
         requireNonNull(model);
 
-        if (model.hasPerson(toAdd)) {
-            throw new CommandException(getDuplicateMessage(model));
+        Optional<Person> existingPerson = model.getAddressBook().getPersonList().stream()
+                .filter(toAdd::isSamePerson).findFirst();
+        if (existingPerson.isPresent()) {
+            throw new CommandException(getDuplicateMessage(model, existingPerson.get()));
         }
 
         ReadOnlyAddressBook previousState = new AddressBook(model.getAddressBook());
@@ -102,23 +105,20 @@ public class AddCommand extends Command {
     private CommandResult getAddResult(Model model, Person addedPerson, String successMessage) {
         String matches = SharedContactDetailsWarning.describeMatches(
                 addedPerson, model.getFilteredPersonList(), true, true);
-        return matches.isEmpty() ? new CommandResult(successMessage)
-                : CommandResult.warning(String.format(MESSAGE_SHARED_DETAILS_WARNING, matches));
+        return SharedContactDetailsWarning.appendTo(successMessage, matches);
     }
 
     /**
      * Identifies the existing contact using its displayed index, or a labelled saved index if hidden.
      */
-    private String getDuplicateMessage(Model model) {
-        List<Person> savedPersons = model.getAddressBook().getPersonList();
-        Person existingPerson = savedPersons.stream().filter(toAdd::isSamePerson).findFirst().orElseThrow();
+    private String getDuplicateMessage(Model model, Person existingPerson) {
         int displayedIndex = model.getFilteredPersonList().indexOf(existingPerson);
         if (displayedIndex >= 0) {
             return String.format(MESSAGE_DUPLICATE_PERSON_DISPLAYED,
                     displayedIndex + 1, Messages.format(existingPerson));
         }
         return String.format(MESSAGE_DUPLICATE_PERSON_HIDDEN,
-                savedPersons.indexOf(existingPerson) + 1, Messages.format(existingPerson));
+                model.getAddressBook().getPersonList().indexOf(existingPerson) + 1, Messages.format(existingPerson));
     }
 
     @Override

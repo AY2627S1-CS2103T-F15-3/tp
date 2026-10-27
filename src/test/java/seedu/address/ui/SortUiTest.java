@@ -2,6 +2,7 @@ package seedu.address.ui;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
@@ -204,12 +205,14 @@ public class SortUiTest {
                 enter(window, "add n/Aaron p/" + PersonBuilder.DEFAULT_PHONE + " e/aaron@example.com a/NUS");
 
                 String successMessage = String.format(AddCommand.MESSAGE_SUCCESS, Messages.format(aaron));
-                assertEquals("Warning: Contact added. Use undo if unintended.\nShared details: "
-                        + "#2 Alice (phone); #3 Bob (phone); #4 Charlie (phone)", feedback(window));
+                String advisory = "Warning - duplicate details detected: "
+                        + "#2 Alice (phone); #3 Bob (phone); #4 Charlie (phone)";
+                assertEquals(successMessage + "\n" + advisory, feedback(window));
                 TextArea result = (TextArea) window.getRoot().getScene().lookup("#resultDisplay");
                 assertTrue(result.getStyleClass().contains(ResultDisplay.WARNING_STYLE_CLASS));
                 assertEquals(Color.web("#ffcf66"), ((Text) result.lookup(".text")).getFill());
                 assertTrue(result.getBorder() == null || result.getBorder().getStrokes().isEmpty());
+                assertNull(window.getRoot().getScene().lookup("#warningDisplay"));
                 assertCards(window, List.of(aaron, alice, bob, charlie));
                 TextField input = (TextField) window.getRoot().getScene().lookup("#commandTextField");
                 assertEquals("", input.getText());
@@ -219,10 +222,11 @@ public class SortUiTest {
                 assertCards(window, List.of(alice, bob, charlie));
                 assertEquals("Undid: " + successMessage, feedback(window));
                 assertFalse(result.getStyleClass().contains(ResultDisplay.WARNING_STYLE_CLASS));
+                assertEquals(Color.WHITE, ((Text) result.lookup(".text")).getFill());
                 enter(window, "redo");
                 assertCards(window, List.of(aaron, alice, bob, charlie));
                 assertEquals("Redid: " + successMessage, feedback(window));
-                assertFalse(result.getStyleClass().contains(ResultDisplay.WARNING_STYLE_CLASS));
+                assertEquals(Color.WHITE, ((Text) result.lookup(".text")).getFill());
             } finally {
                 window.getRoot().close();
             }
@@ -230,7 +234,7 @@ public class SortUiTest {
     }
 
     @Test
-    public void commandBox_compactWarning_fitsResultPaneAndClearsOnFailure() throws Exception {
+    public void commandBox_successAndWarning_shareOriginalScrollableTextArea() throws Exception {
         runOnFxThread(() -> {
             MainWindow window = createWindow();
             try {
@@ -239,20 +243,39 @@ public class SortUiTest {
                 enter(window, "add n/Aaron p/" + PersonBuilder.DEFAULT_PHONE + " e/aaron@example.com a/NUS");
 
                 TextArea result = (TextArea) window.getRoot().getScene().lookup("#resultDisplay");
-                ScrollPane scrollPane = (ScrollPane) result.lookup(".scroll-pane");
-                assertTrue(result.getStyleClass().contains(ResultDisplay.WARNING_STYLE_CLASS));
                 assertTrue(result.isWrapText());
+                assertFalse(result.isEditable());
+                assertTrue(result.getHeight() > 0);
+                assertEquals(1, result.getParent().lookupAll(".text-area").size());
+                assertNull(window.getRoot().getScene().lookup("#warningDisplay"));
+                assertEquals(100, window.getRoot().getScene().lookup("#resultDisplayPlaceholder")
+                        .getLayoutBounds().getHeight());
+                ScrollPane scrollPane = (ScrollPane) result.lookup(".scroll-pane");
                 assertTrue(result.lookup(".content").getLayoutBounds().getHeight()
-                        <= scrollPane.getViewportBounds().getHeight() + 1,
-                        "The compact warning should fit the 100-pixel result area at this window width.");
+                        > scrollPane.getViewportBounds().getHeight(), "Long feedback remains scrollable.");
                 assertEquals(0, result.getScrollTop());
+                assertEquals(Color.web("#ffcf66"), ((Text) result.lookup(".text")).getFill());
+                result.selectAll();
+                assertEquals(result.getText(), result.getSelectedText());
+                result.positionCaret(0);
+                result.setScrollTop(0);
+
+                enter(window, "add n/Zara p/96667777 e/zara@example.com a/NUS");
+                assertFalse(result.getStyleClass().contains(ResultDisplay.WARNING_STYLE_CLASS));
+                assertEquals(Color.WHITE, ((Text) result.lookup(".text")).getFill());
+                assertTrue(feedback(window).startsWith("New person added: Zara"));
+
+                enter(window, "add n/AnotherAaron p/" + PersonBuilder.DEFAULT_PHONE + " a/NUS");
+                assertTrue(result.getStyleClass().contains(ResultDisplay.WARNING_STYLE_CLASS));
+                assertEquals(Color.web("#ffcf66"), ((Text) result.lookup(".text")).getFill());
 
                 enter(window, "sort name sideways");
-                assertFalse(result.getStyleClass().contains(ResultDisplay.WARNING_STYLE_CLASS));
                 TextField input = (TextField) window.getRoot().getScene().lookup("#commandTextField");
                 assertTrue(input.getStyleClass().contains(CommandBox.ERROR_STYLE_CLASS));
                 assertEquals(String.format(Messages.MESSAGE_INVALID_COMMAND_FORMAT, SortCommand.MESSAGE_USAGE),
                         feedback(window));
+                assertFalse(result.getStyleClass().contains(ResultDisplay.WARNING_STYLE_CLASS));
+                assertEquals(Color.WHITE, ((Text) result.lookup(".text")).getFill());
             } finally {
                 window.getRoot().close();
             }

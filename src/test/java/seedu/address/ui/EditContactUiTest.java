@@ -2,6 +2,7 @@ package seedu.address.ui;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
@@ -80,6 +81,9 @@ public class EditContactUiTest {
                 assertEquals(bob.getNotes(), edited.getNotes());
                 assertTrue(edited.isFavourite());
                 assertEquals("Edited person: " + Messages.format(edited), feedback(window));
+                TextArea result = (TextArea) window.getRoot().getScene().lookup("#resultDisplay");
+                assertFalse(result.getStyleClass().contains(ResultDisplay.WARNING_STYLE_CLASS));
+                assertEquals(Color.WHITE, ((Text) result.lookup(".text")).getFill());
                 assertEquals("", input(window).getText());
                 assertAcademicCard(window, edited, "Major: Mathematics", "Class year: 2028");
                 assertTrue(card(window, edited).lookup("#favouriteIcon").isVisible());
@@ -107,7 +111,7 @@ public class EditContactUiTest {
     }
 
     @Test
-    public void edit_newSharedDetails_showsAmberWarningWithRefreshedSortedIndices() throws Exception {
+    public void edit_newSharedDetails_preservesSuccessAndAppendsWarningWithRefreshedSortedIndices() throws Exception {
         runOnFxThread(() -> {
             MainWindow window = createWindow();
             try {
@@ -118,16 +122,18 @@ public class EditContactUiTest {
                 assertEquals(List.of(beforeEdit), list(window).getItems());
 
                 enter(window, "edit 1 n/Aaron p/" + PersonBuilder.DEFAULT_PHONE
-                        + " e/" + PersonBuilder.DEFAULT_EMAIL);
+                        + " e/" + PersonBuilder.DEFAULT_EMAIL + " t/Project");
 
-                Person edited = new PersonBuilder(bob).withName("Aaron").build();
+                Person edited = new PersonBuilder(bob).withName("Aaron").withTags("Project").build();
                 assertEquals(List.of(charlie, alice, edited), list(window).getItems());
-                assertEquals("Warning: Contact edited. Use undo if unintended.\nShared details: "
+                String description = String.format(EditCommand.MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(edited));
+                assertEquals(description + "\nWarning - duplicate details detected: "
                         + "#1 Charlie (phone and email); #2 Alice (phone and email)", feedback(window));
                 TextArea result = (TextArea) window.getRoot().getScene().lookup("#resultDisplay");
                 assertTrue(result.getStyleClass().contains(ResultDisplay.WARNING_STYLE_CLASS));
                 assertEquals(Color.web("#ffcf66"), ((Text) result.lookup(".text")).getFill());
                 assertTrue(result.getBorder() == null || result.getBorder().getStrokes().isEmpty());
+                assertNull(window.getRoot().getScene().lookup("#warningDisplay"));
                 assertEquals("", input(window).getText());
                 assertFalse(input(window).getStyleClass().contains(CommandBox.ERROR_STYLE_CLASS));
                 list(window).scrollTo(2);
@@ -136,15 +142,60 @@ public class EditContactUiTest {
                 assertTrue(card(window, edited).lookup("#favouriteIcon").isVisible());
                 assertTrue(card(window, edited).lookup("#noteIcon").isVisible());
 
-                String description = String.format(EditCommand.MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(edited));
                 enter(window, "undo");
                 assertEquals(List.of(charlie, beforeEdit, alice), list(window).getItems());
                 assertEquals("Undid: " + description, feedback(window));
                 assertFalse(result.getStyleClass().contains(ResultDisplay.WARNING_STYLE_CLASS));
+                assertEquals(Color.WHITE, ((Text) result.lookup(".text")).getFill());
                 enter(window, "redo");
                 assertEquals(List.of(charlie, alice, edited), list(window).getItems());
                 assertEquals("Redid: " + description, feedback(window));
+                assertEquals(Color.WHITE, ((Text) result.lookup(".text")).getFill());
+
+                enter(window, "edit 3 m/Mathematics");
                 assertFalse(result.getStyleClass().contains(ResultDisplay.WARNING_STYLE_CLASS));
+                assertEquals(Color.WHITE, ((Text) result.lookup(".text")).getFill());
+                assertTrue(feedback(window).startsWith("Edited person: Aaron"));
+
+                enter(window, "edit 3 p/93334444");
+                enter(window, "edit 3 p/" + PersonBuilder.DEFAULT_PHONE);
+                assertTrue(result.getStyleClass().contains(ResultDisplay.WARNING_STYLE_CLASS));
+                assertEquals(Color.web("#ffcf66"), ((Text) result.lookup(".text")).getFill());
+
+                enter(window, "edit 4 m/Mathematics");
+                assertEquals(Messages.MESSAGE_INVALID_PERSON_DISPLAYED_INDEX, feedback(window));
+                assertFalse(result.getStyleClass().contains(ResultDisplay.WARNING_STYLE_CLASS));
+                assertEquals(Color.WHITE, ((Text) result.lookup(".text")).getFill());
+            } finally {
+                window.getRoot().close();
+            }
+        });
+    }
+
+    @Test
+    public void edit_warningThenUnchangedOrUnrelatedEdit_restoresWhiteFeedback() throws Exception {
+        runOnFxThread(() -> {
+            MainWindow window = createWindow();
+            try {
+                TextArea result = (TextArea) window.getRoot().getScene().lookup("#resultDisplay");
+                enter(window, "edit 2 p/93334444");
+                enter(window, "edit 2 p/" + PersonBuilder.DEFAULT_PHONE);
+                assertTrue(result.getStyleClass().contains(ResultDisplay.WARNING_STYLE_CLASS));
+                assertEquals(Color.web("#ffcf66"), ((Text) result.lookup(".text")).getFill());
+
+                enter(window, "edit 2 p/" + PersonBuilder.DEFAULT_PHONE);
+                assertFalse(result.getStyleClass().contains(ResultDisplay.WARNING_STYLE_CLASS));
+                assertEquals(Color.WHITE, ((Text) result.lookup(".text")).getFill());
+
+                enter(window, "edit 2 e/bob.editwarn@example.com");
+                enter(window, "edit 2 e/" + PersonBuilder.DEFAULT_EMAIL);
+                assertTrue(result.getStyleClass().contains(ResultDisplay.WARNING_STYLE_CLASS));
+                assertEquals(Color.web("#ffcf66"), ((Text) result.lookup(".text")).getFill());
+
+                enter(window, "edit 2 m/Mathematics");
+                assertTrue(feedback(window).startsWith("Edited person: Bob"));
+                assertFalse(result.getStyleClass().contains(ResultDisplay.WARNING_STYLE_CLASS));
+                assertEquals(Color.WHITE, ((Text) result.lookup(".text")).getFill());
             } finally {
                 window.getRoot().close();
             }

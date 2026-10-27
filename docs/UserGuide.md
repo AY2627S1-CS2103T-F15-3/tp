@@ -117,19 +117,21 @@ contact, then `edit 1 a/NUS`.
 * A contact with the same name as an existing contact, ignoring case, is rejected as a duplicate, even if their major, class year or other details differ. For example, `John Doe` and `john doe` identify the same contact. Names retain their original capitalization for display and storage. Editing a contact's own name capitalization is allowed.
 * A duplicate `add` error shows the existing contact's saved details. If the contact is visible,
   `Existing contact at displayed index N:` identifies its number in the current filtered and sorted list.
-  If a filter hides it, the error labels its number as a **saved index** and tells you to run `list`,
-  then `sort reset`. After those commands, the contact is displayed at that index. A saved index
-  should only be used for an indexed command after following those instructions and checking the card.
+  If `filter`, `find` or `listfav` hides it, the error labels its number as a **saved index** and tells
+  you to run `list`, then `sort reset`. After those commands, the contact is displayed at that index.
+  A saved index should only be used for an indexed command after following those instructions and checking the card.
 * Rejecting a duplicate leaves the current view, saved contacts and undo/redo history unchanged.
 * Before opening an older data file, back it up and give any contacts whose names differ only in case distinct names. Such files fail duplicate validation; contacts are not automatically merged, renamed or deleted. The existing startup error handling opens an empty list after a loading error. Close the app without making changes and fix a copy of the backed-up file before retrying, as subsequent successful data-changing commands could overwrite the data file.
 * A successful `add` can be reverted with [`undo`](#undoing-a-change-undo).
 * Phone and email are independently optional. Omit `p/` or `e/` when unknown; do not supply an empty prefix in `add`. Non-empty values must satisfy the existing phone and email format rules. A contact without either receives the [automatic incomplete reminder](#automatic-incomplete-reminders).
-* Adding a different name with a shared phone number or email succeeds with a warning at the top of
-  the result display, highlighted with amber text. The short message confirms the contact
-  was added and suggests `undo` if unintended. It lists every matching existing contact by name and
-  current displayed index, for example `#2 Alice (phone); #3 Bob (email)` or `#2 Alice (phone and email)`.
-  Full addresses and other unrelated details are not repeated. Long names or many matches wrap and
-  can be read by scrolling. The next ordinary result or error clears the warning highlighting.
+* Adding a different name with a shared phone number or email succeeds with the usual
+  `New person added: ...` feedback and an additional warning line in the same feedback box.
+  For example: `Warning - duplicate details detected: #2 Alice (phone); #3 Bob (email)`.
+  The complete message is amber when a warning is present; ordinary success feedback remains white.
+  There is no coloured border or additional warning control.
+  Every matching contact is listed by current displayed index and name, with `phone`, `email` or
+  `phone and email` identifying the shared fields. The original feedback box supports wrapping, text
+  selection and scrolling for the complete message. The next command replaces the previous feedback.
 * Shared-detail warnings compare non-empty phone numbers exactly and email addresses ignoring case.
   Missing phone/email values do not count as shared details. These warnings do not change the
   duplicate-name rule or alter the stored capitalization of email addresses.
@@ -496,19 +498,23 @@ Format: `edit INDEX [n/NAME] [p/PHONE] [e/EMAIL] [a/ADDRESS] [m/MAJOR] [c/CLASS_
 * To remove all of a person's tags, enter `t/` without a tag after it.
 * Enter `p/` or `e/` without a value to clear that contact method. Clearing both shows the automatic `incomplete` reminder; omitted phone/email prefixes preserve the existing values.
 * A successful `edit` that changes the person's details can be reverted with [`undo`](#undoing-a-change-undo).
-* The result display normally shows `Edited person: ` followed by the updated details, and the command box is cleared.
+* The result display shows `Edited person: ` followed by the updated details, and the command box is cleared.
   The contact card shows `Major: Not specified` or `Class year: Not specified` when an academic field is cleared.
-* Changing a phone number or email to one used by another contact succeeds with an amber-text warning,
-  without a coloured border. It starts with `Warning: Contact edited. Use undo if unintended.` and
-  lists matching names, current displayed indices and the changed shared methods, such as
-  `#2 Alice (phone); #3 Bob (email)`. Indices refer to the refreshed full list, including matches
-  hidden before the edit. All matches are retained; long feedback wraps and can be scrolled.
+* Changing a phone number or email to one used by another contact keeps that normal success message
+  and appends a line such as `Warning - duplicate details detected: #2 Alice (phone); #3 Bob (email)`.
+  Both lines appear amber in the original feedback box, without a coloured border or an additional
+  warning control. Feedback without a warning remains white. Indices identify matching contacts in
+  the refreshed full list, including matches hidden before the edit. The edited contact's updated name
+  and details remain in the normal success
+  message. All matches are retained; long feedback wraps and can be scrolled.
 * Warning comparisons match non-empty phone numbers exactly and email addresses ignoring case.
   Only methods whose values changed are checked. Unchanged values, email-capitalization-only changes,
   unrelated field edits, cleared methods and the edited contact itself do not trigger a warning.
   The edit is saved normally, and one `undo` restores the previous contact. Undo and redo use ordinary
   edit feedback without repeating the warning.
-* Notes and favourite status are preserved. Changing a basic profile field refreshes the contact's update date;
+* Notes and favourite status are preserved. Use [`fav INDEX`](#marking-a-favourite-contact-fav) or
+  [`unfav INDEX`](#removing-favourite-status-unfav) to change favourite status; it cannot be changed with `edit`.
+  Changing a basic profile field refreshes the contact's update date;
   changing only tags does not refresh that date.
 * Invalid input, an index outside the displayed list, or a name already used by another contact leaves the
   contacts and current view unchanged. The result display shows the error and the command box keeps the input for correction.

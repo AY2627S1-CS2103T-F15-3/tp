@@ -19,7 +19,7 @@ public class CommandResult {
     /** The application should exit. */
     private final boolean exit;
 
-    /** The result should be displayed as a non-blocking warning. */
+    /** The result contains a non-blocking advisory warning. */
     private final boolean warning;
 
     /**
@@ -45,7 +45,7 @@ public class CommandResult {
     }
 
     /**
-     * Creates a successful result that needs a visually distinct, non-blocking warning.
+     * Creates a successful result containing a non-blocking advisory warning.
      */
     public static CommandResult warning(String feedbackToUser) {
         return new CommandResult(feedbackToUser, false, false, true);

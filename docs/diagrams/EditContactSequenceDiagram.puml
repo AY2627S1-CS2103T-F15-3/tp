@@ -45,7 +45,8 @@ Edit -> Model : setPerson(person, editedPerson)
 Edit -> Model : updateFilteredPersonList(PREDICATE_SHOW_ALL_PERSONS)
 Edit -> Edit : getEditResult(model, person, editedPerson, message)
 note right of Edit
-  Changed phone/email values can produce a non-blocking warning.
+  Retain the normal Edited person feedback.
+  Append a non-blocking warning for shared changed phone/email values.
   SharedContactDetailsWarning uses refreshed displayed indices.
   This academic-only edit keeps ordinary success feedback.
 end note
