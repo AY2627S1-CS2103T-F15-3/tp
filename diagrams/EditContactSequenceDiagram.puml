@@ -46,6 +46,7 @@ Edit -> Model : setPerson(person, editedPerson)
 Edit -> Model : updateFilteredPersonList(PREDICATE_SHOW_ALL_PERSONS)
 Edit -> Edit : message = "Edited person: ..."
 Edit -> Model : commitAddressBook(previousState, message)
+Edit -> Edit : feedback = message
 opt Tags supplied (including empty t/)
   Edit -> Edit : formatTagDifference(oldTags, newTags)
   Edit -> Edit : formatTagDifference(newTags, oldTags)
@@ -56,7 +57,15 @@ opt Tags supplied (including empty t/)
     Undo/redo description retains the base message.
   end note
 end
-Edit --> Logic : CommandResult("Edited person: ..." + tag summary if supplied)
+Edit -> Edit : getEditResult(model, person, editedPerson, feedback)
+note right of Edit
+  Retain the normal Edited person feedback and any tag summary.
+  Append a non-blocking warning for shared changed phone/email values.
+  SharedContactDetailsWarning uses refreshed displayed indices.
+  This example changes academic fields and tags only,
+  so its ordinary feedback includes a tag summary but no warning.
+end note
+Edit --> Logic : CommandResult(feedback)
 deactivate Edit
 Logic -> Model : getAddressBook()
 Model --> Logic : updated contact data
@@ -65,7 +74,7 @@ Storage --> Logic
 Logic --> Window : CommandResult
 deactivate Logic
 Window -> Window : personListPanel.refresh()
-Window -> Window : resultDisplay.setFeedbackToUser(feedback)
+Window -> Window : resultDisplay.setFeedbackToUser(feedback, isWarning)
 Window --> Box : CommandResult
 deactivate Window
 note over Box : Clear the command text after success.
