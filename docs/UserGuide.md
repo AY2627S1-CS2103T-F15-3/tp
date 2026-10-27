@@ -57,6 +57,9 @@ fields move below the phone, address and email fields.
 * Use the scrollbar on the right of the contact list to reach other contacts or the bottom of an
   expanded card. Drag the thumb or use its arrow buttons for smaller movements.
 * Expanding a value changes only its display; the saved contact details remain unchanged.
+* Expanded values stay open while scrolling or resizing. Changing a contact resets its expanded
+  values; restarting the app also resets expansion. A command that leaves the contact unchanged
+  keeps its expansion state.
 
 --------------------------------------------------------------------------------------------------------------------
 

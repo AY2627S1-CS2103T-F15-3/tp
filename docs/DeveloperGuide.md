@@ -211,7 +211,9 @@ independently from their values in `DarkTheme.css`.
   its displayed index and binds its preferred width to the list width, reserving space for the scrollbar.
 * `ExpandableText` handles ellipses and click, Enter or Space expansion. `PersonListPanel` shares each
   contact's expanded-field state across recreated cells. This state is kept only in memory and does
-  not change contact data or undo/redo history.
+  not change contact data or undo/redo history. The map uses `Person` values as keys: replacing a
+  contact with different data starts with collapsed fields, while an unchanged contact retains its
+  state. Restarting the app clears the map.
 * `PersonCardPane` measures the card at its available width and stacks the detail groups below
   560 logical pixels of content width. `TagPane` measures and places tag rows using the same wrapping
   calculation. Cell and card clips prevent content from painting over neighbouring cards.
