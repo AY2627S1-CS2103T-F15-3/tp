@@ -4,6 +4,7 @@ import static seedu.address.logic.Messages.MESSAGE_INVALID_COMMAND_FORMAT;
 import static seedu.address.logic.parser.CliSyntax.PREFIX_ADDRESS;
 import static seedu.address.logic.parser.CliSyntax.PREFIX_DEFAULT_TAG;
 import static seedu.address.logic.parser.CliSyntax.PREFIX_EMAIL;
+import static seedu.address.logic.parser.CliSyntax.PREFIX_FAVOURITE;
 import static seedu.address.logic.parser.CliSyntax.PREFIX_GRADUATION_YEAR;
 import static seedu.address.logic.parser.CliSyntax.PREFIX_MAJOR;
 import static seedu.address.logic.parser.CliSyntax.PREFIX_NAME;
@@ -29,6 +30,9 @@ import seedu.address.model.tag.Tag;
  */
 public class AddCommandParser implements Parser<AddCommand> {
 
+    public static final String MESSAGE_FAVOURITE_FLAG_VALUE = "The f/ flag does not take a value. "
+            + "Use f/ alone to mark the new contact as a favourite.";
+
     /**
      * Parses the given {@code String} of arguments in the context of the AddCommand
      * and returns an AddCommand object for execution.
@@ -37,7 +41,7 @@ public class AddCommandParser implements Parser<AddCommand> {
     public AddCommand parse(String args) throws ParseException {
         ArgumentMultimap argMultimap =
                 ArgumentTokenizer.tokenize(args, PREFIX_NAME, PREFIX_PHONE, PREFIX_EMAIL, PREFIX_ADDRESS,
-                        PREFIX_MAJOR, PREFIX_GRADUATION_YEAR, PREFIX_TAG, PREFIX_DEFAULT_TAG);
+                        PREFIX_MAJOR, PREFIX_GRADUATION_YEAR, PREFIX_TAG, PREFIX_DEFAULT_TAG, PREFIX_FAVOURITE);
 
         if (!arePrefixesPresent(argMultimap, PREFIX_NAME, PREFIX_ADDRESS)
                 || !argMultimap.getPreamble().isEmpty()) {
@@ -45,7 +49,10 @@ public class AddCommandParser implements Parser<AddCommand> {
         }
 
         argMultimap.verifyNoDuplicatePrefixesFor(PREFIX_NAME, PREFIX_PHONE, PREFIX_EMAIL, PREFIX_ADDRESS,
-                PREFIX_MAJOR, PREFIX_GRADUATION_YEAR);
+                PREFIX_MAJOR, PREFIX_GRADUATION_YEAR, PREFIX_FAVOURITE);
+        if (!argMultimap.getValue(PREFIX_FAVOURITE).orElse("").isEmpty()) {
+            throw new ParseException(MESSAGE_FAVOURITE_FLAG_VALUE);
+        }
         Name name = ParserUtil.parseName(argMultimap.getValue(PREFIX_NAME).get());
         Phone phone = argMultimap.getValue(PREFIX_PHONE).isPresent()
                 ? ParserUtil.parsePhone(argMultimap.getValue(PREFIX_PHONE).get()) : Phone.EMPTY;
@@ -60,7 +67,8 @@ public class AddCommandParser implements Parser<AddCommand> {
         Set<Tag> tagList = ParserUtil.parseTags(argMultimap.getAllValues(PREFIX_TAG));
         tagList.addAll(ParserUtil.parseDefaultTags(argMultimap.getAllValues(PREFIX_DEFAULT_TAG)));
 
-        Person person = new Person(name, phone, email, address, major, graduationYear, tagList);
+        boolean favourite = argMultimap.getValue(PREFIX_FAVOURITE).isPresent();
+        Person person = new Person(name, phone, email, address, major, graduationYear, tagList, favourite);
 
         return new AddCommand(person);
     }

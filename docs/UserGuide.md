@@ -92,7 +92,7 @@ Format: `help`
 
 Adds a person to UniMate.
 
-Format: `add n/NAME [p/PHONE_NUMBER] [e/EMAIL] a/ADDRESS [m/MAJOR] [c/CLASS_YEAR] [t/TAG]... [d/DEFAULT_INDEX]...`
+Format: `add n/NAME [p/PHONE_NUMBER] [e/EMAIL] a/ADDRESS [m/MAJOR] [c/CLASS_YEAR] [f/] [t/TAG]... [d/DEFAULT_INDEX]...`
 
 <box type="tip" seamless>
 
@@ -105,7 +105,14 @@ Major and class year are optional and can be supplied independently.
 **Check your field prefixes:** Use the prefixes shown in the command format above. Unknown prefix-like
 text can become part of the preceding field instead of producing an error. For example,
 `add n/PrefixProbe a/NUS x/typo` saves the address as `NUS x/typo`; `x/` does not start a separate field.
-Check the added contact's details. To correct this example, run `find PrefixProbe`, confirm the displayed
+
+Recognised prefixes start a new argument when preceded by a space, even within text intended as an address.
+In `add`, `f/` is a recognised flag: `add n/Alice a/Block f/` saves the address as `Block` and marks Alice
+as a favourite. `add n/Alice a/Block f/3` is rejected because the flag has a value. Without a space before
+`f/`, `add n/Alice a/Blockf/3` saves the full address `Blockf/3` and does not mark Alice as a favourite.
+A space followed by `f/` is reserved for the flag and cannot be included as literal address text in `add`.
+
+Check the added contact's details. To correct the `PrefixProbe` example, run `find PrefixProbe`, confirm the displayed
 contact, then `edit 1 a/NUS`.
 </box>
 
@@ -123,6 +130,15 @@ contact, then `edit 1 a/NUS`.
 * Rejecting a duplicate leaves the current view, saved contacts and undo/redo history unchanged.
 * Before opening an older data file, back it up and give any contacts whose names differ only in case distinct names. Such files fail duplicate validation; contacts are not automatically merged, renamed or deleted. The existing startup error handling opens an empty list after a loading error. Close the app without making changes and fix a copy of the backed-up file before retrying, as subsequent successful data-changing commands could overwrite the data file.
 * A successful `add` can be reverted with [`undo`](#undoing-a-change-undo).
+* Include `f/` to create the contact as a favourite immediately, with a red heart beside their name.
+  The flag takes no value, may appear anywhere among the prefixed fields, and may appear only once.
+  Inputs such as `f/true` and `f/false` are rejected. Omit `f/` to create a contact without favourite status.
+  Favourite status is saved with the contact and included in the same undo/redo step as the addition.
+  The success message begins `New favourite contact added:` when `f/` is supplied, or `New person added:` otherwise.
+  A flag with a value reports `The f/ flag does not take a value. Use f/ alone to mark the new contact as a favourite.`
+* After creation, use [`fav INDEX`](#marking-a-favourite-contact-fav) or
+  [`unfav INDEX`](#removing-favourite-status-unfav) to change favourite status. `edit` preserves the current
+  favourite status and cannot change it.
 * Phone and email are independently optional. Omit `p/` or `e/` when unknown; do not supply an empty prefix in `add`. Non-empty values must satisfy the existing phone and email format rules. A contact without either receives the [automatic incomplete reminder](#automatic-incomplete-reminders).
 * Adding a different name with a shared phone number or email succeeds with the usual
   `New person added: ...` feedback and an additional warning line in the same feedback box.
@@ -139,6 +155,7 @@ contact, then `edit 1 a/NUS`.
   indices refer to that refreshed list, including contacts hidden by the previous filter.
 
 Examples:
+* `add n/Alice p/91234567 a/NUS f/` creates Alice as a favourite; `listfav` includes Alice immediately.
 * `add n/Alex Tan p/91234567 e/alex@example.com a/10 Kent Ridge Road m/Computer Science c/2027 t/classmate`
 * `add n/John Doe p/98765432 e/johnd@example.com a/John street, block 123, #01-01`
 * `add n/Betsy Crowe t/friend e/betsycrowe@example.com a/Newgate Prison p/1234567 t/criminal`
@@ -328,7 +345,7 @@ Format: `fav INDEX`
 * The person's other details, tags, major and class year are preserved, together with the current list filter.
 * A successful command shows `Added to favourites: ` followed by the updated person's details.
 * A favourited contact displays a solid heart (`♥`) inside a small circular border to the right of their name. Both the heart and border are red (`#e63946`), with a transparent background. The icon is a visual indicator and cannot be clicked.
-* Favourite status is saved automatically and retained after restarting UniMate. New contacts and contacts loaded from older files without favourite status start as not favourited.
+* Favourite status is saved automatically and retained after restarting UniMate. New contacts start as not favourited unless `f/` is included in `add`. Contacts loaded from older files without favourite status start as not favourited.
 * Marking a favourite can be [undone](#undoing-a-change-undo) and [redone](#redoing-a-change-redo).
 
 Example (assuming at least one person is displayed):
@@ -887,7 +904,7 @@ _Details coming soon ..._
 
 Action     | Format, Examples
 -----------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------
-**Add**    | `add n/NAME [p/PHONE_NUMBER] [e/EMAIL] a/ADDRESS [m/MAJOR] [c/CLASS_YEAR] [t/TAG]... [d/DEFAULT_INDEX]...` <br> e.g., `add n/James Ho p/22224444 e/jamesho@example.com a/123, Clementi Rd, 1234665 t/friend t/colleague`
+**Add**    | `add n/NAME [p/PHONE_NUMBER] [e/EMAIL] a/ADDRESS [m/MAJOR] [c/CLASS_YEAR] [f/] [t/TAG]... [d/DEFAULT_INDEX]...` <br> e.g., `add n/James Ho p/22224444 e/jamesho@example.com a/123, Clementi Rd, 1234665 f/ t/friend t/colleague`
 **Clear**  | `clear`
 **Delete** | `delete INDEX [MORE_INDICES]`<br> e.g., `delete 1 3 5`
 **Edit**   | `edit INDEX [n/NAME] [p/PHONE_NUMBER] [e/EMAIL] [a/ADDRESS] [m/MAJOR] [c/CLASS_YEAR] [t/TAG]... `<br> e.g.,`edit 2 n/James Lee e/jameslee@example.com`

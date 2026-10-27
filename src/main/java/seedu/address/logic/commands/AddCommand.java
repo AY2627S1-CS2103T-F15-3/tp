@@ -4,6 +4,7 @@ import static java.util.Objects.requireNonNull;
 import static seedu.address.logic.parser.CliSyntax.PREFIX_ADDRESS;
 import static seedu.address.logic.parser.CliSyntax.PREFIX_DEFAULT_TAG;
 import static seedu.address.logic.parser.CliSyntax.PREFIX_EMAIL;
+import static seedu.address.logic.parser.CliSyntax.PREFIX_FAVOURITE;
 import static seedu.address.logic.parser.CliSyntax.PREFIX_GRADUATION_YEAR;
 import static seedu.address.logic.parser.CliSyntax.PREFIX_MAJOR;
 import static seedu.address.logic.parser.CliSyntax.PREFIX_NAME;
@@ -37,8 +38,10 @@ public class AddCommand extends Command {
             + PREFIX_ADDRESS + "ADDRESS "
             + "[" + PREFIX_MAJOR + "MAJOR] "
             + "[" + PREFIX_GRADUATION_YEAR + "CLASS_YEAR] "
+            + "[" + PREFIX_FAVOURITE + "] "
             + "[" + PREFIX_TAG + "TAG]... "
             + "[" + PREFIX_DEFAULT_TAG + "DEFAULT_INDEX]...\n"
+            + "Use " + PREFIX_FAVOURITE + " without a value to mark the new contact as a favourite.\n"
             + "Example: " + COMMAND_WORD + " "
             + PREFIX_NAME + "John Doe "
             + PREFIX_PHONE + "98765432 "
@@ -46,10 +49,12 @@ public class AddCommand extends Command {
             + PREFIX_ADDRESS + "311, Clementi Ave 2, #02-25 "
             + PREFIX_MAJOR + "Computer Science "
             + PREFIX_GRADUATION_YEAR + "2027 "
+            + PREFIX_FAVOURITE + " "
             + PREFIX_TAG + "friends "
             + PREFIX_TAG + "owesMoney";
 
     public static final String MESSAGE_SUCCESS = "New person added: %1$s";
+    public static final String MESSAGE_FAVOURITE_SUCCESS = "New favourite contact added: %1$s";
     public static final String MESSAGE_DUPLICATE_PERSON =
             "This person already exists in the address book (names are compared ignoring case).";
     public static final String MESSAGE_DUPLICATE_PERSON_DISPLAYED = MESSAGE_DUPLICATE_PERSON
@@ -92,7 +97,9 @@ public class AddCommand extends Command {
         ReadOnlyAddressBook previousState = new AddressBook(model.getAddressBook());
         Person addedPerson = toAdd.withLastUpdated(LocalDate.now(clock));
         model.addPerson(addedPerson);
-        String message = String.format(MESSAGE_SUCCESS, Messages.format(addedPerson));
+        String message = String.format(
+                addedPerson.isFavourite() ? MESSAGE_FAVOURITE_SUCCESS : MESSAGE_SUCCESS,
+                Messages.format(addedPerson));
         CommandResult result = getAddResult(model, addedPerson, message);
         model.commitAddressBook(previousState, message);
         return result;
