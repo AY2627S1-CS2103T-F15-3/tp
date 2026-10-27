@@ -54,7 +54,7 @@ Action     | Format, Examples
 -----------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 **[Add](#adding-a-person-add)**    | `add n/NAME [p/PHONE_NUMBER] [e/EMAIL] a/ADDRESS [m/MAJOR] [c/CLASS_YEAR] [f/] [t/TAG]... [d/DEFAULT_INDEX]...` <br> e.g., `add n/James Ho p/22224444 e/jamesho@example.com a/123, Clementi Rd, 1234665 f/ t/friend t/colleague`
 **[Clear](#clearing-all-entries-clear)**  | `clear`
-**[Delete](#deleting-contacts-delete)** | `delete INDEX [MORE_INDICES]`<br> e.g., `delete 1 3 5`
+**[Delete](#deleting-contacts-delete)** | `delete INDEX [INDEX]...`<br> e.g., `delete 1 3 5`
 **[Edit](#editing-a-person-edit)**   | `edit INDEX [n/NAME] [p/PHONE_NUMBER] [e/EMAIL] [a/ADDRESS] [m/MAJOR] [c/CLASS_YEAR] [t/TAG]... `<br> e.g.,`edit 2 n/James Lee e/jameslee@example.com`
 **[Find](#locating-persons-by-name-major-or-class-year-find)**   | `find KEYWORD [MORE_KEYWORDS]...`<br> e.g., `find James Jake`, `find Computer Science`, `find 2027`
 **[Filter](#filtering-contacts-by-major-class-year-and-tag-filter)** | `filter [m/MAJOR] [c/CLASS_YEAR] [t/TAG]` (at least one criterion)<br> e.g., `filter m/Computer Science c/2027 t/Classmate`
@@ -432,7 +432,8 @@ Format: `fav INDEX`
 * `INDEX` must be a positive integer from `1` to `2147483647` and refer to a person in the currently displayed list. Zero, negative numbers, a leading `+`, decimals and extra arguments are not accepted.
 * The person's other details, tags, major and class year are preserved, together with the current list filter.
 * A successful command shows `Added to favourites: ` followed by the updated person's details.
-* A favourited contact displays a solid heart (`♥`) inside a small circular border to the right of their name. Both the heart and border are red (`#e63946`), with a transparent background. The icon is a visual indicator and cannot be clicked.
+* A favourited contact displays a red heart (`♥`) beside their name. The icon is a visual indicator;
+  use `fav` or `unfav` to change the status.
 * Favourite status is saved automatically and retained after restarting UniMate. New contacts start as not favourited unless `f/` is included in `add`. Contacts loaded from older files without favourite status start as not favourited.
 * Marking a favourite can be [undone](#undoing-a-change-undo) and [redone](#redoing-an-undone-change-redo).
 
@@ -688,7 +689,7 @@ Format: `find KEYWORD [MORE_KEYWORDS]...`
 * Prefixes such as `n/` or `m/` are not supported. They are treated as part of the keyword, so `find n/Alex` looks for the whole word `n/Alex` and usually finds no one.
 * Contacts without a major or class year are not matched on that field.
 * Each `find` searches **all** saved contacts, not only the ones currently displayed, and replaces any previous `find`, `filter` or `listfav` view. The order chosen with [`sort`](#sorting-contacts-by-name-major-class-year-or-update-date-sort) is kept.
-* The result message is `N person(s) listed!`, where `N` is the number of matching contacts, which may be `0`. The status bar shows the keywords, e.g. `Filter: Search: alex OR david`.
+* The result message is `N person(s) listed!`, where `N` is the number of matching contacts, which may be `0`. The view status line above the contact list shows the keywords, e.g. `Filter: Search: alex OR david`.
 * The results are numbered from `1`. Commands that take an `INDEX`, such as `edit`, `delete` and `fav`, use these numbers until the displayed list changes. Run [`list`](#listing-all-persons-list) to show all contacts again.
 * `find` does not change any contacts, so it does not affect [`undo`](#undoing-a-change-undo) or [`redo`](#redoing-an-undone-change-redo).
 
@@ -795,7 +796,7 @@ Examples:
 
 Deletes one or more specified contacts from UniMate.
 
-Format: `delete INDEX [MORE_INDICES]`
+Format: `delete INDEX [INDEX]...`
 
 * Supply one or more **distinct positive integers** separated by spaces, such as `delete 1 3 5`.
   Commas and ranges such as `delete 1,3` and `delete 1-3` are not accepted.
@@ -850,7 +851,7 @@ Format: `undo`
 * Every command that changes your contacts can be undone: `add`, `edit`, `delete`, `clear`, `tag`, `untag`, `fav`, `unfav`, `note` and `delnote`.
 * Restores your contacts to how they were before the most recent change that has not already been undone.
 * Each `undo` reverts exactly one command. A command that changed several contacts at once, such as `delete 1 3 5` or `clear`, is reverted as a whole.
-* The message names the change that was undone: `Undid:` followed by the message that change showed when you made it, such as `Undid: Tagged person: …​` or `Undid: Deleted person: Alex Tan; …​`.
+* The message names the change that was undone: `Undid:` followed by its recorded description, such as `Undid: Tagged person: …​` or `Undid: Deleted person: Alex Tan; …​`.
   * For `edit`, the recorded description contains full contact details instead of the immediate field-change summary.
   * The details in this message are the ones shown when the change was made, **not** the restored values. For example, after `edit 2 p/98765432`, `undo` shows `Undid: Edited person: …​; Phone: 98765432; …​` while restoring the previous phone number. Check the contact list to see the restored details.
   * For a replaced note, the `Use undo to restore the previous note.` hint is left out, so the message is `Undid: Note replaced for NAME.` followed by the previous and saved notes.
@@ -871,11 +872,15 @@ Examples:
 * For a contact without a note, `note 1 Follow up` followed by `undo` removes the note again.
 * `note 1 Follow up`, then `note 1 Project teammate`, then `undo` restores the previous note, `Follow up`.
 * For a contact with an existing note, `delnote 1` followed by `undo` brings back the deleted note.
-* `add n/Alex Tan p/91234567 e/alex@example.com a/10 Kent Ridge Road`, then `edit 1 c/2027`, then `undo` twice first reverts the edit and then removes the added contact.
+* `add n/Alex Tan p/91234567 e/alex@example.com a/10 Kent Ridge Road`, then `find Alex Tan`.
+  Confirm Alex's displayed index and use it in `edit INDEX c/2027`. Two `undo` commands first
+  revert that edit and then remove the added contact. The search may also match other contacts.
 * `delete 3` followed by `undo` brings the deleted person back.
 * `delete 1 3 5` followed by `undo` restores all three contacts in one step.
-* `edit 1 p/92345678`, then `fav 1`, then `undo` twice first removes the favourite status and then restores the previous phone number.
-* `fav 1`, then `tag 2 t/Friend`, then `undo` removes the `Friend` tag and shows `Undid: Tagged person: …​`, naming the 2nd person. Running `undo` again shows `Undid: Added to favourites: …​`.
+* For an unfavourited contact whose phone differs from `92345678`, `edit 1 p/92345678`,
+  then `fav 1`, then `undo` twice first removes the favourite status and then restores the previous phone number.
+* With contact 1 unfavourited and contact 2 without the tag `Friend`,
+  `fav 1`, then `tag 2 t/Friend`, then `undo` removes the `Friend` tag and shows `Undid: Tagged person: …​`, naming the 2nd person. Running `undo` again shows `Undid: Added to favourites: …​`.
 
 ### Redoing an undone change: `redo`
 
@@ -886,7 +891,7 @@ Format: `redo`
 * The change undone most recently is redone first. Running `redo` repeatedly therefore reapplies undone changes in the order you originally made them.
 * As with undo, `edit` uses full contact details instead of the immediate field-change summary.
 * Each `redo` reapplies exactly one undone command. A redone change can be undone again with `undo`.
-* The message names the change that was redone: `Redid:` followed by the message that change showed when you first made it, such as `Redid: Added to favourites: …​`. As with `undo`, a replaced note's message leaves out the `Use undo to restore the previous note.` hint.
+* The message names the change that was redone: `Redid:` followed by its recorded description, such as `Redid: Added to favourites: …​`. As with `undo`, a replaced note's message leaves out the `Use undo to restore the previous note.` hint.
 * After a redo, the full contact list is shown. Any `find`, `filter` or `listfav` view is cleared, so run it again if you need it. The order chosen with `sort` is kept. Indices in later commands refer to this full list.
 * Undone changes can be redone only until you change your contacts again. After any command that changes your contacts, such as `add`, `delete` or `fav`, the earlier undone changes can no longer be redone, even if you then `undo` that new change. For example, `tag 1 t/Friend`, `undo`, `fav 2`, `undo`, then `redo` reapplies only the `fav`; a second `redo` shows the "no change to redo" message and the tag is not reapplied.
 * Commands that fail, commands that leave every detail unchanged (see [`undo`](#undoing-a-change-undo)), and commands that do not change contacts, such as `list`, `find`, `filter`, `sort`, `shownote`, `tags` and `help`, do not affect what `redo` reapplies.
@@ -952,8 +957,8 @@ that text at the current history position. Ordinary ↑/↓ continues chronologi
 position and ends the prefix search. Both navigation modes preserve the draft saved when you first
 left the end of history, and neither executes commands.
 
-For example, submit `add n/Alice`, `list`, `add n/Bob`, then `list`. Type `add ` without pressing Enter.
-Alt+↑ recalls `add n/Bob`, then `add n/Alice`; Alt+↓ recalls `add n/Bob`, then restores `add `.
+For example, submit `add n/Alice a/NUS`, `list`, `add n/Bob a/NUS`, then `list`. Type `add ` without pressing Enter.
+Alt+↑ recalls `add n/Bob a/NUS`, then `add n/Alice a/NUS`; Alt+↓ recalls `add n/Bob a/NUS`, then restores `add `.
 
 The diagrams below show what happens when you press **↑** and **↓**.
 
