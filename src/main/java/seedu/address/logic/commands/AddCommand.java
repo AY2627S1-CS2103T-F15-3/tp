@@ -98,8 +98,8 @@ public class AddCommand extends Command {
         Person addedPerson = toAdd.withLastUpdated(LocalDate.now(clock));
         model.addPerson(addedPerson);
         String message = String.format(
-        addedPerson.isFavourite() ? MESSAGE_FAVOURITE_SUCCESS : MESSAGE_SUCCESS,
-        Messages.format(addedPerson));
+                addedPerson.isFavourite() ? MESSAGE_FAVOURITE_SUCCESS : MESSAGE_SUCCESS,
+                Messages.format(addedPerson));
         CommandResult result = getAddResult(model, addedPerson, message);
         model.commitAddressBook(previousState, message);
         return result;
