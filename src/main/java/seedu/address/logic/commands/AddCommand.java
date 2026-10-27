@@ -63,6 +63,8 @@ public class AddCommand extends Command {
             + "\nExisting contact is hidden by the current filter (saved index %1$d):\n%2$s"
             + "\nRun " + ListCommand.COMMAND_WORD + ", then " + SortCommand.COMMAND_WORD
             + " reset to view this contact at index %1$d.";
+    public static final String MESSAGE_SHARED_DETAILS_WARNING = SharedContactDetailsWarning.MESSAGE_WARNING;
+    public static final String MESSAGE_SHARED_DETAILS_MATCH = SharedContactDetailsWarning.MESSAGE_MATCH;
 
     private final Person toAdd;
     private final Clock clock;
@@ -95,10 +97,22 @@ public class AddCommand extends Command {
         ReadOnlyAddressBook previousState = new AddressBook(model.getAddressBook());
         Person addedPerson = toAdd.withLastUpdated(LocalDate.now(clock));
         model.addPerson(addedPerson);
-        String message = String.format(addedPerson.isFavourite() ? MESSAGE_FAVOURITE_SUCCESS : MESSAGE_SUCCESS,
-                Messages.format(addedPerson));
+        String message = String.format(
+        addedPerson.isFavourite() ? MESSAGE_FAVOURITE_SUCCESS : MESSAGE_SUCCESS,
+        Messages.format(addedPerson));
+        CommandResult result = getAddResult(model, addedPerson, message);
         model.commitAddressBook(previousState, message);
-        return new CommandResult(message);
+        return result;
+    }
+
+    /**
+     * Warns about shared non-empty phone/email details using indices from the refreshed display.
+     * Phone numbers match exactly; email matching ignores case for this advisory warning.
+     */
+    private CommandResult getAddResult(Model model, Person addedPerson, String successMessage) {
+        String matches = SharedContactDetailsWarning.describeMatches(
+                addedPerson, model.getFilteredPersonList(), true, true);
+        return SharedContactDetailsWarning.appendTo(successMessage, matches);
     }
 
     /**

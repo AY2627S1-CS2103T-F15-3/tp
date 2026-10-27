@@ -73,9 +73,10 @@ public class RedoCommandTest {
         Person original = model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased());
         Person editedPerson = new PersonBuilder(original).withPhone(VALID_PHONE_BOB).withMajor("Computer Science")
                 .withGraduationYear("2027").withTags("teammate", "cca").build();
-        String editMessage = new EditCommand(INDEX_FIRST_PERSON, new EditPersonDescriptorBuilder()
+        new EditCommand(INDEX_FIRST_PERSON, new EditPersonDescriptorBuilder()
                 .withPhone(VALID_PHONE_BOB).withMajor("Computer Science").withGraduationYear("2027")
-                .withTags("teammate", "cca").build()).execute(model).getFeedbackToUser();
+                .withTags("teammate", "cca").build()).execute(model);
+        String editMessage = String.format(EditCommand.MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(editedPerson));
         AddressBook stateAfterEdit = new AddressBook(model.getAddressBook());
         model.undoAddressBook();
 

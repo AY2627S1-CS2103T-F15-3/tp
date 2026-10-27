@@ -140,12 +140,27 @@ contact, then `edit 1 a/NUS`.
   [`unfav INDEX`](#removing-favourite-status-unfav) to change favourite status. `edit` preserves the current
   favourite status and cannot change it.
 * Phone and email are independently optional. Omit `p/` or `e/` when unknown; do not supply an empty prefix in `add`. Non-empty values must satisfy the existing phone and email format rules. A contact without either receives the [automatic incomplete reminder](#automatic-incomplete-reminders).
+* Adding a different name with a shared phone number or email succeeds with the usual
+  `New person added: ...` feedback and an additional warning line in the same feedback box.
+  For example: `Warning - duplicate details detected: #2 Alice (phone); #3 Bob (email)`.
+  The complete message is amber when a warning is present; ordinary success feedback remains white.
+  There is no coloured border or additional warning control.
+  Every matching contact is listed by current displayed index and name, with `phone`, `email` or
+  `phone and email` identifying the shared fields. The original feedback box supports wrapping, text
+  selection and scrolling for the complete message. The next command replaces the previous feedback.
+* Shared-detail warnings compare non-empty phone numbers exactly and email addresses ignoring case.
+  Missing phone/email values do not count as shared details. These warnings do not change the
+  duplicate-name rule or alter the stored capitalization of email addresses.
+* A successful `add` shows the full contact list while retaining the current sort order. Warning
+  indices refer to that refreshed list, including contacts hidden by the previous filter.
 
 Examples:
 * `add n/Alice p/91234567 a/NUS f/` creates Alice as a favourite; `listfav` includes Alice immediately.
 * `add n/Alex Tan p/91234567 e/alex@example.com a/10 Kent Ridge Road m/Computer Science c/2027 t/classmate`
 * `add n/John Doe p/98765432 e/johnd@example.com a/John street, block 123, #01-01`
 * `add n/Betsy Crowe t/friend e/betsycrowe@example.com a/Newgate Prison p/1234567 t/criminal`
+* After adding Alex Tan above, `add n/Study Partner p/91234567 a/NUS` adds the new contact and warns
+  that Alex Tan shares its phone number. One `undo` removes the newly added Study Partner.
 
 ### Automatic incomplete reminders
 
@@ -494,13 +509,38 @@ Format: `edit INDEX [n/NAME] [p/PHONE] [e/EMAIL] [a/ADDRESS] [m/MAJOR] [c/CLASS_
   A supplied major must be non-blank text on one line; a class year must be four digits from `2000` to `2099`.
 * Enter `m/` or `c/` with no value to clear that optional field. Each of these prefixes may appear only once.
 * Leading and trailing spaces are ignored. If any supplied value is invalid or an academic prefix is repeated, no fields are updated.
-* After a successful edit, the full contact list is shown. If editing search or filter results, run `find` or `filter` again before using a result index for another edit.
+* After a successful edit, the full contact list is shown while retaining the active sort order.
+  If editing search or filter results, run `find` or `filter` again before using a result index for another edit.
 * When editing tags, all of the person's existing tags are removed; adding tags is not cumulative.
+* When `t/` is supplied, feedback includes `Tags replaced. Removed: ... . Added: ... .`
+  with actual changes sorted by tag name (`None` for an empty list). Unchanged tags are excluded.
+  For example, replacing `Friend` and `Classmate` with `Project` reports
+  `Tags replaced. Removed: Classmate, Friend. Added: Project.`
+  Use [`tag`](#adding-tags-to-a-person-tag) to add tags while keeping existing tags.
 * To remove all of a person's tags, enter `t/` without a tag after it.
+* Email local parts allow letters, digits and `+ _ . -`. Special characters cannot be consecutive
+  or at either end: `alice++cs2103t@example.com` is rejected; `alice+cs2103t@example.com` is valid.
+  Email errors show each rule on a short line, including the consecutive-special-character rule.
+  Feedback wraps within the result display when the window is narrow.
 * Enter `p/` or `e/` without a value to clear that contact method. Clearing both shows the automatic `incomplete` reminder; omitted phone/email prefixes preserve the existing values.
 * A successful `edit` that changes the person's details can be reverted with [`undo`](#undoing-a-change-undo).
+  Undo/redo messages include the `Edited person: ...` details but do not repeat the tag replacement
+  summary or duplicate-details warning.
 * The result display shows `Edited person: ` followed by the updated details, and the command box is cleared.
   The contact card shows `Major: Not specified` or `Class year: Not specified` when an academic field is cleared.
+* Changing a phone number or email to one used by another contact keeps that normal success message
+  and appends a line such as `Warning - duplicate details detected: #2 Alice (phone); #3 Bob (email)`.
+  If `t/` is also supplied, the tag replacement summary appears between the normal success message
+  and the warning; neither is dropped. The complete message appears amber in the original feedback
+  box, without a coloured border or an additional warning control. Feedback without a warning remains
+  white, including tag-only edits. Indices identify matching contacts in the refreshed full list,
+  including matches hidden before the edit. The edited contact's updated name and details remain in
+  the normal success message. All matches are retained; long feedback wraps and can be scrolled.
+* Warning comparisons match non-empty phone numbers exactly and email addresses ignoring case.
+  Only methods whose values changed are checked. Unchanged values, email-capitalization-only changes,
+  unrelated field edits, cleared methods and the edited contact itself do not trigger a warning.
+  The edit is saved normally, and one `undo` restores the previous contact. Undo and redo use ordinary
+  edit feedback without repeating the warning.
 * Notes and favourite status are preserved. Use [`fav INDEX`](#marking-a-favourite-contact-fav) or
   [`unfav INDEX`](#removing-favourite-status-unfav) to change favourite status; it cannot be changed with `edit`.
   Changing a basic profile field refreshes the contact's update date;
@@ -692,6 +732,7 @@ Format: `undo`
 * Every command that changes your contacts can be undone: `add`, `edit`, `delete`, `clear`, `tag`, `untag`, `fav`, `unfav`, `note` and `delnote`.
 * Restores your contacts to how they were before the most recent change that has not already been undone.
 * The message names the change that was undone: `Undid:` followed by the message that change showed when you made it, such as `Undid: Tagged person: …​` or `Undid: Deleted person: Alex Tan; …​`.
+  Tag replacement summaries and duplicate-details warnings are not repeated in undo or redo feedback.
 * Run `undo` again to revert earlier changes one at a time, starting from the most recent.
 * After an undo, the full contact list is shown. Any `find`, `filter` or `listfav` view is cleared, so run it again if you need it. The order chosen with `sort` is kept.
 * A command that leaves every detail unchanged, such as an `edit` with the same values or `tag` with a tag the person already has, does not count as a change.
@@ -722,6 +763,7 @@ Format: `redo`
 
 * The change undone most recently is redone first. Running `redo` repeatedly therefore reapplies undone changes in the order you originally made them.
 * The message names the change that was redone: `Redid:` followed by the message that change showed when you first made it, such as `Redid: Added to favourites: …​`.
+  As with undo, tag replacement summaries and duplicate-details warnings are omitted.
 * After a redo, the full contact list is shown. Any `find`, `filter` or `listfav` view is cleared, so run it again if you need it. The order chosen with `sort` is kept.
 * Undone changes can be redone only until you change your contacts again. After any command that changes your contacts, such as `add`, `delete` or `fav`, `redo` is no longer available.
 * Commands that fail, and commands that do not change contacts, such as `list`, `find`, `tags` and `help`, do not affect what `redo` reapplies.

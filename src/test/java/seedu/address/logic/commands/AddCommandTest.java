@@ -67,7 +67,8 @@ public class AddCommandTest {
     public void execute_personAcceptedByModel_commitsStateBeforeAdd() throws Exception {
         ModelStubAcceptingPersonAdded modelStub = new ModelStubAcceptingPersonAdded();
         Person firstPerson = new PersonBuilder().withName("Alice").build();
-        Person secondPerson = new PersonBuilder().withName("Bob").build();
+        Person secondPerson = new PersonBuilder().withName("Bob").withPhone("99998888")
+                .withEmail("bob@example.com").build();
 
         String firstMessage = new AddCommand(firstPerson).execute(modelStub).getFeedbackToUser();
         String secondMessage = new AddCommand(secondPerson).execute(modelStub).getFeedbackToUser();
@@ -348,6 +349,11 @@ public class AddCommandTest {
             AddressBook addressBook = new AddressBook();
             personsAdded.forEach(addressBook::addPerson);
             return addressBook;
+        }
+
+        @Override
+        public ObservableList<Person> getFilteredPersonList() {
+            return getAddressBook().getPersonList();
         }
 
         @Override
