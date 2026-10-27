@@ -157,14 +157,6 @@ The `Model` component,
 * does not depend on any of the other three components (as the `Model` represents data entities of the domain, they should make sense on their own without depending on other components)
 
 
-<box type="info" seamless>
-
-**Unimplemented alternative:** The tag-sharing design below keeps a unique list of tags in the contact list model, and each `Person` references tags from that list. This lets UniMate maintain one `Tag` object per unique tag instead of each `Person` holding its own `Tag` objects.<br>
-
-<puml src="diagrams/BetterModelClassDiagram.puml" width="450" />
-</box>
-
-
 ### Storage component
 
 **API** : [`Storage.java`](https://github.com/AY2627S1-CS2103T-F15-3/tp/tree/master/src/main/java/seedu/address/storage/Storage.java)
@@ -243,7 +235,7 @@ selection, empty lists and focused long-tag styling.
 The following class diagram shows the notes-related members and dependencies. Unrelated contact
 fields, parser classes and history internals are omitted to keep the feature view focused.
 
-<puml src="diagrams/NotesClassDiagram.puml" alt="Classes supporting contact notes, persistence and the note indicator" />
+<puml src="diagrams/NotesClassDiagram.puml" alt="Note command dependencies and the immutable note value stored by Person" />
 
 This partial view focuses on `Person` and its immutable note value; parsing, storage and indicators are explained below.
 
@@ -469,12 +461,20 @@ model's history (see [Recording contact data history](#recording-contact-data-hi
 
 #### Editing existing contacts: GUI and execution flow
 
-<puml src="diagrams/EditContactActivityDiagram.puml" alt="Validation, changed and unchanged edit outcomes" />
+Edit outcomes depend on validation and whether the resulting contact differs:
 
-The activity view summarises edit outcomes, assuming saving succeeds. The sequence then focuses on
-contact replacement and history for `edit 1 m/Mathematics c/ t/Project`; generic parsing, saving and UI
-refresh are described in the prose rather than repeated as lifelines. Index `1` refers to the currently displayed list, including `find`, `filter`,
-`listfav` and sorted views. `EditCommand` checks the index and duplicate name before changing the model.
+| Outcome | Contact data and history | Display and input |
+| --- | --- | --- |
+| Invalid fields, index or duplicate name | Reject before mutation; preserve both history stacks. | Keep the view and input; show an error. |
+| Valid, unchanged contact | Preserve contact data, update date and both history stacks. | Show all contacts and no-change feedback; clear input after saving succeeds. |
+| Valid, changed contact | Replace the contact and record one history entry. | Show all contacts and changed-field feedback; clear input after saving succeeds. |
+
+The sequence below focuses on contact replacement and history for
+`edit 1 m/Mathematics c/ t/Project`; generic parsing, saving and UI refresh are described in the prose
+rather than repeated as lifelines. Index `1` refers to the currently displayed list, including
+`find`, `filter`, `listfav` and sorted views. `EditCommand` checks the index and duplicate name before
+changing the model. A failed save does not roll back an applied change; see
+[history limitations](#known-limitations).
 
 <puml src="diagrams/EditContactSequenceDiagram.puml" alt="Edit command interaction with the model for changed and unchanged contacts" />
 
@@ -775,15 +775,24 @@ and below them in narrow windows. Unspecified values appear as `Not specified`.
 This affects display only; stored values are unchanged.
 See [Contact card layout](#contact-card-layout) for layout and expansion behaviour.
 
+### Automatic system reminders
+
+Incomplete and update reminders share the same display path. The partial class diagram below
+shows who evaluates the rules and who renders the result; contact value objects and storage
+adapters are covered in the Model and feature sections.
+
+<puml src="diagrams/SystemReminderClassDiagram.puml" alt="Person supplies reminder predicates, SystemTag derives applicable labels, and PersonCard renders them" />
+
+`PersonCard` holds the displayed `Person` and requests its reminders from `SystemTag.forPerson`.
+That method evaluates both predicates independently, so both labels may appear together.
+Reminders are derived when rendering; they are not stored in `Person#getTags` or JSON.
+
+| Reminder | Rule | Detailed explanation |
+| --- | --- | --- |
+| `INCOMPLETE` | Both phone and email are empty. | [Incomplete reminders](#automatic-incomplete-reminders). |
+| `UPDATE` | The last update date is known and its one-year anniversary is before today. | [Update reminders](#automatic-update-reminders). |
+
 ### Automatic incomplete reminders
-
-#### Class structure
-
-<puml src="diagrams/IncompleteReminderClassDiagram.puml" alt="Class structure of automatic incomplete reminders" />
-
-This partial view shows the completeness rule and its derived display. Parser and JSON behavior are explained separately below.
-
-`Person` references one non-null `Phone` and one non-null `Email`; an empty value represents an unspecified contact method. The parsers implement the generic `Parser` interface and map omitted add fields or cleared edit fields to the corresponding `EMPTY` constants. `SystemTag` depends on `Person#isIncomplete`, while `PersonCard` uses the derived result for rendering. The JSON adapter reconstructs contact values rather than storing system reminders. The `Phone` and `Email` associations are not compositions because immutable values, including `EMPTY`, can be shared between contacts.
 
 #### Design overview and responsibilities
 
@@ -860,13 +869,9 @@ legacy files and invalid date rejection.
 
 ### Automatic update reminders
 
-#### Class structure
-
-<puml src="diagrams/UpdateReminderClassDiagram.puml" alt="Class structure of automatic update reminders" />
-
-This partial view connects stored dates to the derived reminder; edit/date assignment is covered in the preceding date-tracking section.
-
-`EditCommand` extends `Command`, holds a copied `EditPersonDescriptor` and a `Clock`, and replaces a person through the `Model` interface. The private `createEditedPerson` method determines whether a basic field actually changed. `Person` stores the date; `SystemTag` queries that date through `needsUpdate`; `PersonCard` renders the resulting label. `JsonAdaptedPerson` converts between the model date and its JSON string. The dashed dependencies on `SystemTag` do not imply a stored collection of reminders in `Person`.
+Update reminders use the [shared system-reminder structure](#automatic-system-reminders).
+The preceding [date-tracking section](#tracking-and-displaying-contact-update-dates) explains how
+commands assign and preserve the stored date; this section explains the reminder rule and rendering.
 
 #### Design overview and relevant classes
 
@@ -913,13 +918,22 @@ Tests cover calendar boundaries, profile edits and no-op edits, JSON round trips
 
 ### Favourite contacts
 
-#### Class structure
+#### Operations and state
 
-<puml src="diagrams/FavouriteContactsClassDiagram.puml" alt="Class structure of favourite contacts and list filtering" />
+Favourite commands distinguish a stored state change from a view change:
 
-This partial view shows favourite state and its consumers. The shared filter/sort pipeline remains as described under [Filtering](#filtering-contacts-by-academic-fields-and-tags).
+| Operation | Effect | History and view |
+| --- | --- | --- |
+| `fav INDEX` | Replace the displayed contact with `favourite = true`; reject an existing favourite. | Record one history entry; retain the current filter and sort. |
+| `unfav INDEX` | Replace the displayed contact with `favourite = false`; reject a non-favourite. | Record one history entry; retain the current filter and sort. |
+| `listfav` | Apply `FavouritePredicate` to the existing contact view. | Preserve contact data and both history stacks; retain sorting. |
+| `list` | Restore the show-all predicate. | Preserve contact data and both history stacks; retain sorting. |
 
-The four commands inherit from `Command` and use the `Model` interface. `FavCommand` and `UnfavCommand` replace immutable persons with a changed favourite flag; `ListFavCommand` and the existing `ListCommand` change only the view predicate. `ModelManager` implements `Model` and owns the filtered and sorted views: the sorted view uses the filtered view as its source, and displayed indices follow that final view. `JsonAdaptedPerson` converts the favourite flag, and each `PersonCard` references the person whose heart it displays. Unrelated person fields and model services are omitted from this feature view.
+Both indexed commands validate the displayed index before mutation and preserve the contact's other
+fields, including its update date. Invalid indices and favourite-state errors leave the data, view
+and history unchanged. A failed save does not roll back an applied change; see
+[history limitations](#known-limitations).
+The [filtering section](#filtering-contacts-by-academic-fields-and-tags) explains the shared view pipeline.
 
 #### Design overview and relevant classes
 
@@ -981,7 +995,10 @@ For user-facing formats and list-switching examples, see [Marking a favourite co
 
 This partial view shows ordinary tag references and default tags. Parser details and the symmetric command operations are explained below.
 
-The two parsers implement `Parser<T>` with different command types and create the corresponding `Command` subclasses. Both commands use `Model` to locate and replace the displayed person. Their requested tag sets, the person's stored tag set, and the five ordered default choices all reference the same ordinary `Tag` type. `ParserUtil` resolves default indices and validates custom names; dynamic `SystemTag` reminders are deliberately outside this structure. The view omits generic parser and model plumbing; the associations focus on stored tag references.
+`Person#getTags` and the five ordered `DefaultTags` choices use the same ordinary `Tag` type.
+`TagCommand` and `UntagCommand` add or remove these values through immutable person replacement.
+Derived `SystemTag` reminders are outside this stored-tag structure. Parsing and model calls are
+explained in the execution flow below.
 
 #### Current implementation
 
@@ -1095,7 +1112,7 @@ Given below is the flow for a successful `add n/Alex Tan …​`:
 
 The activity diagram below summarises what happens when a command commits. The check for unrecorded changes is described in [Unrecorded changes](#unrecorded-changes).
 
-<puml src="diagrams/CommitActivityDiagram.puml" width="300" alt="CommitActivityDiagram" />
+<puml src="diagrams/CommitActivityDiagram.puml" width="650" alt="Commit decisions for unchanged data, stale undo history and a new history entry" />
 
 A command that fails validation, such as a duplicate `add`, throws before copying the data and never reaches this flow.
 
@@ -1128,7 +1145,7 @@ The diagrams below show how the history changes as a user enters a sequence of c
 Step 1. The user launches a disposable, empty address book. `currentState` is a copy of its contacts,
 `ab0`, and both stacks are empty. The example uses a name that is not already saved.
 
-Step 2. The user runs `add n/Alex Tan a/NUS`, then `find Alex Tan`, then `edit 1 p/91234567`. Each command commits the state from before its change: `add` pushes `ab0` onto `undoStates` and `currentState` becomes `ab1`; `edit` then pushes `ab1` and `currentState` becomes `ab2`.
+Step 2. The user runs `add n/Alex Tan a/NUS`, then `find Alex Tan`, then `edit 1 p/91234567`. The add and edit commands commit the state from before their changes: `add` pushes `ab0` onto `undoStates` and `currentState` becomes `ab1`; `edit` then pushes `ab1` and `currentState` becomes `ab2`. The intervening `find` changes only the view and records no history entry.
 
 <puml src="diagrams/UndoRedoState0.puml" alt="History after add and edit" />
 
@@ -1341,11 +1358,6 @@ the adjacent `historyPositionLabel` to `History i/N`. A 200 ms `FadeTransition` 
 full opacity on each press, including boundary presses and identical recalls. At the draft and on Enter,
 the transition stops and the label becomes invisible and unmanaged so the input reclaims its space.
 Failed submissions also hide the label. Prefix search displays absolute positions rather than match counts.
-
-The sequence diagram below shows a submission followed by an Alt+Up prefix search.
-Alt+Down, Up and Down follow the same flow as Alt+Up, calling `nextMatching()`, `previous(input)` and `next()` instead.
-
-<puml src="diagrams/CommandHistorySequenceDiagram.puml" alt="Sequence diagram for a submission followed by an Alt+Up prefix history search" />
 
 `CommandHistoryTest` covers boundaries, duplicates, exact prefixes, mode switching and draft state. `CommandBoxTest` exercises the real
 FXML text field on the JavaFX thread: Up/Down event consumption, caret placement, draft restoration,
