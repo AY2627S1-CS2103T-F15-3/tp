@@ -1004,11 +1004,11 @@ without running a command before repairing or restoring the file. A valid empty 
 
 ## Coming soon
 
-The following features are not available in the MVP.
+The following feature is planned for a future release and is not currently available.
 
 ### Archiving data files `[coming in v2.0]`
 
-_Details coming soon ..._
+Planned only; there is no archiving command in the current release.
 
 --------------------------------------------------------------------------------------------------------------------
 

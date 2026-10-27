@@ -6,7 +6,8 @@
 
 # UniMate Developer Guide
 
-This guide describes the v1.4 implementation.
+This guide describes the **v1.5 development implementation (unreleased)**. Use a matching source
+revision and JAR for testing; the published v1.4 JAR does not include all features described here.
 
 Use this guide to find the component boundaries, design decisions and checks for a change.
 
@@ -1364,7 +1365,7 @@ For manual UI verification:
 
 ## **Coming soon**
 
-The features in this section are not implemented in the MVP. The descriptions and diagrams below are proposals for future development.
+The features in this section are not implemented in the current release. The descriptions and diagrams below are proposals for future development.
 
 ### \[Proposed\] Data archiving
 
@@ -1399,7 +1400,9 @@ Data archiving is planned for a future version. Its implementation details have 
 
 ### User stories
 
-These user stories include requirements for v1.4 and candidates for future iterations. Priority indicates importance, not implementation status. The [User Guide's Features section](UserGuide.md#features) describes the functionality available in v1.4.
+These user stories include requirements for the v1.5 development version and future iterations.
+Priority indicates importance, not implementation status. See the [User Guide](UserGuide.md#features)
+for implemented features and its version notice before testing a downloaded JAR.
 
 Priorities: High (must have) - `* * *`, Medium (nice to have) - `* *`, Low (unlikely to have) - `*`
 
@@ -1444,7 +1447,7 @@ Priorities: High (must have) - `* * *`, Medium (nice to have) - `* *`, Low (unli
 **MSS**
 
 1.  User requests to add a new contact 
-2.  User provides the person's name, phone number, email address, and address
+2.  User provides the person's name and address, with optional contact and academic details
 3.  UniMate validates the provided contact information
 4.  UniMate adds the contact 
 5.  UniMate informs the user that the contact has been added
@@ -1489,24 +1492,43 @@ Priorities: High (must have) - `* * *`, Medium (nice to have) - `* *`, Low (unli
 
       Use case ends.
 
-**Use case: Delete a contact**
+**Use case: Delete contacts**
 
 **MSS**
 
-1.  <u>User view all existing contacts (Use case: View contacts) </u>
-2.  User requests to delete a specific contact from the displayed list. 
-3.  UniMate deletes the specified contact, including its stored academic fields and tags.
-4.  UniMate informs user that the contact has been deleted and shows the deleted contact's details.
+1.  <u>User views contacts (Use case: View contacts) </u>
+2.  User requests to delete one or more contacts from the displayed list.
+3.  UniMate validates all selections, then deletes all selected contacts as one change.
+4.  UniMate reports the deleted contacts and their original displayed positions.
 
     Use case ends.
 
 **Extensions**
 
-* 2a. The given index is invalid.
+* 2a. A selection is invalid or repeated.
 
-    * 3a1. UniMate informs user that the given index is invalid.
+    * 2a1. UniMate reports the problem without deleting any selected contact.
 
       Use case resumes at step 1.
+
+**Use case: Edit a contact**
+
+**MSS**
+
+1. User views contacts and requests a change to one displayed contact, supplying updated details.
+2. UniMate validates the selected contact and supplied values.
+3. UniMate applies the changes and informs the user which values changed.
+
+   Use case ends.
+
+**Extensions**
+
+* 2a. The selection or supplied values are invalid, or the name belongs to another contact.
+  * 2a1. UniMate reports the problem without changing contacts.
+    Use case resumes at step 1.
+* 2b. All supplied values already match.
+  * 2b1. UniMate reports that no change was made, preserving the contact and its history.
+    Use case ends.
 
 **Use case: Undo a change**
 
@@ -1537,7 +1559,7 @@ Priorities: High (must have) - `* * *`, Medium (nice to have) - `* *`, Low (unli
 
     * 4a1. User requests to undo again.
 
-      Use case resumes at step 3.
+      Use case resumes at step 2.
 
 **Use case: Redo an undone change**
 
@@ -1574,18 +1596,24 @@ Priorities: High (must have) - `* * *`, Medium (nice to have) - `* *`, Low (unli
 
     * 4a1. User requests to redo again.
 
-      Use case resumes at step 3.
+      Use case resumes at step 2.
 
 ### Non-Functional Requirements
 
-1.  Should work on any _mainstream OS_ as long as it has Java `25` or above installed.
-2.  Should be able to hold up to 1000 persons without noticeable sluggishness in performance for typical usage.
-3.  A user with above average typing speed for regular English text (i.e. not code, not system admin commands) should be able to accomplish most of the tasks faster using commands than using the mouse.
-4.  UniMate should respond to user commands within 1 second for up to 1,000 stored contacts.  
-5.  UniMate should work without an Internet connection.  
-6.  UniMate should preserve all saved contact information between application sessions.  
-7.  Invalid user input should not corrupt or modify existing stored contact data.  
-8.  UniMate should display a meaningful error message for invalid user input without crashing.
+These are release targets, not completed verification. Record results using the
+[release testing checklist](ReleaseTesting.md).
+
+1. UniMate should work on Windows, Linux and macOS with Java 25 (the prescribed JDK+FX on macOS).
+2. With 1,000 stored contacts, representative `list`, `find`, `filter`, `sort`, `edit`, `undo` and
+   `redo` commands should finish within one second on the recorded reference environment.
+   Measure submission through visible feedback/list update and disk saving; record hardware,
+   runtime, display scaling and cold/warm state so the target can be assessed.
+3. Primary contact-management workflows should be usable entirely with the keyboard. Focus must
+   remain visible, and documented navigation must return to the command box.
+4. UniMate should work without an Internet connection.
+5. UniMate should preserve saved contact information between application sessions.
+6. Invalid command input should not corrupt or modify existing contact data.
+7. Invalid command input should produce a meaningful error without crashing.
 
 ### Glossary
 
@@ -1597,7 +1625,6 @@ Priorities: High (must have) - `* * *`, Medium (nice to have) - `* *`, Low (unli
 * **Contact list index**: The one-based position of a contact in the currently displayed list, used by commands to select that contact. It is not a permanent identifier for the person.
 * **Graduation year / Class year**: The calendar year in which a person graduates or expects to graduate, such as 2027 (class of 2027). This differs from their current year of study. UniMate accepts years from 2000 to 2099.
 * **GUI (Graphical User Interface)**: An interface that presents information through visual elements such as windows, lists, and buttons.
-* **Mainstream OS (Operating System)**: Windows, Linux, Unix, or macOS, as used in this guide's non-functional requirements.
 * **Major**: A student's principal academic field of study, such as Computer Science.
 * **Module**: A university course or unit of study, typically identified by a code such as CS2103T. Here, it refers to an academic course rather than a software component.
 * **Private contact detail**: A contact detail that is not meant to be shared with others.
@@ -2501,7 +2528,7 @@ Use only the separate test folder for these checks. The paths below are relative
 
    1. With the app closed and the valid backup retained, place a copy of the valid contact file at `data/addressbook.json` and ensure `data/unimate.json` is absent. If the old filename is already in use, perform this scenario in another test folder.
    1. Relaunch the app without entering a command.<br>
-      Expected: Sample contacts appear. UniMate v1.4 reads `data/unimate.json` and does not automatically migrate `data/addressbook.json`.
+      Expected: Sample contacts appear. UniMate reads `data/unimate.json` and does not automatically migrate `data/addressbook.json`.
    1. Close the window using its close button. Copy `data/addressbook.json` to `data/unimate.json`, then relaunch and run `find SaveCheck`.<br>
       Expected: The saved contact and its academic fields and tag load correctly. The old file is unchanged. Restore the backup when finished.
 
