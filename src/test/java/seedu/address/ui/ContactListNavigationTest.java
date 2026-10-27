@@ -57,6 +57,36 @@ public class ContactListNavigationTest {
     }
 
     @Test
+    public void constructor_outsideFxThread_throwsAssertionError() throws Exception {
+        try (View view = open(List.of())) {
+            AssertionError error = assertThrows(AssertionError.class, () -> {
+                new ContactListNavigation(view.root, view.command, view.list);
+            });
+            assertEquals("Contact navigation must be installed on the JavaFX thread", error.getMessage());
+        }
+    }
+
+    @Test
+    public void tab_missingViewport_throwsAssertionError() throws Exception {
+        try (View view = open(List.of(longContact("Long")))) {
+            FxTestUtil.runActionOnFxThread(() -> {
+                view.press(KeyCode.TAB, false);
+                Node viewport = view.list.lookup(".virtual-flow");
+                // Simulate a skin change that removes the viewport expected by contact navigation.
+                viewport.getStyleClass().remove("virtual-flow");
+                try {
+                    AssertionError error = assertThrows(AssertionError.class, () -> {
+                        view.press(KeyCode.TAB, false);
+                    });
+                    assertEquals("Contact list skin must provide a VirtualFlow", error.getMessage());
+                } finally {
+                    viewport.getStyleClass().add("virtual-flow");
+                }
+            });
+        }
+    }
+
+    @Test
     public void tabAndShiftTab_visitOnlySelectedContactInReadingOrder() throws Exception {
         try (View view = open(List.of(longContact("First"), longContact("Second")))) {
             FxTestUtil.runOnFxThread(() -> {
