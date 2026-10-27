@@ -43,7 +43,35 @@ This guide describes the features available in v1.4.
 
    * `exit` : Exits the app.
 
-1. Refer to the [Features](#features) section below for details of each command.
+1. Use the [Command summary](#command-summary) below for a quick reference, or see [Features](#features) for detailed instructions.
+
+--------------------------------------------------------------------------------------------------------------------
+
+## Command summary
+
+Action     | Format, Examples
+-----------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+**[Add](#adding-a-person-add)**    | `add n/NAME [p/PHONE_NUMBER] [e/EMAIL] a/ADDRESS [m/MAJOR] [c/CLASS_YEAR] [f/] [t/TAG]... [d/DEFAULT_INDEX]...` <br> e.g., `add n/James Ho p/22224444 e/jamesho@example.com a/123, Clementi Rd, 1234665 f/ t/friend t/colleague`
+**[Clear](#clearing-all-entries-clear)**  | `clear`
+**[Delete](#deleting-contacts-delete)** | `delete INDEX [MORE_INDICES]`<br> e.g., `delete 1 3 5`
+**[Edit](#editing-a-person-edit)**   | `edit INDEX [n/NAME] [p/PHONE_NUMBER] [e/EMAIL] [a/ADDRESS] [m/MAJOR] [c/CLASS_YEAR] [t/TAG]... `<br> e.g.,`edit 2 n/James Lee e/jameslee@example.com`
+**[Find](#locating-persons-by-name-major-or-class-year-find)**   | `find KEYWORD [MORE_KEYWORDS]...`<br> e.g., `find James Jake`, `find Computer Science`, `find 2027`
+**[Filter](#filtering-contacts-by-major-class-year-and-tag-filter)** | `filter [m/MAJOR] [c/CLASS_YEAR] [t/TAG]` (at least one criterion)<br> e.g., `filter m/Computer Science c/2027 t/Classmate`
+**[Sort](#sorting-contacts-by-name-major-class-year-or-update-date-sort)**   | `sort FIELD DIRECTION` or `sort reset`<br> e.g., `sort name asc`, `sort major desc`, `sort year asc`, `sort updated desc`
+**[List all saved contacts](#listing-all-persons-list)** | `list` (rejects extra arguments; clears the current filter and reports the total)
+**[Favourite](#marking-a-favourite-contact-fav)** | `fav INDEX`<br> e.g., `fav 1`
+**[Unfavourite](#removing-favourite-status-unfav)** | `unfav INDEX`<br> e.g., `unfav 1`
+**[List favourites](#listing-favourite-contacts-listfav)** | `listfav`
+**[Help](#viewing-help-help)**   | `help`
+**[Tags](#listing-default-tags-tags)**   | `tags`
+**[Tag](#adding-tags-to-a-person-tag)**    | `tag INDEX [d/DEFAULT_INDEX]... [t/TAG]...` (at least one tag)<br> e.g., `tag 1 d/2 t/NOC`
+**[Untag](#removing-tags-from-a-person-untag)**  | `untag INDEX t/TAG [t/TAG]...`<br> e.g., `untag 1 t/NOC`
+**[Note](#adding-or-replacing-a-contact-s-note-note)**   | `note INDEX TEXT`<br> e.g., `note 2 Met during CS2103T`
+**[Show note](#viewing-a-contact-s-note-shownote)** | `shownote INDEX`<br> e.g., `shownote 2`
+**[Delete note](#deleting-a-contact-s-note-delnote)** | `delnote INDEX`<br> e.g., `delnote 2`
+**[Undo](#undoing-a-change-undo)**   | `undo`
+**[Redo](#redoing-an-undone-change-redo)**   | `redo`
+**[Exit](#exiting-the-program-exit)** | `exit`
 
 --------------------------------------------------------------------------------------------------------------------
 
@@ -511,7 +539,7 @@ For all three note commands, an index outside the displayed list reports `The pe
 
 Displays every contact currently saved in UniMate, including contacts loaded when you reopen the app.
 Each contact card includes the person's name, tags, phone number,
-address, email address, major, class year and [latest update date](#tracking-a-contacts-latest-update-date).
+address, email address, major, class year and [latest update date](#tracking-a-contact-s-latest-update-date).
 Optional academic fields that have no saved value are displayed as
 `Major: Not specified` or `Class year: Not specified`.
 
@@ -614,7 +642,7 @@ Format: `find KEYWORD [MORE_KEYWORDS]...`
 * Persons matching at least one keyword in any of these fields are returned (an `OR` search); for example, `Hans Bo` returns `Hans Gruber` and `Bo Yang`. Each keyword is searched for separately, so `find Computer Science` also returns a `Data Science` major, or a contact with `Science` in their name. Keyword order and repeated keywords make no difference.
 * Prefixes such as `n/` or `m/` are not supported. They are treated as part of the keyword, so `find n/Alex` looks for the whole word `n/Alex` and usually finds no one.
 * Contacts without a major or class year are not matched on that field.
-* Each `find` searches **all** saved contacts, not only the ones currently displayed, and replaces any previous `find`, `filter` or `listfav` view. The order chosen with [`sort`](#sorting-contacts-by-name-major-or-class-year-sort) is kept.
+* Each `find` searches **all** saved contacts, not only the ones currently displayed, and replaces any previous `find`, `filter` or `listfav` view. The order chosen with [`sort`](#sorting-contacts-by-name-major-class-year-or-update-date-sort) is kept.
 * The result message is `N person(s) listed!`, where `N` is the number of matching contacts, which may be `0`. The status bar shows the keywords, e.g. `Filter: Search: alex OR david`.
 * The results are numbered from `1`. Commands that take an `INDEX`, such as `edit`, `delete` and `fav`, use these numbers until the displayed list changes. Run [`list`](#listing-all-persons-list) to show all contacts again.
 * `find` does not change any contacts, so it does not affect [`undo`](#undoing-a-change-undo) or [`redo`](#redoing-an-undone-change-redo).
@@ -950,30 +978,3 @@ _Details coming soon ..._
 1. **When using multiple screens**, if you move the application to a secondary screen, and later switch to using only the primary screen, the GUI will open off-screen. The remedy is to delete the `preferences.json` file created by the application before running the application again.
 2. **If you minimize the Help Window** and then run the `help` command (or use the `Help` menu, or the keyboard shortcut `F1`) again, the original Help Window will remain minimized, and no new Help Window will appear. The remedy is to manually restore the minimized Help Window.
 3. **If saving the data file fails**, the command's change is still applied inside UniMate. The save error replaces the usual success message, and says that the change is applied but not saved. Running `undo` at this point reverts that change. The remedy is to fix the cause of the error and then run any successful command, such as `list`, to save your contacts. See [Saving the data](#saving-the-data).
-
---------------------------------------------------------------------------------------------------------------------
-
-## Command summary
-
-Action     | Format, Examples
------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------
-**Add**    | `add n/NAME [p/PHONE_NUMBER] [e/EMAIL] a/ADDRESS [m/MAJOR] [c/CLASS_YEAR] [f/] [t/TAG]... [d/DEFAULT_INDEX]...` <br> e.g., `add n/James Ho p/22224444 e/jamesho@example.com a/123, Clementi Rd, 1234665 f/ t/friend t/colleague`
-**Clear**  | `clear`
-**Delete** | `delete INDEX [MORE_INDICES]`<br> e.g., `delete 1 3 5`
-**Edit**   | `edit INDEX [n/NAME] [p/PHONE_NUMBER] [e/EMAIL] [a/ADDRESS] [m/MAJOR] [c/CLASS_YEAR] [t/TAG]... `<br> e.g.,`edit 2 n/James Lee e/jameslee@example.com`
-**Find**   | `find KEYWORD [MORE_KEYWORDS]...`<br> e.g., `find James Jake`, `find Computer Science`, `find 2027`
-**Filter** | `filter [m/MAJOR] [c/CLASS_YEAR] [t/TAG]` (at least one criterion)<br> e.g., `filter m/Computer Science c/2027 t/Classmate`
-**Sort**   | `sort FIELD DIRECTION` or `sort reset`<br> e.g., `sort name asc`, `sort major desc`, `sort year asc`, `sort updated desc`
-**List all saved contacts** | `list` (rejects extra arguments; clears the current filter and reports the total)
-**Favourite** | `fav INDEX`<br> e.g., `fav 1`
-**Unfavourite** | `unfav INDEX`<br> e.g., `unfav 1`
-**List favourites** | `listfav`
-**Help**   | `help`
-**Tags**   | `tags`
-**Tag**    | `tag INDEX [d/DEFAULT_INDEX]... [t/TAG]...` (at least one tag)<br> e.g., `tag 1 d/2 t/NOC`
-**Untag**  | `untag INDEX t/TAG [t/TAG]...`<br> e.g., `untag 1 t/NOC`
-**Note**   | `note INDEX TEXT`<br> e.g., `note 2 Met during CS2103T`
-**Show note** | `shownote INDEX`<br> e.g., `shownote 2`
-**Delete note** | `delnote INDEX`<br> e.g., `delnote 2`
-**Undo**   | `undo`
-**Redo**   | `redo`
