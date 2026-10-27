@@ -1,6 +1,8 @@
 package seedu.address.storage;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -34,19 +36,34 @@ public class LastUpdatedStorageTest {
     }
 
     @Test
-    public void read_legacyDate_isTodayAndBecomesStableAfterSaving() throws Exception {
+    public void read_legacyDate_staysUnknownAfterSavingAndReloading() throws Exception {
         Path file = directory.resolve("legacy.json");
         Files.writeString(file, """
                 {"persons":[{"name":"Alice","phone":"91234567","email":"alice@example.com",
                 "address":"NUS","tags":["update"]}]}
                 """);
-        LocalDate before = LocalDate.now();
         JsonAddressBookStorage storage = new JsonAddressBookStorage(file);
         AddressBook loaded = new AddressBook(storage.readAddressBook().orElseThrow());
-        LocalDate baseline = loaded.getPersonList().get(0).getLastUpdated();
-        assertTrue(baseline.equals(before) || baseline.equals(LocalDate.now()));
+        Person legacy = loaded.getPersonList().get(0);
+        assertNull(legacy.getLastUpdated());
+        assertFalse(legacy.needsUpdate(LocalDate.of(2026, 10, 26)));
+        assertEquals(legacy, new PersonBuilder(legacy).build());
+        assertEquals(legacy.hashCode(), new PersonBuilder(legacy).build().hashCode());
         storage.saveAddressBook(loaded);
         assertEquals(loaded, new AddressBook(new JsonAddressBookStorage(file).readAddressBook().orElseThrow()));
+    }
+
+    @Test
+    public void read_explicitNullDate_staysUnknown() throws Exception {
+        Path file = directory.resolve("null-date.json");
+        Files.writeString(file, """
+                {"persons":[{"name":"Alice","address":"NUS","lastUpdated":null,"tags":[]}]}
+                """);
+        JsonAddressBookStorage storage = new JsonAddressBookStorage(file);
+        AddressBook loaded = new AddressBook(storage.readAddressBook().orElseThrow());
+        assertNull(loaded.getPersonList().get(0).getLastUpdated());
+        storage.saveAddressBook(loaded);
+        assertEquals(loaded, new AddressBook(storage.readAddressBook().orElseThrow()));
     }
 
     @Test

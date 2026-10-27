@@ -94,7 +94,10 @@ public class JsonSerializableAddressBookTest {
         JsonSerializableAddressBook dataFromFile = JsonUtil.readJsonFile(TYPICAL_PERSONS_FILE,
                 JsonSerializableAddressBook.class).get();
         AddressBook addressBookFromFile = dataFromFile.toModelType();
-        AddressBook typicalPersonsAddressBook = TypicalPersons.getTypicalAddressBook();
+        AddressBook typicalPersonsAddressBook = new AddressBook();
+        for (Person person : TypicalPersons.getTypicalPersons()) {
+            typicalPersonsAddressBook.addPerson(new PersonBuilder(person).withLastUpdated(null).build());
+        }
         assertEquals(addressBookFromFile, typicalPersonsAddressBook);
     }
 

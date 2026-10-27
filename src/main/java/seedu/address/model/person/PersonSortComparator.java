@@ -2,6 +2,7 @@ package seedu.address.model.person;
 
 import static java.util.Objects.requireNonNull;
 
+import java.time.LocalDate;
 import java.util.Comparator;
 
 import seedu.address.commons.util.ToStringBuilder;
@@ -11,7 +12,7 @@ import seedu.address.commons.util.ToStringBuilder;
  */
 public class PersonSortComparator implements Comparator<Person> {
     /** Fields available for sorting contacts. */
-    public enum SortField { NAME, MAJOR, YEAR }
+    public enum SortField { NAME, MAJOR, YEAR, UPDATED }
 
     /** Directions available for sorting contacts. */
     public enum SortDirection { ASC, DESC }
@@ -21,8 +22,8 @@ public class PersonSortComparator implements Comparator<Person> {
     private final Comparator<Person> comparator;
 
     /**
-     * Creates a case-insensitive comparator for {@code field} in {@code direction}.
-     * Unspecified academic values sort last; ties use ascending case-insensitive names.
+     * Creates a comparator for {@code field} in {@code direction}. Text comparisons ignore case.
+     * Unspecified academic values and unknown dates sort last; ties use ascending case-insensitive names.
      */
     public PersonSortComparator(SortField field, SortDirection direction) {
         this.field = requireNonNull(field);
@@ -30,21 +31,31 @@ public class PersonSortComparator implements Comparator<Person> {
         Comparator<String> byValue = direction == SortDirection.ASC
                 ? String.CASE_INSENSITIVE_ORDER : String.CASE_INSENSITIVE_ORDER.reversed();
         // Reverse the value comparison before adding nullsLast, so unspecified fields always stay last.
-        comparator = Comparator.comparing(this::sortValue, Comparator.nullsLast(byValue))
-                .thenComparing(person -> person.getName().fullName, String.CASE_INSENSITIVE_ORDER);
+        Comparator<Person> byField = switch (field) {
+            case NAME -> Comparator.comparing(person -> person.getName().fullName, byValue);
+            case MAJOR -> Comparator.comparing(person -> specifiedValue(person.getMajor().value),
+                    Comparator.nullsLast(byValue));
+            case YEAR -> Comparator.comparing(person -> specifiedValue(person.getGraduationYear().value),
+                    Comparator.nullsLast(byValue));
+            case UPDATED -> byUpdateDate(direction);
+        };
+        comparator = byField.thenComparing(person -> person.getName().fullName, String.CASE_INSENSITIVE_ORDER);
+    }
+
+    /** Returns null for an unspecified academic-field sorting key. */
+    private static String specifiedValue(String value) {
+        return value.isEmpty() ? null : value;
     }
 
     /**
-     * Returns the selected value, using null only as an unspecified academic-field sorting key.
-     * Four-digit graduation years have the same lexicographic and chronological order.
+     * Creates a date comparator with oldest or newest updates first, keeping unknown dates last.
+     * Equal dates compare equally; callers can append a name tie-break without reversing it.
      */
-    private String sortValue(Person person) {
-        String value = switch (field) {
-            case NAME -> person.getName().fullName;
-            case MAJOR -> person.getMajor().value;
-            case YEAR -> person.getGraduationYear().value;
-        };
-        return value.isEmpty() ? null : value;
+    public static Comparator<Person> byUpdateDate(SortDirection direction) {
+        requireNonNull(direction);
+        Comparator<LocalDate> byDate = direction == SortDirection.ASC
+                ? Comparator.naturalOrder() : Comparator.reverseOrder();
+        return Comparator.comparing(Person::getLastUpdated, Comparator.nullsLast(byDate));
     }
 
     /** Returns the selected field and direction for the view status. */
@@ -53,6 +64,7 @@ public class PersonSortComparator implements Comparator<Person> {
             case NAME -> "Name";
             case MAJOR -> "Major";
             case YEAR -> "Class year";
+            case UPDATED -> "Last updated";
         };
         return fieldName + (direction == SortDirection.ASC ? " ascending" : " descending");
     }
