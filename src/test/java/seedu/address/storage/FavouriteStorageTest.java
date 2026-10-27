@@ -63,6 +63,7 @@ public class FavouriteStorageTest {
         Person person = new JsonAddressBookStorage(file).readAddressBook().orElseThrow().getPersonList().get(0);
         assertFalse(person.isFavourite());
         assertEquals(new PersonBuilder().withName("Alice").withPhone("91234567")
-                .withEmail("alice@example.com").withAddress("NUS").withTags("Friend").build(), person);
+                .withEmail("alice@example.com").withAddress("NUS").withTags("Friend")
+                .withLastUpdated(null).build(), person);
     }
 }
