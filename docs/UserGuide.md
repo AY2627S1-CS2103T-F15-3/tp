@@ -6,7 +6,8 @@
 
 # UniMate User Guide
 
-UniMate is a **desktop application for managing contacts, optimized for use through a Command Line Interface (CLI)** while retaining the benefits of a Graphical User Interface (GUI). If you type quickly, UniMate can help you manage contacts faster than traditional GUI applications.
+UniMate helps **university students organise contacts by major, class year and tags**.
+It is a **desktop application for managing contacts, optimized for use through a Command Line Interface (CLI)** while retaining the benefits of a Graphical User Interface (GUI). If you type quickly, UniMate can help you manage contacts faster than traditional GUI applications.
 
 This guide describes the features available in v1.4.
 
@@ -158,6 +159,23 @@ Adds a person to UniMate.
 
 Format: `add n/NAME [p/PHONE_NUMBER] [e/EMAIL] a/ADDRESS [m/MAJOR] [c/CLASS_YEAR] [f/] [t/TAG]... [d/DEFAULT_INDEX]...`
 
+#### Field rules
+
+| Field | Accepted value |
+| --- | --- |
+| Name `n/` | Required. English letters, digits and spaces; must not be blank. |
+| Address `a/` | Required, non-blank text. See the prefix warning below. |
+| Phone `p/` | Optional. At least three digits, without spaces, `+` or punctuation. |
+| Email `e/` | Optional. `local-part@domain`; letters and digits with separated `+`, `_`, `.` or `-` in the local part, never at either end. Domain labels use letters/digits with separated internal hyphens; the final label has at least two characters. |
+| Major `m/` | Optional, non-blank text on one line. |
+| Class year `c/` | Optional. Four digits from `2000` to `2099`. |
+| Tag `t/` | Optional. English letters and digits, without spaces. Repeat the prefix for multiple tags. |
+
+Omit an optional field when unknown; do not supply an empty value in `add`.
+
+For example, `add n/Alex Tan a/NUS m/Computer Science c/2027` creates a contact
+without a phone or email. Use a name that is not already saved.
+
 <box type="tip" seamless>
 
 **Tip:** A person can have any number of tags, including zero.
@@ -180,11 +198,10 @@ Check the added contact's details. To correct the `PrefixProbe` example, run `fi
 contact, then `edit 1 a/NUS`.
 </box>
 
-* `m/MAJOR` records the person's academic major. A supplied major must be non-blank text on one line.
-* `c/CLASS_YEAR` records the graduation year (class of 20XX). Enter exactly four digits from `2000` to `2099`.
-* Omit `m/` or `c/` if the value is unknown or does not apply; an empty supplied value is rejected.
-* Each of these prefixes may appear only once. Leading and trailing spaces around their values are ignored.
+* Supply each single-value field only once. Leading and trailing spaces around values are ignored.
 * The fields are saved with the contact, can be edited using `edit`, are shown in the displayed contact list and appear in command messages when specified.
+**Duplicate names**
+
 * A contact with the same name as an existing contact, ignoring case, is rejected as a duplicate, even if their major, class year or other details differ. For example, `John Doe` and `john doe` identify the same contact. Names retain their original capitalization for display and storage. Editing a contact's own name capitalization is allowed.
 * A duplicate `add` error shows the existing contact's saved details. If the contact is visible,
   `Existing contact at displayed index N:` identifies its number in the current filtered and sorted list.
@@ -194,6 +211,8 @@ contact, then `edit 1 a/NUS`.
 * Rejecting a duplicate leaves the current view, saved contacts and undo/redo history unchanged.
 * Before opening an older data file, back it up and give any contacts whose names differ only in case distinct names. Such files fail duplicate validation; contacts are not automatically merged, renamed or deleted. The existing startup error handling opens an empty list after a loading error. Close the app without making changes and fix a copy of the backed-up file before retrying, as subsequent successful data-changing commands could overwrite the data file.
 * A successful `add` can be reverted with [`undo`](#undoing-a-change-undo).
+**Favourite status**
+
 * Include `f/` to create the contact as a favourite immediately, with a red heart beside their name.
   The flag takes no value, may appear anywhere among the prefixed fields, and may appear only once.
   Inputs such as `f/true` and `f/false` are rejected. Omit `f/` to create a contact without favourite status.
@@ -204,6 +223,8 @@ contact, then `edit 1 a/NUS`.
   [`unfav INDEX`](#removing-favourite-status-unfav) to change favourite status. `edit` preserves the current
   favourite status and cannot change it.
 * Phone and email are independently optional. Omit `p/` or `e/` when unknown; do not supply an empty prefix in `add`. Non-empty values must satisfy the existing phone and email format rules. A contact without either receives the [automatic incomplete reminder](#automatic-incomplete-reminders).
+**Shared contact details**
+
 * Adding a different name with a shared phone number or email succeeds with the usual
   `New person added: ...` feedback and an additional warning line in the same feedback box.
   For example: `Warning - duplicate details detected: #2 Alice (phone); #3 Bob (email)`.
@@ -569,12 +590,22 @@ Edits an existing person in UniMate.
 
 Format: `edit INDEX [n/NAME] [p/PHONE] [e/EMAIL] [a/ADDRESS] [m/MAJOR] [c/CLASS_YEAR] [t/TAG]... `
 
+For example, `edit 1 m/Mathematics` changes only the first displayed contact's major.
+See the shared [field rules](#field-rules) for accepted values.
+
+| Input | Effect |
+| --- | --- |
+| Omit a prefix | Keep its existing value. |
+| `p/`, `e/`, `m/` or `c/` with no value | Clear that optional field. |
+| Supply one or more `t/TAG` values | Replace the entire tag set. Use `tag` to add without replacing. |
+| `t/` with no value | Remove all ordinary tags. |
+
+Name and address cannot be cleared. Supply at least one field; `edit INDEX` alone is invalid.
+
 * Edits the person at the specified `INDEX`. The index refers to the index number shown in the displayed person list. The index **must be a positive integer** 1, 2, 3, ...
 * At least one of the optional fields must be provided.
 * Existing values will be updated to the input values. Fields whose prefixes are omitted remain unchanged.
-* Use `m/MAJOR` to edit the academic major and `c/CLASS_YEAR` to edit the graduation year.
-  A supplied major must be non-blank text on one line; a class year must be four digits from `2000` to `2099`.
-* Enter `m/` or `c/` with no value to clear that optional field. Each of these prefixes may appear only once.
+* Supply each single-value prefix only once.
 * Leading and trailing spaces are ignored. If any supplied value is invalid or an academic prefix is repeated, no fields are updated.
 * After a successful edit, the full contact list is shown while retaining the active sort order.
   If editing search or filter results, run `find` or `filter` again before using a result index for another edit.
@@ -584,12 +615,11 @@ Format: `edit INDEX [n/NAME] [p/PHONE] [e/EMAIL] [a/ADDRESS] [m/MAJOR] [c/CLASS_
   For example, replacing `Friend` and `Classmate` with `Project` reports
   `Tags replaced. Removed: Classmate, Friend. Added: Project.`
   Use [`tag`](#adding-tags-to-a-person-tag) to add tags while keeping existing tags.
-* To remove all of a person's tags, enter `t/` without a tag after it.
 * Email local parts allow letters, digits and `+ _ . -`. Special characters cannot be consecutive
   or at either end: `alice++cs2103t@example.com` is rejected; `alice+cs2103t@example.com` is valid.
   Email errors show each rule on a short line, including the consecutive-special-character rule.
   Feedback wraps within the result display when the window is narrow.
-* Enter `p/` or `e/` without a value to clear that contact method. Clearing both shows the automatic `incomplete` reminder; omitted phone/email prefixes preserve the existing values.
+* Clearing both phone and email shows the automatic `incomplete` reminder.
 * A successful `edit` that changes the person's details can be reverted with [`undo`](#undoing-a-change-undo).
   Undo/redo messages retain the full `Edited person: ...` contact details without repeating the field or tag change summary or duplicate-details warning.
 * The result display shows `Edited NAME:` followed by only the fields that actually changed,
