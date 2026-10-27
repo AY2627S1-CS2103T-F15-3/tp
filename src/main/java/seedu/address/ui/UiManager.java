@@ -1,6 +1,7 @@
 package seedu.address.ui;
 
 import java.nio.file.Path;
+import java.util.Optional;
 import java.util.logging.Logger;
 
 import javafx.application.Platform;
@@ -25,6 +26,7 @@ public class UiManager implements Ui {
 
     private Logic logic;
     private Path dataFilePath;
+    private Optional<String> startupWarning;
     private MainWindow mainWindow;
 
     /**
@@ -32,8 +34,16 @@ public class UiManager implements Ui {
      * to show in the status bar.
      */
     public UiManager(Logic logic, Path dataFilePath) {
+        this(logic, dataFilePath, Optional.empty());
+    }
+
+    /**
+     * Creates a {@code UiManager} that also shows {@code startupWarning}, if present, once the window opens.
+     */
+    public UiManager(Logic logic, Path dataFilePath, Optional<String> startupWarning) {
         this.logic = logic;
         this.dataFilePath = dataFilePath;
+        this.startupWarning = startupWarning;
     }
 
     @Override
@@ -47,6 +57,7 @@ public class UiManager implements Ui {
             mainWindow = new MainWindow(primaryStage, logic, dataFilePath);
             mainWindow.show(); //This should be called before creating other UI parts
             mainWindow.fillInnerParts();
+            startupWarning.ifPresent(mainWindow::showWarning);
 
         } catch (Throwable e) {
             logger.severe(StringUtil.getDetails(e));

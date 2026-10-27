@@ -169,6 +169,13 @@ public class MainWindow extends UiPart<Stage> {
         primaryStage.hide();
     }
 
+    /**
+     * Shows {@code message} in the result display with warning styling, e.g. a startup problem.
+     */
+    void showWarning(String message) {
+        resultDisplay.setFeedbackToUser(message, true);
+    }
+
     public PersonListPanel getPersonListPanel() {
         return personListPanel;
     }

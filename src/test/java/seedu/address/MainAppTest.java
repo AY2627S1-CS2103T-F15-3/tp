@@ -3,6 +3,7 @@ package seedu.address;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static seedu.address.testutil.TypicalPersons.getTypicalAddressBook;
 
 import java.io.IOException;
@@ -87,8 +88,27 @@ public class MainAppTest {
     }
 
     @Test
+    public void initModel_invalidData_backsUpFileAndPreparesStartupWarning() throws Exception {
+        Path filePath = addressBookStorage.getAddressBookFilePath();
+        String json = "{\"persons\":[{\"name\":\"Bad*Name\",\"address\":\"NUS\"}]}";
+        FileUtil.writeToFile(filePath, json);
+
+        initializeModel();
+
+        Path backupPath = filePath.resolveSibling("unimate.json.bak");
+        assertEquals(json, FileUtil.readFromFile(backupPath));
+        assertEquals(json, FileUtil.readFromFile(filePath));
+        String warning = mainApp.startupWarning.orElseThrow();
+        assertTrue(warning.contains(filePath.toString()));
+        assertTrue(warning.contains(backupPath.toString()));
+        assertTrue(warning.contains("Contact entry 1 is invalid"));
+    }
+
+    @Test
     public void initModel_missingFile_usesSamplesWithoutCreatingDataFile() throws Exception {
         Model initializedModel = initializeModel();
+
+        assertTrue(mainApp.startupWarning.isEmpty());
 
         assertEquals(SampleDataUtil.getSampleAddressBook(), initializedModel.getAddressBook());
         assertFalse(Files.exists(addressBookStorage.getAddressBookFilePath()));

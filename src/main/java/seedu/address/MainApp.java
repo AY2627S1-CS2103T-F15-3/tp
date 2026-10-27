@@ -1,8 +1,10 @@
 package seedu.address;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.Optional;
 import java.util.logging.Logger;
 
@@ -57,7 +59,7 @@ public class MainApp extends Application {
 
         logic = new LogicManager(model, storage);
 
-        ui = new UiManager(logic, storage.getAddressBookFilePath());
+        ui = new UiManager(logic, storage.getAddressBookFilePath(), startupWarning);
     }
 
     /**
@@ -81,9 +83,28 @@ public class MainApp extends Application {
             logger.warning("Data file at " + storage.getAddressBookFilePath() + " could not be loaded."
                     + " Will be starting with an empty UniMate contact list.");
             initialData = new AddressBook();
+            startupWarning = Optional.of(describeLoadingFailure(storage.getAddressBookFilePath(), e));
         }
 
         return new ModelManager(initialData, userPrefs);
+    }
+
+    /**
+     * Backs up the unreadable data file, since the next command saves over it, and returns a warning for the user.
+     */
+    private String describeLoadingFailure(Path dataFile, DataLoadingException e) {
+        Throwable cause = e.getCause() == null ? e : e.getCause();
+        String reason = String.valueOf(cause.getMessage()).lines().findFirst().orElse("");
+        Path backupFile = dataFile.resolveSibling(dataFile.getFileName() + BACKUP_SUFFIX);
+        String backupNote;
+        try {
+            Files.copy(dataFile, backupFile, StandardCopyOption.REPLACE_EXISTING);
+            backupNote = "A copy of the unreadable file has been saved as " + backupFile + ".";
+        } catch (IOException ioe) {
+            logger.warning("Failed to back up data file: " + StringUtil.getDetails(ioe));
+            backupNote = "UniMate could not make a backup copy of it.";
+        }
+        return String.format(MESSAGE_DATA_FILE_NOT_LOADED, dataFile, reason, backupNote);
     }
 
     /**
