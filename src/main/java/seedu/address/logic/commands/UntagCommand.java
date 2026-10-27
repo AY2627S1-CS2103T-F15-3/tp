@@ -26,6 +26,8 @@ public class UntagCommand extends Command {
             + "Parameters: INDEX t/TAG [t/TAG]...\n"
             + "Example: untag 1 t/NOC";
     public static final String MESSAGE_SUCCESS = "Untagged person: %1$s";
+    public static final String MESSAGE_NONE_FOUND = "%1$s does not have the tag(s): %2$s. No tags were removed.";
+    public static final String MESSAGE_SOME_NOT_FOUND = "Not found, so not removed: %1$s.";
 
     private final Index index;
     private final Set<Tag> tags;
@@ -47,6 +49,12 @@ public class UntagCommand extends Command {
             throw new CommandException(Messages.MESSAGE_INVALID_PERSON_DISPLAYED_INDEX);
         }
         Person person = displayedPersons.get(index.getZeroBased());
+        Set<Tag> missingTags = new HashSet<>(tags);
+        missingTags.removeAll(person.getTags());
+        if (missingTags.size() == tags.size()) {
+            throw new CommandException(String.format(MESSAGE_NONE_FOUND, person.getName().fullName,
+                    TagCommand.formatTagNames(missingTags)));
+        }
         Set<Tag> updatedTags = new HashSet<>(person.getTags());
         updatedTags.removeAll(tags);
         Person updatedPerson = new Person(person.getName(), person.getPhone(), person.getEmail(),
@@ -56,7 +64,9 @@ public class UntagCommand extends Command {
         model.setPerson(person, updatedPerson);
         String message = String.format(MESSAGE_SUCCESS, Messages.format(updatedPerson));
         model.commitAddressBook(previousState, message);
-        return new CommandResult(message);
+        // The history description omits the not-found note, which only concerns this submission.
+        return new CommandResult(missingTags.isEmpty() ? message
+                : message + "\n" + String.format(MESSAGE_SOME_NOT_FOUND, TagCommand.formatTagNames(missingTags)));
     }
 
     @Override

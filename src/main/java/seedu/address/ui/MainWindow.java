@@ -125,6 +125,8 @@ public class MainWindow extends UiPart<Stage> {
 
         CommandBox commandBox = new CommandBox(this::executeCommand);
         commandBoxPlaceholder.getChildren().add(commandBox.getRoot());
+        new ContactListNavigation(primaryStage.getScene().getRoot(), commandBox.getTextField(),
+                personListPanel.getPersonListView());
     }
 
     /**
@@ -167,6 +169,13 @@ public class MainWindow extends UiPart<Stage> {
         primaryStage.hide();
     }
 
+    /**
+     * Shows {@code message} in the result display with warning styling, e.g. a startup problem.
+     */
+    void showWarning(String message) {
+        resultDisplay.setFeedbackToUser(message, true);
+    }
+
     public PersonListPanel getPersonListPanel() {
         return personListPanel;
     }
@@ -181,7 +190,7 @@ public class MainWindow extends UiPart<Stage> {
             CommandResult commandResult = logic.execute(commandText);
             personListPanel.refresh();
             logger.info("Result: " + commandResult.getLogSummary());
-            resultDisplay.setFeedbackToUser(commandResult.getFeedbackToUser());
+            resultDisplay.setFeedbackToUser(commandResult.getFeedbackToUser(), commandResult.isWarning());
 
             if (commandResult.isShowHelp()) {
                 handleHelp();

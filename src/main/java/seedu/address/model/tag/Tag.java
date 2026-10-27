@@ -3,8 +3,12 @@ package seedu.address.model.tag;
 import static java.util.Objects.requireNonNull;
 import static seedu.address.commons.util.AppUtil.checkArgument;
 
+import java.util.Locale;
+
 /**
  * Represents a Tag in the address book.
+ * Tags are compared ignoring case, so {@code Friend} and {@code friend} are the same tag;
+ * the capitalization supplied when the tag was first added is kept for display and storage.
  * Guarantees: immutable; name is valid as declared in {@link #isValidTagName(String)}
  */
 public class Tag {
@@ -43,12 +47,12 @@ public class Tag {
             return false;
         }
 
-        return tagName.equals(otherTag.tagName);
+        return tagName.equalsIgnoreCase(otherTag.tagName);
     }
 
     @Override
     public int hashCode() {
-        return tagName.hashCode();
+        return tagName.toLowerCase(Locale.ROOT).hashCode();
     }
 
     /**

@@ -80,6 +80,8 @@ The UI consists of a `MainWindow` and its parts, such as `CommandBox`, `ResultDi
 
 The `UI` component uses the JavaFX UI framework. The layouts of these UI parts are defined in matching `.fxml` files in `src/main/resources/view`. For example, [`MainWindow.fxml`](https://github.com/AY2627S1-CS2103T-F15-3/tp/tree/master/src/main/resources/view/MainWindow.fxml) specifies the layout of [`MainWindow`](https://github.com/AY2627S1-CS2103T-F15-3/tp/tree/master/src/main/java/seedu/address/ui/MainWindow.java).
 
+Contact-card layout and expansion are described under [Contact card layout](#contact-card-layout).
+
 The `UI` component,
 
 * executes user commands using the `Logic` component.
@@ -126,7 +128,7 @@ Here are the other classes in `Logic` (omitted from the class diagram above) tha
 <puml src="diagrams/ParserClasses.puml" width="600"/>
 
 How the parsing works:
-* `AddressBookParser#parseCommand` dispatches on `commandWord.toLowerCase(Locale.ROOT)`, so all command words are case-insensitive regardless of the system locale. Only the command word is normalized; the argument string is passed unchanged to the selected parser. Prefix matching and argument validation retain their existing rules, and `Tag` equality remains case-sensitive.
+* `AddressBookParser#parseCommand` dispatches on `commandWord.toLowerCase(Locale.ROOT)`, so all command words are case-insensitive regardless of the system locale. Before dispatch, Unicode whitespace in the arguments is converted to ASCII spaces (except for `note`, whose free text is passed unchanged). Commands that take no parameters (`help`, `list`, `listfav`, `tags`, `clear`, `undo`, `redo`, `exit`) are created through `AddressBookParser#withoutArguments`, which rejects any extra input with the command's usage.
 * When called upon to parse a user command, the `AddressBookParser` class creates an `XYZCommandParser` (`XYZ` is a placeholder for the specific command name, e.g., `AddCommandParser`). The parser uses the other classes shown above to parse the user command and create an `XYZCommand` object (e.g., `AddCommand`). The `AddressBookParser` returns that object as a `Command` object.
 * All `XYZCommandParser` classes, such as `AddCommandParser` and `DeleteCommandParser`, implement the `Parser` interface so they can be treated similarly where appropriate, for example during testing.
 
@@ -142,8 +144,9 @@ The `Model` component,
   Each `Person` includes `Major`, `GraduationYear` and 'Notes' value objects in addition to its existing contact details and tags.
 * selects contacts using a `FilteredList<Person>` and orders that view using a `SortedList<Person>`.
   `getFilteredPersonList()` returns `sortedPersons` as an unmodifiable `ObservableList<Person>`,
-  so the UI and numbered commands use the same displayed order. Both transformations observe the saved
-  contact list, so data changes update the display.
+  so the UI and numbered commands use the same displayed order. The filtered view takes its source
+  from `addressBook.getPersonList()`, and the sorted view takes the filtered view as its source.
+  Changes to the saved contact list therefore update the display.
 * stores a `UserPrefs` object that represents the user’s preferences (currently, just the GUI settings). This is exposed to the outside as a `ReadOnlyUserPrefs` object.
 * keeps an in-memory history of contact data states in an `AddressBookHistory` object. The `undo` and `redo` commands use it to revert and reapply every successful change to contact data. See [Recording contact data history](#recording-contact-data-history).
 * does not depend on any of the other three components (as the `Model` represents data entities of the domain, they should make sense on their own without depending on other components)
@@ -184,10 +187,14 @@ GUI display indices. For example, `Contact entry 2 is null.` identifies a null c
 include the contact position and retain the original validation exception as their cause.
 
 `JsonUtil#readJsonFile` rejects a null JSON root as a `DataLoadingException`; it returns
-`Optional.empty()` only for a missing file. `MainApp` therefore uses its existing empty-contact-list
-recovery for invalid data, while missing files still use sample contacts. Loading and window-close
-shutdown do not rewrite the invalid contact file. `MainAppTest` checks this recovery with isolated
-storage and a stub UI; storage tests check null data, valid empty lists and legacy contacts.
+`Optional.empty()` only for a missing file. `MainApp` therefore starts with an empty contact list for
+invalid data, while missing files still use sample contacts. Because the next command saves over the data
+file, `MainApp#initModelManager` also copies the unreadable file to `unimate.json.bak` beside it and stores a
+`startupWarning` naming the file, the first line of the loading error and the backup. `UiManager` passes the
+warning to `MainWindow#showWarning`, which shows it in the result display with the amber warning style once the
+window opens. Loading and window-close shutdown do not rewrite the invalid contact file. `MainAppTest` checks this
+recovery, the backup and the warning with isolated storage and a stub UI; storage tests check null data, valid
+empty lists and legacy contacts.
 
 ### Common classes
 
@@ -198,6 +205,35 @@ Classes used by multiple components are in the `seedu.address.commons` package.
 ## **Implementation**
 
 This section describes some noteworthy details on how certain features are implemented.
+
+### Contact card layout
+
+`PersonListCard.fxml` groups contact details and academic fields separately, with captions styled
+independently from their values in `DarkTheme.css`.
+
+* `PersonCard` populates values, tags and presence indicators. `PersonListCell` creates each card using
+  its displayed index and binds its preferred width to the list width, reserving space for the scrollbar.
+* `ExpandableText` handles ellipses and click, Enter or Space expansion. `PersonListPanel` shares each
+  contact's expanded-field state across recreated cells. This state is kept only in memory and does
+  not change contact data or undo/redo history. The map uses `Person` values as keys: replacing a
+  contact with different data starts with collapsed fields, while an unchanged contact retains its
+  state. Restarting the app clears the map.
+* `ContactListNavigation` filters Tab and Shift+Tab at the window root. It builds the route from the
+  command box, list and selected cell's expandable values, skipping the result display and other cards.
+  `PersonCard` supplies values in reading order; focusable tags are included. The route is rebuilt on
+  each press because scrolling and resizing can recycle cells or change which values are shortened.
+  The list skin's JavaFX `VirtualFlow.scrollPixels` brings focused values into view.
+  Shift+Tab reverses the route. An empty list returns focus to the command box. Up/Down selection uses
+  JavaFX's list behaviour; command-history keys and Enter/Space expansion keep their existing handlers.
+* `PersonCardPane` measures the card at its available width and stacks the detail groups below
+  560 logical pixels of content width. `TagPane` measures and places tag rows using the same wrapping
+  calculation. Cell and card clips prevent content from painting over neighbouring cards.
+
+`PersonCardEdgeCaseTest` covers all 128 combinations of optional fields and 12 long-value cases.
+`PersonCardLayoutTest` checks field captions and values at different widths. `ExpandableContactListTest`
+checks expansion, collapse, cell recycling, resizing and scrolling to the end of expanded content.
+`ContactListNavigationTest` checks forward/reverse traversal, selected-contact boundaries, arrow-key
+selection, empty lists and focused long-tag styling.
 
 ### Contact notes
 
@@ -217,9 +253,10 @@ that it will apply; all three note commands override `Command#execute(Model)` an
 
 `JsonAdaptedPerson` saves the text under `notes`. Missing or null values in older files become empty notes. Invalid stored note text produces the usual data-loading failure. The UI's presence indicator derives from `Person#getNotes().isEmpty()` and updates when the observable contact list replaces a person; note text is displayed through ordinary command feedback.
 
-`PersonCard` holds the displayed contact and its `noteIcon` label. The label is an indicator, not a
-control that opens or expands the note. Its tooltip uses the card's current displayed index to suggest
-the corresponding `shownote` command.
+`PersonCard` holds the displayed contact and its `noteIcon` label, whose JavaFX `SVGPath` graphic
+appears at the top right of the card. The label is an indicator, not a control that opens or expands
+the note. Its tooltip uses the card's current displayed index to suggest the corresponding `shownote`
+command.
 
 #### Adding or replacing a note
 
@@ -289,8 +326,23 @@ classified as an unknown parameter.
 
 For example, `add n/PrefixProbe a/NUS x/typo` supplies `NUS x/typo` to `ParserUtil.parseAddress`.
 That address is valid and is saved literally. The same text inside a more restricted field may fail
-that field's validation. Slash-containing addresses remain valid, so an unfamiliar `letter/` sequence
-does not reliably indicate a typo. The UG explains this behavior and how to correct a saved address.
+that field's validation. Slash-containing addresses remain valid unless a recognised prefix preceded
+by a space delimits a new argument. In `add`, `f/` is now a recognised prefix, so `a/Blockf/3` preserves
+the literal address without favouriting the contact, `a/Block f/` supplies address `Block` and marks
+the contact as a favourite, and `a/Block f/3` is rejected because the flag has a value. A space followed
+by `f/` cannot represent literal address text in `add`. The UG warning and `AddCommandParserTest`
+document and cover these boundaries.
+
+The optional `f/` prefix is a flag with no value. `AddCommandParser` rejects values with the specific
+message `The f/ flag does not take a value. Use f/ alone to mark the new contact as a favourite.` and rejects repeated
+occurrences, then passes the flag's presence to the existing `Person` constructor as its initial
+favourite state. `AddCommand` saves this state in the same history snapshot as the new contact;
+no separate favourite command or history entry is needed. Its success message starts with
+`New favourite contact added:` for favourites and `New person added:` otherwise. The same message
+describes the addition in undo/redo history. After creation, `fav` and `unfav` change favourite status;
+`edit` preserves it. `AddFavouriteIntegrationTest` verifies these messages, saved data, favourites views,
+undo/redo, editing and rejected inputs, while `FavouriteIconTest` checks that
+the heart appears immediately after adding with the flag.
 
 ### Adding academic fields
 
@@ -310,13 +362,94 @@ The command checks for an existing contact with the same name, ignoring case, be
 `UniquePersonList` and edit duplicate checks share this rule. `Name`, `Person#equals` and `Person#hashCode`
 retain exact data equality, preserving capitalization changes for display, persistence and undo/redo.
 `JsonSerializableAddressBook#toModelType` also rejects case-only duplicate names using its existing
-`IllegalValueException` path. There is no automatic migration, deletion, merging or renaming. Users must
-back up legacy files and distinguish conflicting names before loading. The existing `MainApp` startup
-fallback opens an empty list on a loading error; subsequent saves can overwrite that file, so users must
-close without editing and resolve conflicts in a copy of the backup first.
+`IllegalValueException` path. There is no automatic migration, deletion, merging or renaming. On a loading error, `MainApp` opens an
+empty list, backs up the file and warns the user (see [Storage component](#storage-component)).
+`ParserUtil#parseName` collapses repeated internal spaces before validation, so `John  Doe` and `John Doe`
+are also the same contact. `Name` accepts letters and digits in any script (`\p{L}`, `\p{N}`, plus combining
+marks `\p{M}`), spaces and the punctuation `' - . , /`, and must start with a letter or digit.
 After a successful add, it records the previous contact data state in the model's history
 (see [Recording contact data history](#recording-contact-data-history)).
 The normal storage path then saves the contact, including its academic fields.
+
+### Identifying an existing contact when add rejects a duplicate
+
+`AddCommand` searches the saved person list once using `Person#isSamePerson` and branches on the
+resulting `Optional<Person>`. When a duplicate is found, it passes that same saved contact to
+`AddCommand#getDuplicateMessage`, which uses `Messages#format` to report the contact's actual details,
+including its original name capitalization and supplied academic fields. Values from the attempted
+addition do not replace the saved details.
+
+The command looks up that saved contact in `Model#getFilteredPersonList()`. If visible, its one-based
+index is labelled `displayed index` and follows the active filter and sort. If hidden, the error
+explicitly labels its one-based position in the saved person list as a `saved index` and instructs
+the user to run `list`, then `sort reset`. The command names come from `ListCommand.COMMAND_WORD` and
+`SortCommand.COMMAND_WORD`. Both commands are needed because `list` preserves sorting. The hidden
+contact may have been excluded by `filter`, `find` or `listfav`.
+The error also works when the displayed list is empty; it never treats the saved index as an index
+in the current filtered view.
+
+The lookup only reads the existing model. A duplicate throws before copying the address book,
+adding a contact or recording history, so contacts, filter, sort, status and history descriptions
+remain unchanged. `LogicManager` does not save after the exception. The GUI uses the existing
+wrapped result display and retains the submitted command for correction.
+
+`AddCommandIntegrationTest` checks displayed and saved indices, case-only duplicates with different
+details, empty views, unchanged saved files and preserved undo/redo after `filter`, `find` and
+`listfav`. `SortUiTest` checks the actual command box, result text, unchanged cards and the recovery
+instructions.
+
+### Warning about shared phone numbers or email addresses when adding
+
+After a successful addition, `AddCommand#getAddResult` delegates matching to
+`SharedContactDetailsWarning#describeMatches`, which scans the refreshed displayed list and skips
+the added contact by `Person#isSamePerson`. `ModelManager#addPerson` has already cleared the
+filter while preserving the active sort order, so the scan includes all existing contacts and its
+indices match the current cards. Looking up indices before the add would be incorrect when the
+added contact changes the sorted positions.
+
+For each existing contact, the shared helper checks non-empty phone numbers using `Phone#equals` and
+non-empty email values using `String#equalsIgnoreCase`. Email comparison ignores case only for this
+advisory warning; stored values, `Email#equals` and the duplicate-name rule are unchanged. Empty
+optional fields never count as matches. Every matching contact is listed once, with a reason
+identifying the shared phone number, email address or both. Different contacts may match different
+fields, and all matches are included in displayed order.
+
+When there are matches, the ordinary `New person added: ...` message remains complete.
+An additional line reads, for example, `Warning - duplicate details detected: #2 Alice (phone);
+#3 Bob (email)`. The reason is `phone and email` when both fields match the
+same contact. All matching names and current indices are retained.
+
+`SharedContactDetailsWarning#appendTo` joins the ordinary success message and advisory text with a
+newline and returns them in a single `CommandResult.warning`. Both add and edit use this method,
+so their warning wording and appended position stay consistent. `getFeedbackToUser()` supplies the
+complete plain-text message. Existing success text is preserved verbatim, including any additional
+summary lines or command-specific success header; only the warning is appended at the bottom.
+The warning flag selects amber feedback styling. `getLogSummary()` retains
+the ordinary success message's first line without logging the appended match list.
+
+`MainWindow` passes that complete message and `CommandResult#isWarning()` to the original
+`ResultDisplay` text area. `ResultDisplay#setFeedbackToUser` applies the `warning` style class only
+for warning results, and `DarkTheme.css` makes the text amber (`#ffcf66`). There is no additional
+warning control or scrollbar. JavaFX `TextArea` uses one text colour for its content, so both the
+success and appended warning appear amber, with no coloured border. Feedback without a warning
+remains light grey, including subsequent ordinary results, undo/redo and errors. Its existing
+100-pixel area retains wrapping, selection and vertical scrolling for long feedback. Each new result
+replaces the previous text and resets the caret and scroll position. The command follows the
+successful path, so input clears and is not styled as an error. A same-name duplicate still fails
+before this flow.
+
+The model records one snapshot with the ordinary addition message as its history description.
+The warning is returned only in the `CommandResult`; undo and redo describe the addition
+without repeating the advisory warning. Storage saves the new contact normally. Shared contacts
+are not merged or modified, and one undo removes only the new contact.
+
+`AddCommandIntegrationTest` checks phone-only, email-only, combined and multiple matches; email case;
+blank and distinct values; refreshed sorted indices; persistence; and one-step undo/redo.
+`SortUiTest` checks complete success text followed by the warning in the same original amber-text area,
+matches hidden by the previous filter, current card indices, the successful command-box state and
+undo/redo through the GUI. It also checks wrapping, selectable text and scrollable overflow in the
+fixed-height result area in a narrowed window, and that subsequent normal feedback and errors replace
+the previous warning and restore light grey text. It also verifies that no additional warning text area is created.
 
 ### Editing academic fields
 
@@ -333,7 +466,7 @@ model's history (see [Recording contact data history](#recording-contact-data-hi
 
 #### Editing existing contacts: GUI and execution flow
 
-The following sequence follows `edit 1 m/Mathematics c/` from the actual command box to JSON storage
+The following sequence follows `edit 1 m/Mathematics c/ t/Project` from the actual command box to JSON storage
 and back to GUI feedback. Index `1` refers to the currently displayed list, including `find`, `filter`,
 `listfav` and sorted views. `EditCommand` checks the index and duplicate name before changing the model.
 
@@ -344,8 +477,32 @@ the previous state for undo (unchanged data does not create another history entr
 still applies. `LogicManager` saves the updated address book before returning the result.
 `MainWindow#executeCommand` refreshes the list and writes the feedback to `ResultDisplay`;
 `CommandBox` then clears its text. `PersonListPanel` observes the model's list and builds `PersonCard`s
-with the current indices. Cleared academic fields render as `Major: Not specified` and
-`Class year: Not specified`.
+with the current indices. Cleared academic fields render as `Not specified` in the major and class year labels.
+
+`EditCommand` compares the replacement `Person` with the original before mutation. If they are equal,
+it resets the displayed list to all contacts and returns `No changes made to NAME. The supplied values
+match the existing details.` without replacing the person or committing history. The date and both
+history stacks, including any available redo, are preserved.
+
+For an actual change, `formatChanges` returns `Edited NAME:` followed by changed fields in a fixed order:
+name, phone, email, address, major and class year. Each line uses `Field: old value → new value`;
+empty optional values display `Not specified`. Supplied fields whose values match are omitted.
+If the tag sets differ, a `Tags replaced. Removed: ... . Added: ... .` line lists the sorted set differences
+(`None` for an empty difference). An unchanged tag set adds no line, including when `t/` was supplied.
+
+The existing full-contact `Edited person: ...` description is still passed to
+`Model#commitAddressBook(previousState, message)`. Immediate change summaries are not stored in history;
+undo/redo feedback and state restoration retain their previous behavior. `UndoRedoIntegrationTest`
+verifies exact edit, undo and redo feedback and persisted contact data for tag replacement, clearing and
+repeated edits, including no-op preservation of redo. Unit tests check field summaries and update dates;
+`EditContactUiTest` checks rendered clearing feedback and successful no-op submissions.
+After composing the change summary, `EditCommand#getEditResult` appends a shared-details warning
+for changed phone/email values, using the refreshed displayed indices. Warnings are excluded
+from the stored history description and do not block the edit.
+
+`Email.MESSAGE_CONSTRAINTS` uses short newline-separated rules and
+explicitly forbids consecutive local-part special characters; the validation regex is unchanged.
+`ResultDisplay.fxml` enables text wrapping so narrow windows do not require horizontal scrolling.
 
 The replacement `Person` retains notes and favourite status. Changes to name, phone, email, address,
 major or graduation year update `lastUpdated`; a tag-only edit retains the previous date.
@@ -356,6 +513,45 @@ it does not roll back the in-memory edit.
 GUI regression coverage is in `EditContactUiTest`: submissions through `MainWindow`, rendered fields,
 filtered indices, clearing fields, preserved notes/favourite status, invalid edits and saved JSON.
 `EditCommandTest` and `EditCommandParserTest` cover command and parser boundaries.
+
+#### Warning when an edit introduces shared contact details
+
+`EditCommand#getEditResult` checks the edited contact after `setPerson` and the full-list refresh,
+so the shared helper's indices follow the retained sort order even after a rename. It enables phone
+comparison only when `Phone#equals` reports a changed value, and email comparison only when the
+old and new email values differ ignoring case. It then calls
+`SharedContactDetailsWarning#describeMatches`, reusing the add warning's non-empty matching rules,
+self-exclusion, compact formatting and displayed order. The helper skips scanning when neither
+contact method changed. Pre-existing shared values are not reported for unrelated or unchanged edits.
+
+A match is passed to `SharedContactDetailsWarning#appendTo` with the complete success feedback.
+The ordinary `Edited person: ...` message, including the edited contact's new name and saved fields,
+remains first, followed by the tag replacement summary when `t/` was supplied. A final line uses
+the same format as add:
+`Warning - duplicate details detected: #1 Alice (phone); #3 Carol (email)`.
+The complete message appears amber in the original feedback text area; no extra control, coloured border or
+command-input error style is added. Warning indices identify the other matching contacts, not the
+edited contact itself. The edit remains successful and is saved normally. Duplicate-name and
+invalid-index errors still occur before mutation. Results without a warning remain light grey, including
+ordinary edits and errors displayed after a warning.
+
+The history description remains the ordinary `Edited person: ...` message, so one undo restores the
+complete previous contact and redo restores the edit without repeating the tag summary or warning feedback. No-op
+edits still preserve both history stacks. Notes, favourite status and all omitted fields are retained.
+`EditCommandSharedDetailsTest` covers changed phone/email values, case-insensitive matches, multiple
+matches, self-exclusion, empty fields, unchanged and unrelated edits, persistence and one-step history.
+Its combined edit changes the name, phone, email and tags together, checking the exact order of
+normal saved details, the actual removed/added tag summary and the warning, plus persisted data
+and base-only history descriptions. Additional cases cover clearing or resupplying unchanged tags
+alongside a shared phone, and tag-only edits to already-shared contacts without a warning.
+`EditContactUiTest` checks the same combined case in the
+original feedback box with amber text, successful input clearing, preserved icons, refreshed sorted card
+indices and a return to light grey for ordinary edits, undo/redo and errors. `SharedContactDetailsWarningTest`
+checks that appending a warning preserves complete multiline success feedback and alternative add-success
+headers rather than replacing them. Supplemental feedback is composed before calling the warning helper;
+the helper does not generate tag summaries or change favourite semantics itself.
+
+The manual procedures are in [Shared phone or email warnings on edit](#shared-phone-or-email-warnings-on-edit).
 
 ### Searching by academic fields
 
@@ -399,7 +595,8 @@ The existing observable list updates `PersonListPanel`, including the displayed 
 no new storage fields are needed. Commands that use displayed indices continue
 to obtain their targets from that same list.
 
-The following sequence summarises filter parsing and execution; routing and Model internals are omitted.
+The sequence below shows how valid filter criteria become a predicate and are applied through the Model API.
+Routing, validation details and Model internals are omitted.
 
 <puml src="diagrams/FilterSequenceDiagram.puml" alt="Filter command parsing and execution" />
 
@@ -413,14 +610,15 @@ is shown on restart.
 ### Sorting the displayed contacts
 
 `AddressBookParser` routes `sort` to `SortCommandParser`. The parser accepts either two tokens
-(a field `name`, `major` or `year`, followed by `asc` or `desc`) or the single keyword `reset`.
+(a field `name`, `major`, `year` or `updated`, followed by `asc` or `desc`) or the single keyword `reset`.
 Keywords are case-insensitive. A field and direction produce `SortCommand` with
 `PersonSortComparator.SortField` and `SortDirection` values; `reset` produces `SortResetCommand`.
 Invalid input raises a `ParseException` with usage instructions before any view or data change.
 
-The following sequence summarises `sort year desc`; routing and Model internals are omitted.
+The sequence below traces `sort year desc` from parsing to the Model sorting API.
+It shows how the command supplies a comparator; list transformations and comparison rules are explained below.
 
-<puml src="diagrams/SortSequenceDiagram.puml" alt="Sort command parsing and execution" />
+<puml src="diagrams/SortSequenceDiagram.puml" alt="Parsing sort year desc and applying its comparator through the Model API" />
 
 `SortCommand#execute` supplies a `PersonSortComparator` to `Model#updateSortedPersonList`.
 `ModelManager` maintains this observable transformation chain:
@@ -442,6 +640,14 @@ sorting keys. Direction is applied to the value comparator **before** `Comparato
 that descending order does not move unspecified values to the front. Equal primary values use ascending
 case-insensitive name order; names differing only in case compare equally.
 
+For `UPDATED`, the comparator compares `Person#getLastUpdated()` as `LocalDate` values.
+Ascending puts older dates first; descending reverses only the date comparison, keeping the
+ascending name tie-break in both directions. Missing/null dates in older files remain unknown
+and sort last in both directions using `Comparator.nullsLast`; unknown-date ties use ascending names.
+The view status describes
+this field as `Last updated`. Replacing a contact after an edit or restoring it through undo/redo
+automatically reorders the displayed view using the restored date.
+
 Sorting the view rather than `UniquePersonList` preserves storage order and history snapshots. As with
 other successful commands, `LogicManager` still invokes storage, but the saved contacts remain in their
 underlying order. Sort commands do not call `commitAddressBook`, so undo and redo availability is preserved.
@@ -452,7 +658,9 @@ Restarting constructs a view without a comparator or predicate, restoring saved 
 Comparator, model, command and parser unit tests cover ordering and validation. `SortCommandIntegrationTest`
 checks command interactions, notes preservation and JSON persistence; `SortUiTest` checks the real command
 box, rendered card numbering and feedback. `SortResetCommandTest` checks saved order, filter preservation
-and redo availability after resetting. See [Sorting contacts](#sorting-contacts) for manual checks.
+and redo availability after resetting. `UpdatedSortIntegrationTest` covers date ordering, ties,
+filters, displayed-index editing, undo/redo and JSON reload; `SortUiTest` also checks date sorting
+through the command box and rendered cards. See [Sorting contacts](#sorting-contacts) for manual checks.
 
 #### Persistent view status
 
@@ -473,9 +681,9 @@ favourites membership changes and long text in the actual JavaFX layout.
 
 ### Formatting academic fields in command messages
 
-Commands that report a contact's full details use `Messages#format(Person)`. The formatter includes `Major` and
-`Class year` before tags when those optional academic fields are specified. If either academic field is unspecified,
-that field is omitted from the command message.
+Commands that report a contact's full details use `Messages#format(Person)`. The formatter includes `Phone`,
+`Email`, `Major` and `Class year` only when those optional fields are specified; an unspecified field is omitted
+from the command message rather than printed as an empty value.
 
 This centralizes command-message formatting for add, edit, and delete results while preserving the independent
 optional behavior of major and class year.
@@ -551,14 +759,10 @@ both displayed and persisted contacts. See [Listing all persons](UserGuide.md#li
 
 ### Displaying academic fields in the contact list
 
-`ListCommand` resets the model's filtered person list to `PREDICATE_SHOW_ALL_PERSONS`. `PersonListPanel` observes
-that list and creates a `PersonCard` for every visible `Person`, so the card layout determines which fields appear
-after `list` as well as in filtered results produced by `find`.
-
-`PersonCard` reads the existing `Major` and `GraduationYear` value objects and formats them as labeled rows.
-`PersonListCard.fxml` places those rows below the contact details. Because both fields are optional, an empty value
-is rendered as `Not specified` instead of leaving an ambiguous blank line. This is a presentation-only change:
-`ListCommand`, the model, and the JSON storage format are unchanged.
+Contact cards display major and class year alongside the contact details when space allows,
+and below them in narrow windows. Unspecified values appear as `Not specified`.
+This affects display only; stored values are unchanged.
+See [Contact card layout](#contact-card-layout) for layout and expansion behaviour.
 
 ### Automatic incomplete reminders
 
@@ -592,9 +796,9 @@ Phone and email objects remain non-null throughout the model. `Phone.isValidPhon
 
 #### System tags, rendering and refresh
 
-`SystemTag.forPerson` evaluates the age and completeness predicates independently and returns at most one of each reminder. A profile may therefore have both labels. `PersonCard#refreshTags` clears and rebuilds the pane, preserving ordinary blue labels, and appends each derived reminder with the existing `system-tag` CSS class. The existing yellow background (`#F4C542`), dark text (`#222222`), padding, font and corner radii are reused without changing favourite or note icons. Missing phone/email display as `Not specified`.
+`SystemTag.forPerson` evaluates the age and completeness predicates independently and returns at most one of each reminder. A profile may therefore have both labels. `PersonCard#refreshTags` clears and rebuilds the pane, preserving ordinary grey labels, and appends each derived reminder with the existing `system-tag` CSS class. The `system-tag` style uses amber text on a dark brown background, with the same padding, font and corner radii as ordinary tags. Missing phone/email display as `Not specified`.
 
-`SystemTag.isSystemLabel` distinguishes both reserved display names. A user's stored `incomplete` tag is shown as blue `incomplete (custom)` with a tooltip explaining `t/incomplete`; it is neither renamed nor removed from JSON. Tag commands still operate only on user tags. The incomplete reminder has a contact-detail tooltip rather than the date tooltip used by `UPDATE`.
+`SystemTag.isSystemLabel` distinguishes both reserved display names. A user's stored `incomplete` tag is shown as a grey `incomplete (custom)` tag with a tooltip explaining `t/incomplete`; it is neither renamed nor removed from JSON. Tag commands still operate only on user tags. The incomplete reminder has a contact-detail tooltip rather than the date tooltip used by `UPDATE`.
 
 Successful commands use the existing `MainWindow` to `PersonListPanel.refresh` path, and model replacements update the observable list. Filling either contact method removes `INCOMPLETE`; clearing the last one adds it. A successful actual basic-field edit also refreshes the profile date and can independently remove `UPDATE`. If the edit leaves both methods empty, `INCOMPLETE` remains applicable.
 
@@ -624,14 +828,15 @@ duplicate-name rejection leave the stored contact unchanged. Undo and redo resto
 date, rather than calculating a new date when restoring a snapshot.
 
 `PersonCard` sets the always-visible `lastUpdated` label from `Person#getLastUpdated()` in
-`PersonListCard.fxml`, producing `Last updated: YYYY-MM-DD` for ordinary four-digit years. Its tooltip
+`PersonListCard.fxml`, producing `Last updated: YYYY-MM-DD` for ordinary four-digit years or
+`Last updated: Unknown` when no date was recorded. Its tooltip
 explains the scope of the date. Replacing a person updates the observable list cell, so edits,
 undo/redo and reloaded data all display the corresponding date. The label is independent of the
 derived `update` reminder and appears on recent contacts too.
 
 The existing JSON `lastUpdated` string and `LocalDate.parse` validation are reused. Missing/null
-dates receive the loading date as a migration baseline; this baseline becomes persistent after
-the next successful command saves the address book. Invalid supplied dates fail data loading.
+dates remain unknown and are saved as JSON null until an actual basic-profile edit records a date.
+Invalid supplied dates fail data loading.
 No new JSON property or user-supplied date prefix is introduced.
 
 `LastUpdatedDisplayTest` exercises actual JavaFX cards and list cells for recent and older dates,
@@ -665,23 +870,23 @@ The reminder is derived from a contact's basic-profile modification date rather 
 
 #### Date tracking and persistence
 
-The existing `Person` constructor overloads initialize unspecified dates using `LocalDate.now()`. The full constructor accepts notes, favourite status and an explicit date, allowing immutable copies to retain all independent contact state. The date participates in equality, hashing and contact history snapshots. `Person#withNotes` preserves it.
+The existing `Person` constructor overloads initialize new contacts using `LocalDate.now()`. The full constructor accepts a null date for legacy contacts with no recorded update date. Equality, hashing, immutable copies and history snapshots preserve this unknown state.
 
 `EditCommand#createEditedPerson` compares the resulting name, phone, email, address, major and graduation year with the original values. If at least one differs, it uses `LocalDate.now(clock)`; otherwise it retains the existing date. Tag-only edits and unsuccessful edits do not reset the date. Date injection makes anniversary tests reproducible. Tag, note and favourite changes retain the previous date, while read-only commands only change the view or feedback. Existing undo/redo restores the full recorded person, including the date.
 
-`JsonAdaptedPerson` serializes `lastUpdated` as an ISO string such as `2026-10-18` and parses it with `LocalDate.parse` on loading. Missing or null dates use the current loading date as a migration baseline, not a historical claim. Normal saving persists that baseline for subsequent loads. Invalid supplied dates raise `IllegalValueException`, which the existing storage loading path reports as invalid data. Notes, favourite status and ordinary tags retain their existing JSON properties and validation.
+`JsonAdaptedPerson` serializes known dates as ISO strings such as `2026-10-18` and unknown dates as JSON null. Missing or null dates remain unknown after loading and saving. Invalid supplied dates still raise `IllegalValueException` through the existing storage loading path.
 
 #### Reminder logic
 
-`Person#needsUpdate(today)` requires the saved date to precede today and its one-year anniversary to be strictly before today. Exactly one year produces no reminder. Calendar-year arithmetic uses `lastUpdated.plusYears(1)`, so a leap-day anniversary follows Java's calendar rule: `2024-02-29` reaches its anniversary on `2025-02-28`, with a reminder starting on `2025-03-01`.
+`Person#needsUpdate(today)` requires a known date preceding today and its one-year anniversary to be strictly before today. Unknown dates produce no age-based reminder. Exactly one year produces no reminder. Calendar-year arithmetic uses `lastUpdated.plusYears(1)`, so a leap-day anniversary follows Java's calendar rule: `2024-02-29` reaches its anniversary on `2025-02-28`, with a reminder starting on `2025-03-01`.
 
 `SystemTag.forPerson` appends one `UPDATE` reminder when the age condition applies, independently of `INCOMPLETE`. It does not mutate `Person#getTags` or write automatic labels to JSON. This representation can accommodate other system reminders later.
 
 #### GUI implementation
 
-`PersonCard#refreshTags` clears the tag pane, recreates the sorted user labels and appends the current `SystemTag` labels. Each system label has the `system-tag` style class and a tooltip showing the recorded date. `#tags .label.system-tag` in `DarkTheme.css` overrides only background (`#F4C542`) and text (`#222222`), inheriting ordinary tag padding, font size and corner radii. Favourite and note icons remain independent.
+`PersonCard#refreshTags` clears the tag pane, recreates the sorted user labels and appends the current `SystemTag` labels. Each update reminder has the `system-tag` style class and a tooltip showing the recorded date. `#tags .label.system-tag` in `DarkTheme.css` sets the dark brown background, amber border and text, inheriting ordinary tag padding, font size and corner radii. Favourite and note icons remain independent.
 
-An ordinary tag whose exact stored name is `update` is rendered as blue `update (custom)`, with a tooltip explaining that it is managed using `t/update`. The underlying name, validation, filtering and storage remain unchanged. Rebuilding the pane prevents duplicate system labels and lets a custom tag coexist with the reminder.
+An ordinary tag whose exact stored name is `update` is rendered as a grey `update (custom)` tag, with a tooltip explaining that it is managed using `t/update`. The underlying name, validation, filtering and storage remain unchanged. Rebuilding the pane prevents duplicate system labels and lets a custom tag coexist with the reminder.
 
 After `LogicManager#execute` succeeds, `MainWindow` calls `PersonListPanel#refresh`, which calls `ListView#refresh`. Recreated cards evaluate the current date again even when the contact data did not change. An actual basic-profile edit both replaces the model person and triggers this refresh, removing an outdated reminder immediately. No timer refreshes an idle window.
 
@@ -740,7 +945,8 @@ Notes and favourite status are preserved together by the combined `Person` const
 
 `DarkTheme.css` styles `#favouriteIcon` with `#e63946` for both text and the one-pixel circular border, a radius of 12, and a transparent background. The ID selector overrides the general list-cell label colour, including for selected cells. Ordinary tag styles are unaffected.
 
-The existing `PersonListPanel` observes the filtered list and creates a new `PersonCard` in `PersonListViewCell#updateItem`, using `getIndex() + 1` for numbering. Model replacement therefore updates the heart immediately; removing a person from the favourite filter updates the visible cards and indices without a separate favourite list or refresh command.
+`PersonListPanel` observes the displayed list. Its `PersonListCell#updateItem` creates a new
+`PersonCard`, using `getIndex() + 1` for numbering. Model replacement therefore updates the heart immediately; removing a person from the favourite filter updates the visible cards and indices without a separate favourite list or refresh command.
 
 #### Design considerations
 
@@ -774,7 +980,7 @@ The `tag` command adds tags to a person in the currently displayed list. The `un
 | `ParserUtil` | Validates indices and converts custom names or default indices into a `Set<Tag>`. |
 | `DefaultTags`, `TagsCommand` | Provide the fixed default tag list and display its one-based numbering. |
 | `TagCommand`, `UntagCommand` | Resolve the displayed person, compute the new tag set, replace the person through `Model#setPerson`, and return a `CommandResult`. |
-| `Person`, `Tag` | Store tags as a set and define name validation and exact, case-sensitive tag equality. |
+| `Person`, `Tag` | Store tags as a set and define name validation and case-insensitive tag equality. |
 | `ModelManager` | Exposes the filtered person list and delegates person replacement to `AddressBook`. |
 | `Messages`, `JsonAdaptedTag` | Format the updated person for feedback and represent each stored tag by its name, respectively. |
 
@@ -786,10 +992,11 @@ Given below is the flow for `tag 1 d/2 t/NOC`:
 1. The parser tokenizes `d/` and `t/`. `ParserUtil#parseIndex` reads the preamble as a one-based person index. The parser requires at least one tag prefix.
 1. `ParserUtil#parseDefaultTags` maps `2` to `Classmate` using `DefaultTags.TAGS`. `ParserUtil#parseTags` validates `NOC` through `parseTag`. The parser merges both sets and creates a `TagCommand`.
 1. `TagCommand#execute` gets `Model#getFilteredPersonList` and checks that the index is within its size. Thus, index `1` selects the first displayed person, including when a search is active.
-1. The command copies `person.getTags()` into a `HashSet` and calls `addAll` with the requested tags. It constructs a new `Person` with the original name, phone, email, address, major and graduation year, together with the updated set, then calls `Model#setPerson`.
-1. The command returns a `CommandResult` containing `Tagged person: ` and `Messages.format(updatedPerson)`. `LogicManager` saves UniMate data before returning the result to the UI.
+1. The command finds which requested tags the person already has. If they all are, it returns `No tags added: NAME already has the tag(s): ...` without replacing the person or committing history.
+1. Otherwise, it copies `person.getTags()` into a `HashSet` and calls `addAll` with the requested tags. It constructs a new `Person` with the original name, phone, email, address, major and graduation year, together with the updated set, then calls `Model#setPerson` and commits.
+1. The command returns a `CommandResult` containing `Tagged person: ` and `Messages.format(updatedPerson)`, plus an `Already present, so not added again: ...` line if some tags were already there. The history description excludes that extra line. `LogicManager` saves UniMate data before returning the result to the UI.
 
-For `untag 1 t/NOC`, `AddressBookParser` selects `UntagCommandParser`. This parser recognizes only `t/`, requires at least one value, and uses `ParserUtil#parseTags` to construct the removal set. `UntagCommand#execute` follows the same person lookup and replacement flow, but calls `removeAll` on the copied set. Its result starts with `Untagged person: `.
+For `untag 1 t/NOC`, `AddressBookParser` selects `UntagCommandParser`. This parser recognizes only `t/`, requires at least one value, and uses `ParserUtil#parseTags` to construct the removal set. `UntagCommand#execute` follows the same person lookup. If none of the named tags are on the person, it throws a `CommandException` (`NAME does not have the tag(s): ... No tags were removed.`) before any change. Otherwise it calls `removeAll` on the copied set, replaces the person and commits. Its result starts with `Untagged person: `, plus a `Not found, so not removed: ...` line for any named tags that were absent.
 
 Neither command calls `Model#updateFilteredPersonList`, so the current filter predicate is retained. The model's observable list exposes the updated person to the UI.
 
@@ -811,7 +1018,11 @@ Both kinds use the same `Person.tags` field (`Set<Tag>`). Default indices are in
 
 **Aspect: Set-based, non-destructive updates**
 
-`Person#getTags` returns an unmodifiable view. Each command stores a defensive `Set.copyOf` of its input, copies the person's tags for the update, and replaces the `Person` rather than mutating its exposed set. `addAll` preserves existing tags; `removeAll` preserves tags not requested for removal. Duplicate additions and absent removals are no-ops that still return success. Tag order is not guaranteed. Equality remains case-sensitive, so `NOC` and `noc` are distinct.
+`Person#getTags` returns an unmodifiable view. Each command stores a defensive `Set.copyOf` of its input, copies the person's tags for the update, and replaces the `Person` rather than mutating its exposed set. `addAll` preserves existing tags; `removeAll` preserves tags not requested for removal. Adding only tags the person already has returns an informational message without a history entry; removing only absent tags is reported as an error. Tag order is not guaranteed.
+
+**Aspect: Case-insensitive tag equality**
+
+`Tag#equals` uses `equalsIgnoreCase` and `Tag#hashCode` hashes the lower-cased name, so `NOC` and `noc` are the same tag in every `Set<Tag>`. Because a `HashSet` keeps the element already present, a contact keeps the capitalization used when the tag was first added. This matches `filter t/...`, which was already case-insensitive, and prevents near-duplicate tags such as `Friend` and `friend` on one contact. The trade-off is that changing only a tag's capitalization needs `untag` followed by `tag`. Loading an older file containing both `Friend` and `friend` on one contact keeps one of them.
 
 **Aspect: Compatibility with existing editing**
 
@@ -819,7 +1030,8 @@ The current `EditCommand` still supports replacing the entire tag set through `e
 
 #### Long tag display and hover access
 
-`PersonCard#refreshTags` abbreviates ordinary tag names longer than `MAX_DISPLAYED_TAG_CHARACTERS` (20) before constructing their JavaFX `Label`: the first 20 characters are followed by `...`. The full value remains in `Person#getTags`; custom/system name collisions retain their `(custom)` display suffix. This explicit character threshold keeps display behaviour consistent despite platform font metrics. The tag pane and labels can shrink, and each label's maximum width is bound to the pane's content width (excluding its insets). `OverrunStyle.ELLIPSIS` supplies a further layout safeguard if even the abbreviated text cannot fit.
+`PersonCard#refreshTags` abbreviates ordinary tag names longer than `MAX_DISPLAYED_TAG_CHARACTERS` (20) before constructing their JavaFX `Label`: the first 20 characters are followed by `...`. The full value remains in `Person#getTags`; custom/system name collisions retain their `(custom)` display suffix. This explicit character threshold keeps display behaviour consistent despite platform font metrics. `TagPane` limits each tag to the available content width. `ExpandableText` applies
+`OverrunStyle.ELLIPSIS` while collapsed and wraps the full name when expanded.
 
 `PersonCard#installTagTooltip` retains the complete original name in a wrapping tooltip with a maximum popup width of 400 logical pixels. It keeps the Label's tooltip property for accessibility, uninstalls the default delayed mouse behaviour, and uses mouse-enter/exit/press handlers to show immediately and hide on exit or press. Labels participate in mouse picking. Existing explanatory tooltips for custom names that match system reminders are retained. `Tag` and its validation, equality and JSON representation are unchanged; only the presentation is abbreviated.
 
@@ -840,7 +1052,7 @@ The model keeps an in-memory history of contact data states. Every command that 
 | `AddressBookHistory` | Stores defensive `AddressBook` snapshots, each paired with a description of its change, in an undo stack and a redo stack, and restores them into the tracked `AddressBook`. |
 | `Model` | Declares `commitAddressBook(ReadOnlyAddressBook, String)`, `canUndoAddressBook()`, `canRedoAddressBook()`, `getUndoDescription()`, `getRedoDescription()`, `undoAddressBook()` and `redoAddressBook()`. |
 | `ModelManager` | Creates one `AddressBookHistory` for its `AddressBook` and delegates the methods above to it. |
-| `AddCommand`, `EditCommand`, `DeleteCommand`, `ClearCommand`, `TagCommand`, `UntagCommand`, `FavCommand`, `UnfavCommand`, `NoteCommand`, `DeleteNoteCommand` | Copy the contact data before changing it, then call `Model#commitAddressBook` with that copy and the command's success message as the description. The one exception is a note replacement: `NoteCommand` commits `MESSAGE_REPLACED_DESCRIPTION`, which omits the `Use undo to restore the previous note.` hint, because the hint would be misleading in `Undid:` and `Redid:` messages. |
+| `AddCommand`, `EditCommand`, `DeleteCommand`, `ClearCommand`, `TagCommand`, `UntagCommand`, `FavCommand`, `UnfavCommand`, `NoteCommand`, `DeleteNoteCommand` | Copy the contact data before changing it, then call `Model#commitAddressBook` with that copy and the command's history description (`edit` retains the full-contact description, excluding its immediate change summary and duplicate-details warning). The one exception is a note replacement: `NoteCommand` commits `MESSAGE_REPLACED_DESCRIPTION`, which omits the `Use undo to restore the previous note.` hint, because the hint would be misleading in `Undid:` and `Redid:` messages. |
 | `UndoCommand`, `RedoCommand` | Check history availability, read the description of the change being reversed or reapplied, restore the corresponding state through the model, and reset the displayed list to show all contacts. |
 
 `AddressBookHistory` holds:
@@ -857,7 +1069,9 @@ Every stored state is a copy made with `new AddressBook(...)`. `Person` and its 
 
 Given below is the flow for a successful `add n/Alex Tan …​`:
 
-1. `AddCommand#execute` checks `Model#hasPerson`. A duplicate throws a `CommandException` here, so nothing is recorded.
+1. `AddCommand#execute` searches the saved person list using `Person#isSamePerson`. If the resulting
+   `Optional<Person>` contains a duplicate, it throws a `CommandException` identifying that contact
+   and its displayed or saved index, so nothing is recorded.
 1. The command creates `previousState = new AddressBook(model.getAddressBook())`, then calls `Model#addPerson`.
 1. The command formats its success message and calls `Model#commitAddressBook(previousState, message)`. `AddressBookHistory#commit` then:
    1. returns without recording if `previousState` holds the same contacts as the current data;
@@ -871,11 +1085,11 @@ The activity diagram below summarises what happens when a command commits. The c
 
 A command that fails validation, such as a duplicate `add`, throws before copying the data and never reaches this flow.
 
-`EditCommand#execute` follows the same pattern. It checks the displayed index and duplicate persons first, copies the data, calls `Model#setPerson`, and then commits. An edit that supplies the person's current values still returns the usual success message. Its commit is ignored because the data did not change, preserving both history stacks. The bare command `edit 1` is invalid because at least one field is required.
+`EditCommand#execute` follows the same pattern. It checks the displayed index and duplicate persons first, copies the data, calls `Model#setPerson`, and then commits. An edit that supplies the person's current values returns the no-change message before snapshotting or committing, preserving both history stacks and the existing update date. The bare command `edit 1` is invalid because at least one field is required.
 
 `NoteCommand` and `DeleteNoteCommand` use the same snapshot-and-commit flow for actual note changes. `NoteCommand` returns immediately for unchanged note text, without copying the address book, replacing the contact or committing history, so redo remains available. `DeleteNoteCommand` returns immediately for an empty note. A new data-changing commit clears redo states; merely viewing a note does not.
 
-`DeleteCommand`, `ClearCommand`, `TagCommand`, `UntagCommand`, `FavCommand` and `UnfavCommand` follow the same pattern: each copies the data after its validation checks, makes its change through the model (`Model#deletePerson`, `Model#setAddressBook` or `Model#setPerson`), and then commits. Changes that leave the data unchanged, such as `tag` with a tag the person already has, `untag` with a tag the person does not have, or `clear` on an empty contact list, are ignored by the commit, so no undo step is recorded and redo remains available. `fav` on a person who is already a favourite and `unfav` on one who is not fail before copying the data.
+`DeleteCommand`, `ClearCommand`, `TagCommand`, `UntagCommand`, `FavCommand` and `UnfavCommand` follow the same pattern: each copies the data after its validation checks, makes its change through the model (`Model#deletePerson`, `Model#setAddressBook` or `Model#setPerson`), and then commits. `tag` with only tags the person already has returns before copying the data, and `untag` with only tags the person does not have fails before copying it. `clear` on an empty contact list leaves the data unchanged, so the commit ignores it. In all three cases no undo step is recorded and redo remains available. `fav` on a person who is already a favourite and `unfav` on one who is not fail before copying the data.
 
 A `DeleteCommand` with multiple indices captures all target contacts before mutation and commits
 only after every selected contact has been deleted. The whole batch consumes one undo step,
@@ -1012,8 +1226,8 @@ If saving fails after a successful undo or redo, the in-memory state has already
 
 | Situation | Message |
 |-----------|---------|
-| `undo` succeeds | `Undid: ` followed by the undone command's success message, e.g. `Undid: Tagged person: …​`. The message describes the state right after the original change, not the restored state. |
-| `redo` succeeds | `Redid: ` followed by the redone command's success message, e.g. `Redid: Added to favourites: …​` |
+| `undo` succeeds | `Undid: ` followed by the undone command's stored description (`edit` uses full contact details, without the change summary or duplicate-details warning), e.g. `Undid: Tagged person: …​`. The message describes the state right after the original change, not the restored state. |
+| `redo` succeeds | `Redid: ` followed by the redone command's stored description (`edit` uses full contact details, without the change summary or duplicate-details warning), e.g. `Redid: Added to favourites: …​` |
 | Nothing to undo, including stale history | `There is no change to undo.` |
 | Nothing to redo, including stale history | `There is no change to redo. An undone change cannot be redone after another change has been made.` |
 | Arguments after `undo` or `redo` | `Invalid command format!`, followed by the command's usage |
@@ -1031,8 +1245,8 @@ If saving fails after a successful undo or redo, the in-memory state has already
 
 **Aspect: How the undone or redone change is described**
 
-* **Alternative 1 (current choice):** Each command passes its own success message to `commitAddressBook`, and the history stores it with the snapshot.
-  * Pros: Each command already formats this message, so no new wording is needed, and undo names the change exactly as the user saw it when it was made.
+* **Alternative 1 (current choice):** Each command passes its history description (`edit` uses full contact details rather than its immediate change summary) to `commitAddressBook`, and the history stores it with the snapshot.
+  * Pros: Most commands reuse their success message without new wording. Edit retains its established full-contact description so undo/redo identifies the affected contact without repeating field or tag differences.
   * Cons: Messages that include a full `Messages#format` of the person are long. Each command must remember to pass a description, although the two-argument signature makes it impossible to commit without one.
 * **Alternative 2:** Work out the description by comparing the two snapshots, e.g. finding the contact that was added or removed.
   * Pros: Commands need no change.
@@ -1042,10 +1256,10 @@ If saving fails after a successful undo or redo, the in-memory state has already
 
 * **Alternative 1 (current choice):** Reject input such as `undo 1` with a parse error.
   * Pros: Users are not misled into thinking `undo 3` undoes three changes or a specific contact, and no history changes by accident.
-  * Cons: Inconsistent with `help`, `exit` and `clear`, which ignore extra parameters.
-* **Alternative 2:** Ignore extra parameters, as `help` does.
-  * Pros: Consistent with the other commands that take no parameters.
-  * Cons: `undo 3` would silently undo only one change.
+  * Cons: None significant. All other commands without parameters (`help`, `list`, `listfav`, `tags`, `clear`, `exit`) follow the same rule.
+* **Alternative 2:** Ignore extra parameters, as AB3 does for `help`, `exit` and `clear`.
+  * Pros: Slightly more forgiving of stray input.
+  * Cons: `undo 3` would silently undo only one change, and `clear 1` (a mistyped `delete 1`) would delete every contact.
 
 **Aspect: What is displayed after restoring**
 
@@ -1123,15 +1337,6 @@ For manual UI verification:
    pulses even at the oldest entry, then disappears when Down restores the draft or Enter submits input.
 8. Restart UniMate and verify both navigation modes leave the input unchanged until a command is submitted.
 
-## **Coming soon**
-
-The features in this section are not implemented in the MVP. The descriptions and diagrams below are proposals for future development.
-
-### \[Proposed\] Data archiving
-
-Data archiving is planned for a future version. Its implementation details have not yet been specified.
-
-
 --------------------------------------------------------------------------------------------------------------------
 
 ## **Documentation, logging, testing, dev-ops**
@@ -1204,8 +1409,9 @@ Priorities: High (must have) - `* * *`, Medium (nice to have) - `* *`, Low (unli
 
 **MSS**
 
-1.  User requests to add a new contact 
-2.  User provides the person's name, phone number, email address, and address
+1.  User requests to add a new contact.
+2.  User provides the person's name and address, and optionally their phone number, email address, major,
+    class year, tags and favourite status.
 3.  UniMate validates the provided contact information
 4.  UniMate adds the contact 
 5.  UniMate informs the user that the contact has been added
@@ -1228,9 +1434,16 @@ Priorities: High (must have) - `* * *`, Medium (nice to have) - `* *`, Low (unli
 
 * 3b. UniMate detects a duplicate contact with the same name.
 
-    * 3a1. UniMate informs user that the contact already exists.
+    * 3b1. UniMate shows the existing contact's details and its displayed index, or a labelled saved
+      index with instructions to reveal the contact if hidden by the current filter.
       
       Use case ends.
+
+* 4a. The new contact shares a phone number or email address with existing contacts.
+
+    * 4a1. UniMate adds the contact and warns the user which contacts share those details.
+
+      Use case resumes at step 5.
 
 **Use case: View contacts**
 
@@ -1262,11 +1475,113 @@ Priorities: High (must have) - `* * *`, Medium (nice to have) - `* *`, Low (unli
 
 **Extensions**
 
-* 2a. The given index is invalid.
+* 2a. A given index is invalid or repeated.
 
-    * 3a1. UniMate informs user that the given index is invalid.
+    * 2a1. UniMate informs the user which index is invalid or repeated, and deletes no contacts.
 
-      Use case resumes at step 1.
+      Use case resumes at step 2.
+
+* 2b. User specifies several indices.
+
+    * 2b1. UniMate deletes all the specified contacts together.
+
+      Use case resumes at step 4.
+
+**Use case: Edit a contact**
+
+**MSS**
+
+1.  User requests to edit a contact in the displayed list, giving the new values of one or more fields.
+2.  UniMate updates the contact.
+3.  UniMate shows all contacts and lists the fields that changed.
+
+    Use case ends.
+
+**Extensions**
+
+* 1a. The index is invalid, no field is given, or a value is invalid.
+
+    * 1a1. UniMate shows an error explaining the problem.
+
+      Use case ends.
+
+* 1b. The new name belongs to another contact.
+
+    * 1b1. UniMate informs the user that the contact already exists.
+
+      Use case ends.
+
+* 1c. Every given value matches the contact's existing details.
+
+    * 1c1. UniMate informs the user that no changes were made.
+
+      Use case ends.
+
+* 2a. The new phone number or email is used by other contacts.
+
+    * 2a1. UniMate warns the user which contacts share it.
+
+      Use case resumes at step 3.
+
+**Use case: Tag or untag a contact**
+
+**MSS**
+
+1.  User requests to add tags to, or remove tags from, a contact in the displayed list.
+2.  UniMate updates the contact's tags, keeping its other tags and details.
+3.  UniMate shows the updated contact.
+
+    Use case ends.
+
+**Extensions**
+
+* 1a. The index, a tag name or a default tag index is invalid.
+
+    * 1a1. UniMate shows an error and changes no tags.
+
+      Use case ends.
+
+* 1b. The contact already has every tag to be added.
+
+    * 1b1. UniMate informs the user that no tags were added.
+
+      Use case ends.
+
+* 1c. The contact has none of the tags to be removed.
+
+    * 1c1. UniMate informs the user that no tags were removed.
+
+      Use case ends.
+
+* 2a. Only some of the given tags were already present (when adding) or absent (when removing).
+
+    * 2a1. UniMate updates the others and lists the tags it skipped.
+
+      Use case resumes at step 3.
+
+**Use case: Find contacts by university context**
+
+**MSS**
+
+1.  User requests to filter contacts by major, class year and/or tag.
+2.  UniMate shows only the contacts matching every given criterion, keeping the current sort order.
+3.  User performs indexed commands (e.g. tag, delete) on the displayed contacts.
+
+    Use case ends.
+
+**Extensions**
+
+* 1a. No criterion is given, a criterion is repeated, or a value is invalid.
+
+    * 1a1. UniMate shows an error and keeps the current list.
+
+      Use case ends.
+
+* 2a. No contact matches.
+
+    * 2a1. UniMate shows an empty list.
+
+      Use case ends.
 
 **Use case: Undo a change**
 
@@ -1346,6 +1661,9 @@ Priorities: High (must have) - `* * *`, Medium (nice to have) - `* *`, Low (unli
 6.  UniMate should preserve all saved contact information between application sessions.  
 7.  Invalid user input should not corrupt or modify existing stored contact data.  
 8.  UniMate should display a meaningful error message for invalid user input without crashing.
+9.  Contact data should be stored locally in a human-editable JSON text file, without using a database management system.
+10. UniMate should be usable as a single JAR file, without an installer, on Windows, Linux and macOS.
+11. The GUI should work well at screen resolutions of 1920x1080 and higher at 100% and 125% scaling, and remain usable at 1280x720 and higher at 150% scaling.
 
 ### Glossary
 
@@ -1360,13 +1678,58 @@ Priorities: High (must have) - `* * *`, Medium (nice to have) - `* *`, Low (unli
 * **Mainstream OS (Operating System)**: Windows, Linux, Unix, or macOS, as used in this guide's non-functional requirements.
 * **Major**: A student's principal academic field of study, such as Computer Science.
 * **Module**: A university course or unit of study, typically identified by a code such as CS2103T. Here, it refers to an academic course rather than a software component.
-* **Private contact detail**: A contact detail that is not meant to be shared with others.
+* **Default tag**: One of five fixed tags (`Friend`, `Classmate`, `Teammate`, `Tutor`, `Prof`) that can be added by index using `d/`. It is stored like any other tag.
+* **Displayed index**: See *Contact list index*. **Saved index**: a contact's one-based position in the saved (unfiltered, unsorted) contact list, shown only when a duplicate `add` targets a hidden contact.
+* **System reminder**: A label (`update` or `incomplete`) that UniMate derives automatically from a contact's details. It is displayed like a tag but is not stored or managed with tag commands.
 * **Tag**: A text label attached to a contact to help organise the contact collection. A contact can have multiple tags.
 * **Tutorial group**: A group of students assigned to attend the same tutorial session for a particular module.
 * **University-related context**: Information that connects a contact to university life, such as their module, major, year of study, CCA, or the event or project through which the user knows them.
 * **Year of study**: A student's current stage in their university programme, such as Year 1 or Year 2, rather than a calendar year.
 
 --------------------------------------------------------------------------------------------------------------------
+
+## **Appendix: Planned enhancements**
+
+Team size: 6. The following are known limitations that we plan to address. Each is documented in the User Guide.
+
+1. **Accept common phone number formats.** Phone numbers currently accept digits only, so `+65 9123 4567` must be
+   entered as `6591234567`. We plan to accept a leading `+`, spaces and dashes (e.g. `p/+65 9123-4567`), and to
+   compare phone numbers ignoring those characters when detecting shared details.
+2. **Allow prefix-like text inside values.** A recognised prefix preceded by a space always starts a new parameter,
+   so `add n/Priya d/o Raman a/NUS` fails with a default-tag error. We plan to treat `d/o` and `s/o` inside a name
+   as text, and to say so in the error message when a value looks like it was split by a prefix.
+3. **Make the address optional.** `add` currently requires `a/ADDRESS`, although many university contacts have no
+   known address. We plan to make it optional, like phone and email, and to show `Not specified` when absent.
+4. **Allow people who share a name.** Contacts are identified by name only (ignoring case and repeated spaces), so
+   two different people with the same name cannot both be added. We plan to warn instead of block when the phone or
+   email differs, so users can keep both.
+5. **Keep every backup of an unreadable data file.** UniMate copies an unreadable data file to `unimate.json.bak`,
+   replacing an older backup of that name. We plan to add a timestamp to the backup name so earlier backups are kept.
+
+## **Appendix: Effort**
+
+UniMate builds on AddressBook-Level3 (AB3), which manages one entity type (`Person`) with five fields and eight
+commands. UniMate keeps that single entity, but adds 13 commands (`fav`, `unfav`, `listfav`, `tag`, `untag`, `tags`,
+`note`, `shownote`, `delnote`, `filter`, `sort`, `undo`, `redo`) and four person attributes (major, class year, note,
+favourite status), plus a recorded last-updated date.
+
+Notable challenges and achievements:
+
+* **Undo/redo for every data change.** `AddressBookHistory` records full snapshots with descriptions, keeps the
+  existing `AddressBook` object (so UI observers stay attached), and detects unrecorded changes so a stale snapshot
+  can never silently revert data. Every data-changing command and its no-op paths had to be integrated and tested.
+* **Filtered and sorted views that keep indices consistent.** A `SortedList` over the `FilteredList` is used by both
+  the UI and every indexed command, with a persistent view-status line. Multi-index `delete` resolves all targets
+  against the original view before mutating.
+* **Derived reminders.** `update` and `incomplete` reminders are computed from data rather than stored, so they can
+  never go stale, while coexisting with custom tags of the same name.
+* **Robust input and storage handling.** This includes Unicode whitespace normalisation, validation of legacy and
+  partially invalid JSON files, a backup and warning when a data file cannot be loaded, and explicit feedback when
+  saving fails after a change.
+* **Keyboard-first UI.** This covers command history with prefix search, Tab navigation into contact cards, and
+  expandable long values, all tested on the real JavaFX components.
+
+The test suite grew from AB3's to over 950 tests, including JavaFX UI tests run on CI.
 
 ## **Appendix: Instructions for manual testing**
 
@@ -1387,8 +1750,20 @@ testers are expected to do more *exploratory* testing.
    1. Open a terminal, change to that folder, and run `java -jar unimate.jar`.<br>
       Expected: A window titled `UniMate` opens with sample contacts. Unspecified academic fields display `Not specified`. The window size may not be optimal.
 
+   1. Enter `exit 1`, then `clear 1`.<br>
+      Expected: Each shows `Invalid command format!` with the command's usage; the app stays open and no contacts are cleared.
+
    1. Enter `exit`.<br>
       Expected: The application window closes normally.
+
+1. Names with punctuation and spacing
+
+   1. Test case: `add n/Shaquille O'Neal a/NUS`, then `add n/Raj s/o Kumar a/NUS`, then `add n/José Núñez a/NUS`.<br>
+      Expected: All three contacts are added.
+   1. Test case: `add n/Shaquille   o'neal a/Elsewhere`.<br>
+      Expected: Rejected as a duplicate of `Shaquille O'Neal` (case and repeated spaces are ignored).
+   1. Test case: `add n/Peter* a/NUS`.<br>
+      Expected: A name-format error listing the allowed characters.
 
 1. Saving window preferences
 
@@ -1432,6 +1807,122 @@ testers are expected to do more *exploratory* testing.
       saved `ListValidation` contact remain unchanged.
    1. Run `  list  ` with surrounding spaces.<br>
       Expected: `ListValidation` is displayed and the count is `1 person(s) listed!`.
+
+### Identifying duplicate additions
+
+1. Visible duplicates in a sorted and filtered view
+
+   1. Prerequisites: Use a disposable test copy and ensure `DuplicateAlpha` and `DuplicateBeta` do not
+      already exist. Add `add n/DuplicateAlpha p/91234567 e/original@example.com a/NUS m/Computing c/2027 t/DuplicateDemo`
+      and `add n/DuplicateBeta a/Clementi t/DuplicateDemo`.
+   1. Run `filter t/DuplicateDemo`, then `sort name desc`.<br>
+      Expected: `DuplicateBeta` is displayed at index 1 and `DuplicateAlpha` at index 2.
+   1. Run `add n/duplicatealpha p/98765432 e/new@example.com a/Another address m/Law c/2029`.<br>
+      Expected: The duplicate is rejected. The error includes `Existing contact at displayed index 2:`
+      and the saved `DuplicateAlpha` details: phone `91234567`, email `original@example.com`, address
+      `NUS`, major `Computing` and class year `2027`. The two displayed cards and their order remain
+      unchanged. The submitted command remains in the command box for correction.
+
+1. Hidden duplicates and saved indices
+
+   1. Run `find DuplicateBeta`, then repeat the duplicate `add` above.<br>
+      Expected: Only `DuplicateBeta` remains displayed. The error identifies the hidden saved
+      `DuplicateAlpha` contact, labels its index as `saved index N`, and instructs `list`, then `sort reset`.
+   1. Run those two commands in order and inspect index `N`.<br>
+      Expected: That card is `DuplicateAlpha`, with all its original details. The saved index is
+      valid in this restored full list and saved order.
+   1. Run `find NoDuplicateFeedbackMatch`, ensuring it matches no contact, then repeat the duplicate `add`.<br>
+      Expected: The empty view is preserved, and the error still identifies the same saved contact.
+   1. Clean up the disposable contacts using `find DuplicateAlpha`, `delete 1`, then `find DuplicateBeta`, `delete 1`.
+
+### Shared phone or email warnings on add
+
+1. Multiple matches and refreshed displayed indices
+
+   1. Prerequisites: Use an empty disposable address book. Add:
+
+      * `add n/Zara p/91919191 e/zara172@example.com a/NUS`
+      * `add n/Charlie p/92929292 e/shared172@example.com a/Clementi`
+      * `add n/Morgan a/Dover`
+
+   1. Run `sort name asc`, then `find Charlie`.<br>
+      Expected: Only Charlie is displayed.
+   1. Run `add n/Amy p/91919191 e/SHARED172@EXAMPLE.COM a/NUS`.<br>
+      Expected: The addition succeeds. The normal `New person added: ...` message remains complete and
+      includes Amy's saved details. An appended line in the same feedback box reads
+      `Warning - duplicate details detected: #2 Charlie (email); #4 Zara (phone)`.
+      Both lines are amber with no coloured border. The full list is Amy, Charlie, Morgan, Zara.
+      Morgan's missing fields produce no match. Narrow the window to about 640 pixels: the original text area remains
+      scrollable within its unchanged 100-pixel height. Both lines can be selected and copied together.
+   1. Run `undo`, then `redo`.<br>
+      Expected: One undo removes Amy and one redo restores Amy. Their feedback describes the addition
+      in light grey without repeating the warning, and Zara, Charlie and Morgan retain their original details.
+   1. Close and reopen the disposable copy, then run `find Amy`.<br>
+      Expected: Amy was saved with the entered phone and uppercase email. Sorting and filtering
+      return to their usual restart defaults.
+
+1. Empty details and both fields matching the same contact
+
+   1. Run `add n/NoDetails a/NUS`.<br>
+      Expected: The contact is added with ordinary light grey success feedback. Its missing phone and email
+      do not trigger a warning about Morgan's missing details.
+   1. Run `add n/AnotherZara p/91919191 e/zara172@example.com a/Dover`.<br>
+      Expected: The addition succeeds with a warning. Zara appears once with the reason
+      `phone and email`; Amy is also listed for sharing the phone number.
+   1. While a warning is showing, run `sort name sideways`, then `list`.<br>
+      Expected: The invalid command replaces the warning with the usual light grey error feedback and input
+      styling. `list` shows ordinary light grey success feedback. Neither command changes saved contacts.
+   1. Repeat a shared-details addition with long names or many matching contacts in the disposable copy.<br>
+      Expected: The complete ordinary success message and appended warning appear amber in the
+      original text area, starting at the top. All names, displayed indices and reasons remain
+      complete; the existing vertical scrollbar reveals any wrapped overflow.
+
+### Shared phone or email warnings on edit
+
+1. Changed methods and refreshed indices
+
+   1. Prerequisites: Use a disposable copy with no contacts named `EditWarning Alice` or `EditWarning Bob`.
+      Add `add n/EditWarning Alice p/91112222 e/alice.editwarning@example.com a/NUS`, then
+      `add n/EditWarning Bob p/93334444 e/bob.editwarning@example.com a/NUS`.
+   1. Run `find EditWarning`, then `sort name asc`.<br>
+      Expected: Alice is index 1 and Bob is index 2 within the two-contact view.
+   1. Run `edit 2 p/91112222`.<br>
+      Expected: The edit succeeds and the input clears. The normal `Edited person: ...` message
+      remains complete, followed by `Warning - duplicate details detected: #N EditWarning Alice (phone)`.
+      `N` is Alice's current displayed index in the refreshed full sorted list, not necessarily her
+      previous index in the two-contact view. Both lines appear amber in the original feedback box,
+      with no coloured border or additional warning control.
+   1. Run `undo`, then `redo`.<br>
+      Expected: One undo restores Bob's previous phone and one redo restores the shared phone.
+      Both use ordinary light grey edit-history feedback without repeating the warning. Alice remains unchanged.
+   1. Run `find EditWarning`, confirm Bob's displayed index, then edit that index with
+      `e/ALICE.EDITWARNING@EXAMPLE.COM t/StudyGroup`.<br>
+      Expected: The normal success message shows the new email and `StudyGroup` tag. The next line is
+      `Tags replaced. Removed: None. Added: StudyGroup.` The final warning line identifies Alice for
+      `(email)` only; the already-shared unchanged phone is not reported as newly shared. All three
+      lines appear amber in the original feedback box. The uppercase email and replacement tags are saved unchanged.
+   1. Run `undo`, then `redo`.<br>
+      Expected: One undo restores both Bob's previous email and tags; redo restores both changes.
+      Feedback remains light grey and includes only the base edited-contact details, not the tag summary
+      or duplicate-details warning.
+   1. Rename Bob while changing a contact method to another shared value, then inspect the full sorted list.<br>
+      Expected: The normal success feedback identifies his new name and saved details; the warning
+      still uses the matching contacts' refreshed indices even if the renamed contact has moved.
+
+1. Unchanged, unrelated and empty values
+
+   1. Before each check, find the edited contact and use its actual displayed index.
+   1. Repeat the current phone value, change only the major with `m/Mathematics`, or change only
+      the email's capitalization.<br>
+      Expected: Ordinary light grey edit feedback, not a warning about existing shared values. An unchanged
+      edit does not create another undo step or clear redo availability.
+   1. Clear a contact method with `p/` or `e/`.<br>
+      Expected: Ordinary light grey success feedback; empty values do not match other empty contact methods.
+   1. Change only tags with `t/StudyGroup`, then clear them with `t/`, checking the displayed index before each edit.<br>
+      Expected: Each result includes its actual removed/added tag summary in light grey, with `None` for
+      empty differences. Existing shared phone/email values do not trigger a warning for these tag-only edits.
+   1. Close and reopen the disposable copy.<br>
+      Expected: Edited values persist; the warnings did not modify or merge any other contact.
 
 ### Adding contacts with prefix-like address text
 
@@ -1681,6 +2172,45 @@ testers are expected to do more *exploratory* testing.
       Expected: Long status text wraps within the window; all criteria and the sort description remain
       readable. Zero matches, if any, show `Showing 0 of N contacts` without deleting saved contacts.
 
+1. Latest update date
+
+   1. Prerequisites: Use a disposable copy with no contacts named `UpdatedAlpha`, `UpdatedBeta` or
+      `UpdatedGamma`, and no tag `UpdateSortDemo`. Add contacts in this order:
+
+      * `add n/UpdatedGamma p/91234567 t/UpdateSortDemo`
+      * `add n/UpdatedBeta p/92345678 t/UpdateSortDemo`
+      * `add n/UpdatedAlpha p/93456789 t/UpdateSortDemo`
+
+      Close UniMate. In the disposable `data/unimate.json`, set only these contacts' `lastUpdated`
+      properties: `UpdatedGamma` to `2025-01-01`, and `UpdatedBeta` and `UpdatedAlpha` to `2024-12-31`.
+      Relaunch and run `filter t/UpdateSortDemo`. Confirm the dates on the cards before continuing.
+   1. Run `sort updated asc`, then `sort updated desc`.<br>
+      Expected: Ascending shows `UpdatedAlpha`, `UpdatedBeta`, `UpdatedGamma`; descending shows
+      `UpdatedGamma`, `UpdatedAlpha`, `UpdatedBeta`. Both directions break equal dates by ascending
+      names. Only the three matching contacts appear. Status ends with `Sort: Last updated ascending`
+      or `Sort: Last updated descending`, and card numbers match the displayed order.
+   1. Run `sort updated asc`, then `edit 1 p/99999999`, then `filter t/UpdateSortDemo`.<br>
+      Expected: `UpdatedAlpha` changes phone and receives today's date, moving after the two older contacts.
+      It was third in saved order but is targeted using the first displayed card.
+      Run `sort updated desc`: `UpdatedAlpha`, `UpdatedGamma`, `UpdatedBeta` appear.
+   1. Run `undo`, then `filter t/UpdateSortDemo`.<br>
+      Expected: `UpdatedAlpha` regains its original phone and date; descending order becomes
+      `UpdatedGamma`, `UpdatedAlpha`, `UpdatedBeta`. Run `sort updated asc`, then `redo`, then reapply
+      the filter: the edited phone/date return, with `UpdatedBeta`, `UpdatedGamma`, `UpdatedAlpha`
+      in ascending order. Sorting has not consumed undo history or cleared redo.
+   1. Try `sort updated`, `sort updated ascending` and `sort updated desc extra` separately.<br>
+      Expected: Usage errors; the filter, order, dates and status remain unchanged.
+      Run `sort reset`: only the matching contacts remain, in saved order
+      `UpdatedGamma`, `UpdatedBeta`, `UpdatedAlpha`.
+   1. Close and reopen UniMate, then run `filter t/UpdateSortDemo`.<br>
+      Expected: The same saved order and edited phone/date remain. The temporary sort is reset and
+      status ends with `Sort: Saved order`.
+
+   1. Close UniMate and remove `UpdatedGamma`'s `lastUpdated` property from the disposable data file.
+      Relaunch, run `filter t/UpdateSortDemo`, then try `sort updated asc` and `sort updated desc`.<br>
+      Expected: `UpdatedGamma` shows `Last updated: Unknown` and stays last in both directions.
+      Saving and restarting preserve its unknown date; an actual basic-profile edit records today's date.
+
 ### Deleting contacts
 
 1. Deleting a contact with academic fields
@@ -1758,12 +2288,12 @@ testers are expected to do more *exploratory* testing.
    1. Prerequisites: Run `list` with at least one contact present. Note the first person's original details and tags; use a test contact because the following steps change its tags.
    1. Test case: `tag 1 d/2 t/NOC`<br>
       Expected: `Classmate` and `NOC` are present alongside all original tags. Other contact fields are unchanged. Feedback starts with `Tagged person: ` and includes the updated details.
-   1. Repeat `tag 1 d/2 t/NOC`.<br>
-      Expected: No duplicate tags appear; the command still succeeds.
-   1. Test case: `untag 1 t/NOC t/Classmate`<br>
-      Expected: Both named tags are removed, other tags and contact fields remain, and feedback starts with `Untagged person: `.
+   1. Repeat `tag 1 d/2 t/noc`.<br>
+      Expected: `No tags added: NAME already has the tag(s): Classmate, NOC.` No duplicate tags appear and `undo` would not revert anything new.
+   1. Test case: `untag 1 t/noc t/Classmate t/Missing`<br>
+      Expected: `NOC` and `Classmate` are removed (tags match ignoring case), other tags and contact fields remain. Feedback starts with `Untagged person: ` and ends with `Not found, so not removed: Missing.`
    1. Repeat `untag 1 t/NOC t/Classmate`.<br>
-      Expected: Success with no further tag changes.
+      Expected: An error, `NAME does not have the tag(s): Classmate, NOC. No tags were removed.`
 
 1. Invalid input and filtered indices
 
@@ -1793,9 +2323,9 @@ Perform these scenarios in order; each one relies on the contacts left by the pr
 
    1. Before **each** edit below, run `find UndoCheck` and confirm that it is the only result. Successful edits return the display to the full contact list, so the search must be repeated before editing index `1` again.
    1. Run `edit 1 p/98765432 c/2028`.<br>
-      Expected: The status message starts with `Edited person: UndoCheck`. `UndoCheck` has phone `98765432` and class year `2028`, and still has the tag `StudyGroup`. The full contact list is shown.
+      Expected: The status message starts with `Edited UndoCheck:` and lists only actual changes. `UndoCheck` has phone `98765432` and class year `2028`, and still has the tag `StudyGroup`. The full contact list is shown.
    1. Run `find UndoCheck`, then `edit 1 t/Mentor`.<br>
-      Expected: The status message starts with `Edited person: UndoCheck`. Running `find UndoCheck` again shows phone `98765432`, class year `2028` and only the tag `Mentor`. No other contact has changed.
+      Expected: The status message starts with `Edited UndoCheck:` and lists only actual changes. Running `find UndoCheck` again shows phone `98765432`, class year `2028` and only the tag `Mentor`. No other contact has changed.
    1. Test case: `undo`.<br>
       Expected: The tag `StudyGroup` replaces `Mentor`; the phone and class year stay `98765432` and `2028`. The full contact list is shown instead of the search result. The message is `Undid: Edited person: UndoCheck; …​; Tags: [Mentor]`: it shows the details from after the undone edit, not the restored ones.
    1. Test case: `undo` again.<br>
@@ -1843,7 +2373,7 @@ Use a test contact for these checks. Run `list` and identify its displayed index
    Expected: `No notes have been added to this contact.` No note icon is visible.
 1. Run `note 1 Met during CS2103T` and inspect its feedback, then run `shownote 1`.<br>
    Expected: The feedback starts with `Note saved for NAME.` and includes `Saved note: Met during CS2103T`.
-   A note icon appears at the bottom right of the card, and `shownote` displays the saved text.
+   An orange note icon appears at the top right of the card, and `shownote` displays the saved text.
 1. Run `note 1 Project teammate` and inspect its feedback.<br>
    Expected: The feedback starts with `Note replaced for NAME. Use undo to restore the previous note.`
    It includes `Previous note: Met during CS2103T` and `Saved note: Project teammate` on separate lines.
@@ -1964,15 +2494,15 @@ Use only the separate test folder for these checks. The paths below are relative
 
    1. With the app closed and the valid backup retained, replace the contents of the test copy's `data/unimate.json` with `not valid JSON`.
    1. Relaunch the app without entering a command.<br>
-      Expected: The app opens with an empty contact list. The malformed file remains unchanged on disk; the loading error is recorded in the application log.
+      Expected: The app opens with an empty contact list and an amber warning in the result box saying the data file could not be loaded, with the reason and the backup location. `data/unimate.json.bak` now exists with the same malformed contents; `data/unimate.json` is unchanged.
    1. Run `list`.<br>
-      Expected: The command succeeds and replaces the malformed file with valid JSON containing an empty person list. Close the app and restore the valid backup.
+      Expected: The command succeeds and replaces the malformed file with valid JSON containing an empty person list. `data/unimate.json.bak` still holds the malformed contents. Close the app and restore the valid backup.
 
 1. Valid JSON containing an invalid contact
 
    1. With the app closed and the valid backup retained, change `SaveCheck`'s `graduationYear` value to `"1999"` in the test file. Keep the JSON syntax valid.
    1. Relaunch the app without entering a command.<br>
-      Expected: The whole data file is rejected and the app opens with an empty contact list. It does not partially load the other contacts or silently correct the invalid year. The invalid file remains unchanged at this point.
+      Expected: The whole data file is rejected and the app opens with an empty contact list and the startup warning, whose reason names the invalid contact entry and the class-year rule. It does not partially load the other contacts or silently correct the invalid year. The invalid file remains unchanged at this point, and a copy is saved as `data/unimate.json.bak`.
    1. Close the window using its close button, then restore the valid backup. Do not enter `exit` before restoring, because a successfully executed command would save the empty in-memory list over the invalid file.
 
 1. Null entries and null JSON roots
@@ -1984,8 +2514,8 @@ Use only the separate test folder for these checks. The paths below are relative
       * `{"persons":[{"name":"Null Tag","address":"NUS","tags":[null]}]}`
       * `null`
    1. Relaunch the app without entering a command.<br>
-      Expected: The GUI opens with an empty contact list, and the loading error is logged.
-      For the first two files, the log identifies `Contact entry 1 is null.` and
+      Expected: The GUI opens with an empty contact list and the startup warning, and the loading error is logged.
+      For the first two files, the warning and log identify `Contact entry 1 is null.` and
       `Contact entry 1 is invalid: Tag entry 1 is null.`, respectively.
       The original invalid file remains unchanged.
    1. Close the window using its close button and inspect the file.<br>

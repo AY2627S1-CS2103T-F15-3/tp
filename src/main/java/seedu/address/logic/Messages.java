@@ -36,12 +36,17 @@ public class Messages {
      */
     public static String format(Person person) {
         final StringBuilder builder = new StringBuilder();
-        builder.append(person.getName())
-                .append("; Phone: ")
-                .append(person.getPhone())
-                .append("; Email: ")
-                .append(person.getEmail())
-                .append("; Address: ")
+        builder.append(person.getName());
+        // Unspecified optional fields are omitted rather than shown as blank values such as "Phone: ;".
+        if (!person.getPhone().value.isEmpty()) {
+            builder.append("; Phone: ")
+                    .append(person.getPhone());
+        }
+        if (!person.getEmail().value.isEmpty()) {
+            builder.append("; Email: ")
+                    .append(person.getEmail());
+        }
+        builder.append("; Address: ")
                 .append(person.getAddress());
         if (!person.getMajor().value.isEmpty()) {
             builder.append("; Major: ")

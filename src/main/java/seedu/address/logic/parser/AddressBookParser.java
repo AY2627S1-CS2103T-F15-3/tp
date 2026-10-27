@@ -89,50 +89,39 @@ public class AddressBookParser {
             case DeleteNoteCommand.COMMAND_WORD -> new DeleteNoteCommandParser().parse(arguments);
             case TagCommand.COMMAND_WORD -> new TagCommandParser().parse(arguments);
             case UntagCommand.COMMAND_WORD -> new UntagCommandParser().parse(arguments);
-            case TagsCommand.COMMAND_WORD -> {
-                if (!arguments.isBlank()) {
-                    throw new ParseException(String.format(MESSAGE_INVALID_COMMAND_FORMAT, TagsCommand.MESSAGE_USAGE));
-                }
-                yield new TagsCommand();
-            }
+            case TagsCommand.COMMAND_WORD -> withoutArguments(arguments, TagsCommand.MESSAGE_USAGE, new TagsCommand());
             case EditCommand.COMMAND_WORD -> new EditCommandParser().parse(arguments);
             case DeleteCommand.COMMAND_WORD -> new DeleteCommandParser().parse(arguments);
-            case ClearCommand.COMMAND_WORD -> new ClearCommand();
+            case ClearCommand.COMMAND_WORD ->
+                withoutArguments(arguments, ClearCommand.MESSAGE_USAGE, new ClearCommand());
             case SortCommand.COMMAND_WORD -> new SortCommandParser().parse(arguments);
             case FilterCommand.COMMAND_WORD -> new FilterCommandParser().parse(arguments);
             case FindCommand.COMMAND_WORD -> new FindCommandParser().parse(arguments);
-            case ListCommand.COMMAND_WORD -> {
-                if (!arguments.isBlank()) {
-                    throw new ParseException(String.format(MESSAGE_INVALID_COMMAND_FORMAT, ListCommand.MESSAGE_USAGE));
-                }
-                yield new ListCommand();
-            }
-            case ListFavCommand.COMMAND_WORD -> {
-                if (!arguments.isBlank()) {
-                    throw new ParseException(
-                            String.format(MESSAGE_INVALID_COMMAND_FORMAT, ListFavCommand.MESSAGE_USAGE));
-                }
-                yield new ListFavCommand();
-            }
-            case UndoCommand.COMMAND_WORD -> {
-                if (!arguments.isBlank()) {
-                    throw new ParseException(String.format(MESSAGE_INVALID_COMMAND_FORMAT, UndoCommand.MESSAGE_USAGE));
-                }
-                yield new UndoCommand();
-            }
-            case RedoCommand.COMMAND_WORD -> {
-                if (!arguments.isBlank()) {
-                    throw new ParseException(String.format(MESSAGE_INVALID_COMMAND_FORMAT, RedoCommand.MESSAGE_USAGE));
-                }
-                yield new RedoCommand();
-            }
-            case ExitCommand.COMMAND_WORD -> new ExitCommand();
-            case HelpCommand.COMMAND_WORD -> new HelpCommand();
+            case ListCommand.COMMAND_WORD -> withoutArguments(arguments, ListCommand.MESSAGE_USAGE, new ListCommand());
+            case ListFavCommand.COMMAND_WORD ->
+                withoutArguments(arguments, ListFavCommand.MESSAGE_USAGE, new ListFavCommand());
+            case UndoCommand.COMMAND_WORD -> withoutArguments(arguments, UndoCommand.MESSAGE_USAGE, new UndoCommand());
+            case ExitCommand.COMMAND_WORD -> withoutArguments(arguments, ExitCommand.MESSAGE_USAGE, new ExitCommand());
+            case HelpCommand.COMMAND_WORD -> withoutArguments(arguments, HelpCommand.MESSAGE_USAGE, new HelpCommand());
+            case RedoCommand.COMMAND_WORD -> withoutArguments(arguments, RedoCommand.MESSAGE_USAGE, new RedoCommand());
             default -> {
                 logger.finer("This user input caused a ParseException: " + userInput);
                 throw new ParseException(MESSAGE_UNKNOWN_COMMAND);
             }
         };
+    }
+
+    /**
+     * Returns {@code command} if {@code arguments} is blank. Commands that take no parameters reject extra input,
+     * so that a mistyped command such as {@code clear 1} is not silently run as {@code clear}.
+     *
+     * @throws ParseException if {@code arguments} is not blank.
+     */
+    private static Command withoutArguments(String arguments, String usage, Command command) throws ParseException {
+        if (!arguments.isBlank()) {
+            throw new ParseException(String.format(MESSAGE_INVALID_COMMAND_FORMAT, usage));
+        }
+        return command;
     }
 
 }

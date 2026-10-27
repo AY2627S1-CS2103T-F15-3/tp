@@ -15,6 +15,11 @@ import static seedu.address.testutil.TypicalIndexes.INDEX_FIRST_PERSON;
 import static seedu.address.testutil.TypicalIndexes.INDEX_SECOND_PERSON;
 import static seedu.address.testutil.TypicalPersons.getTypicalAddressBook;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+
 import org.junit.jupiter.api.Test;
 
 import seedu.address.commons.core.index.Index;
@@ -34,6 +39,62 @@ import seedu.address.testutil.PersonBuilder;
 public class EditCommandTest {
 
     private Model model = new ModelManager(getTypicalAddressBook(), new UserPrefs());
+
+    @Test
+    public void execute_replaceTags_reportsActualChanges() throws Exception {
+        Person original = model.getFilteredPersonList().get(0);
+        Person tagged = new PersonBuilder(original).withTags("Friend", "Classmate").build();
+        model.setPerson(original, tagged);
+        String feedback = new EditCommand(INDEX_FIRST_PERSON, new EditPersonDescriptorBuilder()
+                .withTags("Project").build()).execute(model).getFeedbackToUser();
+        assertTrue(feedback.endsWith("\nTags replaced. Removed: Classmate, Friend. Added: Project."));
+        assertEquals(new PersonBuilder(tagged).withTags("Project").build(), model.getFilteredPersonList().get(0));
+
+        feedback = new EditCommand(INDEX_FIRST_PERSON, new EditPersonDescriptorBuilder()
+                .withTags("Project", "Friend").build()).execute(model).getFeedbackToUser();
+        assertTrue(feedback.endsWith("\nTags replaced. Removed: None. Added: Friend."));
+
+        feedback = new EditCommand(INDEX_FIRST_PERSON, new EditPersonDescriptorBuilder()
+                .withTags().build()).execute(model).getFeedbackToUser();
+        assertTrue(feedback.endsWith("\nTags replaced. Removed: Friend, Project. Added: None."));
+        assertTrue(model.getFilteredPersonList().get(0).getTags().isEmpty());
+    }
+
+    @Test
+    public void execute_clearOptionalFields_listsEveryClearedField() throws Exception {
+        Person original = model.getFilteredPersonList().get(0);
+        Person complete = new PersonBuilder(original).withMajor("Computer Science").withGraduationYear("2027").build();
+        model.setPerson(original, complete);
+        String feedback = new EditCommand(INDEX_FIRST_PERSON, new EditPersonDescriptorBuilder()
+                .withPhone("").withEmail("").withMajor("").withGraduationYear("").build())
+                .execute(model).getFeedbackToUser();
+        assertEquals("Edited Alice Pauline:\nPhone: 94351253 → Not specified"
+                + "\nEmail: alice@example.com → Not specified\nMajor: Computer Science → Not specified"
+                + "\nClass year: 2027 → Not specified", feedback);
+    }
+
+    @Test
+    public void execute_mixedChangedAndUnchangedValues_listsOnlyActualChanges() throws Exception {
+        Person original = model.getFilteredPersonList().get(0);
+        String feedback = new EditCommand(INDEX_FIRST_PERSON, new EditPersonDescriptorBuilder()
+                .withPhone(original.getPhone().value).withMajor("Mathematics").withTags("friends").build())
+                .execute(model).getFeedbackToUser();
+        assertEquals("Edited Alice Pauline:\nMajor: Not specified → Mathematics", feedback);
+    }
+
+    @Test
+    public void execute_sameValues_keepsOldUpdateDate() throws Exception {
+        Person original = model.getFilteredPersonList().get(0);
+        Person old = new PersonBuilder(original).withLastUpdated(LocalDate.of(2025, 1, 1)).build();
+        model.setPerson(original, old);
+        Clock clock = Clock.fixed(Instant.parse("2026-10-26T00:00:00Z"), ZoneOffset.UTC);
+        String feedback = new EditCommand(INDEX_FIRST_PERSON, new EditPersonDescriptorBuilder(old).build(), clock)
+                .execute(model).getFeedbackToUser();
+        assertEquals("No changes made to Alice Pauline. The supplied values match the existing details.", feedback);
+        assertEquals(old, model.getFilteredPersonList().get(0));
+        assertEquals(LocalDate.of(2025, 1, 1), model.getFilteredPersonList().get(0).getLastUpdated());
+        assertFalse(model.canUndoAddressBook());
+    }
 
     @Test
     public void execute_caseOnlyDuplicateName_failure() {
@@ -59,7 +120,10 @@ public class EditCommandTest {
         EditPersonDescriptor descriptor = new EditPersonDescriptorBuilder(editedPerson).build();
         EditCommand editCommand = new EditCommand(INDEX_FIRST_PERSON, descriptor);
 
-        String expectedMessage = String.format(EditCommand.MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(editedPerson));
+        String expectedMessage = "Edited Amy Bee:"
+                + "\nName: Alice Pauline → Amy Bee\nPhone: 94351253 → 85355255"
+                + "\nEmail: alice@example.com → amy@gmail.com"
+                + "\nTags replaced. Removed: friends. Added: None.";
 
         Model expectedModel = new ModelManager(new AddressBook(model.getAddressBook()), new UserPrefs());
         expectedModel.setPerson(model.getFilteredPersonList().get(0), editedPerson);
@@ -80,7 +144,8 @@ public class EditCommandTest {
                 .withPhone(VALID_PHONE_BOB).withTags(VALID_TAG_HUSBAND).build();
         EditCommand editCommand = new EditCommand(indexLastPerson, descriptor);
 
-        String expectedMessage = String.format(EditCommand.MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(editedPerson));
+        String expectedMessage = "Edited Bob Choo:\nName: George Best → Bob Choo\nPhone: 9482442 → 22222222"
+                + "\nTags replaced. Removed: None. Added: husband.";
 
         Model expectedModel = new ModelManager(new AddressBook(model.getAddressBook()), new UserPrefs());
         expectedModel.setPerson(lastPerson, editedPerson);
@@ -123,7 +188,7 @@ public class EditCommandTest {
         EditCommand editCommand = new EditCommand(INDEX_FIRST_PERSON, new EditPersonDescriptor());
         Person editedPerson = model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased());
 
-        String expectedMessage = String.format(EditCommand.MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(editedPerson));
+        String expectedMessage = String.format(EditCommand.MESSAGE_NO_CHANGES, editedPerson.getName());
 
         Model expectedModel = new ModelManager(new AddressBook(model.getAddressBook()), new UserPrefs());
 
@@ -139,7 +204,7 @@ public class EditCommandTest {
         EditCommand editCommand = new EditCommand(INDEX_FIRST_PERSON,
                 new EditPersonDescriptorBuilder().withName(VALID_NAME_BOB).build());
 
-        String expectedMessage = String.format(EditCommand.MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(editedPerson));
+        String expectedMessage = "Edited Bob Choo:\nName: Alice Pauline → Bob Choo";
 
         Model expectedModel = new ModelManager(new AddressBook(model.getAddressBook()), new UserPrefs());
         expectedModel.setPerson(model.getFilteredPersonList().get(0), editedPerson);
@@ -300,9 +365,9 @@ public class EditCommandTest {
         Person firstPerson = model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased());
         EditCommand editCommand = new EditCommand(INDEX_FIRST_PERSON,
                 new EditPersonDescriptorBuilder(firstPerson).build());
-        String expectedMessage = String.format(EditCommand.MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(firstPerson));
+        String expectedMessage = String.format(EditCommand.MESSAGE_NO_CHANGES, firstPerson.getName());
 
-        // The existing success message is preserved even though nothing changed.
+        // No-op feedback must not imply that a change was recorded.
         assertEquals(expectedMessage, editCommand.execute(model).getFeedbackToUser());
         assertEquals(firstPerson, model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased()));
         assertFalse(model.canUndoAddressBook());

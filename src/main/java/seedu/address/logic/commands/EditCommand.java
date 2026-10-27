@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import seedu.address.commons.core.index.Index;
 import seedu.address.commons.util.CollectionUtil;
@@ -58,10 +59,14 @@ public class EditCommand extends Command {
             + PREFIX_PHONE + "91234567 "
             + PREFIX_EMAIL + "johndoe@example.com";
 
+    public static final String MESSAGE_NO_CHANGES = "No changes made to %1$s. "
+            + "The supplied values match the existing details.";
+    // Keep the existing description for undo/redo; immediate feedback lists actual changes.
     public static final String MESSAGE_EDIT_PERSON_SUCCESS = "Edited person: %1$s";
     public static final String MESSAGE_NOT_EDITED = "At least one field to edit must be provided.";
     public static final String MESSAGE_DUPLICATE_PERSON =
-            "This person already exists in the address book (names are compared ignoring case).";
+            "This person already exists in UniMate (names are compared ignoring case).";
+    public static final String MESSAGE_SHARED_DETAILS_WARNING = SharedContactDetailsWarning.MESSAGE_WARNING;
 
     private final Index index;
     private final EditPersonDescriptor editPersonDescriptor;
@@ -103,13 +108,64 @@ public class EditCommand extends Command {
             throw new CommandException(MESSAGE_DUPLICATE_PERSON);
         }
 
+        if (personToEdit.equals(editedPerson)) {
+            model.updateFilteredPersonList(PREDICATE_SHOW_ALL_PERSONS);
+            return new CommandResult(String.format(MESSAGE_NO_CHANGES, personToEdit.getName()));
+        }
+
         ReadOnlyAddressBook previousState = new AddressBook(model.getAddressBook());
         model.setPerson(personToEdit, editedPerson);
         model.updateFilteredPersonList(PREDICATE_SHOW_ALL_PERSONS);
         String message = String.format(MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(editedPerson));
-        // An edit that leaves the person unchanged is not recorded by the model.
+        // Keep the full-contact history description separate from immediate change feedback.
         model.commitAddressBook(previousState, message);
-        return new CommandResult(message);
+        return getEditResult(model, personToEdit, editedPerson, formatChanges(personToEdit, editedPerson));
+    }
+
+    /** Lists only changed fields, with explicit values for cleared optional fields. */
+    private static String formatChanges(Person original, Person edited) {
+        StringBuilder feedback = new StringBuilder("Edited ").append(edited.getName()).append(":");
+        appendChange(feedback, "Name", original.getName().fullName, edited.getName().fullName);
+        appendChange(feedback, "Phone", original.getPhone().value, edited.getPhone().value);
+        appendChange(feedback, "Email", original.getEmail().value, edited.getEmail().value);
+        appendChange(feedback, "Address", original.getAddress().value, edited.getAddress().value);
+        appendChange(feedback, "Major", original.getMajor().value, edited.getMajor().value);
+        appendChange(feedback, "Class year", original.getGraduationYear().value, edited.getGraduationYear().value);
+        if (!original.getTags().equals(edited.getTags())) {
+            feedback.append("\nTags replaced. Removed: ")
+                    .append(formatTagDifference(original.getTags(), edited.getTags()))
+                    .append(". Added: ").append(formatTagDifference(edited.getTags(), original.getTags())).append(".");
+        }
+        return feedback.toString();
+    }
+
+    /** Appends one changed field, displaying an unspecified value explicitly. */
+    private static void appendChange(StringBuilder feedback, String label, String before, String after) {
+        if (!before.equals(after)) {
+            feedback.append("\n").append(label).append(": ")
+                    .append(before.isEmpty() ? "Not specified" : before).append(" → ")
+                    .append(after.isEmpty() ? "Not specified" : after);
+        }
+    }
+
+    /**
+     * Warns only when a changed contact method matches another contact after refreshing the display.
+     * Changing only an email's capitalization does not introduce a new shared value.
+     */
+    private CommandResult getEditResult(Model model, Person originalPerson, Person editedPerson,
+            String successMessage) {
+        boolean phoneChanged = !originalPerson.getPhone().equals(editedPerson.getPhone());
+        boolean emailChanged = !originalPerson.getEmail().value.equalsIgnoreCase(editedPerson.getEmail().value);
+        String matches = SharedContactDetailsWarning.describeMatches(
+                editedPerson, model.getFilteredPersonList(), phoneChanged, emailChanged);
+        return SharedContactDetailsWarning.appendTo(successMessage, matches);
+    }
+
+    /** Returns sorted tag names present only in the first set, or "None". */
+    private static String formatTagDifference(Set<Tag> tags, Set<Tag> otherTags) {
+        String names = tags.stream().filter(tag -> !otherTags.contains(tag))
+                .map(tag -> tag.tagName).sorted().collect(Collectors.joining(", "));
+        return names.isEmpty() ? "None" : names;
     }
 
     /**

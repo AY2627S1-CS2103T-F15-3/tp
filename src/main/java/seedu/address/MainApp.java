@@ -1,8 +1,10 @@
 package seedu.address;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.Optional;
 import java.util.logging.Logger;
 
@@ -32,16 +34,23 @@ import seedu.address.ui.UiManager;
  */
 public class MainApp extends Application {
 
-    public static final String VERSION = "V1.3";
+    public static final String VERSION = "V1.4";
 
     private static final Logger logger = LogsCenter.getLogger(MainApp.class);
     private static final Path USER_PREFS_FILE_PATH = Paths.get("preferences.json");
     private static final Path ADDRESS_BOOK_FILE_PATH = Paths.get("data", "unimate.json");
+    private static final String BACKUP_SUFFIX = ".bak";
+    private static final String MESSAGE_DATA_FILE_NOT_LOADED = "Warning: the data file %1$s could not be loaded, "
+            + "so UniMate has started with an empty contact list.\nReason: %2$s\n%3$s\n"
+            + "Your next command will save over %1$s. To repair the file instead, close UniMate now "
+            + "without running a command, fix the file, then restart.";
 
     protected Ui ui;
     protected Logic logic;
     protected Storage storage;
     protected Model model;
+    /** A warning to show the user once the window opens, such as a data file that could not be loaded. */
+    protected Optional<String> startupWarning = Optional.empty();
 
     @Override
     public void init() throws Exception {
@@ -57,7 +66,7 @@ public class MainApp extends Application {
 
         logic = new LogicManager(model, storage);
 
-        ui = new UiManager(logic, storage.getAddressBookFilePath());
+        ui = new UiManager(logic, storage.getAddressBookFilePath(), startupWarning);
     }
 
     /**
@@ -81,9 +90,28 @@ public class MainApp extends Application {
             logger.warning("Data file at " + storage.getAddressBookFilePath() + " could not be loaded."
                     + " Will be starting with an empty UniMate contact list.");
             initialData = new AddressBook();
+            startupWarning = Optional.of(describeLoadingFailure(storage.getAddressBookFilePath(), e));
         }
 
         return new ModelManager(initialData, userPrefs);
+    }
+
+    /**
+     * Backs up the unreadable data file, since the next command saves over it, and returns a warning for the user.
+     */
+    private String describeLoadingFailure(Path dataFile, DataLoadingException e) {
+        Throwable cause = e.getCause() == null ? e : e.getCause();
+        String reason = String.valueOf(cause.getMessage()).lines().findFirst().orElse("");
+        Path backupFile = dataFile.resolveSibling(dataFile.getFileName() + BACKUP_SUFFIX);
+        String backupNote;
+        try {
+            Files.copy(dataFile, backupFile, StandardCopyOption.REPLACE_EXISTING);
+            backupNote = "A copy of the unreadable file has been saved as " + backupFile + ".";
+        } catch (IOException ioe) {
+            logger.warning("Failed to back up data file: " + StringUtil.getDetails(ioe));
+            backupNote = "UniMate could not make a backup copy of it.";
+        }
+        return String.format(MESSAGE_DATA_FILE_NOT_LOADED, dataFile, reason, backupNote);
     }
 
     /**
