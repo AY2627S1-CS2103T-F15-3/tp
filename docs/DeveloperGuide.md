@@ -361,7 +361,9 @@ retain exact data equality, preserving capitalization changes for display, persi
 `IllegalValueException` path. There is no automatic migration, deletion, merging or renaming. Users must
 back up legacy files and distinguish conflicting names before loading. The existing `MainApp` startup
 fallback opens an empty list on a loading error; subsequent saves can overwrite that file, so users must
-close without editing and resolve conflicts in a copy of the backup first.
+close the window without entering commands and resolve conflicts in a copy of the backup first.
+Even a successful view-only command can save the empty list over the invalid file; see
+[data-file recovery](UserGuide.md#editing-the-data-file).
 After a successful add, it records the previous contact data state in the model's history
 (see [Recording contact data history](#recording-contact-data-history)).
 The normal storage path then saves the contact, including its academic fields.

@@ -9,7 +9,8 @@
 UniMate helps **university students organise contacts by major, class year and tags**.
 It is a **desktop application for managing contacts, optimized for use through a Command Line Interface (CLI)** while retaining the benefits of a Graphical User Interface (GUI). If you type quickly, UniMate can help you manage contacts faster than traditional GUI applications.
 
-This guide describes the features available in v1.4.
+This guide describes **v1.5 (unreleased)**. The published v1.4 JAR does not include all features below.
+Use a matching v1.5 release when available; developers can [build the current source](DevOps.md#build-automation).
 
 <!-- * Table of Contents -->
 <page-nav-print />
@@ -18,12 +19,12 @@ This guide describes the features available in v1.4.
 
 ## Quick start
 
-1. Ensure that Java `25` or later is installed on your computer.<br>
+1. Ensure that Java `25` is installed on your computer.<br>
    **Mac users:** Ensure you have the precise JDK version prescribed [here](https://se-education.org/guides/tutorials/javaInstallationMac.html).
 
-1. Download the latest `.jar` file from the [UniMate releases page](https://github.com/AY2627S1-CS2103T-F15-3/tp/releases).
+1. Download the v1.5 `unimate.jar`, once published, from the [UniMate releases page](https://github.com/AY2627S1-CS2103T-F15-3/tp/releases).
 
-1. Copy the file to the folder you want to use as the _home folder_ for UniMate.
+1. Copy the file to a writable folder you want to use as the _home folder_ for UniMate.
 
 1. Open a terminal, `cd` to the folder containing the JAR file, and run `java -jar unimate.jar`.<br>
    A GUI similar to the one below should appear in a few seconds. Note how the app contains some sample data.<br>
@@ -209,7 +210,9 @@ contact, then `edit 1 a/NUS`.
   you to run `list`, then `sort reset`. After those commands, the contact is displayed at that index.
   A saved index should only be used for an indexed command after following those instructions and checking the card.
 * Rejecting a duplicate leaves the current view, saved contacts and undo/redo history unchanged.
-* Before opening an older data file, back it up and give any contacts whose names differ only in case distinct names. Such files fail duplicate validation; contacts are not automatically merged, renamed or deleted. The existing startup error handling opens an empty list after a loading error. Close the app without making changes and fix a copy of the backed-up file before retrying, as subsequent successful data-changing commands could overwrite the data file.
+* Before opening an older data file, back it up. Give contacts whose names differ only in case
+  distinct names; they are not automatically merged or renamed. See [data-file recovery](#editing-the-data-file)
+  before continuing after a loading error.
 * A successful `add` can be reverted with [`undo`](#undoing-a-change-undo).
 **Favourite status**
 
@@ -975,11 +978,10 @@ If UniMate cannot write the data file, for example because the file or its folde
 * `Could not save data to file ... due to insufficient permissions to write to the file or the folder.`
 * `Could not save data due to the following error: ...`
 
-If the command changed your contacts, the error continues on the next line:
-
-`The change made by this command has been applied, but it is not saved to the local data file. Running undo now would revert this change. If you close UniMate now, this change will be lost. To keep it, fix the error, then run any command, such as list, to save the change locally.`
-
-If the failed command was itself an `undo`, the message names `redo` instead, because `redo` reverts an undo. Commands that do not change your contacts, such as `list`, show only the first line.
+If the command changed your contacts, the error explains that the change was applied but not saved,
+how to revert it, and how to save it after fixing the problem. It names `undo` to revert an ordinary
+change, or `redo` after a failed `undo`. A command that leaves contacts unchanged, such as `list`,
+does not add this unsaved-change explanation.
 
 The contact list shows the change, and `undo` treats it like any other change. Only the copy on your disk is out of date.
 
@@ -990,12 +992,14 @@ The contact list shows the change, and `undo` treats it like any other change. O
 
 ### Editing the data file
 
-UniMate data is saved automatically as a JSON file `[JAR file location]/data/unimate.json`. Advanced users are welcome to update data directly by editing that data file.
+UniMate saves contacts in `data/unimate.json`, relative to the folder from which you launch it.
+Use `cd` to enter your chosen home folder before launching UniMate to keep this location predictable.
+Advanced users can edit that file while UniMate is closed; back it up first.
 
 <box type="warning" seamless>
 
 **Caution:**
-If your changes make the data file invalid, UniMate starts with an empty contact list at the next run. The invalid file remains on disk until you run a command (UniMate saves after every command). Still, we recommend backing up the file before editing it.<br>
+If your changes make the data file invalid, UniMate starts with an empty contact list at the next run. The invalid file remains on disk until you run a command that executes successfully (including `list` or `help`). Still, we recommend backing up the file before editing it.<br>
 Furthermore, certain edits can cause UniMate to behave in unexpected ways (e.g., if a value entered is outside of the acceptable range). Therefore, edit the data file only if you are confident that you can update it correctly.
 </box>
 
@@ -1021,7 +1025,10 @@ _Details coming soon ..._
 ## FAQ
 
 **Q**: How do I transfer my data to another computer?<br>
-**A**: Install the app on the other computer and overwrite the data file it creates with the data file from your previous UniMate home folder.
+**A**: Install the same UniMate version on the other computer. Close UniMate on both computers and
+back up both data files. Copy `data/unimate.json` from the old launch folder into the new launch
+folder's `data` directory, replacing its file. Reopen UniMate and check your contacts before deleting
+the backup. See [Editing the data file](#editing-the-data-file) for the file location.
 
 --------------------------------------------------------------------------------------------------------------------
 
