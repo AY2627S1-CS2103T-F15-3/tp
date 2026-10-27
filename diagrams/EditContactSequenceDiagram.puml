@@ -39,6 +39,11 @@ opt Name changed
   Edit -> Model : hasPerson(editedPerson)
   Model --> Edit : false
 end
+alt Contact unchanged
+  Edit -> Model : updateFilteredPersonList(PREDICATE_SHOW_ALL_PERSONS)
+  Edit --> Logic : CommandResult("No changes made to NAME. ...")
+  note right of Edit : Preserve the date and both history stacks.
+else Contact changed
 Edit -> Model : getAddressBook()
 Model --> Edit : contact data to snapshot
 Edit -> Edit : previousState = new AddressBook(contact data)
@@ -46,8 +51,13 @@ Edit -> Model : setPerson(person, editedPerson)
 Edit -> Model : updateFilteredPersonList(PREDICATE_SHOW_ALL_PERSONS)
 Edit -> Edit : message = "Edited person: ..."
 Edit -> Model : commitAddressBook(previousState, message)
-Edit -> Edit : feedback = message
-opt Tags supplied (including empty t/)
+Edit -> Edit : formatChanges(person, editedPerson)
+note right of Edit
+  Edited NAME: followed by actual field changes.
+  Field: old value → new value.
+  Empty optional fields show Not specified.
+end note
+opt Tags changed
   Edit -> Edit : formatTagDifference(oldTags, newTags)
   Edit -> Edit : formatTagDifference(newTags, oldTags)
   note right of Edit
@@ -57,15 +67,14 @@ opt Tags supplied (including empty t/)
     Undo/redo description retains the base message.
   end note
 end
-Edit -> Edit : getEditResult(model, person, editedPerson, feedback)
+Edit -> Edit : getEditResult(model, person, editedPerson, change summary)
 note right of Edit
-  Retain the normal Edited person feedback and any tag summary.
-  Append a non-blocking warning for shared changed phone/email values.
-  SharedContactDetailsWarning uses refreshed displayed indices.
-  This example changes academic fields and tags only,
-  so its ordinary feedback includes a tag summary but no warning.
+  Append a warning for shared changed phone/email values.
+  Use refreshed displayed indices; preserve the change summary.
+  This academic-field and tag edit does not trigger a warning.
 end note
 Edit --> Logic : CommandResult(feedback)
+end
 deactivate Edit
 Logic -> Model : getAddressBook()
 Model --> Logic : updated contact data
