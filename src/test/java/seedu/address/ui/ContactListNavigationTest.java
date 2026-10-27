@@ -210,17 +210,11 @@ public class ContactListNavigationTest {
                 view.list.scrollTo(0);
                 FxTestUtil.layout(view.root);
                 view.press(KeyCode.TAB, true);
-                assertEquals("name", view.focused().getId());
-                Bounds name = view.focused().localToScene(view.focused().getBoundsInLocal());
-                assertTrue(name.getMinY() >= viewport.getMinY());
-                assertTrue(name.getMinY() <= viewport.getMinY() + 8);
+                assertNameFocusedAtViewportTop(view);
                 view.press(KeyCode.TAB, false);
                 assertEquals(LONG_TAG, ((Label) view.focused()).getTooltip().getText());
                 view.press(KeyCode.TAB, true);
-                assertEquals("name", view.focused().getId());
-                name = view.focused().localToScene(view.focused().getBoundsInLocal());
-                assertTrue(name.getMinY() >= viewport.getMinY());
-                assertTrue(name.getMinY() <= viewport.getMinY() + 8);
+                assertNameFocusedAtViewportTop(view);
                 return null;
             });
         }
@@ -245,6 +239,14 @@ public class ContactListNavigationTest {
                 return null;
             });
         }
+    }
+
+    private void assertNameFocusedAtViewportTop(View view) {
+        assertEquals("name", view.focused().getId());
+        Bounds name = view.focused().localToScene(view.focused().getBoundsInLocal());
+        Bounds viewport = view.list.localToScene(view.list.getBoundsInLocal());
+        assertTrue(name.getMinY() >= viewport.getMinY());
+        assertTrue(name.getMinY() <= viewport.getMinY() + 8);
     }
 
     private static Person longContact(String prefix) {
