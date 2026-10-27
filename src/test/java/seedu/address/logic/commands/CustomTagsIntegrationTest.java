@@ -1,10 +1,12 @@
 package seedu.address.logic.commands;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.junit.jupiter.api.Test;
 
+import seedu.address.logic.Messages;
 import seedu.address.logic.commands.exceptions.CommandException;
 import seedu.address.logic.parser.AddressBookParser;
 import seedu.address.logic.parser.exceptions.ParseException;
@@ -38,6 +40,30 @@ public class CustomTagsIntegrationTest {
         assertEquals(expected, model.getFilteredPersonList().get(0));
         parser.parseCommand("tag 1 t/NOC").execute(model);
         assertEquals(expected, model.getFilteredPersonList().get(0));
+    }
+
+    @Test
+    public void execute_allTagsAlreadyPresent_reportsNoChangeWithoutHistory() throws Exception {
+        Person original = new PersonBuilder().withName("Alice").withTags("Friend", "NOC").build();
+        model.addPerson(original);
+        CommandResult result = parser.parseCommand("tag 1 t/noc d/1").execute(model);
+        assertEquals(String.format(TagCommand.MESSAGE_ALL_PRESENT, "Alice", "Friend, NOC"),
+                result.getFeedbackToUser());
+        assertEquals(original, model.getFilteredPersonList().get(0));
+        assertFalse(model.canUndoAddressBook());
+    }
+
+    @Test
+    public void execute_someTagsAlreadyPresent_addsNewTagsAndReportsPresentOnes() throws Exception {
+        Person original = new PersonBuilder().withTags("NOC").build();
+        model.addPerson(original);
+        CommandResult result = parser.parseCommand("tag 1 t/NOC t/CCA").execute(model);
+        Person expected = new PersonBuilder(original).withTags("NOC", "CCA").build();
+        assertEquals(expected, model.getFilteredPersonList().get(0));
+        String successMessage = String.format(TagCommand.MESSAGE_SUCCESS, Messages.format(expected));
+        assertEquals(successMessage + "\n" + String.format(TagCommand.MESSAGE_SOME_PRESENT, "NOC"),
+                result.getFeedbackToUser());
+        assertEquals(successMessage, model.getUndoDescription().orElseThrow());
     }
 
     @Test

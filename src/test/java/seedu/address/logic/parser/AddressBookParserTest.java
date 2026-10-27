@@ -338,7 +338,7 @@ public class AddressBookParserTest {
 
     @Test
     public void parseCommand_commandWordNormalization_preservesArguments() throws Exception {
-        Set<Tag> tags = Set.of(new Tag("NOC"), new Tag("noc"));
+        Set<Tag> tags = Set.of(new Tag("NOC"));
         assertEquals(new TagCommand(INDEX_FIRST_PERSON, tags), parser.parseCommand("TAG 1 t/NOC t/noc"));
         assertEquals(new UntagCommand(INDEX_FIRST_PERSON, Set.of(new Tag("NOC"))),
                 parser.parseCommand("UNTAG 1 t/NOC"));

@@ -1,10 +1,12 @@
 package seedu.address.logic.commands;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.junit.jupiter.api.Test;
 
+import seedu.address.logic.Messages;
 import seedu.address.logic.commands.exceptions.CommandException;
 import seedu.address.logic.parser.AddressBookParser;
 import seedu.address.logic.parser.exceptions.ParseException;
@@ -38,11 +40,37 @@ public class UntagCommandIntegrationTest {
     }
 
     @Test
-    public void execute_missingTag_keepsPersonUnchanged() throws Exception {
-        Person original = new PersonBuilder().withTags("NOC").build();
+    public void execute_noRequestedTagPresent_rejectsAndKeepsPersonUnchanged() throws Exception {
+        Person original = new PersonBuilder().withName("Alice").withTags("NOC").build();
         model.addPerson(original);
-        parser.parseCommand("untag 1 t/noc t/Missing").execute(model);
+        CommandException exception = assertThrows(CommandException.class, () ->
+                parser.parseCommand("untag 1 t/CCA t/Missing").execute(model));
+        assertEquals(String.format(UntagCommand.MESSAGE_NONE_FOUND, "Alice", "CCA, Missing"),
+                exception.getMessage());
         assertEquals(original, model.getFilteredPersonList().get(0));
+        assertFalse(model.canUndoAddressBook());
+    }
+
+    @Test
+    public void execute_someRequestedTagsMissing_removesPresentTagsAndReportsMissing() throws Exception {
+        Person original = new PersonBuilder().withTags("NOC", "CCA").build();
+        model.addPerson(original);
+        CommandResult result = parser.parseCommand("untag 1 t/noc t/Missing").execute(model);
+        Person expected = new PersonBuilder(original).withTags("CCA").build();
+        assertEquals(expected, model.getFilteredPersonList().get(0));
+        String successMessage = String.format(UntagCommand.MESSAGE_SUCCESS, Messages.format(expected));
+        assertEquals(successMessage + "\n" + String.format(UntagCommand.MESSAGE_SOME_NOT_FOUND, "Missing"),
+                result.getFeedbackToUser());
+        // The history description is the plain success message, without the not-found note.
+        assertEquals(successMessage, model.getUndoDescription().orElseThrow());
+    }
+
+    @Test
+    public void execute_differentCapitalization_removesTag() throws Exception {
+        Person original = new PersonBuilder().withTags("Friend", "NOC").build();
+        model.addPerson(original);
+        parser.parseCommand("untag 1 t/friend").execute(model);
+        assertEquals(new PersonBuilder(original).withTags("NOC").build(), model.getFilteredPersonList().get(0));
     }
 
     @Test

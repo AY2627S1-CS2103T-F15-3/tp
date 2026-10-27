@@ -6,6 +6,7 @@ import static seedu.address.commons.util.CollectionUtil.requireAllNonNull;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import seedu.address.commons.core.index.Index;
 import seedu.address.logic.Messages;
@@ -26,6 +27,8 @@ public class TagCommand extends Command {
             + "Parameters: INDEX [d/DEFAULT_INDEX]... [t/TAG]... (at least one tag is required)\n"
             + "Example: tag 1 d/1 t/NOC";
     public static final String MESSAGE_SUCCESS = "Tagged person: %1$s";
+    public static final String MESSAGE_ALL_PRESENT = "No tags added: %1$s already has the tag(s): %2$s.";
+    public static final String MESSAGE_SOME_PRESENT = "Already present, so not added again: %1$s.";
 
     private final Index index;
     private final Set<Tag> tags;
@@ -47,6 +50,13 @@ public class TagCommand extends Command {
             throw new CommandException(Messages.MESSAGE_INVALID_PERSON_DISPLAYED_INDEX);
         }
         Person person = displayedPersons.get(index.getZeroBased());
+        // Taken from the person's tags, so feedback shows the stored capitalization.
+        Set<Tag> presentTags = new HashSet<>(person.getTags());
+        presentTags.retainAll(tags);
+        if (presentTags.size() == tags.size()) {
+            return new CommandResult(String.format(MESSAGE_ALL_PRESENT, person.getName().fullName,
+                    formatTagNames(presentTags)));
+        }
         Set<Tag> updatedTags = new HashSet<>(person.getTags());
         updatedTags.addAll(tags);
         Person updatedPerson = new Person(person.getName(), person.getPhone(), person.getEmail(),
@@ -56,7 +66,14 @@ public class TagCommand extends Command {
         model.setPerson(person, updatedPerson);
         String message = String.format(MESSAGE_SUCCESS, Messages.format(updatedPerson));
         model.commitAddressBook(previousState, message);
-        return new CommandResult(message);
+        // The history description omits the already-present note, which only concerns this submission.
+        return new CommandResult(presentTags.isEmpty() ? message
+                : message + "\n" + String.format(MESSAGE_SOME_PRESENT, formatTagNames(presentTags)));
+    }
+
+    /** Returns the tag names sorted and separated by commas, for feedback messages. */
+    static String formatTagNames(Set<Tag> tags) {
+        return tags.stream().map(tag -> tag.tagName).sorted().collect(Collectors.joining(", "));
     }
 
     @Override
