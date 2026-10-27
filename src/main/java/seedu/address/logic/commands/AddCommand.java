@@ -60,8 +60,8 @@ public class AddCommand extends Command {
             + "\nExisting contact is hidden by the current filter (saved index %1$d):\n%2$s"
             + "\nRun " + ListCommand.COMMAND_WORD + ", then " + SortCommand.COMMAND_WORD
             + " reset to view this contact at index %1$d.";
-    public static final String MESSAGE_SHARED_DETAILS_WARNING = "Warning: Contact added. Use undo if unintended."
-            + "\nShared details: %1$s";
+    public static final String MESSAGE_SHARED_DETAILS_WARNING =
+            "Warning - duplicate details detected: %1$s";
     public static final String MESSAGE_SHARED_DETAILS_MATCH = "#%1$d %2$s (%3$s)";
 
     private final Person toAdd;
@@ -127,7 +127,8 @@ public class AddCommand extends Command {
             }
         }
         return matches.isEmpty() ? new CommandResult(successMessage)
-                : CommandResult.warning(String.format(MESSAGE_SHARED_DETAILS_WARNING, String.join("; ", matches)));
+                : CommandResult.warning(successMessage + "\n"
+                        + String.format(MESSAGE_SHARED_DETAILS_WARNING, String.join("; ", matches)));
     }
 
     /**

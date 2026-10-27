@@ -127,8 +127,7 @@ public class AddCommandIntegrationTest {
 
         CommandResult result = new AddCommand(toAdd).execute(model);
 
-        assertEquals(warningMessage("#1 Alice Pauline (phone)"), result.getFeedbackToUser());
-        assertTrue(result.isWarning());
+        assertWarning(toAdd, "#1 Alice Pauline (phone)", result);
         assertTrue(model.hasPerson(toAdd));
     }
 
@@ -139,8 +138,7 @@ public class AddCommandIntegrationTest {
 
         CommandResult result = new AddCommand(toAdd).execute(model);
 
-        assertEquals(warningMessage("#1 Alice Pauline (email)"), result.getFeedbackToUser());
-        assertTrue(result.isWarning());
+        assertWarning(toAdd, "#1 Alice Pauline (email)", result);
         assertEquals("ALICE@EXAMPLE.COM", model.getAddressBook().getPersonList().getLast().getEmail().value);
     }
 
@@ -150,8 +148,7 @@ public class AddCommandIntegrationTest {
 
         CommandResult result = new AddCommand(toAdd).execute(model);
 
-        assertEquals(warningMessage("#1 Alice Pauline (phone and email)"), result.getFeedbackToUser());
-        assertTrue(result.isWarning());
+        assertWarning(toAdd, "#1 Alice Pauline (phone and email)", result);
     }
 
     @Test
@@ -161,8 +158,7 @@ public class AddCommandIntegrationTest {
 
         CommandResult result = new AddCommand(toAdd).execute(model);
 
-        assertEquals(warningMessage("#1 Alice Pauline (phone); #2 Benson Meier (email)"), result.getFeedbackToUser());
-        assertTrue(result.isWarning());
+        assertWarning(toAdd, "#1 Alice Pauline (phone); #2 Benson Meier (email)", result);
     }
 
     @Test
@@ -208,8 +204,7 @@ public class AddCommandIntegrationTest {
 
         CommandResult result = logic.execute("add n/Amy p/12341234 e/shared@example.com a/NUS");
 
-        assertEquals(warningMessage("#3 Zara (phone and email)"), result.getFeedbackToUser());
-        assertTrue(result.isWarning());
+        assertWarning(amy, "#3 Zara (phone and email)", result);
         assertEquals(List.of(amy, charlie, zara), model.getFilteredPersonList());
         assertEquals(List.of(zara, charlie, amy), model.getAddressBook().getPersonList());
         assertEquals(model.getAddressBook(), storage.readAddressBook().orElseThrow());
@@ -340,8 +335,11 @@ public class AddCommandIntegrationTest {
         assertFalse(model.hasPerson(newPerson));
     }
 
-    private static String warningMessage(String matches) {
-        return "Warning: Contact added. Use undo if unintended.\nShared details: " + matches;
+    private static void assertWarning(Person addedPerson, String matches, CommandResult result) {
+        String success = String.format(AddCommand.MESSAGE_SUCCESS, Messages.format(addedPerson));
+        String advisory = "Warning - duplicate details detected: " + matches;
+        assertEquals(success + "\n" + advisory, result.getFeedbackToUser());
+        assertTrue(result.isWarning());
     }
 
     /**

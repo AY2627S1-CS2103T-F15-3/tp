@@ -360,19 +360,23 @@ optional fields never count as matches. Every matching contact is listed once, w
 identifying the shared phone number, email address or both. Different contacts may match different
 fields, and all matches are included in displayed order.
 
-When there are matches, the first feedback line is `Warning: Contact added. Use undo if unintended.`
-The second line lists compact matches such as `Shared details: #2 Alice (phone); #3 Bob (email)`.
-The reason is `phone and email` when both fields match the same contact. The warning does not repeat
-the full success message, addresses or other unrelated fields, keeping common cases readable in the
-existing 100-pixel result area. All matching names and indices are retained; long names or many
-matches wrap and remain accessible through vertical scrolling.
+When there are matches, the ordinary `New person added: ...` message remains complete and white.
+An additional line reads, for example, `Warning - duplicate details detected: #2 Alice (phone);
+#3 Bob (email)`. The reason is `phone and email` when both fields match the
+same contact. All matching names and current indices are retained.
 
-`CommandResult.warning` sets an explicit warning flag rather than inferring severity from message
-text. `MainWindow` passes `CommandResult#isWarning()` to `ResultDisplay`, which applies the `warning`
-style class for amber text without a border. It removes that class for normal results and exceptions,
-and resets the caret and vertical scroll position to the start when showing new feedback. Existing
-`CommandResult` constructors default to ordinary feedback. The command still follows the successful
-path, so the input clears and is not styled as an error. A same-name duplicate still fails before this flow.
+`AddCommand` joins the ordinary success message and advisory text with a newline and returns them
+in a single `CommandResult.warning`. `getFeedbackToUser()` supplies the complete plain-text message.
+The warning flag is metadata only; it does not change the text colour. `getLogSummary()` retains
+the ordinary success message's first line without logging the appended match list.
+
+`MainWindow` passes that complete message to the original `ResultDisplay` text area. There is no
+additional warning control or scrollbar. JavaFX `TextArea` uses one text colour for its content,
+so both the success and appended warning remain white, with no coloured border. Its existing
+100-pixel area retains wrapping, selection and vertical scrolling for long feedback. Each new result
+replaces the previous text and resets the caret and scroll position. The command follows the
+successful path, so input clears and is not styled as an error. A same-name duplicate still fails
+before this flow.
 
 The model records one snapshot with the ordinary addition message as its history description.
 The warning is returned only in the `CommandResult`; undo and redo describe the addition
@@ -381,10 +385,11 @@ are not merged or modified, and one undo removes only the new contact.
 
 `AddCommandIntegrationTest` checks phone-only, email-only, combined and multiple matches; email case;
 blank and distinct values; refreshed sorted indices; persistence; and one-step undo/redo.
-`SortUiTest` checks compact feedback, amber text without a border, matches hidden by the previous
-filter, current card indices, the successful command-box state and undo/redo through the GUI. It also
-checks that a common multi-match warning fits the fixed-height result area in a narrowed window and
-that subsequent normal feedback and errors clear warning styling.
+`SortUiTest` checks unchanged white success text followed by the warning in the same original text area,
+matches hidden by the previous filter, current card indices, the successful command-box state and
+undo/redo through the GUI. It also checks wrapping, selectable text and scrollable overflow in the
+fixed-height result area in a narrowed window, and that subsequent normal feedback and errors replace
+the previous warning. It also verifies that no additional warning text area is created.
 
 ### Editing academic fields
 
@@ -1562,14 +1567,15 @@ testers are expected to do more *exploratory* testing.
    1. Run `sort name asc`, then `find Charlie`.<br>
       Expected: Only Charlie is displayed.
    1. Run `add n/Amy p/91919191 e/SHARED172@EXAMPLE.COM a/NUS`.<br>
-      Expected: The addition succeeds. Amber text without a border distinguishes the warning. The first
-      line is `Warning: Contact added. Use undo if unintended.` The next line is
-      `Shared details: #2 Charlie (email); #4 Zara (phone)`. The full list is Amy, Charlie, Morgan, Zara.
-      Morgan's missing fields produce no match. Narrow the window to about 640 pixels and verify
-      the concise warning remains readable without needing to expand the 100-pixel result area.
+      Expected: The addition succeeds. The normal `New person added: ...` message remains white and
+      includes Amy's saved details. An appended white line in the same feedback box reads
+      `Warning - duplicate details detected: #2 Charlie (email); #4 Zara (phone)`.
+      There is no coloured border. The full list is Amy, Charlie, Morgan, Zara. Morgan's missing fields
+      produce no match. Narrow the window to about 640 pixels: the original text area remains
+      scrollable within its unchanged 100-pixel height. Both lines can be selected and copied together.
    1. Run `undo`, then `redo`.<br>
       Expected: One undo removes Amy and one redo restores Amy. Their feedback describes the addition
-      without repeating the warning or amber styling, and Zara, Charlie and Morgan retain their original details.
+      without repeating the warning, and Zara, Charlie and Morgan retain their original details.
    1. Close and reopen the disposable copy, then run `find Amy`.<br>
       Expected: Amy was saved with the entered phone and uppercase email. Sorting and filtering
       return to their usual restart defaults.
@@ -1583,11 +1589,12 @@ testers are expected to do more *exploratory* testing.
       Expected: The addition succeeds with a warning. Zara appears once with the reason
       `phone and email`; Amy is also listed for sharing the phone number.
    1. While a warning is showing, run `sort name sideways`, then `list`.<br>
-      Expected: The invalid command shows the usual error feedback and input styling, without the amber
-      result styling. `list` restores the ordinary success state. Neither command changes saved contacts.
+      Expected: The invalid command replaces the warning with the usual error feedback and input
+      styling. `list` restores ordinary success feedback. Neither command changes saved contacts.
    1. Repeat a shared-details addition with long names or many matching contacts in the disposable copy.<br>
-      Expected: The new warning starts at the top with its success/undo summary. All matching names,
-      displayed indices and reasons remain complete; vertical scrolling reveals any wrapped overflow.
+      Expected: The complete ordinary success message and appended warning remain white in the
+      original text area, starting at the top. All names, displayed indices and reasons remain
+      complete; the existing vertical scrollbar reveals any wrapped overflow.
 
 ### Adding contacts with prefix-like address text
 

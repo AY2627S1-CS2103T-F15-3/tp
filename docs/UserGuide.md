@@ -124,12 +124,12 @@ contact, then `edit 1 a/NUS`.
 * Before opening an older data file, back it up and give any contacts whose names differ only in case distinct names. Such files fail duplicate validation; contacts are not automatically merged, renamed or deleted. The existing startup error handling opens an empty list after a loading error. Close the app without making changes and fix a copy of the backed-up file before retrying, as subsequent successful data-changing commands could overwrite the data file.
 * A successful `add` can be reverted with [`undo`](#undoing-a-change-undo).
 * Phone and email are independently optional. Omit `p/` or `e/` when unknown; do not supply an empty prefix in `add`. Non-empty values must satisfy the existing phone and email format rules. A contact without either receives the [automatic incomplete reminder](#automatic-incomplete-reminders).
-* Adding a different name with a shared phone number or email succeeds with a warning at the top of
-  the result display, highlighted with amber text. The short message confirms the contact
-  was added and suggests `undo` if unintended. It lists every matching existing contact by name and
-  current displayed index, for example `#2 Alice (phone); #3 Bob (email)` or `#2 Alice (phone and email)`.
-  Full addresses and other unrelated details are not repeated. Long names or many matches wrap and
-  can be read by scrolling. The next ordinary result or error clears the warning highlighting.
+* Adding a different name with a shared phone number or email succeeds with the usual white
+  `New person added: ...` feedback and an additional warning line in the same feedback box, also in white.
+  For example: `Warning - duplicate details detected: #2 Alice (phone); #3 Bob (email)`.
+  Every matching contact is listed by current displayed index and name, with `phone`, `email` or
+  `phone and email` identifying the shared fields. The original feedback box supports wrapping, text
+  selection and scrolling for the complete message. The next command replaces the previous feedback.
 * Shared-detail warnings compare non-empty phone numbers exactly and email addresses ignoring case.
   Missing phone/email values do not count as shared details. These warnings do not change the
   duplicate-name rule or alter the stored capitalization of email addresses.
