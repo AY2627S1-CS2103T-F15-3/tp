@@ -12,6 +12,8 @@ import static seedu.address.logic.parser.CliSyntax.PREFIX_TAG;
 
 import java.time.Clock;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 import seedu.address.commons.util.ToStringBuilder;
@@ -58,6 +60,9 @@ public class AddCommand extends Command {
             + "\nExisting contact is hidden by the current filter (saved index %1$d):\n%2$s"
             + "\nRun " + ListCommand.COMMAND_WORD + ", then " + SortCommand.COMMAND_WORD
             + " reset to view this contact at index %1$d.";
+    public static final String MESSAGE_SHARED_DETAILS_WARNING =
+            "Warning - duplicate details detected: %1$s";
+    public static final String MESSAGE_SHARED_DETAILS_MATCH = "#%1$d %2$s (%3$s)";
 
     private final Person toAdd;
     private final Clock clock;
@@ -91,8 +96,39 @@ public class AddCommand extends Command {
         Person addedPerson = toAdd.withLastUpdated(LocalDate.now(clock));
         model.addPerson(addedPerson);
         String message = String.format(MESSAGE_SUCCESS, Messages.format(addedPerson));
+        CommandResult result = getAddResult(model, addedPerson, message);
         model.commitAddressBook(previousState, message);
-        return new CommandResult(message);
+        return result;
+    }
+
+    /**
+     * Warns about shared non-empty phone/email details using indices from the refreshed display.
+     * Phone numbers match exactly; email matching ignores case for this advisory warning.
+     */
+    private CommandResult getAddResult(Model model, Person addedPerson, String successMessage) {
+        List<String> matches = new ArrayList<>();
+        List<Person> displayedPersons = model.getFilteredPersonList();
+        for (int i = 0; i < displayedPersons.size(); i++) {
+            Person existingPerson = displayedPersons.get(i);
+            if (addedPerson.isSamePerson(existingPerson)) {
+                continue;
+            }
+            List<String> sharedFields = new ArrayList<>();
+            if (!addedPerson.getPhone().value.isEmpty() && addedPerson.getPhone().equals(existingPerson.getPhone())) {
+                sharedFields.add("phone");
+            }
+            if (!addedPerson.getEmail().value.isEmpty()
+                    && addedPerson.getEmail().value.equalsIgnoreCase(existingPerson.getEmail().value)) {
+                sharedFields.add("email");
+            }
+            if (!sharedFields.isEmpty()) {
+                matches.add(String.format(MESSAGE_SHARED_DETAILS_MATCH,
+                        i + 1, existingPerson.getName().fullName, String.join(" and ", sharedFields)));
+            }
+        }
+        return matches.isEmpty() ? new CommandResult(successMessage)
+                : CommandResult.warning(successMessage + "\n"
+                        + String.format(MESSAGE_SHARED_DETAILS_WARNING, String.join("; ", matches)));
     }
 
     /**
