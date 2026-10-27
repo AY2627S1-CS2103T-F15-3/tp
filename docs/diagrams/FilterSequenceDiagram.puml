@@ -52,5 +52,4 @@ deactivate CommandResult
 
 [<-- Command
 deactivate Command
-
 @enduml

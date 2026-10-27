@@ -36,6 +36,26 @@ public class EditCommandTest {
     private Model model = new ModelManager(getTypicalAddressBook(), new UserPrefs());
 
     @Test
+    public void execute_replaceTags_reportsActualChanges() throws Exception {
+        Person original = model.getFilteredPersonList().get(0);
+        Person tagged = new PersonBuilder(original).withTags("Friend", "Classmate").build();
+        model.setPerson(original, tagged);
+        String feedback = new EditCommand(INDEX_FIRST_PERSON, new EditPersonDescriptorBuilder()
+                .withTags("Project").build()).execute(model).getFeedbackToUser();
+        assertTrue(feedback.endsWith("\nTags replaced. Removed: Classmate, Friend. Added: Project."));
+        assertEquals(new PersonBuilder(tagged).withTags("Project").build(), model.getFilteredPersonList().get(0));
+
+        feedback = new EditCommand(INDEX_FIRST_PERSON, new EditPersonDescriptorBuilder()
+                .withTags("Project", "Friend").build()).execute(model).getFeedbackToUser();
+        assertTrue(feedback.endsWith("\nTags replaced. Removed: None. Added: Friend."));
+
+        feedback = new EditCommand(INDEX_FIRST_PERSON, new EditPersonDescriptorBuilder()
+                .withTags().build()).execute(model).getFeedbackToUser();
+        assertTrue(feedback.endsWith("\nTags replaced. Removed: Friend, Project. Added: None."));
+        assertTrue(model.getFilteredPersonList().get(0).getTags().isEmpty());
+    }
+
+    @Test
     public void execute_caseOnlyDuplicateName_failure() {
         String otherName = model.getFilteredPersonList().get(INDEX_SECOND_PERSON.getZeroBased())
                 .getName().fullName.toUpperCase(java.util.Locale.ROOT);
@@ -59,7 +79,8 @@ public class EditCommandTest {
         EditPersonDescriptor descriptor = new EditPersonDescriptorBuilder(editedPerson).build();
         EditCommand editCommand = new EditCommand(INDEX_FIRST_PERSON, descriptor);
 
-        String expectedMessage = String.format(EditCommand.MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(editedPerson));
+        String expectedMessage = String.format(EditCommand.MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(editedPerson))
+                + "\nTags replaced. Removed: friends. Added: None.";
 
         Model expectedModel = new ModelManager(new AddressBook(model.getAddressBook()), new UserPrefs());
         expectedModel.setPerson(model.getFilteredPersonList().get(0), editedPerson);
@@ -80,7 +101,8 @@ public class EditCommandTest {
                 .withPhone(VALID_PHONE_BOB).withTags(VALID_TAG_HUSBAND).build();
         EditCommand editCommand = new EditCommand(indexLastPerson, descriptor);
 
-        String expectedMessage = String.format(EditCommand.MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(editedPerson));
+        String expectedMessage = String.format(EditCommand.MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(editedPerson))
+                + "\nTags replaced. Removed: None. Added: husband.";
 
         Model expectedModel = new ModelManager(new AddressBook(model.getAddressBook()), new UserPrefs());
         expectedModel.setPerson(lastPerson, editedPerson);
@@ -300,7 +322,8 @@ public class EditCommandTest {
         Person firstPerson = model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased());
         EditCommand editCommand = new EditCommand(INDEX_FIRST_PERSON,
                 new EditPersonDescriptorBuilder(firstPerson).build());
-        String expectedMessage = String.format(EditCommand.MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(firstPerson));
+        String expectedMessage = String.format(EditCommand.MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(firstPerson))
+                + "\nTags replaced. Removed: None. Added: None.";
 
         // The existing success message is preserved even though nothing changed.
         assertEquals(expectedMessage, editCommand.execute(model).getFeedbackToUser());

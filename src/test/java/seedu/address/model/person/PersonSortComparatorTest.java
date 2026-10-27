@@ -7,9 +7,11 @@ import static seedu.address.model.person.PersonSortComparator.SortDirection.ASC;
 import static seedu.address.model.person.PersonSortComparator.SortDirection.DESC;
 import static seedu.address.model.person.PersonSortComparator.SortField.MAJOR;
 import static seedu.address.model.person.PersonSortComparator.SortField.NAME;
+import static seedu.address.model.person.PersonSortComparator.SortField.UPDATED;
 import static seedu.address.model.person.PersonSortComparator.SortField.YEAR;
 import static seedu.address.testutil.Assert.assertThrows;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -86,6 +88,63 @@ public class PersonSortComparatorTest {
                 }
             }
         }
+    }
+
+    @Test
+    public void compare_updateDates_usesChronologicalOrderAndAscendingNameTies() {
+        Person olderAlice = new PersonBuilder(alice).withLastUpdated(LocalDate.of(2024, 12, 31)).build();
+        Person olderBob = new PersonBuilder(bob).withLastUpdated(LocalDate.of(2024, 12, 31)).build();
+        Person newerCharlie = new PersonBuilder(charlie).withLastUpdated(LocalDate.of(2025, 1, 1)).build();
+        assertEquals(List.of(olderAlice, olderBob, newerCharlie),
+                sorted(UPDATED, ASC, olderBob, newerCharlie, olderAlice));
+        assertEquals(List.of(newerCharlie, olderAlice, olderBob),
+                sorted(UPDATED, DESC, olderBob, olderAlice, newerCharlie));
+    }
+
+    @Test
+    public void compare_updateDates_keepsUnknownLastInBothDirectionsWithAscendingNameTies() {
+        Person older = new PersonBuilder(alice).withLastUpdated(LocalDate.of(2020, 1, 1)).build();
+        Person newer = new PersonBuilder(bob).withLastUpdated(LocalDate.of(2025, 1, 1)).build();
+        Person unknownAlice = new PersonBuilder(alice).withLastUpdated(null).build();
+        Person unknownCharlie = new PersonBuilder(charlie).withLastUpdated(null).build();
+        assertEquals(List.of(older, newer, unknownAlice, unknownCharlie),
+                sorted(UPDATED, ASC, unknownCharlie, newer, unknownAlice, older));
+        assertEquals(List.of(newer, older, unknownAlice, unknownCharlie),
+                sorted(UPDATED, DESC, unknownCharlie, older, unknownAlice, newer));
+        for (var direction : PersonSortComparator.SortDirection.values()) {
+            var comparator = PersonSortComparator.byUpdateDate(direction);
+            assertTrue(comparator.compare(older, unknownAlice) < 0);
+            assertTrue(comparator.compare(unknownAlice, older) > 0);
+            assertEquals(0, comparator.compare(unknownAlice, unknownCharlie));
+        }
+    }
+
+    @Test
+    public void byUpdateDate_ordersCalendarDatesInBothDirections() {
+        Person oldest = new PersonBuilder(bob).withLastUpdated(LocalDate.of(2020, 12, 31)).build();
+        Person leapDay = new PersonBuilder(alice).withLastUpdated(LocalDate.of(2024, 2, 29)).build();
+        Person newest = new PersonBuilder(charlie).withLastUpdated(LocalDate.of(2025, 1, 1)).build();
+        List<Person> contacts = new ArrayList<>(List.of(newest, oldest, leapDay));
+        contacts.sort(PersonSortComparator.byUpdateDate(ASC));
+        assertEquals(List.of(oldest, leapDay, newest), contacts);
+        contacts.sort(PersonSortComparator.byUpdateDate(DESC));
+        assertEquals(List.of(newest, leapDay, oldest), contacts);
+    }
+
+    @Test
+    public void byUpdateDate_equalDatesAndExtremes_compareConsistently() {
+        Person earliest = new PersonBuilder(alice).withLastUpdated(LocalDate.MIN).build();
+        Person latest = new PersonBuilder(bob).withLastUpdated(LocalDate.MAX).build();
+        Person sameDate = new PersonBuilder(charlie).withLastUpdated(LocalDate.MIN).build();
+        for (var direction : PersonSortComparator.SortDirection.values()) {
+            var comparator = PersonSortComparator.byUpdateDate(direction);
+            assertEquals(0, comparator.compare(earliest, sameDate));
+            assertEquals(-Integer.signum(comparator.compare(earliest, latest)),
+                    Integer.signum(comparator.compare(latest, earliest)));
+        }
+        assertTrue(PersonSortComparator.byUpdateDate(ASC).compare(earliest, latest) < 0);
+        assertTrue(PersonSortComparator.byUpdateDate(DESC).compare(earliest, latest) > 0);
+        assertThrows(NullPointerException.class, () -> PersonSortComparator.byUpdateDate(null));
     }
 
     @Test

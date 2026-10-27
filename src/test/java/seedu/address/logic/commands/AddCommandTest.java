@@ -38,7 +38,9 @@ public class AddCommandTest {
         addressBook.addPerson(original);
         Model model = new ModelManager(addressBook, new UserPrefs());
         Person duplicate = new PersonBuilder(original).withName("john doe").withPhone("98765432").build();
-        assertThrows(CommandException.class, AddCommand.MESSAGE_DUPLICATE_PERSON, () ->
+        String expectedMessage = String.format(AddCommand.MESSAGE_DUPLICATE_PERSON_DISPLAYED,
+                1, Messages.format(original));
+        assertThrows(CommandException.class, expectedMessage, () ->
                 new AddCommand(duplicate).execute(model));
         assertEquals(List.of(original), model.getAddressBook().getPersonList());
         assertFalse(model.canUndoAddressBook());
@@ -65,7 +67,8 @@ public class AddCommandTest {
     public void execute_personAcceptedByModel_commitsStateBeforeAdd() throws Exception {
         ModelStubAcceptingPersonAdded modelStub = new ModelStubAcceptingPersonAdded();
         Person firstPerson = new PersonBuilder().withName("Alice").build();
-        Person secondPerson = new PersonBuilder().withName("Bob").build();
+        Person secondPerson = new PersonBuilder().withName("Bob").withPhone("99998888")
+                .withEmail("bob@example.com").build();
 
         String firstMessage = new AddCommand(firstPerson).execute(modelStub).getFeedbackToUser();
         String secondMessage = new AddCommand(secondPerson).execute(modelStub).getFeedbackToUser();
@@ -157,7 +160,9 @@ public class AddCommandTest {
         AddCommand addCommand = new AddCommand(validPerson);
         ModelStub modelStub = new ModelStubWithPerson(validPerson);
 
-        assertThrows(CommandException.class, AddCommand.MESSAGE_DUPLICATE_PERSON, () -> addCommand.execute(modelStub));
+        String expectedMessage = String.format(AddCommand.MESSAGE_DUPLICATE_PERSON_DISPLAYED,
+                1, Messages.format(validPerson));
+        assertThrows(CommandException.class, expectedMessage, () -> addCommand.execute(modelStub));
     }
 
     @Test
@@ -313,9 +318,15 @@ public class AddCommandTest {
         }
 
         @Override
-        public boolean hasPerson(Person person) {
-            requireNonNull(person);
-            return this.person.isSamePerson(person);
+        public ReadOnlyAddressBook getAddressBook() {
+            AddressBook addressBook = new AddressBook();
+            addressBook.addPerson(person);
+            return addressBook;
+        }
+
+        @Override
+        public ObservableList<Person> getFilteredPersonList() {
+            return getAddressBook().getPersonList();
         }
     }
 
@@ -328,12 +339,6 @@ public class AddCommandTest {
         final ArrayList<String> committedDescriptions = new ArrayList<>();
 
         @Override
-        public boolean hasPerson(Person person) {
-            requireNonNull(person);
-            return personsAdded.stream().anyMatch(person::isSamePerson);
-        }
-
-        @Override
         public void addPerson(Person person) {
             requireNonNull(person);
             personsAdded.add(person);
@@ -344,6 +349,11 @@ public class AddCommandTest {
             AddressBook addressBook = new AddressBook();
             personsAdded.forEach(addressBook::addPerson);
             return addressBook;
+        }
+
+        @Override
+        public ObservableList<Person> getFilteredPersonList() {
+            return getAddressBook().getPersonList();
         }
 
         @Override

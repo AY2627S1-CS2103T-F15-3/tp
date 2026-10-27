@@ -67,6 +67,21 @@ public class EmailTest {
     }
 
     @Test
+    public void consecutiveSpecialCharacters_rejectedWithConciseExplanation() {
+        for (char first : "+_.-".toCharArray()) {
+            for (char second : "+_.-".toCharArray()) {
+                assertFalse(Email.isValidEmail("alice" + first + second + "cs2103t@example.com"));
+            }
+        }
+        assertTrue(Email.isValidEmail("alice+cs2103t@example.com"));
+        assertThrows(IllegalArgumentException.class, Email.MESSAGE_CONSTRAINTS, () -> {
+            new Email("alice++cs2103t@example.com");
+        });
+        assertTrue(Email.MESSAGE_CONSTRAINTS.contains("cannot be consecutive"));
+        assertTrue(Email.MESSAGE_CONSTRAINTS.lines().allMatch(line -> line.length() <= 75));
+    }
+
+    @Test
     public void equals() {
         Email email = new Email("valid@email");
 

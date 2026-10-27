@@ -122,6 +122,7 @@ public class ViewStatusTest {
                 case NAME -> "Name";
                 case MAJOR -> "Major";
                 case YEAR -> "Class year";
+                case UPDATED -> "Last updated";
             };
             new SortCommand(field, ASC).execute(model);
             assertTrue(status().endsWith("Sort: " + label + " ascending"));

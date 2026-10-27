@@ -15,6 +15,7 @@ import static seedu.address.testutil.TypicalPersons.getTypicalAddressBook;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import seedu.address.logic.Messages;
 import seedu.address.model.AddressBook;
 import seedu.address.model.Model;
 import seedu.address.model.ModelManager;
@@ -72,9 +73,10 @@ public class RedoCommandTest {
         Person original = model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased());
         Person editedPerson = new PersonBuilder(original).withPhone(VALID_PHONE_BOB).withMajor("Computer Science")
                 .withGraduationYear("2027").withTags("teammate", "cca").build();
-        String editMessage = new EditCommand(INDEX_FIRST_PERSON, new EditPersonDescriptorBuilder()
+        new EditCommand(INDEX_FIRST_PERSON, new EditPersonDescriptorBuilder()
                 .withPhone(VALID_PHONE_BOB).withMajor("Computer Science").withGraduationYear("2027")
-                .withTags("teammate", "cca").build()).execute(model).getFeedbackToUser();
+                .withTags("teammate", "cca").build()).execute(model);
+        String editMessage = String.format(EditCommand.MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(editedPerson));
         AddressBook stateAfterEdit = new AddressBook(model.getAddressBook());
         model.undoAddressBook();
 
@@ -137,7 +139,8 @@ public class RedoCommandTest {
         model.undoAddressBook();
 
         Person existingPerson = model.getAddressBook().getPersonList().get(0);
-        assertCommandFailure(new AddCommand(existingPerson), model, AddCommand.MESSAGE_DUPLICATE_PERSON);
+        assertCommandFailure(new AddCommand(existingPerson), model,
+                String.format(AddCommand.MESSAGE_DUPLICATE_PERSON_DISPLAYED, 1, Messages.format(existingPerson)));
 
         assertCommandSuccess(new RedoCommand(), model, redoMessage(addMessage),
                 new ModelManager(stateAfterAdd, new UserPrefs()));

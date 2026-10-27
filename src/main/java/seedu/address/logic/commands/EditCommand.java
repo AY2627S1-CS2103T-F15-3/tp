@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import seedu.address.commons.core.index.Index;
 import seedu.address.commons.util.CollectionUtil;
@@ -62,6 +63,7 @@ public class EditCommand extends Command {
     public static final String MESSAGE_NOT_EDITED = "At least one field to edit must be provided.";
     public static final String MESSAGE_DUPLICATE_PERSON =
             "This person already exists in the address book (names are compared ignoring case).";
+    public static final String MESSAGE_SHARED_DETAILS_WARNING = SharedContactDetailsWarning.MESSAGE_WARNING;
 
     private final Index index;
     private final EditPersonDescriptor editPersonDescriptor;
@@ -109,7 +111,33 @@ public class EditCommand extends Command {
         String message = String.format(MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(editedPerson));
         // An edit that leaves the person unchanged is not recorded by the model.
         model.commitAddressBook(previousState, message);
-        return new CommandResult(message);
+        String feedback = message;
+        if (editPersonDescriptor.getTags().isPresent()) {
+            feedback += "\nTags replaced. Removed: "
+                    + formatTagDifference(personToEdit.getTags(), editedPerson.getTags())
+                    + ". Added: " + formatTagDifference(editedPerson.getTags(), personToEdit.getTags()) + ".";
+        }
+        return getEditResult(model, personToEdit, editedPerson, feedback);
+    }
+
+    /**
+     * Warns only when a changed contact method matches another contact after refreshing the display.
+     * Changing only an email's capitalization does not introduce a new shared value.
+     */
+    private CommandResult getEditResult(Model model, Person originalPerson, Person editedPerson,
+            String successMessage) {
+        boolean phoneChanged = !originalPerson.getPhone().equals(editedPerson.getPhone());
+        boolean emailChanged = !originalPerson.getEmail().value.equalsIgnoreCase(editedPerson.getEmail().value);
+        String matches = SharedContactDetailsWarning.describeMatches(
+                editedPerson, model.getFilteredPersonList(), phoneChanged, emailChanged);
+        return SharedContactDetailsWarning.appendTo(successMessage, matches);
+    }
+
+    /** Returns sorted tag names present only in the first set, or "None". */
+    private static String formatTagDifference(Set<Tag> tags, Set<Tag> otherTags) {
+        String names = tags.stream().filter(tag -> !otherTags.contains(tag))
+                .map(tag -> tag.tagName).sorted().collect(Collectors.joining(", "));
+        return names.isEmpty() ? "None" : names;
     }
 
     /**

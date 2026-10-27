@@ -2,61 +2,90 @@
 
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Label?>
-<?import javafx.scene.image.Image?>
-<?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.ColumnConstraints?>
-<?import javafx.scene.layout.FlowPane?>
 <?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.VBox?>
+<?import javafx.scene.shape.SVGPath?>
+<?import seedu.address.ui.PersonCardPane?>
+<?import seedu.address.ui.TagPane?>
 
-<HBox id="cardPane" fx:id="cardPane" alignment="BOTTOM_LEFT"
-      xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1">
-  <GridPane HBox.hgrow="ALWAYS">
+<PersonCardPane id="cardPane" fx:id="cardPane" alignment="TOP_LEFT" minWidth="0" spacing="7"
+    xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1">
+  <HBox spacing="0.5" alignment="TOP_LEFT" styleClass="card-header">
+    <Label fx:id="id" styleClass="cell_big_label">
+      <minWidth>
+        <!-- Ensures that the label text is never truncated -->
+        <Region fx:constant="USE_PREF_SIZE" />
+      </minWidth>
+    </Label>
+    <Label fx:id="name" text="\$first" styleClass="cell_big_label" wrapText="false" minWidth="0" minHeight="-Infinity"
+        HBox.hgrow="ALWAYS" />
+    <Label fx:id="favouriteIcon" text="&#9829;" styleClass="favourite-icon" alignment="CENTER"
+        minWidth="24" prefWidth="24" maxWidth="24" minHeight="24" prefHeight="24" maxHeight="24"
+        visible="false" managed="false" accessibleText="Favourite contact">
+      <HBox.margin>
+        <Insets left="6" />
+      </HBox.margin>
+    </Label>
+    <Region HBox.hgrow="ALWAYS" />
+    <Label fx:id="noteIcon" styleClass="note-icon" contentDisplay="GRAPHIC_ONLY"
+        accessibleText="This contact has a note" minWidth="30" minHeight="30" visible="false" managed="false">
+      <HBox.margin>
+        <Insets top="0" right="0" bottom="0" left="8" />
+      </HBox.margin>
+      <graphic>
+        <SVGPath content="M 2 1 L 13 1 L 19 7 L 19 23 L 2 23 Z M 13 1 L 13 7 L 19 7 M 6 11 L 15 11 M 6 15 L 15 15 M 6 19 L 12 19"
+            styleClass="note-glyph" />
+      </graphic>
+    </Label>
+  </HBox>
+  <TagPane fx:id="tags" minWidth="0" minHeight="-Infinity" />
+  <GridPane fx:id="details" minWidth="0" minHeight="-Infinity" hgap="24" vgap="8">
     <columnConstraints>
-      <ColumnConstraints hgrow="SOMETIMES" minWidth="10" prefWidth="150" />
+      <ColumnConstraints percentWidth="50" minWidth="0" />
+      <ColumnConstraints percentWidth="50" minWidth="0" />
     </columnConstraints>
-    <VBox alignment="CENTER_LEFT" minHeight="105" GridPane.columnIndex="0">
-      <padding>
-        <Insets top="5" right="5" bottom="5" left="15" />
-      </padding>
-      <HBox spacing="0.5" alignment="CENTER_LEFT">
-        <Label fx:id="id" styleClass="cell_big_label">
-          <minWidth>
-            <!-- Ensures that the label text is never truncated -->
-            <Region fx:constant="USE_PREF_SIZE" />
-          </minWidth>
-        </Label>
-        <Label fx:id="name" text="\$first" styleClass="cell_big_label" />
-        <Label fx:id="favouriteIcon" text="&#9829;" styleClass="favourite-icon" alignment="CENTER"
-               minWidth="24" prefWidth="24" maxWidth="24" minHeight="24" prefHeight="24" maxHeight="24"
-               visible="false" managed="false" accessibleText="Favourite contact">
-          <HBox.margin>
-            <Insets left="6" />
-          </HBox.margin>
-        </Label>
+    <VBox fx:id="contactDetails" minWidth="0" spacing="5" GridPane.columnIndex="0">
+      <HBox spacing="8" alignment="TOP_LEFT">
+        <Label fx:id="phoneCaption" text="Phone:" styleClass="field-label"
+            minWidth="84" prefWidth="84" />
+        <Label fx:id="phone" styleClass="cell_small_label" text="\$phone"
+            wrapText="false" minWidth="0" minHeight="-Infinity" maxWidth="Infinity" HBox.hgrow="ALWAYS" />
       </HBox>
-      <FlowPane fx:id="tags" />
-      <Label fx:id="phone" styleClass="cell_small_label" text="\$phone" />
-      <Label fx:id="address" styleClass="cell_small_label" text="\$address" />
-      <Label fx:id="email" styleClass="cell_small_label" text="\$email" />
-      <Label fx:id="major" styleClass="cell_small_label" text="\$major" />
-      <Label fx:id="graduationYear" styleClass="cell_small_label" text="\$graduationYear" />
-      <Label fx:id="lastUpdated" styleClass="cell_small_label" text="\$lastUpdated" wrapText="true" />
+      <HBox spacing="8" alignment="TOP_LEFT">
+        <Label fx:id="addressCaption" text="Address:" styleClass="field-label"
+            minWidth="84" prefWidth="84" />
+        <Label fx:id="address" styleClass="cell_small_label" text="\$address"
+            wrapText="false" minWidth="0" minHeight="-Infinity" maxWidth="Infinity" HBox.hgrow="ALWAYS" />
+      </HBox>
+      <HBox spacing="8" alignment="TOP_LEFT">
+        <Label fx:id="emailCaption" text="Email:" styleClass="field-label"
+            minWidth="84" prefWidth="84" />
+        <Label fx:id="email" styleClass="cell_small_label" text="\$email"
+            wrapText="false" minWidth="0" minHeight="-Infinity" maxWidth="Infinity" HBox.hgrow="ALWAYS" />
+      </HBox>
+    </VBox>
+    <VBox fx:id="academicDetails" minWidth="0" spacing="5" GridPane.columnIndex="1">
+      <HBox spacing="8" alignment="TOP_LEFT">
+        <Label fx:id="majorCaption" text="Major:" styleClass="field-label"
+            minWidth="84" prefWidth="84" />
+        <Label fx:id="major" styleClass="cell_small_label" text="\$major"
+            wrapText="false" minWidth="0" minHeight="-Infinity" maxWidth="Infinity" HBox.hgrow="ALWAYS" />
+      </HBox>
+      <HBox spacing="8" alignment="TOP_LEFT">
+        <Label fx:id="graduationYearCaption" text="Class year:" styleClass="field-label"
+            minWidth="84" prefWidth="84" />
+        <Label fx:id="graduationYear" styleClass="cell_small_label" text="\$graduationYear"
+            wrapText="false" minWidth="0" minHeight="-Infinity" maxWidth="Infinity" HBox.hgrow="ALWAYS" />
+      </HBox>
+      <HBox spacing="8" alignment="TOP_LEFT">
+        <Label fx:id="lastUpdatedCaption" text="Last updated:" styleClass="field-label"
+            minWidth="84" prefWidth="84" />
+        <Label fx:id="lastUpdated" styleClass="cell_small_label" text="\$lastUpdated"
+            wrapText="false" minWidth="0" minHeight="-Infinity" maxWidth="Infinity" HBox.hgrow="ALWAYS" />
+      </HBox>
     </VBox>
   </GridPane>
-  <Label fx:id="noteIcon" styleClass="note-icon" contentDisplay="GRAPHIC_ONLY"
-         accessibleText="This contact has a note" minWidth="30" minHeight="30" visible="false" managed="false">
-    <HBox.margin>
-      <Insets top="5" right="10" bottom="8" left="5" />
-    </HBox.margin>
-    <graphic>
-      <ImageView fitWidth="24" fitHeight="24" preserveRatio="true" smooth="true">
-        <image>
-          <Image url="@/images/noteicon.png" />
-        </image>
-      </ImageView>
-    </graphic>
-  </Label>
-</HBox>
+</PersonCardPane>
