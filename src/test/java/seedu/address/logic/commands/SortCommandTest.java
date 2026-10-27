@@ -10,6 +10,7 @@ import static seedu.address.model.person.PersonSortComparator.SortField.NAME;
 import static seedu.address.model.person.PersonSortComparator.SortField.YEAR;
 import static seedu.address.testutil.Assert.assertThrows;
 
+import java.util.HashSet;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
@@ -17,6 +18,8 @@ import org.junit.jupiter.api.Test;
 import seedu.address.model.AddressBook;
 import seedu.address.model.ModelManager;
 import seedu.address.model.person.Person;
+import seedu.address.model.person.PersonSortComparator.SortDirection;
+import seedu.address.model.person.PersonSortComparator.SortField;
 import seedu.address.testutil.PersonBuilder;
 
 public class SortCommandTest {
@@ -88,6 +91,18 @@ public class SortCommandTest {
         assertFalse(command.equals(new SortCommand(MAJOR, ASC)));
         assertFalse(command.equals(null));
         assertFalse(command.equals(new ListCommand()));
+    }
+
+    @Test
+    public void hashCode_equalValues_supportHashSetLookup() {
+        for (var field : SortField.values()) {
+            for (var direction : SortDirection.values()) {
+                SortCommand command = new SortCommand(field, direction);
+                SortCommand equalCommand = new SortCommand(field, direction);
+                assertEquals(command.hashCode(), equalCommand.hashCode());
+                assertTrue(new HashSet<>(List.of(command)).contains(equalCommand));
+            }
+        }
     }
 
     @Test

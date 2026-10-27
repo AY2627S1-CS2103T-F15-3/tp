@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.HashSet;
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -81,6 +83,23 @@ public class ContactFilterPredicateTest {
         assertFalse(first.equals(predicate("Computer Science", "2028")));
         assertFalse(first.equals(null));
         assertFalse(first.equals("Computer Science"));
+    }
+
+    @Test
+    public void hashCode_equalValues_supportHashSetLookup() {
+        for (int criteria = 1; criteria < 8; criteria++) {
+            Optional<Major> major = (criteria & 1) == 0 ? Optional.empty() : Optional.of(new Major("Computing"));
+            Optional<GraduationYear> year = (criteria & 2) == 0
+                    ? Optional.empty() : Optional.of(new GraduationYear("2027"));
+            Optional<Tag> tag = (criteria & 4) == 0 ? Optional.empty() : Optional.of(new Tag("Classmate"));
+            ContactFilterPredicate predicate = new ContactFilterPredicate(major, year, tag);
+            ContactFilterPredicate equalPredicate = new ContactFilterPredicate(
+                    major.map(value -> new Major(value.value)),
+                    year.map(value -> new GraduationYear(value.value)),
+                    tag.map(value -> new Tag(value.tagName)));
+            assertEquals(predicate.hashCode(), equalPredicate.hashCode());
+            assertTrue(new HashSet<>(List.of(predicate)).contains(equalPredicate));
+        }
     }
 
     @Test
