@@ -3,14 +3,18 @@
 skinparam ArrowFontStyle plain
 start
 :User presses UP in the command box;
-
-if () then ([Alt pressed at the same time\n(macOS: Option)])
+:Save draft if leaving the end of history;
+if () then ([Alt/Option pressed])
+  if () then ([no active prefix search])
+    :Remember input as the initial prefix;
+  else ([else])
+  endif
   :Look for an older command
-  starting with the text in the command box;
+matching the initial prefix;
 else ([else])
+  :End any prefix search;
   :Look for the previous command;
 endif
-
 if () then ([command found])
   :Show command;
 else ([else])

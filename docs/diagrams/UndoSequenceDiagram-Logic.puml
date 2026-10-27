@@ -14,49 +14,33 @@ participant ":Model" as Model MODEL_COLOR
 end box
 
 [-> LogicManager : execute("undo")
-activate LogicManager
 
 LogicManager -> AddressBookParser : parse "undo"
-activate AddressBookParser
 
 create UndoCommand
 AddressBookParser -> UndoCommand
-activate UndoCommand
 UndoCommand --> AddressBookParser
-deactivate UndoCommand
 
 AddressBookParser --> LogicManager
-deactivate AddressBookParser
 
 LogicManager -> UndoCommand : execute undo action
-activate UndoCommand
 
 UndoCommand -> Model : check if there is a change to undo
-activate Model
 Model --> UndoCommand : canUndo
-deactivate Model
 
 alt canUndo
     UndoCommand -> Model : get description of the change to undo
-    activate Model
     Model --> UndoCommand : description
-    deactivate Model
 
     UndoCommand -> Model : restore the previous contact data
-    activate Model
     Model --> UndoCommand
-    deactivate Model
 
     UndoCommand -> Model : show all contacts
-    activate Model
     Model --> UndoCommand
-    deactivate Model
 
     create CommandResult
     UndoCommand -> CommandResult : "Undid: " + description
-    activate CommandResult
     CommandResult --> UndoCommand
-    deactivate CommandResult
 
     UndoCommand --> LogicManager
     [<-- LogicManager
@@ -64,7 +48,5 @@ else else
     UndoCommand --> LogicManager : throw CommandException
     [<-- LogicManager
 end
-deactivate UndoCommand
-deactivate LogicManager
 
 @enduml

@@ -3,19 +3,23 @@
 skinparam ArrowFontStyle plain
 start
 :User presses DOWN in the command box;
-
-if () then ([Alt pressed at the same time\n(macOS: Option)])
+if () then ([Alt/Option pressed])
+  if () then ([search inactive or at draft])
+    :Keep existing text unchanged;
+    stop
+  else ([else])
+  endif
   :Look for a newer command
-  starting with the text in the command box;
+matching the initial prefix;
 else ([else])
+  :End any prefix search;
   :Look for the next command;
 endif
-
 if () then ([command found])
   :Show command;
 else ([else])
   if () then ([browsing past commands])
-    :Return to the text user was typing;
+    :Restore draft and end prefix search;
   else ([else])
     :Keep existing text unchanged;
   endif

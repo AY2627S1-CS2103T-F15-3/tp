@@ -3,81 +3,33 @@
 show members
 skinparam classAttributeIconSize 0
 skinparam classAttributeFontColor #FFFFFF
-skinparam genericDisplay old
-skinparam arrowThickness 1.1
 skinparam arrowColor MODEL_COLOR_T4
 skinparam classBackgroundColor MODEL_COLOR
 top to bottom direction
 
-interface "Parser<T>" as Parser <<interface>> LOGIC_COLOR {
-  +parse(userInput: String): T
-}
-class AddCommandParser LOGIC_COLOR {
-  +parse(args: String): AddCommand
-}
-class EditCommandParser LOGIC_COLOR {
-  +parse(args: String): EditCommand
-}
 class Person {
-  -phone: Phone
-  -email: Email
-  +getPhone(): Phone
-  +getEmail(): Email
   +isIncomplete(): boolean
 }
 class Phone {
   {static} +EMPTY: Phone
   +value: String
-  {static} +isValidPhone(test: String): boolean
 }
 class Email {
   {static} +EMPTY: Email
   +value: String
-  {static} +isValidEmail(test: String): boolean
 }
-enum SystemTag <<enumeration>> {
-  UPDATE
+enum SystemTag {
   INCOMPLETE
-  +label: String
-  {static} +forPerson(person: Person, today: LocalDate): List<SystemTag>
-  {static} +isSystemLabel(name: String): boolean
 }
-class PersonCard UI_COLOR {
-  +person: Person
-  +refreshTags(): void
-}
-class JsonAdaptedPerson STORAGE_COLOR {
-  -phone: String
-  -email: String
-  +toModelType(): Person
-}
-
-AddCommandParser .up.|> Parser : T = AddCommand
-EditCommandParser .up.|> Parser : T = EditCommand
-AddCommandParser ..> Phone : omitted p/ uses EMPTY
-AddCommandParser ..> Email : omitted e/ uses EMPTY
-EditCommandParser ..> Phone : empty p/ uses EMPTY
-EditCommandParser ..> Email : empty e/ uses EMPTY
+class PersonCard UI_COLOR
 Person --> "1" Phone : phone
 Person --> "1" Email : email
-SystemTag ..> Person : evaluates isIncomplete()
+SystemTag ..> Person : evaluates completeness
 PersonCard --> "1" Person : person
 PersonCard ..> SystemTag : renders derived labels
-JsonAdaptedPerson ..> Person : creates
-JsonAdaptedPerson ..> Phone : loads / validates
-JsonAdaptedPerson ..> Email : loads / validates
 
 note bottom of Person
-  Incomplete means phone.value and email.value are both empty.
-  The value objects remain non-null; supplying either removes the reminder.
-end note
-note bottom of SystemTag
-  UPDATE and INCOMPLETE can coexist, once each.
-  Neither is stored in Person.tags or JSON as an ordinary tag.
-  Custom names remain stored; the UI adds a (custom) suffix.
-end note
-note bottom of JsonAdaptedPerson
-  Missing/null contact methods load as empty values.
-  Non-empty values retain their existing validation rules.
+  Incomplete means phone and email are both empty.
+  Shared EMPTY values remain non-null.
 end note
 @enduml

@@ -44,7 +44,7 @@ Refer to the guide [_Setting up and getting started_](SettingUp.md).
 
 ### Architecture
 
-<puml src="diagrams/ArchitectureDiagram.puml" width="280" />
+<puml src="diagrams/ArchitectureDiagram.puml" width="650" />
 
 The ***Architecture Diagram*** given above explains the high-level design of the App.
 
@@ -78,7 +78,7 @@ Each of the four main components (also shown in the diagram above),
 
 For example, the `Logic` component defines its API in `Logic.java` and implements it in `LogicManager.java`. Other components interact with a component through its interface rather than its concrete class, preventing them from coupling to that component's implementation, as illustrated in the following partial class diagram.
 
-<puml src="diagrams/ComponentManagers.puml" width="300" />
+<puml src="diagrams/ComponentManagers.puml" width="600" />
 
 The sections below give more details of each component.
 
@@ -109,17 +109,8 @@ Here's a (partial) class diagram of the `Logic` component:
 
 <puml src="diagrams/LogicClassDiagram.puml" width="550"/>
 
-The sequence diagram below illustrates a successful `execute("delete 1 3 5")` call within the `Logic`
-component, including displayed-index resolution and feedback formatting. Detailed validation and
-storage interactions are omitted.
-
-<puml src="diagrams/DeleteSequenceDiagram.puml" alt="Interactions Inside the Logic Component for the `delete 1 3 5` Command" />
-
-<box type="info" seamless>
-
-**Note:** The lifeline for `DeleteCommandParser` should end at the destroy marker (X), but due to a limitation of PlantUML, the lifeline continues till the end of diagram.
-</box>
-
+The [batch-delete interaction](#deleting-one-or-more-contacts) illustrates the command/model boundary
+without repeating the generic parsing path here.
 
 How the `Logic` component works:
 
@@ -167,7 +158,7 @@ The `Model` component,
 
 <box type="info" seamless>
 
-**Note:** The alternative, arguably more object-oriented, design below keeps a unique list of tags in the contact list model, and each `Person` references tags from that list. This lets UniMate maintain one `Tag` object per unique tag instead of each `Person` holding its own `Tag` objects.<br>
+**Unimplemented alternative:** The tag-sharing design below keeps a unique list of tags in the contact list model, and each `Person` references tags from that list. This lets UniMate maintain one `Tag` object per unique tag instead of each `Person` holding its own `Tag` objects.<br>
 
 <puml src="diagrams/BetterModelClassDiagram.puml" width="450" />
 </box>
@@ -253,6 +244,8 @@ fields, parser classes and history internals are omitted to keep the feature vie
 
 <puml src="diagrams/NotesClassDiagram.puml" alt="Classes supporting contact notes, persistence and the note indicator" />
 
+This partial view focuses on `Person` and its immutable note value; parsing, storage and indicators are explained below.
+
 `Person` stores an immutable `Notes` value. `Notes.EMPTY` represents an absent note, and existing constructors default to it. Supplied notes contain non-whitespace text on a single line, with no control characters and at most 500 Unicode code points. `Person#withNotes` returns a new contact while preserving all other fields. Notes participate in full equality and hashing, but not in contact identity. Existing `edit`, `tag` and `untag` replacement paths preserve them.
 
 The `Person` to `Notes` association has multiplicity `1`: even a contact without note text has a
@@ -276,13 +269,12 @@ arguments and note text. This includes non-breaking spaces (U+00A0), figure spac
 non-breaking spaces (U+202F), which `String.strip()` does not remove. Trimming occurs before the
 blank-text and length checks. Whitespace inside the note is preserved without normalization.
 
-The sequence below traces `note 1 Met during CS2103T` when at least one contact is displayed and
-saving succeeds. The same flow creates a first note or replaces an existing note. `m:Model` is the
-interface implemented by `ModelManager`; its displayed list includes both filtering and sorting.
-The diagram omits validation internals, the snapshot and result constructors, and JavaFX list-change
-notifications. Notes on the diagram identify the snapshot copy and the displayed contact selection.
+The sequence below focuses on the note command after parsing. It distinguishes unchanged notes
+from a replacement and one history commit. `m:Model` is implemented by `ModelManager`; its displayed
+list includes filtering and sorting. The numbered steps also explain parsing and saving, which are
+omitted from this interaction view.
 
-<puml src="diagrams/NoteSequenceDiagram.puml" alt="Successful note command from parsing through contact replacement, history commit and saving" />
+<puml src="diagrams/NoteSequenceDiagram.puml" alt="Unchanged-note return or contact replacement with one history commit" />
 
 1. `LogicManager` asks `AddressBookParser` to parse the command. `NoteCommandParser` validates the
    index and text, creates a `Notes` value, and returns a `NoteCommand`.
@@ -476,11 +468,14 @@ model's history (see [Recording contact data history](#recording-contact-data-hi
 
 #### Editing existing contacts: GUI and execution flow
 
-The following sequence follows `edit 1 m/Mathematics c/ t/Project` from the actual command box to JSON storage
-and back to GUI feedback. Index `1` refers to the currently displayed list, including `find`, `filter`,
+<puml src="diagrams/EditContactActivityDiagram.puml" alt="Validation, changed and unchanged edit outcomes" />
+
+The activity view summarises edit outcomes, assuming saving succeeds. The sequence then focuses on
+contact replacement and history for `edit 1 m/Mathematics c/ t/Project`; generic parsing, saving and UI
+refresh are described in the prose rather than repeated as lifelines. Index `1` refers to the currently displayed list, including `find`, `filter`,
 `listfav` and sorted views. `EditCommand` checks the index and duplicate name before changing the model.
 
-<puml src="diagrams/EditContactSequenceDiagram.puml" alt="Sequence diagram for editing a displayed contact and refreshing the GUI" />
+<puml src="diagrams/EditContactSequenceDiagram.puml" alt="Edit command interaction with the model for changed and unchanged contacts" />
 
 After replacing the person, `EditCommand` resets the filter to `PREDICATE_SHOW_ALL_PERSONS` and commits
 the previous state for undo (unchanged data does not create another history entry). Any current sorting
@@ -700,6 +695,11 @@ optional behavior of major and class year.
 
 ### Deleting one or more contacts
 
+The sequence focuses on safe batch deletion after parsing: resolve every target before mutation,
+then commit the batch once. Generic parsing, message formatting and saving are described below.
+
+<puml src="diagrams/DeleteSequenceDiagram.puml" alt="Capture original displayed targets, delete them and commit once" />
+
 `DeleteCommandParser` accepts `delete INDEX [INDEX]...`. It splits the arguments on whitespace and
 uses `ParserUtil#parseIndex` to validate every token as a positive integer. Empty input, zero, negative
 numbers, integer overflow, commas and ranges produce a usage error. `DeleteCommand` stores an
@@ -779,6 +779,8 @@ See [Contact card layout](#contact-card-layout) for layout and expansion behavio
 #### Class structure
 
 <puml src="diagrams/IncompleteReminderClassDiagram.puml" alt="Class structure of automatic incomplete reminders" />
+
+This partial view shows the completeness rule and its derived display. Parser and JSON behavior are explained separately below.
 
 `Person` references one non-null `Phone` and one non-null `Email`; an empty value represents an unspecified contact method. The parsers implement the generic `Parser` interface and map omitted add fields or cleared edit fields to the corresponding `EMPTY` constants. `SystemTag` depends on `Person#isIncomplete`, while `PersonCard` uses the derived result for rendering. The JSON adapter reconstructs contact values rather than storing system reminders. The `Phone` and `Email` associations are not compositions because immutable values, including `EMPTY`, can be shared between contacts.
 
@@ -861,6 +863,8 @@ legacy files and invalid date rejection.
 
 <puml src="diagrams/UpdateReminderClassDiagram.puml" alt="Class structure of automatic update reminders" />
 
+This partial view connects stored dates to the derived reminder; edit/date assignment is covered in the preceding date-tracking section.
+
 `EditCommand` extends `Command`, holds a copied `EditPersonDescriptor` and a `Clock`, and replaces a person through the `Model` interface. The private `createEditedPerson` method determines whether a basic field actually changed. `Person` stores the date; `SystemTag` queries that date through `needsUpdate`; `PersonCard` renders the resulting label. `JsonAdaptedPerson` converts between the model date and its JSON string. The dashed dependencies on `SystemTag` do not imply a stored collection of reminders in `Person`.
 
 #### Design overview and relevant classes
@@ -911,6 +915,8 @@ Tests cover calendar boundaries, profile edits and no-op edits, JSON round trips
 #### Class structure
 
 <puml src="diagrams/FavouriteContactsClassDiagram.puml" alt="Class structure of favourite contacts and list filtering" />
+
+This partial view shows favourite state and its consumers. The shared filter/sort pipeline remains as described under [Filtering](#filtering-contacts-by-academic-fields-and-tags).
 
 The four commands inherit from `Command` and use the `Model` interface. `FavCommand` and `UnfavCommand` replace immutable persons with a changed favourite flag; `ListFavCommand` and the existing `ListCommand` change only the view predicate. `ModelManager` implements `Model` and owns the filtered and sorted views: the sorted view uses the filtered view as its source, and displayed indices follow that final view. `JsonAdaptedPerson` converts the favourite flag, and each `PersonCard` references the person whose heart it displays. Unrelated person fields and model services are omitted from this feature view.
 
@@ -972,7 +978,9 @@ For user-facing formats and list-switching examples, see [Marking a favourite co
 
 <puml src="diagrams/TagManagementClassDiagram.puml" alt="Class structure of tag and untag commands" />
 
-The two parsers implement `Parser<T>` with different command types and create the corresponding `Command` subclasses. Both commands use `Model` to locate and replace the displayed person. Their requested tag sets, the person's stored tag set, and the five ordered default choices all reference the same ordinary `Tag` type. `ParserUtil` resolves default indices and validates custom names; dynamic `SystemTag` reminders are deliberately outside this structure. Navigable associations describe retained references, dashed arrows describe dependencies, and hollow triangles denote inheritance or interface realization. Static members are underlined; only feature-relevant members are shown in these four diagrams.
+This partial view shows ordinary tag references and default tags. Parser details and the symmetric command operations are explained below.
+
+The two parsers implement `Parser<T>` with different command types and create the corresponding `Command` subclasses. Both commands use `Model` to locate and replace the displayed person. Their requested tag sets, the person's stored tag set, and the five ordered default choices all reference the same ordinary `Tag` type. `ParserUtil` resolves default indices and validates custom names; dynamic `SystemTag` reminders are deliberately outside this structure. The view omits generic parser and model plumbing; the associations focus on stored tag references.
 
 #### Current implementation
 
@@ -1297,6 +1305,13 @@ Undo and redo are tested at each layer:
 --------------------------------------------------------------------------------------------------------------------
 
 ### Command history navigation
+
+These activities separate older-command recall from newer-command recall and draft restoration.
+Prefix matching keeps the initial prefix until editing or chronological navigation resets it.
+
+<puml src="diagrams/CommandHistoryUpActivityDiagram.puml" alt="Older-command recall with a retained search prefix" />
+
+<puml src="diagrams/CommandHistoryDownActivityDiagram.puml" alt="Newer-command recall, inactive-search handling and draft restoration" />
 
 `CommandBox` owns a session-local `CommandHistory`. A `KEY_PRESSED` event filter on its text field
 consumes Up/Down events, recalls the corresponding text and moves the caret to its end.

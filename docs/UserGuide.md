@@ -654,10 +654,6 @@ Name and address cannot be cleared. Supply at least one field; `edit INDEX` alon
 * Invalid input, an index outside the displayed list, or a name already used by another contact leaves the
   contacts and current view unchanged. The result display shows the error and the command box keeps the input for correction.
 
-The activity diagram below shows the edit workflow (assuming the data file can be saved):
-
-<puml src="diagrams/EditContactActivityDiagram.puml" alt="Activity diagram for editing an existing contact from the command box" width="550" />
-
 If saving fails, the result display reports a saving error and keeps the command text. The in-memory
 edit has already happened; the error does not mean it was rolled back.
 
@@ -962,12 +958,6 @@ left the end of history, and neither executes commands.
 
 For example, submit `add n/Alice a/NUS`, `list`, `add n/Bob a/NUS`, then `list`. Type `add ` without pressing Enter.
 Alt+↑ recalls `add n/Bob a/NUS`, then `add n/Alice a/NUS`; Alt+↓ recalls `add n/Bob a/NUS`, then restores `add `.
-
-The diagrams below show what happens when you press **↑** and **↓**.
-
-<puml src="diagrams/CommandHistoryUpActivityDiagram.puml" alt="Activity diagram for recalling older commands with Up and Alt+Up" />
-
-<puml src="diagrams/CommandHistoryDownActivityDiagram.puml" alt="Activity diagram for recalling newer commands with Down and Alt+Down" />
 
 ### Saving the data
 

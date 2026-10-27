@@ -9,7 +9,7 @@ participant ":CommandExecutor" as Executor UI_COLOR
 participant ":TextField" as Field UI_COLOR
 end box
 
-[-> Box : user pass in a command
+[-> Box : user submits a command
 activate Box
 
 Box -> History : record command
@@ -25,10 +25,10 @@ deactivate Executor
 [<-- Box
 deactivate Box
 
-[-> Box : user press Alt + Up
+[-> Box : user presses Alt + Up
 activate Box
 
-Box -> History : find older command\nstarting with input
+Box -> History : find older command\nmatching the initial prefix
 activate History
 History --> Box : match
 deactivate History

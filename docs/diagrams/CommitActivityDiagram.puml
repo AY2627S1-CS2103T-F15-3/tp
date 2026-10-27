@@ -2,15 +2,17 @@
 !include style.puml
 skinparam ArrowFontStyle plain
 start
-:Command changes the contact data
-and commits the previous state;
-
+:Command attempts to commit the previous state;
 if () then ([data unchanged])
   :Ignore the commit;
 else ([else])
-  :Push the previous state
-  onto undoStates;
+  if () then ([previous state differs from currentState])
+    :Discard stale undoStates;
+  else ([else])
+  endif
+  :Push the previous state onto undoStates;
   :Clear redoStates;
+  :Copy current contact data into currentState;
 endif
 stop
 @enduml

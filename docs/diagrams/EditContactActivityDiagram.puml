@@ -1,35 +1,25 @@
 @startuml
 !include style.puml
 skinparam ArrowFontStyle plain
+skinparam ActivityFontSize 14
 start
-:Read the index on the displayed contact list;
-:Type edit INDEX followed by changed fields;
-:Press Enter in the command box;
-if (Input valid, index displayed
-and name not a duplicate?) then (yes)
-  if (Any contact detail changed?) then (yes)
-    :Update the contact and record history;
-    :Show the full contact list with updated contact cards;
-    :Build Edited NAME feedback\nwith only actual field changes\nand Not specified for cleared values;
-    if (Tags changed?) then (yes)
-      :Append sorted Removed / Added summary;
-    endif
-    if (Changed phone or email
-matches another contact?) then (yes)
-      :Append Warning - duplicate details detected
-with matching contacts' current indices;
-    endif
-  else (no)
-    :Keep the contact, date and undo/redo history;
-    :Show the full contact list;
-    :Build No changes made feedback;
+:Submit edit using the displayed index;
+if (Valid fields, index and name?) then ([yes])
+  if (Any contact detail changed?) then ([yes])
+    :Replace the contact;
+    :Show all contacts;
+    :Record the previous state for undo;
+    :Build change summary and warnings;
+  else ([no])
+    :Keep contact data and history;
+    :Show all contacts;
+    :Build no-change feedback;
   endif
   :Save automatically;
-  :Show complete feedback\n(amber with a warning, light grey otherwise);
-  :Clear the command box;
-else (no)
-  :Show an error in the result display\nEmail errors include no consecutive special characters\nkeep the input for correction;
-  :Keep contacts and current view unchanged;
+  :Show feedback and clear the command box;
+else ([no])
+  :Show an error and keep the input;
+  :Leave contacts and view unchanged;
 endif
 stop
 @enduml
