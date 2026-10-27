@@ -855,10 +855,6 @@ Commands are recorded when submitted, including failed and repeated commands; em
 
 **Example:** Submit `list`, then `find Alice`. Type `edit 1 m/` without pressing Enter. Press Up twice to recall `find Alice` and then `list`; press Down twice to return through `find Alice` to your draft. The cards and result message stay unchanged until you submit a command.
 
-The diagram shows the route from your draft through earlier submissions and back:
-
-<puml src="diagrams/CommandHistoryActivityDiagram.puml" alt="Up recalls older commands; Down recalls newer commands and restores the original draft after the newest entry" width="650" />
-
 **Optional prefix search:** Submit `find Alice`, `list`, `find Bob`, then `list`. Type `find ` (including the space), then press Alt+Up twice to recall `find Bob` and `find Alice`. Alt+Down recalls `find Bob`, then restores `find `.
 
 Prefix matching is case-sensitive and includes spaces. The initial prefix stays in use during repeated shortcut presses; an empty prefix matches all commands. With no older match, the text stays unchanged. Alt+Down without an active search also leaves it unchanged. Editing recalled text starts a new prefix search from that text and history position; ordinary Up/Down returns to chronological browsing. Both modes keep the original draft. Prefix matches use the same `History i/N` positions, so the numbers may skip unrelated commands.
