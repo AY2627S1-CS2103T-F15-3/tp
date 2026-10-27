@@ -52,6 +52,7 @@
         "storage-component": "Storage component",
         "common-classes": "Common classes",
         "implementation": "Implementation",
+        "contact-card-layout": "Contact card layout",
         "contact-notes": "Contact notes",
         "parsing-add-prefixes": "Parsing add prefixes",
         "adding-academic-fields": "Adding academic fields",
@@ -146,6 +147,7 @@
       "headings": {
         "unimate-user-guide": "UniMate User Guide",
         "quick-start": "Quick start",
+        "using-the-contact-list": "Using the contact list",
         "features": "Features",
         "viewing-help-help": "Viewing help: help",
         "adding-a-person-add": "Adding a person: add",
