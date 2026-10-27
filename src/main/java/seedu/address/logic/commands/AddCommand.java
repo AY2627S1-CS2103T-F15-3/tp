@@ -30,7 +30,7 @@ public class AddCommand extends Command {
 
     public static final String COMMAND_WORD = "add";
 
-    public static final String MESSAGE_USAGE = COMMAND_WORD + ": Adds a person to the address book. "
+    public static final String MESSAGE_USAGE = COMMAND_WORD + ": Adds a person to UniMate. "
             + "Parameters: "
             + PREFIX_NAME + "NAME "
             + "[" + PREFIX_PHONE + "PHONE] "
@@ -56,7 +56,7 @@ public class AddCommand extends Command {
     public static final String MESSAGE_SUCCESS = "New person added: %1$s";
     public static final String MESSAGE_FAVOURITE_SUCCESS = "New favourite contact added: %1$s";
     public static final String MESSAGE_DUPLICATE_PERSON =
-            "This person already exists in the address book (names are compared ignoring case).";
+            "This person already exists in UniMate (names are compared ignoring case).";
     public static final String MESSAGE_DUPLICATE_PERSON_DISPLAYED = MESSAGE_DUPLICATE_PERSON
             + "\nExisting contact at displayed index %1$d:\n%2$s";
     public static final String MESSAGE_DUPLICATE_PERSON_HIDDEN = MESSAGE_DUPLICATE_PERSON

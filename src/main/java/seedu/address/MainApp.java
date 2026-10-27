@@ -34,16 +34,23 @@ import seedu.address.ui.UiManager;
  */
 public class MainApp extends Application {
 
-    public static final String VERSION = "V1.3";
+    public static final String VERSION = "V1.4";
 
     private static final Logger logger = LogsCenter.getLogger(MainApp.class);
     private static final Path USER_PREFS_FILE_PATH = Paths.get("preferences.json");
     private static final Path ADDRESS_BOOK_FILE_PATH = Paths.get("data", "unimate.json");
+    private static final String BACKUP_SUFFIX = ".bak";
+    private static final String MESSAGE_DATA_FILE_NOT_LOADED = "Warning: the data file %1$s could not be loaded, "
+            + "so UniMate has started with an empty contact list.\nReason: %2$s\n%3$s\n"
+            + "Your next command will save over %1$s. To repair the file instead, close UniMate now "
+            + "without running a command, fix the file, then restart.";
 
     protected Ui ui;
     protected Logic logic;
     protected Storage storage;
     protected Model model;
+    /** A warning to show the user once the window opens, such as a data file that could not be loaded. */
+    protected Optional<String> startupWarning = Optional.empty();
 
     @Override
     public void init() throws Exception {
