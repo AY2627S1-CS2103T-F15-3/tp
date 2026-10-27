@@ -77,7 +77,8 @@ public class EditContactUiTest {
                 assertEquals("Bob", edited.getName().fullName);
                 assertEquals(bob.getNotes(), edited.getNotes());
                 assertTrue(edited.isFavourite());
-                assertEquals("Edited person: " + Messages.format(edited), feedback(window));
+                assertEquals("Edited person: " + Messages.format(edited)
+                        + "\nTags replaced. Removed: Classmate. Added: StudyGroup.", feedback(window));
                 assertEquals("", input(window).getText());
                 assertAcademicCard(window, edited, "Major: Mathematics", "Class year: 2028");
                 assertTrue(card(window, edited).lookup("#favouriteIcon").isVisible());
