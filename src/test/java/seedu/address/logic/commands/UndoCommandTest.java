@@ -71,9 +71,12 @@ public class UndoCommandTest {
         model.setPerson(original, withUniversityFields);
         AddressBook stateBeforeEdit = new AddressBook(model.getAddressBook());
 
-        String editMessage = new EditCommand(INDEX_FIRST_PERSON, new EditPersonDescriptorBuilder()
+        new EditCommand(INDEX_FIRST_PERSON, new EditPersonDescriptorBuilder()
                 .withMajor("Computer Science").withGraduationYear("2027").withTags("teammate").build())
-                .execute(model).getFeedbackToUser();
+                .execute(model);
+        Person editedPerson = new PersonBuilder(withUniversityFields).withMajor("Computer Science")
+                .withGraduationYear("2027").withTags("teammate").build();
+        String editMessage = String.format(EditCommand.MESSAGE_EDIT_PERSON_SUCCESS, Messages.format(editedPerson));
 
         Model expectedModel = new ModelManager(stateBeforeEdit, new UserPrefs());
         assertCommandSuccess(new UndoCommand(), model, undoMessage(editMessage), expectedModel);
@@ -105,7 +108,8 @@ public class UndoCommandTest {
     @Test
     public void execute_afterFailedAdd_failure() {
         Person existingPerson = model.getAddressBook().getPersonList().get(0);
-        assertCommandFailure(new AddCommand(existingPerson), model, AddCommand.MESSAGE_DUPLICATE_PERSON);
+        assertCommandFailure(new AddCommand(existingPerson), model,
+                String.format(AddCommand.MESSAGE_DUPLICATE_PERSON_DISPLAYED, 1, Messages.format(existingPerson)));
 
         assertCommandFailure(new UndoCommand(), model, UndoCommand.MESSAGE_FAILURE);
     }
@@ -123,7 +127,9 @@ public class UndoCommandTest {
     public void execute_failedCommandAfterAdd_undoesAddOnly() throws Exception {
         Person newPerson = new PersonBuilder().withName("Alex Tan").build();
         String addMessage = new AddCommand(newPerson).execute(model).getFeedbackToUser();
-        assertCommandFailure(new AddCommand(newPerson), model, AddCommand.MESSAGE_DUPLICATE_PERSON);
+        String expectedDuplicateMessage = String.format(AddCommand.MESSAGE_DUPLICATE_PERSON_DISPLAYED,
+                model.getFilteredPersonList().size(), Messages.format(newPerson));
+        assertCommandFailure(new AddCommand(newPerson), model, expectedDuplicateMessage);
 
         Model expectedModel = new ModelManager(getTypicalAddressBook(), new UserPrefs());
         assertCommandSuccess(new UndoCommand(), model, undoMessage(addMessage), expectedModel);

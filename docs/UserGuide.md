@@ -128,7 +128,7 @@ Format: `help`
 
 Adds a person to UniMate.
 
-Format: `add n/NAME [p/PHONE_NUMBER] [e/EMAIL] a/ADDRESS [m/MAJOR] [c/CLASS_YEAR] [t/TAG]... [d/DEFAULT_INDEX]...`
+Format: `add n/NAME [p/PHONE_NUMBER] [e/EMAIL] a/ADDRESS [m/MAJOR] [c/CLASS_YEAR] [f/] [t/TAG]... [d/DEFAULT_INDEX]...`
 
 <box type="tip" seamless>
 
@@ -141,7 +141,14 @@ Major and class year are optional and can be supplied independently.
 **Check your field prefixes:** Use the prefixes shown in the command format above. Unknown prefix-like
 text can become part of the preceding field instead of producing an error. For example,
 `add n/PrefixProbe a/NUS x/typo` saves the address as `NUS x/typo`; `x/` does not start a separate field.
-Check the added contact's details. To correct this example, run `find PrefixProbe`, confirm the displayed
+
+Recognised prefixes start a new argument when preceded by a space, even within text intended as an address.
+In `add`, `f/` is a recognised flag: `add n/Alice a/Block f/` saves the address as `Block` and marks Alice
+as a favourite. `add n/Alice a/Block f/3` is rejected because the flag has a value. Without a space before
+`f/`, `add n/Alice a/Blockf/3` saves the full address `Blockf/3` and does not mark Alice as a favourite.
+A space followed by `f/` is reserved for the flag and cannot be included as literal address text in `add`.
+
+Check the added contact's details. To correct the `PrefixProbe` example, run `find PrefixProbe`, confirm the displayed
 contact, then `edit 1 a/NUS`.
 </box>
 
@@ -151,14 +158,45 @@ contact, then `edit 1 a/NUS`.
 * Each of these prefixes may appear only once. Leading and trailing spaces around their values are ignored.
 * The fields are saved with the contact, can be edited using `edit`, are shown in the displayed contact list and appear in command messages when specified.
 * A contact with the same name as an existing contact, ignoring case, is rejected as a duplicate, even if their major, class year or other details differ. For example, `John Doe` and `john doe` identify the same contact. Names retain their original capitalization for display and storage. Editing a contact's own name capitalization is allowed.
+* A duplicate `add` error shows the existing contact's saved details. If the contact is visible,
+  `Existing contact at displayed index N:` identifies its number in the current filtered and sorted list.
+  If `filter`, `find` or `listfav` hides it, the error labels its number as a **saved index** and tells
+  you to run `list`, then `sort reset`. After those commands, the contact is displayed at that index.
+  A saved index should only be used for an indexed command after following those instructions and checking the card.
+* Rejecting a duplicate leaves the current view, saved contacts and undo/redo history unchanged.
 * Before opening an older data file, back it up and give any contacts whose names differ only in case distinct names. Such files fail duplicate validation; contacts are not automatically merged, renamed or deleted. The existing startup error handling opens an empty list after a loading error. Close the app without making changes and fix a copy of the backed-up file before retrying, as subsequent successful data-changing commands could overwrite the data file.
 * A successful `add` can be reverted with [`undo`](#undoing-a-change-undo).
+* Include `f/` to create the contact as a favourite immediately, with a red heart beside their name.
+  The flag takes no value, may appear anywhere among the prefixed fields, and may appear only once.
+  Inputs such as `f/true` and `f/false` are rejected. Omit `f/` to create a contact without favourite status.
+  Favourite status is saved with the contact and included in the same undo/redo step as the addition.
+  The success message begins `New favourite contact added:` when `f/` is supplied, or `New person added:` otherwise.
+  A flag with a value reports `The f/ flag does not take a value. Use f/ alone to mark the new contact as a favourite.`
+* After creation, use [`fav INDEX`](#marking-a-favourite-contact-fav) or
+  [`unfav INDEX`](#removing-favourite-status-unfav) to change favourite status. `edit` preserves the current
+  favourite status and cannot change it.
 * Phone and email are independently optional. Omit `p/` or `e/` when unknown; do not supply an empty prefix in `add`. Non-empty values must satisfy the existing phone and email format rules. A contact without either receives the [automatic incomplete reminder](#automatic-incomplete-reminders).
+* Adding a different name with a shared phone number or email succeeds with the usual
+  `New person added: ...` feedback and an additional warning line in the same feedback box.
+  For example: `Warning - duplicate details detected: #2 Alice (phone); #3 Bob (email)`.
+  The complete message is amber when a warning is present; ordinary success feedback remains white.
+  There is no coloured border or additional warning control.
+  Every matching contact is listed by current displayed index and name, with `phone`, `email` or
+  `phone and email` identifying the shared fields. The original feedback box supports wrapping, text
+  selection and scrolling for the complete message. The next command replaces the previous feedback.
+* Shared-detail warnings compare non-empty phone numbers exactly and email addresses ignoring case.
+  Missing phone/email values do not count as shared details. These warnings do not change the
+  duplicate-name rule or alter the stored capitalization of email addresses.
+* A successful `add` shows the full contact list while retaining the current sort order. Warning
+  indices refer to that refreshed list, including contacts hidden by the previous filter.
 
 Examples:
+* `add n/Alice p/91234567 a/NUS f/` creates Alice as a favourite; `listfav` includes Alice immediately.
 * `add n/Alex Tan p/91234567 e/alex@example.com a/10 Kent Ridge Road m/Computer Science c/2027 t/classmate`
 * `add n/John Doe p/98765432 e/johnd@example.com a/John street, block 123, #01-01`
 * `add n/Betsy Crowe t/friend e/betsycrowe@example.com a/Newgate Prison p/1234567 t/criminal`
+* After adding Alex Tan above, `add n/Study Partner p/91234567 a/NUS` adds the new contact and warns
+  that Alex Tan shares its phone number. One `undo` removes the newly added Study Partner.
 
 ### Automatic incomplete reminders
 
@@ -332,7 +370,7 @@ Examples (assuming at least one person is displayed):
 
 These input errors leave all contacts unchanged. If any supplied tag is invalid, none of the tags in that command are removed. Unlike `edit 1 t/`, `untag 1 t/` does not clear the tag collection.
 
-For both commands, UniMate saves the updated data automatically. A saving failure reports `Could not save data due to the following error: ...` or `Could not save data to file ... due to insufficient permissions to write to the file or the folder.` The in-memory change has already occurred in this case, so the error does not mean it was rolled back.
+For both commands, UniMate saves the updated data automatically. A saving failure reports `Could not save data due to the following error: ...` or `Could not save data to file ... due to insufficient permissions to write to the file or the folder.` If the tags changed, the message adds that the change has still been applied in UniMate but not saved. The error does not mean the change was rolled back. See [Saving the data](#saving-the-data).
 
 A `tag` or `untag` that changes a person's tags can be [undone](#undoing-a-change-undo) and [redone](#redoing-a-change-redo). Adding a tag the person already has, or removing one they do not have, changes nothing and does not create an undo step.
 
@@ -346,7 +384,7 @@ Format: `fav INDEX`
 * The person's other details, tags, major and class year are preserved, together with the current list filter.
 * A successful command shows `Added to favourites: ` followed by the updated person's details.
 * A favourited contact displays a solid heart (`♥`) inside a small circular border to the right of their name. Both the heart and border are red (`#e63946`), with a transparent background. The icon is a visual indicator and cannot be clicked.
-* Favourite status is saved automatically and retained after restarting UniMate. New contacts and contacts loaded from older files without favourite status start as not favourited.
+* Favourite status is saved automatically and retained after restarting UniMate. New contacts start as not favourited unless `f/` is included in `add`. Contacts loaded from older files without favourite status start as not favourited.
 * Marking a favourite can be [undone](#undoing-a-change-undo) and [redone](#redoing-a-change-redo).
 
 Example (assuming at least one person is displayed):
@@ -510,14 +548,41 @@ Format: `edit INDEX [n/NAME] [p/PHONE] [e/EMAIL] [a/ADDRESS] [m/MAJOR] [c/CLASS_
   A supplied major must be non-blank text on one line; a class year must be four digits from `2000` to `2099`.
 * Enter `m/` or `c/` with no value to clear that optional field. Each of these prefixes may appear only once.
 * Leading and trailing spaces are ignored. If any supplied value is invalid or an academic prefix is repeated, no fields are updated.
-* After a successful edit, the full contact list is shown. If editing search or filter results, run `find` or `filter` again before using a result index for another edit.
+* After a successful edit, the full contact list is shown while retaining the active sort order.
+  If editing search or filter results, run `find` or `filter` again before using a result index for another edit.
 * When editing tags, all of the person's existing tags are removed; adding tags is not cumulative.
+* When `t/` is supplied, feedback includes `Tags replaced. Removed: ... . Added: ... .`
+  with actual changes sorted by tag name (`None` for an empty list). Unchanged tags are excluded.
+  For example, replacing `Friend` and `Classmate` with `Project` reports
+  `Tags replaced. Removed: Classmate, Friend. Added: Project.`
+  Use [`tag`](#adding-tags-to-a-person-tag) to add tags while keeping existing tags.
 * To remove all of a person's tags, enter `t/` without a tag after it.
+* Email local parts allow letters, digits and `+ _ . -`. Special characters cannot be consecutive
+  or at either end: `alice++cs2103t@example.com` is rejected; `alice+cs2103t@example.com` is valid.
+  Email errors show each rule on a short line, including the consecutive-special-character rule.
+  Feedback wraps within the result display when the window is narrow.
 * Enter `p/` or `e/` without a value to clear that contact method. Clearing both shows the automatic `incomplete` reminder; omitted phone/email prefixes preserve the existing values.
 * A successful `edit` that changes the person's details can be reverted with [`undo`](#undoing-a-change-undo).
+  Undo/redo messages include the `Edited person: ...` details but do not repeat the tag replacement
+  summary or duplicate-details warning.
 * The result display shows `Edited person: ` followed by the updated details, and the command box is cleared.
   The contact card shows `Major: Not specified` or `Class year: Not specified` when an academic field is cleared.
-* Notes and favourite status are preserved. Changing a basic profile field refreshes the contact's update date;
+* Changing a phone number or email to one used by another contact keeps that normal success message
+  and appends a line such as `Warning - duplicate details detected: #2 Alice (phone); #3 Bob (email)`.
+  If `t/` is also supplied, the tag replacement summary appears between the normal success message
+  and the warning; neither is dropped. The complete message appears amber in the original feedback
+  box, without a coloured border or an additional warning control. Feedback without a warning remains
+  white, including tag-only edits. Indices identify matching contacts in the refreshed full list,
+  including matches hidden before the edit. The edited contact's updated name and details remain in
+  the normal success message. All matches are retained; long feedback wraps and can be scrolled.
+* Warning comparisons match non-empty phone numbers exactly and email addresses ignoring case.
+  Only methods whose values changed are checked. Unchanged values, email-capitalization-only changes,
+  unrelated field edits, cleared methods and the edited contact itself do not trigger a warning.
+  The edit is saved normally, and one `undo` restores the previous contact. Undo and redo use ordinary
+  edit feedback without repeating the warning.
+* Notes and favourite status are preserved. Use [`fav INDEX`](#marking-a-favourite-contact-fav) or
+  [`unfav INDEX`](#removing-favourite-status-unfav) to change favourite status; it cannot be changed with `edit`.
+  Changing a basic profile field refreshes the contact's update date;
   changing only tags does not refresh that date.
 * Invalid input, an index outside the displayed list, or a name already used by another contact leaves the
   contacts and current view unchanged. The result display shows the error and the command box keeps the input for correction.
@@ -544,8 +609,8 @@ Format: `find KEYWORD [MORE_KEYWORDS]`
 * The search is case-insensitive; for example, `hans` matches `Hans`.
 * Keyword order does not matter; for example, `Hans Bo` matches `Bo Hans`.
 * The search considers only names, majors and graduation years.
-* Only full words match; for example, `Han` does not match `Hans`, and `Comp` does not match `Computer Science`.
-* Persons matching at least one keyword in any of these fields are returned (an `OR` search); for example, `Hans Bo` returns `Hans Gruber` and `Bo Yang`.
+* Only full words match; for example, `Han` does not match `Hans`, and `Comp` does not match `Computer Science`. Partial words and prefixes are not supported, so `find Comp` finds no one unless `Comp` appears as a whole word.
+* Persons matching at least one keyword in any of these fields are returned (an `OR` search); for example, `Hans Bo` returns `Hans Gruber` and `Bo Yang`. Each keyword is searched for separately, so `find Computer Science` also returns a `Data Science` major, or a contact with `Science` in their name.
 * Contacts without a major or class year are not matched on that field.
 
 Examples:
@@ -554,6 +619,11 @@ Examples:
 * `find 2027` returns persons whose graduation year is `2027`
 * `find alex david` returns `Alex Yeoh`, `David Li`<br>
   ![result for 'find alex david'](images/findAlexDavidResult.png)
+
+<box type="tip" seamless>
+
+**Tip:** To list only contacts whose major is exactly `Computer Science`, use [`filter m/Computer Science`](#filtering-contacts-by-major-class-year-and-tag-filter) instead of `find`.
+</box>
 
 ### Filtering contacts by major, class year and tag: `filter`
 
@@ -701,14 +771,16 @@ Format: `undo`
 * Every command that changes your contacts can be undone: `add`, `edit`, `delete`, `clear`, `tag`, `untag`, `fav`, `unfav`, `note` and `delnote`.
 * Restores your contacts to how they were before the most recent change that has not already been undone.
 * The message names the change that was undone: `Undid:` followed by the message that change showed when you made it, such as `Undid: Tagged person: …​` or `Undid: Deleted person: Alex Tan; …​`.
+  Tag replacement summaries and duplicate-details warnings are not repeated in undo or redo feedback.
 * Run `undo` again to revert earlier changes one at a time, starting from the most recent.
-* After an undo, the full contact list is shown, even if you were viewing the results of `find`.
+* After an undo, the full contact list is shown. Any `find`, `filter` or `listfav` view is cleared, so run it again if you need it. The order chosen with `sort` is kept.
 * A command that leaves every detail unchanged, such as an `edit` with the same values or `tag` with a tag the person already has, does not count as a change.
 * Commands that fail, such as an `add` rejected as a duplicate, and commands that do not change contacts, such as `list`, `find`, `filter`, `sort`, `listfav`, `shownote`, `tags` and `help`, do not affect what `undo` reverts.
 * `undo` does not take any parameters. Unlike `help`, extra input such as `undo 1` is rejected and nothing is undone.
 * If there is nothing to undo, UniMate shows `There is no change to undo.` and your contacts are unchanged.
 * Undo history is kept only while UniMate is open. It is cleared when you close UniMate, so changes from an earlier session cannot be undone.
 * The restored contacts are saved automatically.
+* A command that showed a save error was still applied, so `undo` reverts it. See [Saving the data](#saving-the-data).
 
 Examples:
 * `add n/Alex Tan p/91234567 e/alex@example.com a/10 Kent Ridge Road` followed by `undo` removes `Alex Tan` again.
@@ -730,7 +802,8 @@ Format: `redo`
 
 * The change undone most recently is redone first. Running `redo` repeatedly therefore reapplies undone changes in the order you originally made them.
 * The message names the change that was redone: `Redid:` followed by the message that change showed when you first made it, such as `Redid: Added to favourites: …​`.
-* After a redo, the full contact list is shown, even if you were viewing the results of `find`.
+  As with undo, tag replacement summaries and duplicate-details warnings are omitted.
+* After a redo, the full contact list is shown. Any `find`, `filter` or `listfav` view is cleared, so run it again if you need it. The order chosen with `sort` is kept.
 * Undone changes can be redone only until you change your contacts again. After any command that changes your contacts, such as `add`, `delete` or `fav`, `redo` is no longer available.
 * Commands that fail, and commands that do not change contacts, such as `list`, `find`, `tags` and `help`, do not affect what `redo` reapplies.
 * `redo` does not take any parameters. Extra input such as `redo 1` is rejected and nothing is redone.
@@ -803,6 +876,24 @@ Alt+↑ recalls `add n/Bob`, then `add n/Alice`; Alt+↓ recalls `add n/Bob`, th
 
 UniMate automatically saves data after every command. You do not need to save manually.
 
+If UniMate cannot write the data file, for example because the file or its folder is read-only, the command still takes effect inside UniMate. Instead of the usual success message, the result box shows one of these errors:
+
+* `Could not save data to file ... due to insufficient permissions to write to the file or the folder.`
+* `Could not save data due to the following error: ...`
+
+If the command changed your contacts, the error continues on the next line:
+
+`The change made by this command has still been applied in UniMate, but it is not saved to the data file. Running undo now would revert this change. If you close UniMate now, this change will be lost. To keep it, fix the problem, then run any command, such as list, to save it.`
+
+If the failed command was itself an `undo`, the message names `redo` instead, because `redo` reverts an undo. Commands that do not change your contacts, such as `list`, show only the first line.
+
+The contact list shows the change, and `undo` treats it like any other change. Only the copy on your disk is out of date.
+
+<box type="warning" seamless>
+
+**Caution:** A save error does **not** mean your command was cancelled. Do not run `undo` to "retry" or "cancel" it: `undo` would revert the change, showing `Undid:` followed by that change's message. Instead, fix the cause (such as making the data file writable), then run any command that succeeds, such as `list`. UniMate then saves all your current contacts, including the earlier change. If you close UniMate before a save succeeds, changes made since the last successful save are lost.
+</box>
+
 ### Editing the data file
 
 UniMate data is saved automatically as a JSON file `[JAR file location]/data/unimate.json`. Advanced users are welcome to update data directly by editing that data file.
@@ -844,6 +935,7 @@ _Details coming soon ..._
 
 1. **When using multiple screens**, if you move the application to a secondary screen, and later switch to using only the primary screen, the GUI will open off-screen. The remedy is to delete the `preferences.json` file created by the application before running the application again.
 2. **If you minimize the Help Window** and then run the `help` command (or use the `Help` menu, or the keyboard shortcut `F1`) again, the original Help Window will remain minimized, and no new Help Window will appear. The remedy is to manually restore the minimized Help Window.
+3. **If saving the data file fails**, the command's change is still applied inside UniMate. The save error replaces the usual success message, and says that the change is applied but not saved. Running `undo` at this point reverts that change. The remedy is to fix the cause of the error and then run any successful command, such as `list`, to save your contacts. See [Saving the data](#saving-the-data).
 
 --------------------------------------------------------------------------------------------------------------------
 
@@ -851,7 +943,7 @@ _Details coming soon ..._
 
 Action     | Format, Examples
 -----------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------
-**Add**    | `add n/NAME [p/PHONE_NUMBER] [e/EMAIL] a/ADDRESS [m/MAJOR] [c/CLASS_YEAR] [t/TAG]... [d/DEFAULT_INDEX]...` <br> e.g., `add n/James Ho p/22224444 e/jamesho@example.com a/123, Clementi Rd, 1234665 t/friend t/colleague`
+**Add**    | `add n/NAME [p/PHONE_NUMBER] [e/EMAIL] a/ADDRESS [m/MAJOR] [c/CLASS_YEAR] [f/] [t/TAG]... [d/DEFAULT_INDEX]...` <br> e.g., `add n/James Ho p/22224444 e/jamesho@example.com a/123, Clementi Rd, 1234665 f/ t/friend t/colleague`
 **Clear**  | `clear`
 **Delete** | `delete INDEX [MORE_INDICES]`<br> e.g., `delete 1 3 5`
 **Edit**   | `edit INDEX [n/NAME] [p/PHONE_NUMBER] [e/EMAIL] [a/ADDRESS] [m/MAJOR] [c/CLASS_YEAR] [t/TAG]... `<br> e.g.,`edit 2 n/James Lee e/jameslee@example.com`

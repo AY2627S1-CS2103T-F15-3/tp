@@ -12,14 +12,15 @@ participant "storage:Storage" as Storage STORAGE_COLOR
 
 note over Box, Storage
   Successful edit of the first displayed contact.
+  Email parsing errors include no consecutive special characters.
   Parsing, invalid-index and duplicate-name errors stop before mutation.
 end note
-Box -> Window : executeCommand("edit 1 m/Mathematics c/")
+Box -> Window : executeCommand("edit 1 m/Mathematics c/ t/Project")
 activate Window
 Window -> Logic : execute(commandText)
 activate Logic
 Logic -> Parser : parseCommand(commandText)
-Parser -> EditParser : parse(" 1 m/Mathematics c/")
+Parser -> EditParser : parse(" 1 m/Mathematics c/ t/Project")
 create Edit
 EditParser -> Edit : new EditCommand(index, descriptor)
 EditParser --> Parser : edit
@@ -43,8 +44,28 @@ Model --> Edit : contact data to snapshot
 Edit -> Edit : previousState = new AddressBook(contact data)
 Edit -> Model : setPerson(person, editedPerson)
 Edit -> Model : updateFilteredPersonList(PREDICATE_SHOW_ALL_PERSONS)
-Edit -> Model : commitAddressBook(previousState)
-Edit --> Logic : CommandResult("Edited person: ...")
+Edit -> Edit : message = "Edited person: ..."
+Edit -> Model : commitAddressBook(previousState, message)
+Edit -> Edit : feedback = message
+opt Tags supplied (including empty t/)
+  Edit -> Edit : formatTagDifference(oldTags, newTags)
+  Edit -> Edit : formatTagDifference(newTags, oldTags)
+  note right of Edit
+    Append Tags replaced. Removed: ... . Added: ... .
+    Sorted actual differences; None when empty.
+    Summary appears only in immediate edit feedback.
+    Undo/redo description retains the base message.
+  end note
+end
+Edit -> Edit : getEditResult(model, person, editedPerson, feedback)
+note right of Edit
+  Retain the normal Edited person feedback and any tag summary.
+  Append a non-blocking warning for shared changed phone/email values.
+  SharedContactDetailsWarning uses refreshed displayed indices.
+  This example changes academic fields and tags only,
+  so its ordinary feedback includes a tag summary but no warning.
+end note
+Edit --> Logic : CommandResult(feedback)
 deactivate Edit
 Logic -> Model : getAddressBook()
 Model --> Logic : updated contact data
@@ -53,7 +74,7 @@ Storage --> Logic
 Logic --> Window : CommandResult
 deactivate Logic
 Window -> Window : personListPanel.refresh()
-Window -> Window : resultDisplay.setFeedbackToUser(feedback)
+Window -> Window : resultDisplay.setFeedbackToUser(feedback, isWarning)
 Window --> Box : CommandResult
 deactivate Window
 note over Box : Clear the command text after success.

@@ -64,6 +64,29 @@ public class FavouriteIconTest {
     }
 
     @Test
+    public void execute_addWithFavouriteFlag_showsHeartImmediately() throws Exception {
+        FutureTask<Void> check = new FutureTask<>(() -> {
+            Model model = new ModelManager();
+            PersonListPanel panel = new PersonListPanel(model.getFilteredPersonList());
+            Scene scene = new Scene(panel.getRoot(), 500, 300);
+            scene.getStylesheets().add(getClass().getResource("/view/DarkTheme.css").toExternalForm());
+
+            new AddressBookParser().parseCommand("add n/Alice a/NUS f/").execute(model);
+            scene.getRoot().applyCss();
+            scene.getRoot().layout();
+
+            Label icon = (Label) scene.lookup("#favouriteIcon");
+            assertTrue(icon.isVisible());
+            assertTrue(icon.isManaged());
+            assertEquals("\u2665", icon.getText());
+            assertEquals(Color.web("#e63946"), icon.getTextFill());
+            return null;
+        });
+        Platform.runLater(check);
+        check.get(10, TimeUnit.SECONDS);
+    }
+
+    @Test
     public void execute_fav_refreshesVisibleListCard() throws Exception {
         FutureTask<Void> check = new FutureTask<>(() -> {
             Model model = new ModelManager();

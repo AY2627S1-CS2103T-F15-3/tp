@@ -169,6 +169,10 @@
     -fx-border-color: #555b63;
 }
 
+.result-display.warning {
+    -fx-text-fill: #ffcf66;
+}
+
 .list-cell:filled:selected #cardPane {
     -fx-background-color: #2d2a27;
     -fx-border-color: #d99664;
