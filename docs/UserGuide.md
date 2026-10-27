@@ -124,11 +124,24 @@ contact, then `edit 1 a/NUS`.
 * Before opening an older data file, back it up and give any contacts whose names differ only in case distinct names. Such files fail duplicate validation; contacts are not automatically merged, renamed or deleted. The existing startup error handling opens an empty list after a loading error. Close the app without making changes and fix a copy of the backed-up file before retrying, as subsequent successful data-changing commands could overwrite the data file.
 * A successful `add` can be reverted with [`undo`](#undoing-a-change-undo).
 * Phone and email are independently optional. Omit `p/` or `e/` when unknown; do not supply an empty prefix in `add`. Non-empty values must satisfy the existing phone and email format rules. A contact without either receives the [automatic incomplete reminder](#automatic-incomplete-reminders).
+* Adding a different name with a shared phone number or email succeeds with the usual white
+  `New person added: ...` feedback and an additional warning line in the same feedback box, also in white.
+  For example: `Warning - duplicate details detected: #2 Alice (phone); #3 Bob (email)`.
+  Every matching contact is listed by current displayed index and name, with `phone`, `email` or
+  `phone and email` identifying the shared fields. The original feedback box supports wrapping, text
+  selection and scrolling for the complete message. The next command replaces the previous feedback.
+* Shared-detail warnings compare non-empty phone numbers exactly and email addresses ignoring case.
+  Missing phone/email values do not count as shared details. These warnings do not change the
+  duplicate-name rule or alter the stored capitalization of email addresses.
+* A successful `add` shows the full contact list while retaining the current sort order. Warning
+  indices refer to that refreshed list, including contacts hidden by the previous filter.
 
 Examples:
 * `add n/Alex Tan p/91234567 e/alex@example.com a/10 Kent Ridge Road m/Computer Science c/2027 t/classmate`
 * `add n/John Doe p/98765432 e/johnd@example.com a/John street, block 123, #01-01`
 * `add n/Betsy Crowe t/friend e/betsycrowe@example.com a/Newgate Prison p/1234567 t/criminal`
+* After adding Alex Tan above, `add n/Study Partner p/91234567 a/NUS` adds the new contact and warns
+  that Alex Tan shares its phone number. One `undo` removes the newly added Study Partner.
 
 ### Automatic incomplete reminders
 
