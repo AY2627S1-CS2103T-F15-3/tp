@@ -128,7 +128,7 @@ Here are the other classes in `Logic` (omitted from the class diagram above) tha
 <puml src="diagrams/ParserClasses.puml" width="600"/>
 
 How the parsing works:
-* `AddressBookParser#parseCommand` dispatches on `commandWord.toLowerCase(Locale.ROOT)`, so all command words are case-insensitive regardless of the system locale. Only the command word is normalized; the argument string is passed unchanged to the selected parser. Prefix matching and argument validation retain their existing rules, and `Tag` equality remains case-sensitive.
+* `AddressBookParser#parseCommand` dispatches on `commandWord.toLowerCase(Locale.ROOT)`, so all command words are case-insensitive regardless of the system locale. Before dispatch, Unicode whitespace in the arguments is converted to ASCII spaces (except for `note`, whose free text is passed unchanged). Commands that take no parameters (`help`, `list`, `listfav`, `tags`, `clear`, `undo`, `redo`, `exit`) are created through `AddressBookParser#withoutArguments`, which rejects any extra input with the command's usage.
 * When called upon to parse a user command, the `AddressBookParser` class creates an `XYZCommandParser` (`XYZ` is a placeholder for the specific command name, e.g., `AddCommandParser`). The parser uses the other classes shown above to parse the user command and create an `XYZCommand` object (e.g., `AddCommand`). The `AddressBookParser` returns that object as a `Command` object.
 * All `XYZCommandParser` classes, such as `AddCommandParser` and `DeleteCommandParser`, implement the `Parser` interface so they can be treated similarly where appropriate, for example during testing.
 
@@ -187,10 +187,14 @@ GUI display indices. For example, `Contact entry 2 is null.` identifies a null c
 include the contact position and retain the original validation exception as their cause.
 
 `JsonUtil#readJsonFile` rejects a null JSON root as a `DataLoadingException`; it returns
-`Optional.empty()` only for a missing file. `MainApp` therefore uses its existing empty-contact-list
-recovery for invalid data, while missing files still use sample contacts. Loading and window-close
-shutdown do not rewrite the invalid contact file. `MainAppTest` checks this recovery with isolated
-storage and a stub UI; storage tests check null data, valid empty lists and legacy contacts.
+`Optional.empty()` only for a missing file. `MainApp` therefore starts with an empty contact list for
+invalid data, while missing files still use sample contacts. Because the next command saves over the data
+file, `MainApp#initModelManager` also copies the unreadable file to `unimate.json.bak` beside it and stores a
+`startupWarning` naming the file, the first line of the loading error and the backup. `UiManager` passes the
+warning to `MainWindow#showWarning`, which shows it in the result display with the amber warning style once the
+window opens. Loading and window-close shutdown do not rewrite the invalid contact file. `MainAppTest` checks this
+recovery, the backup and the warning with isolated storage and a stub UI; storage tests check null data, valid
+empty lists and legacy contacts.
 
 ### Common classes
 
@@ -358,10 +362,11 @@ The command checks for an existing contact with the same name, ignoring case, be
 `UniquePersonList` and edit duplicate checks share this rule. `Name`, `Person#equals` and `Person#hashCode`
 retain exact data equality, preserving capitalization changes for display, persistence and undo/redo.
 `JsonSerializableAddressBook#toModelType` also rejects case-only duplicate names using its existing
-`IllegalValueException` path. There is no automatic migration, deletion, merging or renaming. Users must
-back up legacy files and distinguish conflicting names before loading. The existing `MainApp` startup
-fallback opens an empty list on a loading error; subsequent saves can overwrite that file, so users must
-close without editing and resolve conflicts in a copy of the backup first.
+`IllegalValueException` path. There is no automatic migration, deletion, merging or renaming. On a loading error, `MainApp` opens an
+empty list, backs up the file and warns the user (see [Storage component](#storage-component)).
+`ParserUtil#parseName` collapses repeated internal spaces before validation, so `John  Doe` and `John Doe`
+are also the same contact. `Name` accepts letters and digits in any script (`\p{L}`, `\p{N}`, plus combining
+marks `\p{M}`), spaces and the punctuation `' - . , /`, and must start with a letter or digit.
 After a successful add, it records the previous contact data state in the model's history
 (see [Recording contact data history](#recording-contact-data-history)).
 The normal storage path then saves the contact, including its academic fields.
@@ -665,9 +670,9 @@ favourites membership changes and long text in the actual JavaFX layout.
 
 ### Formatting academic fields in command messages
 
-Commands that report a contact's full details use `Messages#format(Person)`. The formatter includes `Major` and
-`Class year` before tags when those optional academic fields are specified. If either academic field is unspecified,
-that field is omitted from the command message.
+Commands that report a contact's full details use `Messages#format(Person)`. The formatter includes `Phone`,
+`Email`, `Major` and `Class year` only when those optional fields are specified; an unspecified field is omitted
+from the command message rather than printed as an empty value.
 
 This centralizes command-message formatting for add, edit, and delete results while preserving the independent
 optional behavior of major and class year.
@@ -964,7 +969,7 @@ The `tag` command adds tags to a person in the currently displayed list. The `un
 | `ParserUtil` | Validates indices and converts custom names or default indices into a `Set<Tag>`. |
 | `DefaultTags`, `TagsCommand` | Provide the fixed default tag list and display its one-based numbering. |
 | `TagCommand`, `UntagCommand` | Resolve the displayed person, compute the new tag set, replace the person through `Model#setPerson`, and return a `CommandResult`. |
-| `Person`, `Tag` | Store tags as a set and define name validation and exact, case-sensitive tag equality. |
+| `Person`, `Tag` | Store tags as a set and define name validation and case-insensitive tag equality. |
 | `ModelManager` | Exposes the filtered person list and delegates person replacement to `AddressBook`. |
 | `Messages`, `JsonAdaptedTag` | Format the updated person for feedback and represent each stored tag by its name, respectively. |
 
@@ -976,10 +981,11 @@ Given below is the flow for `tag 1 d/2 t/NOC`:
 1. The parser tokenizes `d/` and `t/`. `ParserUtil#parseIndex` reads the preamble as a one-based person index. The parser requires at least one tag prefix.
 1. `ParserUtil#parseDefaultTags` maps `2` to `Classmate` using `DefaultTags.TAGS`. `ParserUtil#parseTags` validates `NOC` through `parseTag`. The parser merges both sets and creates a `TagCommand`.
 1. `TagCommand#execute` gets `Model#getFilteredPersonList` and checks that the index is within its size. Thus, index `1` selects the first displayed person, including when a search is active.
-1. The command copies `person.getTags()` into a `HashSet` and calls `addAll` with the requested tags. It constructs a new `Person` with the original name, phone, email, address, major and graduation year, together with the updated set, then calls `Model#setPerson`.
-1. The command returns a `CommandResult` containing `Tagged person: ` and `Messages.format(updatedPerson)`. `LogicManager` saves UniMate data before returning the result to the UI.
+1. The command finds which requested tags the person already has. If they all are, it returns `No tags added: NAME already has the tag(s): ...` without replacing the person or committing history.
+1. Otherwise, it copies `person.getTags()` into a `HashSet` and calls `addAll` with the requested tags. It constructs a new `Person` with the original name, phone, email, address, major and graduation year, together with the updated set, then calls `Model#setPerson` and commits.
+1. The command returns a `CommandResult` containing `Tagged person: ` and `Messages.format(updatedPerson)`, plus an `Already present, so not added again: ...` line if some tags were already there. The history description excludes that extra line. `LogicManager` saves UniMate data before returning the result to the UI.
 
-For `untag 1 t/NOC`, `AddressBookParser` selects `UntagCommandParser`. This parser recognizes only `t/`, requires at least one value, and uses `ParserUtil#parseTags` to construct the removal set. `UntagCommand#execute` follows the same person lookup and replacement flow, but calls `removeAll` on the copied set. Its result starts with `Untagged person: `.
+For `untag 1 t/NOC`, `AddressBookParser` selects `UntagCommandParser`. This parser recognizes only `t/`, requires at least one value, and uses `ParserUtil#parseTags` to construct the removal set. `UntagCommand#execute` follows the same person lookup. If none of the named tags are on the person, it throws a `CommandException` (`NAME does not have the tag(s): ... No tags were removed.`) before any change. Otherwise it calls `removeAll` on the copied set, replaces the person and commits. Its result starts with `Untagged person: `, plus a `Not found, so not removed: ...` line for any named tags that were absent.
 
 Neither command calls `Model#updateFilteredPersonList`, so the current filter predicate is retained. The model's observable list exposes the updated person to the UI.
 
@@ -1001,7 +1007,11 @@ Both kinds use the same `Person.tags` field (`Set<Tag>`). Default indices are in
 
 **Aspect: Set-based, non-destructive updates**
 
-`Person#getTags` returns an unmodifiable view. Each command stores a defensive `Set.copyOf` of its input, copies the person's tags for the update, and replaces the `Person` rather than mutating its exposed set. `addAll` preserves existing tags; `removeAll` preserves tags not requested for removal. Duplicate additions and absent removals are no-ops that still return success. Tag order is not guaranteed. Equality remains case-sensitive, so `NOC` and `noc` are distinct.
+`Person#getTags` returns an unmodifiable view. Each command stores a defensive `Set.copyOf` of its input, copies the person's tags for the update, and replaces the `Person` rather than mutating its exposed set. `addAll` preserves existing tags; `removeAll` preserves tags not requested for removal. Adding only tags the person already has returns an informational message without a history entry; removing only absent tags is reported as an error. Tag order is not guaranteed.
+
+**Aspect: Case-insensitive tag equality**
+
+`Tag#equals` uses `equalsIgnoreCase` and `Tag#hashCode` hashes the lower-cased name, so `NOC` and `noc` are the same tag in every `Set<Tag>`. Because a `HashSet` keeps the element already present, a contact keeps the capitalization used when the tag was first added. This matches `filter t/...`, which was already case-insensitive, and prevents near-duplicate tags such as `Friend` and `friend` on one contact. The trade-off is that changing only a tag's capitalization needs `untag` followed by `tag`. Loading an older file containing both `Friend` and `friend` on one contact keeps one of them.
 
 **Aspect: Compatibility with existing editing**
 
@@ -1068,7 +1078,7 @@ A command that fails validation, such as a duplicate `add`, throws before copyin
 
 `NoteCommand` and `DeleteNoteCommand` use the same snapshot-and-commit flow for actual note changes. `NoteCommand` returns immediately for unchanged note text, without copying the address book, replacing the contact or committing history, so redo remains available. `DeleteNoteCommand` returns immediately for an empty note. A new data-changing commit clears redo states; merely viewing a note does not.
 
-`DeleteCommand`, `ClearCommand`, `TagCommand`, `UntagCommand`, `FavCommand` and `UnfavCommand` follow the same pattern: each copies the data after its validation checks, makes its change through the model (`Model#deletePerson`, `Model#setAddressBook` or `Model#setPerson`), and then commits. Changes that leave the data unchanged, such as `tag` with a tag the person already has, `untag` with a tag the person does not have, or `clear` on an empty contact list, are ignored by the commit, so no undo step is recorded and redo remains available. `fav` on a person who is already a favourite and `unfav` on one who is not fail before copying the data.
+`DeleteCommand`, `ClearCommand`, `TagCommand`, `UntagCommand`, `FavCommand` and `UnfavCommand` follow the same pattern: each copies the data after its validation checks, makes its change through the model (`Model#deletePerson`, `Model#setAddressBook` or `Model#setPerson`), and then commits. `tag` with only tags the person already has returns before copying the data, and `untag` with only tags the person does not have fails before copying it. `clear` on an empty contact list leaves the data unchanged, so the commit ignores it. In all three cases no undo step is recorded and redo remains available. `fav` on a person who is already a favourite and `unfav` on one who is not fail before copying the data.
 
 A `DeleteCommand` with multiple indices captures all target contacts before mutation and commits
 only after every selected contact has been deleted. The whole batch consumes one undo step,
@@ -1256,10 +1266,10 @@ If saving fails after a successful undo or redo, the in-memory state has already
 
 * **Alternative 1 (current choice):** Reject input such as `undo 1` with a parse error.
   * Pros: Users are not misled into thinking `undo 3` undoes three changes or a specific contact, and no history changes by accident.
-  * Cons: Inconsistent with `help`, `exit` and `clear`, which ignore extra parameters.
-* **Alternative 2:** Ignore extra parameters, as `help` does.
-  * Pros: Consistent with the other commands that take no parameters.
-  * Cons: `undo 3` would silently undo only one change.
+  * Cons: None significant. All other commands without parameters (`help`, `list`, `listfav`, `tags`, `clear`, `exit`) follow the same rule.
+* **Alternative 2:** Ignore extra parameters, as AB3 does for `help`, `exit` and `clear`.
+  * Pros: Slightly more forgiving of stray input.
+  * Cons: `undo 3` would silently undo only one change, and `clear 1` (a mistyped `delete 1`) would delete every contact.
 
 **Aspect: What is displayed after restoring**
 
@@ -1334,15 +1344,6 @@ For manual UI verification:
    pulses even at the oldest entry, then disappears when Down restores the draft or Enter submits input.
 8. Restart UniMate and verify both navigation modes leave the input unchanged until a command is submitted.
 
-## **Coming soon**
-
-The features in this section are not implemented in the MVP. The descriptions and diagrams below are proposals for future development.
-
-### \[Proposed\] Data archiving
-
-Data archiving is planned for a future version. Its implementation details have not yet been specified.
-
-
 --------------------------------------------------------------------------------------------------------------------
 
 ## **Documentation, logging, testing, dev-ops**
@@ -1415,8 +1416,9 @@ Priorities: High (must have) - `* * *`, Medium (nice to have) - `* *`, Low (unli
 
 **MSS**
 
-1.  User requests to add a new contact 
-2.  User provides the person's name, phone number, email address, and address
+1.  User requests to add a new contact.
+2.  User provides the person's name and address, and optionally their phone number, email address, major,
+    class year, tags and favourite status.
 3.  UniMate validates the provided contact information
 4.  UniMate adds the contact 
 5.  UniMate informs the user that the contact has been added
@@ -1443,6 +1445,12 @@ Priorities: High (must have) - `* * *`, Medium (nice to have) - `* *`, Low (unli
       index with instructions to reveal the contact if hidden by the current filter.
       
       Use case ends.
+
+* 4a. The new contact shares a phone number or email address with existing contacts.
+
+    * 4a1. UniMate adds the contact and warns the user which contacts share those details.
+
+      Use case resumes at step 5.
 
 **Use case: View contacts**
 
@@ -1474,11 +1482,113 @@ Priorities: High (must have) - `* * *`, Medium (nice to have) - `* *`, Low (unli
 
 **Extensions**
 
-* 2a. The given index is invalid.
+* 2a. A given index is invalid or repeated.
 
-    * 3a1. UniMate informs user that the given index is invalid.
+    * 2a1. UniMate informs the user which index is invalid or repeated, and deletes no contacts.
 
-      Use case resumes at step 1.
+      Use case resumes at step 2.
+
+* 2b. User specifies several indices.
+
+    * 2b1. UniMate deletes all the specified contacts together.
+
+      Use case resumes at step 4.
+
+**Use case: Edit a contact**
+
+**MSS**
+
+1.  User requests to edit a contact in the displayed list, giving the new values of one or more fields.
+2.  UniMate updates the contact.
+3.  UniMate shows all contacts and lists the fields that changed.
+
+    Use case ends.
+
+**Extensions**
+
+* 1a. The index is invalid, no field is given, or a value is invalid.
+
+    * 1a1. UniMate shows an error explaining the problem.
+
+      Use case ends.
+
+* 1b. The new name belongs to another contact.
+
+    * 1b1. UniMate informs the user that the contact already exists.
+
+      Use case ends.
+
+* 1c. Every given value matches the contact's existing details.
+
+    * 1c1. UniMate informs the user that no changes were made.
+
+      Use case ends.
+
+* 2a. The new phone number or email is used by other contacts.
+
+    * 2a1. UniMate warns the user which contacts share it.
+
+      Use case resumes at step 3.
+
+**Use case: Tag or untag a contact**
+
+**MSS**
+
+1.  User requests to add tags to, or remove tags from, a contact in the displayed list.
+2.  UniMate updates the contact's tags, keeping its other tags and details.
+3.  UniMate shows the updated contact.
+
+    Use case ends.
+
+**Extensions**
+
+* 1a. The index, a tag name or a default tag index is invalid.
+
+    * 1a1. UniMate shows an error and changes no tags.
+
+      Use case ends.
+
+* 1b. The contact already has every tag to be added.
+
+    * 1b1. UniMate informs the user that no tags were added.
+
+      Use case ends.
+
+* 1c. The contact has none of the tags to be removed.
+
+    * 1c1. UniMate informs the user that no tags were removed.
+
+      Use case ends.
+
+* 2a. Only some of the given tags were already present (when adding) or absent (when removing).
+
+    * 2a1. UniMate updates the others and lists the tags it skipped.
+
+      Use case resumes at step 3.
+
+**Use case: Find contacts by university context**
+
+**MSS**
+
+1.  User requests to filter contacts by major, class year and/or tag.
+2.  UniMate shows only the contacts matching every given criterion, keeping the current sort order.
+3.  User performs indexed commands (e.g. tag, delete) on the displayed contacts.
+
+    Use case ends.
+
+**Extensions**
+
+* 1a. No criterion is given, a criterion is repeated, or a value is invalid.
+
+    * 1a1. UniMate shows an error and keeps the current list.
+
+      Use case ends.
+
+* 2a. No contact matches.
+
+    * 2a1. UniMate shows an empty list.
+
+      Use case ends.
 
 **Use case: Undo a change**
 
@@ -1558,6 +1668,9 @@ Priorities: High (must have) - `* * *`, Medium (nice to have) - `* *`, Low (unli
 6.  UniMate should preserve all saved contact information between application sessions.  
 7.  Invalid user input should not corrupt or modify existing stored contact data.  
 8.  UniMate should display a meaningful error message for invalid user input without crashing.
+9.  Contact data should be stored locally in a human-editable JSON text file, without using a database management system.
+10. UniMate should be usable as a single JAR file, without an installer, on Windows, Linux and macOS.
+11. The GUI should work well at screen resolutions of 1920x1080 and higher at 100% and 125% scaling, and remain usable at 1280x720 and higher at 150% scaling.
 
 ### Glossary
 
@@ -1572,13 +1685,58 @@ Priorities: High (must have) - `* * *`, Medium (nice to have) - `* *`, Low (unli
 * **Mainstream OS (Operating System)**: Windows, Linux, Unix, or macOS, as used in this guide's non-functional requirements.
 * **Major**: A student's principal academic field of study, such as Computer Science.
 * **Module**: A university course or unit of study, typically identified by a code such as CS2103T. Here, it refers to an academic course rather than a software component.
-* **Private contact detail**: A contact detail that is not meant to be shared with others.
+* **Default tag**: One of five fixed tags (`Friend`, `Classmate`, `Teammate`, `Tutor`, `Prof`) that can be added by index using `d/`. It is stored like any other tag.
+* **Displayed index**: See *Contact list index*. **Saved index**: a contact's one-based position in the saved (unfiltered, unsorted) contact list, shown only when a duplicate `add` targets a hidden contact.
+* **System reminder**: A label (`update` or `incomplete`) that UniMate derives automatically from a contact's details. It is displayed like a tag but is not stored or managed with tag commands.
 * **Tag**: A text label attached to a contact to help organise the contact collection. A contact can have multiple tags.
 * **Tutorial group**: A group of students assigned to attend the same tutorial session for a particular module.
 * **University-related context**: Information that connects a contact to university life, such as their module, major, year of study, CCA, or the event or project through which the user knows them.
 * **Year of study**: A student's current stage in their university programme, such as Year 1 or Year 2, rather than a calendar year.
 
 --------------------------------------------------------------------------------------------------------------------
+
+## **Appendix: Planned enhancements**
+
+Team size: 6. The following are known limitations that we plan to address. Each is documented in the User Guide.
+
+1. **Accept common phone number formats.** Phone numbers currently accept digits only, so `+65 9123 4567` must be
+   entered as `6591234567`. We plan to accept a leading `+`, spaces and dashes (e.g. `p/+65 9123-4567`), and to
+   compare phone numbers ignoring those characters when detecting shared details.
+2. **Allow prefix-like text inside values.** A recognised prefix preceded by a space always starts a new parameter,
+   so `add n/Priya d/o Raman a/NUS` fails with a default-tag error. We plan to treat `d/o` and `s/o` inside a name
+   as text, and to say so in the error message when a value looks like it was split by a prefix.
+3. **Make the address optional.** `add` currently requires `a/ADDRESS`, although many university contacts have no
+   known address. We plan to make it optional, like phone and email, and to show `Not specified` when absent.
+4. **Allow people who share a name.** Contacts are identified by name only (ignoring case and repeated spaces), so
+   two different people with the same name cannot both be added. We plan to warn instead of block when the phone or
+   email differs, so users can keep both.
+5. **Keep every backup of an unreadable data file.** UniMate copies an unreadable data file to `unimate.json.bak`,
+   replacing an older backup of that name. We plan to add a timestamp to the backup name so earlier backups are kept.
+
+## **Appendix: Effort**
+
+UniMate builds on AddressBook-Level3 (AB3), which manages one entity type (`Person`) with five fields and eight
+commands. UniMate keeps that single entity, but adds 13 commands (`fav`, `unfav`, `listfav`, `tag`, `untag`, `tags`,
+`note`, `shownote`, `delnote`, `filter`, `sort`, `undo`, `redo`) and four person attributes (major, class year, note,
+favourite status), plus a recorded last-updated date.
+
+Notable challenges and achievements:
+
+* **Undo/redo for every data change.** `AddressBookHistory` records full snapshots with descriptions, keeps the
+  existing `AddressBook` object (so UI observers stay attached), and detects unrecorded changes so a stale snapshot
+  can never silently revert data. Every data-changing command and its no-op paths had to be integrated and tested.
+* **Filtered and sorted views that keep indices consistent.** A `SortedList` over the `FilteredList` is used by both
+  the UI and every indexed command, with a persistent view-status line. Multi-index `delete` resolves all targets
+  against the original view before mutating.
+* **Derived reminders.** `update` and `incomplete` reminders are computed from data rather than stored, so they can
+  never go stale, while coexisting with custom tags of the same name.
+* **Robust input and storage handling.** This includes Unicode whitespace normalisation, validation of legacy and
+  partially invalid JSON files, a backup and warning when a data file cannot be loaded, and explicit feedback when
+  saving fails after a change.
+* **Keyboard-first UI.** This covers command history with prefix search, Tab navigation into contact cards, and
+  expandable long values, all tested on the real JavaFX components.
+
+The test suite grew from AB3's to over 950 tests, including JavaFX UI tests run on CI.
 
 ## **Appendix: Instructions for manual testing**
 
@@ -1599,8 +1757,20 @@ testers are expected to do more *exploratory* testing.
    1. Open a terminal, change to that folder, and run `java -jar unimate.jar`.<br>
       Expected: A window titled `UniMate` opens with sample contacts. Unspecified academic fields display `Not specified`. The window size may not be optimal.
 
+   1. Enter `exit 1`, then `clear 1`.<br>
+      Expected: Each shows `Invalid command format!` with the command's usage; the app stays open and no contacts are cleared.
+
    1. Enter `exit`.<br>
       Expected: The application window closes normally.
+
+1. Names with punctuation and spacing
+
+   1. Test case: `add n/Shaquille O'Neal a/NUS`, then `add n/Raj s/o Kumar a/NUS`, then `add n/José Núñez a/NUS`.<br>
+      Expected: All three contacts are added.
+   1. Test case: `add n/Shaquille   o'neal a/Elsewhere`.<br>
+      Expected: Rejected as a duplicate of `Shaquille O'Neal` (case and repeated spaces are ignored).
+   1. Test case: `add n/Peter* a/NUS`.<br>
+      Expected: A name-format error listing the allowed characters.
 
 1. Saving window preferences
 
@@ -2104,12 +2274,12 @@ testers are expected to do more *exploratory* testing.
    1. Prerequisites: Run `list` with at least one contact present. Note the first person's original details and tags; use a test contact because the following steps change its tags.
    1. Test case: `tag 1 d/2 t/NOC`<br>
       Expected: `Classmate` and `NOC` are present alongside all original tags. Other contact fields are unchanged. Feedback starts with `Tagged person: ` and includes the updated details.
-   1. Repeat `tag 1 d/2 t/NOC`.<br>
-      Expected: No duplicate tags appear; the command still succeeds.
-   1. Test case: `untag 1 t/NOC t/Classmate`<br>
-      Expected: Both named tags are removed, other tags and contact fields remain, and feedback starts with `Untagged person: `.
+   1. Repeat `tag 1 d/2 t/noc`.<br>
+      Expected: `No tags added: NAME already has the tag(s): Classmate, NOC.` No duplicate tags appear and `undo` would not revert anything new.
+   1. Test case: `untag 1 t/noc t/Classmate t/Missing`<br>
+      Expected: `NOC` and `Classmate` are removed (tags match ignoring case), other tags and contact fields remain. Feedback starts with `Untagged person: ` and ends with `Not found, so not removed: Missing.`
    1. Repeat `untag 1 t/NOC t/Classmate`.<br>
-      Expected: Success with no further tag changes.
+      Expected: An error, `NAME does not have the tag(s): Classmate, NOC. No tags were removed.`
 
 1. Invalid input and filtered indices
 
@@ -2310,15 +2480,15 @@ Use only the separate test folder for these checks. The paths below are relative
 
    1. With the app closed and the valid backup retained, replace the contents of the test copy's `data/unimate.json` with `not valid JSON`.
    1. Relaunch the app without entering a command.<br>
-      Expected: The app opens with an empty contact list. The malformed file remains unchanged on disk; the loading error is recorded in the application log.
+      Expected: The app opens with an empty contact list and an amber warning in the result box saying the data file could not be loaded, with the reason and the backup location. `data/unimate.json.bak` now exists with the same malformed contents; `data/unimate.json` is unchanged.
    1. Run `list`.<br>
-      Expected: The command succeeds and replaces the malformed file with valid JSON containing an empty person list. Close the app and restore the valid backup.
+      Expected: The command succeeds and replaces the malformed file with valid JSON containing an empty person list. `data/unimate.json.bak` still holds the malformed contents. Close the app and restore the valid backup.
 
 1. Valid JSON containing an invalid contact
 
    1. With the app closed and the valid backup retained, change `SaveCheck`'s `graduationYear` value to `"1999"` in the test file. Keep the JSON syntax valid.
    1. Relaunch the app without entering a command.<br>
-      Expected: The whole data file is rejected and the app opens with an empty contact list. It does not partially load the other contacts or silently correct the invalid year. The invalid file remains unchanged at this point.
+      Expected: The whole data file is rejected and the app opens with an empty contact list and the startup warning, whose reason names the invalid contact entry and the class-year rule. It does not partially load the other contacts or silently correct the invalid year. The invalid file remains unchanged at this point, and a copy is saved as `data/unimate.json.bak`.
    1. Close the window using its close button, then restore the valid backup. Do not enter `exit` before restoring, because a successfully executed command would save the empty in-memory list over the invalid file.
 
 1. Null entries and null JSON roots
@@ -2330,8 +2500,8 @@ Use only the separate test folder for these checks. The paths below are relative
       * `{"persons":[{"name":"Null Tag","address":"NUS","tags":[null]}]}`
       * `null`
    1. Relaunch the app without entering a command.<br>
-      Expected: The GUI opens with an empty contact list, and the loading error is logged.
-      For the first two files, the log identifies `Contact entry 1 is null.` and
+      Expected: The GUI opens with an empty contact list and the startup warning, and the loading error is logged.
+      For the first two files, the warning and log identify `Contact entry 1 is null.` and
       `Contact entry 1 is invalid: Tag entry 1 is null.`, respectively.
       The original invalid file remains unchanged.
    1. Close the window using its close button and inspect the file.<br>

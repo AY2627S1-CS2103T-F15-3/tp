@@ -6,9 +6,18 @@
 
 # UniMate User Guide
 
-UniMate is a **desktop application for managing contacts, optimized for use through a Command Line Interface (CLI)** while retaining the benefits of a Graphical User Interface (GUI). If you type quickly, UniMate can help you manage contacts faster than traditional GUI applications.
+UniMate is a **desktop contact manager for university students**, optimized for use through a Command Line Interface (CLI) while retaining the benefits of a Graphical User Interface (GUI).
 
-This guide describes the features available in v1.4.
+**Who it is for:** university students who keep many university-related contacts (classmates, teammates, tutors,
+professors, CCA members) and who type fast and prefer typing over clicking.
+
+**What it does for you:** UniMate lets you record each contact's major and class year, label them with tags,
+attach a short note, mark favourites, and then find the right person by name, major, class year or tag using
+short typed commands. It also reminds you which contacts are missing a phone/email or have not been updated for
+over a year.
+
+This guide describes the features available in v1.4. New users should start with the [Quick start](#quick-start);
+use the [Command summary](#command-summary) at the end as a quick reference.
 
 <!-- * Table of Contents -->
 <page-nav-print />
@@ -22,9 +31,11 @@ This guide describes the features available in v1.4.
 
 1. Download the latest `.jar` file from the [UniMate releases page](https://github.com/AY2627S1-CS2103T-F15-3/tp/releases).
 
-1. Copy the file to the folder you want to use as the _home folder_ for UniMate.
+1. Copy the file to the folder you want to use as the _home folder_ for UniMate. UniMate stores its data in a
+   `data` sub-folder there, so choose a folder you can write to (not a write-protected folder).
 
-1. Open a terminal, `cd` to the folder containing the JAR file, and run `java -jar unimate.jar`.<br>
+1. Open a terminal, `cd` to the folder containing the JAR file, and run `java -jar unimate.jar`.
+   Launching by double-clicking the JAR file might not work on some systems, so use the terminal command.<br>
    A GUI similar to the one below should appear in a few seconds. Note how the app contains some sample data.<br>
    ![UniMate contact list with charcoal panels and orange accents](images/Ui.png)
 
@@ -90,8 +101,12 @@ Up/Down in the command box still recalls command history.
 **Notes about the command format:**<br>
 
 * Command words are case-insensitive: `tag`, `TAG` and `Tag` select the same command. This applies to all commands.<br>
-  Parameter prefixes remain case-sensitive: use `t/`, not `T/`. Command arguments retain their original capitalization;
-  Fixed sorting keywords also ignore case: `SORT Name ASC` works like `sort name asc`.
+  Parameter prefixes remain case-sensitive: use `t/`, not `T/`. Values you type, such as names, keep their original
+  capitalization. Fixed sorting keywords also ignore case: `SORT Name ASC` works like `sort name asc`.
+
+* A recognised prefix (such as `n/`, `t/` or `d/`) **preceded by a space** always starts a new parameter, even if you
+  meant it as part of a value. For example, in `add n/Priya d/o Raman a/NUS`, ` d/o` is read as a default-tag index.
+  Write such text without the leading space or with a different case, e.g. `n/Priya D/O Raman`.
 
 * Words in `UPPER_CASE` are the parameters to be supplied by the user.<br>
   For example, in `add n/NAME`, replace `NAME` with a value such as `John Doe`.
@@ -105,19 +120,16 @@ Up/Down in the command box still recalls command history.
 * Prefixed parameters can be in any order. For `sort`, the field must precede the direction.<br>
   For example, if the command specifies `n/NAME p/PHONE_NUMBER`, `p/PHONE_NUMBER n/NAME` is also acceptable.
 
-* Extraneous parameters for `help`, `exit`, and `clear` are ignored.<br>
-  For example, `help 123` is interpreted as `help`.
-
-* `list`, `listfav`, `tags`, `undo` and `redo` take no parameters and reject extra arguments.<br>
-  In particular, `list all` is rejected; use plain `list` to show all saved contacts.
-  See [Listing all persons](#listing-all-persons-list) for details.
+* `help`, `list`, `listfav`, `tags`, `clear`, `undo`, `redo` and `exit` take no parameters and reject extra arguments
+  with `Invalid command format!` and the command's usage. For example, `clear 1` does **not** clear your contacts,
+  and `list all` is rejected; use plain `list` to show all saved contacts.
 
 * If you are using a PDF version of this document, be careful when copying and pasting commands that span multiple lines as space characters surrounding line-breaks may be omitted when copied over to the application.
 </box>
 
 ### Viewing help: `help`
 
-Shows a message explaining how to access the help page.
+Opens a help window containing a link to this user guide, with a button to copy the link.
 
 ![help message](images/helpMessage.png)
 
@@ -152,19 +164,26 @@ Check the added contact's details. To correct the `PrefixProbe` example, run `fi
 contact, then `edit 1 a/NUS`.
 </box>
 
+* `n/NAME` must start with a letter or digit, and may contain letters (including accented and non-English letters),
+  digits, spaces and the punctuation `'` `-` `.` `,` `/`. For example, `O'Brien`, `Mary-Anne St. Clair`, `José Núñez`
+  and `Raj s/o Kumar` are accepted; `John@Doe` and `Peter*` are not. Repeated spaces inside a name are reduced to one,
+  so `Alex   Yeoh` is saved as `Alex Yeoh`.
+* `a/ADDRESS` is required and can be any non-blank text. If you do not know it, enter a placeholder such as `a/-` or `a/NUS`.
+* `p/PHONE_NUMBER` must contain only digits and be at least 3 digits long. Spaces, dashes and `+` are not accepted,
+  so enter `+65 9123 4567` as `p/6591234567`.
 * `m/MAJOR` records the person's academic major. A supplied major must be non-blank text on one line.
 * `c/CLASS_YEAR` records the graduation year (class of 20XX). Enter exactly four digits from `2000` to `2099`.
 * Omit `m/` or `c/` if the value is unknown or does not apply; an empty supplied value is rejected.
 * Each of these prefixes may appear only once. Leading and trailing spaces around their values are ignored.
 * The fields are saved with the contact, can be edited using `edit`, are shown in the displayed contact list and appear in command messages when specified.
-* A contact with the same name as an existing contact, ignoring case, is rejected as a duplicate, even if their major, class year or other details differ. For example, `John Doe` and `john doe` identify the same contact. Names retain their original capitalization for display and storage. Editing a contact's own name capitalization is allowed.
+* A contact with the same name as an existing contact, ignoring case and repeated spaces, is rejected as a duplicate, even if their major, class year or other details differ. For example, `John Doe`, `john doe` and `John  Doe` identify the same contact. Only the name is used to detect duplicates: two different people who share a name must be given distinguishable names (e.g. `John Doe CS` and `John Doe Law`). Shared phone numbers or emails do not block an `add`; they produce the warning described below. Names retain their original capitalization for display and storage. Editing a contact's own name capitalization is allowed.
 * A duplicate `add` error shows the existing contact's saved details. If the contact is visible,
   `Existing contact at displayed index N:` identifies its number in the current filtered and sorted list.
   If `filter`, `find` or `listfav` hides it, the error labels its number as a **saved index** and tells
   you to run `list`, then `sort reset`. After those commands, the contact is displayed at that index.
   A saved index should only be used for an indexed command after following those instructions and checking the card.
 * Rejecting a duplicate leaves the current view, saved contacts and undo/redo history unchanged.
-* Before opening an older data file, back it up and give any contacts whose names differ only in case distinct names. Such files fail duplicate validation; contacts are not automatically merged, renamed or deleted. The existing startup error handling opens an empty list after a loading error. Close the app without making changes and fix a copy of the backed-up file before retrying, as subsequent successful data-changing commands could overwrite the data file.
+* Before opening an older data file, give any contacts whose names differ only in case distinct names. Such files fail duplicate validation; contacts are not automatically merged, renamed or deleted. If a file fails to load, UniMate shows a warning and keeps a backup copy, as described in [Editing the data file](#editing-the-data-file).
 * A successful `add` can be reverted with [`undo`](#undoing-a-change-undo).
 * Include `f/` to create the contact as a favourite immediately, with a red heart beside their name.
   The flag takes no value, may appear anywhere among the prefixed fields, and may appear only once.
@@ -308,9 +327,16 @@ Examples (assuming at least one person is displayed):
 **Expected behaviour:**
 
 * The selected person's tags are updated; their other details and the current list filter are preserved.
-* The result message starts with `Tagged person: `, followed by the person's name, phone, email, address, any specified major and class year, and updated tags. Tag display order is not guaranteed.
-* Repeated tags and tags already attached to the person are stored only once. Adding an existing tag still returns the success message.
-* Tag names retain their original capitalization and are case-sensitive: `NOC` and `noc` are different tags, even though command words are case-insensitive. This preserves existing user-defined categories without merging or changing stored tags. Default tags are stored by name in the same collection as custom tags: `d/1` and `t/Friend` select the same tag, whereas `t/friend` is different.
+* The result message starts with `Tagged person: `, followed by the person's name, any specified phone and email, address, any specified major and class year, and updated tags. Tag display order is not guaranteed.
+* Repeated tags and tags already attached to the person are stored only once. If some requested tags were already
+  present, the message adds `Already present, so not added again: ...`.
+* If **all** requested tags are already present, nothing changes and the message is
+  `No tags added: NAME already has the tag(s): ...`. No undo step is created.
+* Tag names are matched **ignoring case**: `NOC`, `noc` and `Noc` are the same tag. A contact keeps the
+  capitalization used when the tag was first added, so `tag 1 t/noc` on a contact that already has `NOC` adds nothing.
+  Default tags are stored by name in the same collection as custom tags: `d/1`, `t/Friend` and `t/friend` all
+  select the same tag.
+* To change only a tag's capitalization (e.g. `noc` to `NOC`), remove it with `untag` and then add it again with `tag`.
 * Custom tags still use `t/` in `add` and `edit`. Unlike `tag`, `edit INDEX t/TAG` replaces the entire tag set.
 
 **Error handling:**
@@ -342,7 +368,7 @@ Format: `untag INDEX t/TAG [t/TAG]...`
 **Parameters:**
 
 * `INDEX` identifies a person in the currently displayed list and follows the same positive integer rules as [`tag`](#adding-tags-to-a-person-tag).
-* At least one non-empty `t/TAG` is required. Names must contain only English letters and digits; leading and trailing whitespace is trimmed. Names are matched exactly, including case.
+* At least one non-empty `t/TAG` is required. Names must contain only English letters and digits; leading and trailing whitespace is trimmed. Names are matched ignoring case, so `untag 1 t/noc` removes `NOC`.
 * Place `INDEX` first and separate each `t/` prefix from the preceding argument with a space. Repeat `t/` to remove multiple tags.
 * `untag` does not accept `d/`. To remove a default tag, use its name, such as `t/Friend`.
 
@@ -354,9 +380,10 @@ Examples (assuming at least one person is displayed):
 
 **Expected behaviour:**
 
-* The result message starts with `Untagged person: `, followed by the person's name, phone, email, address, any specified major and class year, and remaining tags. Tag display order is not guaranteed.
+* The result message starts with `Untagged person: `, followed by the person's name, any specified phone and email, address, any specified major and class year, and remaining tags. Tag display order is not guaranteed.
 * The current list filter is preserved. Removing the last tag leaves the person with no tags; it does not delete the person.
-* Repeated names and tags the person does not have are ignored. The command still returns the success message, even if no tags were removed. For example, `untag 1 t/noc` does not remove `NOC`.
+* If some named tags are not on the person, the others are still removed and the message adds
+  `Not found, so not removed: ...`.
 
 **Error handling:**
 
@@ -367,10 +394,11 @@ Examples (assuming at least one person is displayed):
 | Empty or invalid tag (`untag 1 t/`, `untag 1 t/NOC!`) | `Tag names should be alphanumeric` |
 | Unsupported default index syntax (`untag 1 d/1`) | `Invalid command format!`, followed by the `untag` usage instructions. |
 | Unsupported prefix after a tag (`untag 1 t/NOC d/1`) | `Tag names should be alphanumeric` |
+| None of the named tags are on the person (`untag 1 t/Missing`) | `NAME does not have the tag(s): Missing. No tags were removed.` |
 
 These input errors leave all contacts unchanged. If any supplied tag is invalid, none of the tags in that command are removed. Unlike `edit 1 t/`, `untag 1 t/` does not clear the tag collection.
 
-For both commands, UniMate saves the updated data automatically. A saving failure reports `Could not save data due to the following error: ...` or `Could not save data to file ... due to insufficient permissions to write to the file or the folder.` If the tags changed, the message adds that the change has still been applied in UniMate but not saved. The error does not mean the change was rolled back. See [Saving the data](#saving-the-data).
+For both commands, UniMate saves the updated data automatically. A saving failure reports `Could not save data due to the following error: ...` or `Could not save data to file ... due to insufficient permissions to write to the file or the folder.` If the tags changed, the message adds that the change has been applied but not saved. The error does not mean the change was rolled back. See [Saving the data](#saving-the-data).
 
 A `tag` or `untag` that changes a person's tags can be [undone](#undoing-a-change-undo) and [redone](#redoing-a-change-redo). Adding a tag the person already has, or removing one they do not have, changes nothing and does not create an undo step.
 
@@ -439,7 +467,7 @@ Format: `listfav`
 
 **Switching between lists:**
 
-* The existing AB3 `list` command shows all contacts. The new `listfav` command shows only favourites. Both change the view without changing contact data or favourite status.
+* `list` shows all contacts and `listfav` shows only favourites. Both change the view without changing contact data or favourite status.
 * `fav INDEX` and `unfav INDEX` always use the indices in the current view, including search results and the favourite list. A displayed index is not a permanent contact identifier.
 * For example, run `list`, then `fav 1`, then `listfav`. Run `unfav 1` to remove the first person shown in the favourite list, then `list` to see all contacts again.
 * The existing `add` and `edit` commands restore the full list after success. Run `listfav` again to return to favourites. Tag and untag operations preserve the current filter and favourite status.
@@ -525,7 +553,7 @@ Format: `list`
   indices again before using an indexed command such as `edit` or `delete`.
 * Lists all saved contacts; it does not provide a recently added view or sort contacts by their creation date.
 * The result starts with `Listed all persons.` and reports `N person(s) listed!` on the next line, where `N` is the
-  total number of contacts displayed. An empty address book succeeds with `0 person(s) listed!`.
+  total number of contacts displayed. An empty contact list succeeds with `0 person(s) listed!`.
 * Viewing contacts does not change their details, recorded update dates or undo/redo history. Saved contacts remain
   available after restarting UniMate from the same folder; active searches, filters and sort choices are temporary.
 
@@ -550,7 +578,8 @@ Format: `edit INDEX [n/NAME] [p/PHONE] [e/EMAIL] [a/ADDRESS] [m/MAJOR] [c/CLASS_
 * Leading and trailing spaces are ignored. If any supplied value is invalid or an academic prefix is repeated, no fields are updated.
 * After a successful edit, the full contact list is shown while retaining the active sort order.
   If editing search or filter results, run `find` or `filter` again before using a result index for another edit.
-* When editing tags, all of the person's existing tags are removed; adding tags is not cumulative.
+* When editing tags, all of the person's existing tags are removed; adding tags is not cumulative. Tags are compared
+  ignoring case, so `edit 1 t/friend` on a contact whose only tag is `Friend` reports no changes.
 * When the supplied `t/` values change the tag set, feedback includes `Tags replaced. Removed: ... . Added: ... .`
   with actual changes sorted by tag name (`None` for an empty list). Unchanged tags are excluded.
   For example, replacing `Friend` and `Classmate` with `Project` reports
@@ -768,9 +797,11 @@ Examples:
 
 ### Clearing all entries: `clear`
 
-Clears all entries from UniMate.
+Clears all entries from UniMate and shows `All contacts have been cleared!`.
 
 Format: `clear`
+
+* `clear` takes no parameters. Extra input such as `clear 1` is rejected and nothing is cleared.
 
 <box type="warning" seamless>
 
@@ -830,7 +861,7 @@ Examples:
 * For a contact without a note, `note 1 Follow up`, then `undo`, then `redo` saves the note `Follow up` again.
 * For a contact with an existing note, `delnote 1`, then `undo`, then `redo` deletes the note again.
 * `edit 1 p/91234567`, then `undo`, then `redo` changes the 1st person's phone number to `91234567` again.
-* `clear`, then `undo`, then `redo` clears your contacts again, showing `Redid: Address book has been cleared!`.
+* `clear`, then `undo`, then `redo` clears your contacts again, showing `Redid: All contacts have been cleared!`.
 
 <box type="tip" seamless>
 
@@ -839,7 +870,7 @@ Examples:
 
 ### Exiting the program: `exit`
 
-Exits the program.
+Exits the program. Your data is already saved after every command, so there is nothing to save before exiting.
 
 Format: `exit`
 
@@ -898,7 +929,7 @@ If UniMate cannot write the data file, for example because the file or its folde
 
 If the command changed your contacts, the error continues on the next line:
 
-`The change made by this command has still been applied in UniMate, but it is not saved to the data file. Running undo now would revert this change. If you close UniMate now, this change will be lost. To keep it, fix the problem, then run any command, such as list, to save it.`
+`The change made by this command has been applied, but it is not saved to the local data file. Running undo now would revert this change. If you close UniMate now, this change will be lost. To keep it, fix the error, then run any command, such as list, to save the change locally.`
 
 If the failed command was itself an `undo`, the message names `redo` instead, because `redo` reverts an undo. Commands that do not change your contacts, such as `list`, show only the first line.
 
@@ -916,26 +947,21 @@ UniMate data is saved automatically as a JSON file `[JAR file location]/data/uni
 <box type="warning" seamless>
 
 **Caution:**
-If your changes make the data file invalid, UniMate starts with an empty contact list at the next run. The invalid file remains on disk until you run a command (UniMate saves after every command). Still, we recommend backing up the file before editing it.<br>
+If your changes make the data file invalid, UniMate starts with an empty contact list at the next run and shows an
+amber warning in the result box naming the file, the reason it could not be loaded, and the backup it made. Before
+opening, UniMate copies the invalid file to `data/unimate.json.bak` (replacing any older backup of that name).
+**Your next command, even `list`, saves the empty list over `data/unimate.json`.** To repair the file instead,
+close UniMate without running a command, fix the file (or the `.bak` copy), then restart.
+We still recommend backing up the file yourself before editing it.<br>
 Furthermore, certain edits can cause UniMate to behave in unexpected ways (e.g., if a value entered is outside of the acceptable range). Therefore, edit the data file only if you are confident that you can update it correctly.
 </box>
 
 A file containing only `null`, a null contact entry such as `{"persons":[null]}`, or a null tag entry
-such as `"tags":[null]` is invalid. UniMate rejects the whole file, logs the loading error and opens
-with an empty contact list. For null contact or tag entries, the logged error identifies their
+such as `"tags":[null]` is invalid. UniMate rejects the whole file, shows the warning above and opens
+with an empty contact list. For null contact or tag entries, the reason identifies their
 positions, counting from 1 in the saved arrays (not the GUI's displayed order). Close the window
-without running a command before repairing or restoring the file. A valid empty address book
+without running a command before repairing or restoring the file. A valid empty contact list
 (`{"persons":[]}`) and omitted optional contact fields remain supported.
-
---------------------------------------------------------------------------------------------------------------------
-
-## Coming soon
-
-The following features are not available in the MVP.
-
-### Archiving data files `[coming in v2.0]`
-
-_Details coming soon ..._
 
 --------------------------------------------------------------------------------------------------------------------
 
@@ -944,13 +970,31 @@ _Details coming soon ..._
 **Q**: How do I transfer my data to another computer?<br>
 **A**: Install the app on the other computer and overwrite the data file it creates with the data file from your previous UniMate home folder.
 
+**Q**: Where is my data stored?<br>
+**A**: In `data/unimate.json` inside the folder containing `unimate.jar`. It is saved automatically after every command.
+
+**Q**: How do I enter an international phone number such as `+65 9123 4567`?<br>
+**A**: Phone numbers accept digits only. Drop the `+` and spaces: `p/6591234567`.
+
+**Q**: Why does `add n/Priya d/o Raman a/NUS` say `Default tag index must be an integer from 1 to 5`?<br>
+**A**: ` d/` (with a space before it) starts a default tag parameter. Write the name as `n/Priya D/O Raman`.
+
+**Q**: I have two contacts with the same name. How do I add both?<br>
+**A**: Names identify contacts, so make them distinguishable, e.g. `n/John Doe CS` and `n/John Doe Law`.
+
+**Q**: I closed UniMate. Can I still undo my last change?<br>
+**A**: No. Undo/redo history only lasts while UniMate is open.
+
 --------------------------------------------------------------------------------------------------------------------
 
 ## Known issues
 
 1. **When using multiple screens**, if you move the application to a secondary screen, and later switch to using only the primary screen, the GUI will open off-screen. The remedy is to delete the `preferences.json` file created by the application before running the application again.
 2. **If you minimize the Help Window** and then run the `help` command (or use the `Help` menu, or the keyboard shortcut `F1`) again, the original Help Window will remain minimized, and no new Help Window will appear. The remedy is to manually restore the minimized Help Window.
-3. **If saving the data file fails**, the command's change is still applied inside UniMate. The save error replaces the usual success message, and says that the change is applied but not saved. Running `undo` at this point reverts that change. The remedy is to fix the cause of the error and then run any successful command, such as `list`, to save your contacts. See [Saving the data](#saving-the-data).
+3. **Double-clicking the JAR file might not work** on some systems. Launch it from a terminal with `java -jar unimate.jar` instead.
+4. **UniMate will not work properly in a write-protected folder**, because it cannot save its data there. Place the JAR in a folder you can write to.
+5. **Mac users using full-screen mode for secondary windows** (such as the help window) might encounter unexpected behaviour. Exit full-screen mode before opening the help window.
+6. **If saving the data file fails**, the command's change is still applied inside UniMate. The save error replaces the usual success message, and says that the change is applied but not saved. Running `undo` at this point reverts that change. The remedy is to fix the cause of the error and then run any successful command, such as `list`, to save your contacts. See [Saving the data](#saving-the-data).
 
 --------------------------------------------------------------------------------------------------------------------
 
@@ -970,6 +1014,7 @@ Action     | Format, Examples
 **Unfavourite** | `unfav INDEX`<br> e.g., `unfav 1`
 **List favourites** | `listfav`
 **Help**   | `help`
+**Exit**   | `exit`
 **Tags**   | `tags`
 **Tag**    | `tag INDEX [d/DEFAULT_INDEX]... [t/TAG]...` (at least one tag)<br> e.g., `tag 1 d/2 t/NOC`
 **Untag**  | `untag INDEX t/TAG [t/TAG]...`<br> e.g., `untag 1 t/NOC`
