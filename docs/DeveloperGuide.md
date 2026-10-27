@@ -8,6 +8,18 @@
 
 This guide describes the v1.4 implementation.
 
+Use this guide to find the component boundaries, design decisions and checks for a change.
+
+| Developer task | Start here |
+| --- | --- |
+| Understand startup and component boundaries | [Architecture](#architecture), then the UI, Logic, Model and Storage sections. |
+| Change contact fields or validation | [Add prefixes](#parsing-add-prefixes), [academic fields](#adding-academic-fields) and [editing](#editing-existing-contacts-gui-and-execution-flow). |
+| Change the displayed contacts or their order | [Search](#searching-by-academic-fields), [filter](#filtering-contacts-by-academic-fields-and-tags), [sort](#sorting-the-displayed-contacts) and [view status](#persistent-view-status). |
+| Change card layout or keyboard interaction | [Contact card layout](#contact-card-layout). |
+| Change notes, tags or reminders | The corresponding feature sections under [Implementation](#implementation). |
+| Change undo/redo or command recall | [Contact data history](#recording-contact-data-history), [undo/redo](#undo-and-redo-commands) and [command history](#command-history-navigation). |
+| Check requirements or test a release | [Requirements](#appendix-requirements) and [manual testing](#appendix-instructions-for-manual-testing). |
+
 <!-- * Table of Contents -->
 <page-nav-print />
 
