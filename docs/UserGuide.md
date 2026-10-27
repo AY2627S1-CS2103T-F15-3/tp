@@ -579,7 +579,7 @@ Format: `edit INDEX [n/NAME] [p/PHONE] [e/EMAIL] [a/ADDRESS] [m/MAJOR] [c/CLASS_
 * After a successful edit, the full contact list is shown while retaining the active sort order.
   If editing search or filter results, run `find` or `filter` again before using a result index for another edit.
 * When editing tags, all of the person's existing tags are removed; adding tags is not cumulative.
-* When `t/` is supplied, feedback includes `Tags replaced. Removed: ... . Added: ... .`
+* When the supplied `t/` values change the tag set, feedback includes `Tags replaced. Removed: ... . Added: ... .`
   with actual changes sorted by tag name (`None` for an empty list). Unchanged tags are excluded.
   For example, replacing `Friend` and `Classmate` with `Project` reports
   `Tags replaced. Removed: Classmate, Friend. Added: Project.`
@@ -591,18 +591,23 @@ Format: `edit INDEX [n/NAME] [p/PHONE] [e/EMAIL] [a/ADDRESS] [m/MAJOR] [c/CLASS_
   Feedback wraps within the result display when the window is narrow.
 * Enter `p/` or `e/` without a value to clear that contact method. Clearing both shows the automatic `incomplete` reminder; omitted phone/email prefixes preserve the existing values.
 * A successful `edit` that changes the person's details can be reverted with [`undo`](#undoing-a-change-undo).
-  Undo/redo messages include the `Edited person: ...` details but do not repeat the tag replacement
-  summary or duplicate-details warning.
-* The result display shows `Edited person: ` followed by the updated details, and the command box is cleared.
-  The contact card shows `Major: Not specified` or `Class year: Not specified` when an academic field is cleared.
-* Changing a phone number or email to one used by another contact keeps that normal success message
+  Undo/redo messages retain the full `Edited person: ...` contact details without repeating the field or tag change summary or duplicate-details warning.
+* The result display shows `Edited NAME:` followed by only the fields that actually changed,
+  one per line in the form `Field: old value → new value`. Cleared optional fields show `Not specified`.
+  Fields whose supplied values already match are omitted. Tag changes use the removal/addition summary above.
+  The command box is cleared, and the contact card shows the resulting details.
+* If all supplied values already match, the result is
+  `No changes made to NAME. The supplied values match the existing details.`
+  The contact's update date and undo/redo history are preserved; no undo step is created and available redo
+  remains available. The full contact list is still shown and the command box is cleared.
+* Changing a phone number or email to one used by another contact keeps the field change summary
   and appends a line such as `Warning - duplicate details detected: #2 Alice (phone); #3 Bob (email)`.
-  If `t/` is also supplied, the tag replacement summary appears between the normal success message
+  If the tags also change, the tag replacement summary appears between the field change summary
   and the warning; neither is dropped. The complete message appears amber in the original feedback
   box, without a coloured border or an additional warning control. Feedback without a warning remains
   light grey, including tag-only edits. Indices identify matching contacts in the refreshed full list,
   including matches hidden before the edit. The edited contact's updated name and details remain in
-  the normal success message. All matches are retained; long feedback wraps and can be scrolled.
+  the field change summary. All matches are retained; long feedback wraps and can be scrolled.
 * Warning comparisons match non-empty phone numbers exactly and email addresses ignoring case.
   Only methods whose values changed are checked. Unchanged values, email-capitalization-only changes,
   unrelated field edits, cleared methods and the edited contact itself do not trigger a warning.
@@ -626,6 +631,16 @@ Examples:
 *  `edit 1 p/91234567 e/johndoe@example.com` Edits the phone number and email address of the 1st person to be `91234567` and `johndoe@example.com` respectively.
 *  `edit 1 m/Computer Science c/2027` Updates the 1st person's major and graduation year.
 *  `edit 1 m/ c/` Clears both academic fields while keeping the other details.
+   If Alice Tan previously had major `Computer Science` and class year `2027`, feedback is:
+
+   ```text
+   Edited Alice Tan:
+   Major: Computer Science → Not specified
+   Class year: 2027 → Not specified
+   ```
+
+   Repeating the command reports `No changes made to Alice Tan. The supplied values match the existing details.`
+
 *  `edit 2 n/Betsy Crower t/` Edits the name of the 2nd person to be `Betsy Crower` and clears all existing tags.
 
 ### Locating persons by name, major or class year: `find`
@@ -806,6 +821,7 @@ Format: `undo`
 * Restores your contacts to how they were before the most recent change that has not already been undone.
 * Each `undo` reverts exactly one command. A command that changed several contacts at once, such as `delete 1 3 5` or `clear`, is reverted as a whole.
 * The message names the change that was undone: `Undid:` followed by the message that change showed when you made it, such as `Undid: Tagged person: …​` or `Undid: Deleted person: Alex Tan; …​`.
+  * For `edit`, the recorded description contains full contact details instead of the immediate field-change summary.
   * The details in this message are the ones shown when the change was made, **not** the restored values. For example, after `edit 2 p/98765432`, `undo` shows `Undid: Edited person: …​; Phone: 98765432; …​` while restoring the previous phone number. Check the contact list to see the restored details.
   * For a replaced note, the `Use undo to restore the previous note.` hint is left out, so the message is `Undid: Note replaced for NAME.` followed by the previous and saved notes.
 * Run `undo` again to revert earlier changes one at a time, starting from the most recent. There is no limit on how many changes you can undo within a session.
@@ -838,6 +854,7 @@ Reapplies the most recent change that was reverted by `undo`.
 Format: `redo`
 
 * The change undone most recently is redone first. Running `redo` repeatedly therefore reapplies undone changes in the order you originally made them.
+* As with undo, `edit` uses full contact details instead of the immediate field-change summary.
 * Each `redo` reapplies exactly one undone command. A redone change can be undone again with `undo`.
 * The message names the change that was redone: `Redid:` followed by the message that change showed when you first made it, such as `Redid: Added to favourites: …​`. As with `undo`, a replaced note's message leaves out the `Use undo to restore the previous note.` hint.
 * After a redo, the full contact list is shown. Any `find`, `filter` or `listfav` view is cleared, so run it again if you need it. The order chosen with `sort` is kept. Indices in later commands refer to this full list.
