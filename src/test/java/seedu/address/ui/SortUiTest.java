@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.nio.file.Path;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
@@ -23,6 +24,7 @@ import javafx.scene.control.TextField;
 import javafx.stage.Stage;
 import seedu.address.logic.LogicManager;
 import seedu.address.logic.Messages;
+import seedu.address.logic.commands.AddCommand;
 import seedu.address.logic.commands.SortCommand;
 import seedu.address.model.Model;
 import seedu.address.model.ModelManager;
@@ -82,6 +84,33 @@ public class SortUiTest {
     }
 
     @Test
+    public void commandBox_updateDateSort_updatesCardsAndStatus() throws Exception {
+        Person alice = new PersonBuilder(this.alice).withLastUpdated(LocalDate.of(2024, 12, 31)).build();
+        Person bob = new PersonBuilder(this.bob).withLastUpdated(LocalDate.of(2024, 12, 31)).build();
+        Person charlie = new PersonBuilder(this.charlie).withLastUpdated(LocalDate.of(2025, 1, 1)).build();
+        runOnFxThread(() -> {
+            MainWindow window = createWindow(alice, bob, charlie);
+            try {
+                enter(window, "sort updated asc");
+                assertCards(window, List.of(alice, bob, charlie));
+                assertTrue(((Label) window.getRoot().getScene().lookup("#viewStatus"))
+                        .getText().endsWith("Sort: Last updated ascending"));
+                enter(window, "sort updated desc");
+                assertCards(window, List.of(charlie, alice, bob));
+                assertEquals("Sorted contacts by updated (desc).", feedback(window));
+                enter(window, "filter t/Classmate");
+                assertCards(window, List.of(charlie, bob));
+                enter(window, "sort reset");
+                assertCards(window, List.of(charlie, bob));
+                assertTrue(((Label) window.getRoot().getScene().lookup("#viewStatus"))
+                        .getText().endsWith("Sort: Saved order"));
+            } finally {
+                window.getRoot().close();
+            }
+        });
+    }
+
+    @Test
     public void commandBox_sortedFilteredMutations_targetDisplayedCardsAndRenumber() throws Exception {
         runOnFxThread(() -> {
             MainWindow window = createWindow();
@@ -127,6 +156,38 @@ public class SortUiTest {
     }
 
     @Test
+    public void commandBox_duplicateAdd_identifiesDisplayedAndHiddenContacts() throws Exception {
+        runOnFxThread(() -> {
+            MainWindow window = createWindow();
+            try {
+                enter(window, "sort name asc");
+                enter(window, "add n/charlie p/88888888 a/Different address");
+                assertEquals(AddCommand.MESSAGE_DUPLICATE_PERSON + "\nExisting contact at displayed index 3:\n"
+                        + Messages.format(charlie), feedback(window));
+                assertCards(window, List.of(alice, bob, charlie));
+
+                enter(window, "filter t/Classmate");
+                String command = "add n/ALICE p/77777777 a/Different address";
+                enter(window, command);
+                assertEquals(AddCommand.MESSAGE_DUPLICATE_PERSON
+                        + "\nExisting contact is hidden by the current filter (saved index 3):\n"
+                        + Messages.format(alice) + "\nRun list, then sort reset to view this contact at index 3.",
+                        feedback(window));
+                assertCards(window, List.of(bob, charlie));
+                TextField input = (TextField) window.getRoot().getScene().lookup("#commandTextField");
+                assertEquals(command, input.getText());
+                assertTrue(input.getStyleClass().contains(CommandBox.ERROR_STYLE_CLASS));
+
+                enter(window, "list");
+                enter(window, "sort reset");
+                assertCards(window, List.of(charlie, bob, alice));
+            } finally {
+                window.getRoot().close();
+            }
+        });
+    }
+
+    @Test
     public void commandBox_invalidSortAndEditUndoRedo_preserveExpectedView() throws Exception {
         runOnFxThread(() -> {
             MainWindow window = createWindow();
@@ -154,6 +215,10 @@ public class SortUiTest {
     }
 
     private MainWindow createWindow() {
+        return createWindow(alice, bob, charlie);
+    }
+
+    private MainWindow createWindow(Person alice, Person bob, Person charlie) {
         Model model = new ModelManager();
         model.addPerson(charlie);
         model.addPerson(bob);

@@ -318,6 +318,33 @@ After a successful add, it records the previous contact data state in the model'
 (see [Recording contact data history](#recording-contact-data-history)).
 The normal storage path then saves the contact, including its academic fields.
 
+### Identifying an existing contact when add rejects a duplicate
+
+`AddCommand` searches the saved person list once using `Person#isSamePerson` and branches on the
+resulting `Optional<Person>`. When a duplicate is found, it passes that same saved contact to
+`AddCommand#getDuplicateMessage`, which uses `Messages#format` to report the contact's actual details,
+including its original name capitalization and supplied academic fields. Values from the attempted
+addition do not replace the saved details.
+
+The command looks up that saved contact in `Model#getFilteredPersonList()`. If visible, its one-based
+index is labelled `displayed index` and follows the active filter and sort. If hidden, the error
+explicitly labels its one-based position in the saved person list as a `saved index` and instructs
+the user to run `list`, then `sort reset`. The command names come from `ListCommand.COMMAND_WORD` and
+`SortCommand.COMMAND_WORD`. Both commands are needed because `list` preserves sorting. The hidden
+contact may have been excluded by `filter`, `find` or `listfav`.
+The error also works when the displayed list is empty; it never treats the saved index as an index
+in the current filtered view.
+
+The lookup only reads the existing model. A duplicate throws before copying the address book,
+adding a contact or recording history, so contacts, filter, sort, status and history descriptions
+remain unchanged. `LogicManager` does not save after the exception. The GUI uses the existing
+wrapped result display and retains the submitted command for correction.
+
+`AddCommandIntegrationTest` checks displayed and saved indices, case-only duplicates with different
+details, empty views, unchanged saved files and preserved undo/redo after `filter`, `find` and
+`listfav`. `SortUiTest` checks the actual command box, result text, unchanged cards and the recovery
+instructions.
+
 ### Editing academic fields
 
 `EditCommandParser` recognises `m/` (major) and `c/` (graduation year) alongside existing edit prefixes.
@@ -375,8 +402,10 @@ filtered indices, clearing fields, preserved notes/favourite status, invalid edi
 `FindCommandParser` splits the input into keywords and passes them to `NameContainsKeywordsPredicate`.
 Despite its name, the predicate matches a `Person` if any keyword matches a full word in the person's
 `Name`, `Major` or `GraduationYear`, using `StringUtil.containsWordIgnoreCase`. Matching is therefore
-case-insensitive, whole-word and `OR`-based across all three fields. An empty `Major` or `GraduationYear`
-never matches a keyword. `FindCommand` applies the predicate through `Model#updateFilteredPersonList`;
+case-insensitive, whole-word and `OR`-based across all three fields. Partial words do not match, so `find Comp`
+does not match `Computer Science`. Each keyword is matched on its own, so `find Computer Science` also returns
+a contact whose major is `Data Science`. Exact matching on a whole field value is provided by `filter` instead.
+An empty `Major` or `GraduationYear` never matches a keyword. `FindCommand` applies the predicate through `Model#updateFilteredPersonList`;
 the model and storage format are unchanged.
 
 ### Filtering contacts by academic fields and tags
@@ -413,7 +442,7 @@ is shown on restart.
 ### Sorting the displayed contacts
 
 `AddressBookParser` routes `sort` to `SortCommandParser`. The parser accepts either two tokens
-(a field `name`, `major` or `year`, followed by `asc` or `desc`) or the single keyword `reset`.
+(a field `name`, `major`, `year` or `updated`, followed by `asc` or `desc`) or the single keyword `reset`.
 Keywords are case-insensitive. A field and direction produce `SortCommand` with
 `PersonSortComparator.SortField` and `SortDirection` values; `reset` produces `SortResetCommand`.
 Invalid input raises a `ParseException` with usage instructions before any view or data change.
@@ -442,6 +471,14 @@ sorting keys. Direction is applied to the value comparator **before** `Comparato
 that descending order does not move unspecified values to the front. Equal primary values use ascending
 case-insensitive name order; names differing only in case compare equally.
 
+For `UPDATED`, the comparator compares `Person#getLastUpdated()` as `LocalDate` values.
+Ascending puts older dates first; descending reverses only the date comparison, keeping the
+ascending name tie-break in both directions. Missing/null dates in older files remain unknown
+and sort last in both directions using `Comparator.nullsLast`; unknown-date ties use ascending names.
+The view status describes
+this field as `Last updated`. Replacing a contact after an edit or restoring it through undo/redo
+automatically reorders the displayed view using the restored date.
+
 Sorting the view rather than `UniquePersonList` preserves storage order and history snapshots. As with
 other successful commands, `LogicManager` still invokes storage, but the saved contacts remain in their
 underlying order. Sort commands do not call `commitAddressBook`, so undo and redo availability is preserved.
@@ -452,7 +489,9 @@ Restarting constructs a view without a comparator or predicate, restoring saved 
 Comparator, model, command and parser unit tests cover ordering and validation. `SortCommandIntegrationTest`
 checks command interactions, notes preservation and JSON persistence; `SortUiTest` checks the real command
 box, rendered card numbering and feedback. `SortResetCommandTest` checks saved order, filter preservation
-and redo availability after resetting. See [Sorting contacts](#sorting-contacts) for manual checks.
+and redo availability after resetting. `UpdatedSortIntegrationTest` covers date ordering, ties,
+filters, displayed-index editing, undo/redo and JSON reload; `SortUiTest` also checks date sorting
+through the command box and rendered cards. See [Sorting contacts](#sorting-contacts) for manual checks.
 
 #### Persistent view status
 
@@ -624,14 +663,15 @@ duplicate-name rejection leave the stored contact unchanged. Undo and redo resto
 date, rather than calculating a new date when restoring a snapshot.
 
 `PersonCard` sets the always-visible `lastUpdated` label from `Person#getLastUpdated()` in
-`PersonListCard.fxml`, producing `Last updated: YYYY-MM-DD` for ordinary four-digit years. Its tooltip
+`PersonListCard.fxml`, producing `Last updated: YYYY-MM-DD` for ordinary four-digit years or
+`Last updated: Unknown` when no date was recorded. Its tooltip
 explains the scope of the date. Replacing a person updates the observable list cell, so edits,
 undo/redo and reloaded data all display the corresponding date. The label is independent of the
 derived `update` reminder and appears on recent contacts too.
 
 The existing JSON `lastUpdated` string and `LocalDate.parse` validation are reused. Missing/null
-dates receive the loading date as a migration baseline; this baseline becomes persistent after
-the next successful command saves the address book. Invalid supplied dates fail data loading.
+dates remain unknown and are saved as JSON null until an actual basic-profile edit records a date.
+Invalid supplied dates fail data loading.
 No new JSON property or user-supplied date prefix is introduced.
 
 `LastUpdatedDisplayTest` exercises actual JavaFX cards and list cells for recent and older dates,
@@ -665,15 +705,15 @@ The reminder is derived from a contact's basic-profile modification date rather 
 
 #### Date tracking and persistence
 
-The existing `Person` constructor overloads initialize unspecified dates using `LocalDate.now()`. The full constructor accepts notes, favourite status and an explicit date, allowing immutable copies to retain all independent contact state. The date participates in equality, hashing and contact history snapshots. `Person#withNotes` preserves it.
+The existing `Person` constructor overloads initialize new contacts using `LocalDate.now()`. The full constructor accepts a null date for legacy contacts with no recorded update date. Equality, hashing, immutable copies and history snapshots preserve this unknown state.
 
 `EditCommand#createEditedPerson` compares the resulting name, phone, email, address, major and graduation year with the original values. If at least one differs, it uses `LocalDate.now(clock)`; otherwise it retains the existing date. Tag-only edits and unsuccessful edits do not reset the date. Date injection makes anniversary tests reproducible. Tag, note and favourite changes retain the previous date, while read-only commands only change the view or feedback. Existing undo/redo restores the full recorded person, including the date.
 
-`JsonAdaptedPerson` serializes `lastUpdated` as an ISO string such as `2026-10-18` and parses it with `LocalDate.parse` on loading. Missing or null dates use the current loading date as a migration baseline, not a historical claim. Normal saving persists that baseline for subsequent loads. Invalid supplied dates raise `IllegalValueException`, which the existing storage loading path reports as invalid data. Notes, favourite status and ordinary tags retain their existing JSON properties and validation.
+`JsonAdaptedPerson` serializes known dates as ISO strings such as `2026-10-18` and unknown dates as JSON null. Missing or null dates remain unknown after loading and saving. Invalid supplied dates still raise `IllegalValueException` through the existing storage loading path.
 
 #### Reminder logic
 
-`Person#needsUpdate(today)` requires the saved date to precede today and its one-year anniversary to be strictly before today. Exactly one year produces no reminder. Calendar-year arithmetic uses `lastUpdated.plusYears(1)`, so a leap-day anniversary follows Java's calendar rule: `2024-02-29` reaches its anniversary on `2025-02-28`, with a reminder starting on `2025-03-01`.
+`Person#needsUpdate(today)` requires a known date preceding today and its one-year anniversary to be strictly before today. Unknown dates produce no age-based reminder. Exactly one year produces no reminder. Calendar-year arithmetic uses `lastUpdated.plusYears(1)`, so a leap-day anniversary follows Java's calendar rule: `2024-02-29` reaches its anniversary on `2025-02-28`, with a reminder starting on `2025-03-01`.
 
 `SystemTag.forPerson` appends one `UPDATE` reminder when the age condition applies, independently of `INCOMPLETE`. It does not mutate `Person#getTags` or write automatic labels to JSON. This representation can accommodate other system reminders later.
 
@@ -857,7 +897,9 @@ Every stored state is a copy made with `new AddressBook(...)`. `Person` and its 
 
 Given below is the flow for a successful `add n/Alex Tan …​`:
 
-1. `AddCommand#execute` checks `Model#hasPerson`. A duplicate throws a `CommandException` here, so nothing is recorded.
+1. `AddCommand#execute` searches the saved person list using `Person#isSamePerson`. If the resulting
+   `Optional<Person>` contains a duplicate, it throws a `CommandException` identifying that contact
+   and its displayed or saved index, so nothing is recorded.
 1. The command creates `previousState = new AddressBook(model.getAddressBook())`, then calls `Model#addPerson`.
 1. The command formats its success message and calls `Model#commitAddressBook(previousState, message)`. `AddressBookHistory#commit` then:
    1. returns without recording if `previousState` holds the same contacts as the current data;
@@ -945,13 +987,18 @@ Continuing the example above, suppose an unrecorded change now replaces the cont
 
 To the user, such a change would only make `undo` and `redo` report that there is nothing to undo or redo, never restore the wrong data. `UndoCommandTest` covers this by changing the model directly without committing.
 
+#### Known limitations
+
+* **The history has no size limit.** Every recorded change stores a full copy of the contact list, and nothing is ever dropped from `undoStates` until the app closes or the history becomes stale. Memory use grows with the number of contacts times the number of changes in a session. This is acceptable for the expected size of a student's contact list. A future version could cap the number of entries and drop the oldest snapshot when the cap is reached.
+* **A failed save does not roll back the change.** Commands commit to the history in `Command#execute`. `LogicManager#execute` saves to storage only afterwards. If saving throws an `IOException`, `LogicManager` throws a `CommandException` with `FILE_OPS_ERROR_FORMAT` or `FILE_OPS_PERMISSION_ERROR_FORMAT`. The in-memory change and its history entry remain, and the UI shows only the save error instead of the command's success message. A following `undo` therefore reverts that change. To make this clear, `LogicManager` copies the person list (a shallow copy, as `Person` is immutable) before running the command. If the list changed, it appends `MESSAGE_UNSAVED_CHANGE` to the save error. The note says the change is applied but not saved, that it is lost if the app closes now, and which command would revert it: `redo` after a failed `undo`, otherwise `undo`. Commands that leave the data unchanged, such as `list`, get no note, because they have no change to describe. Any later successful command, including `list`, saves the current data again. The user guide documents this under [Saving the data](UserGuide.md#saving-the-data).
+
 #### Design considerations
 
 **Aspect: What is stored for each change**
 
 * **Alternative 1 (current choice):** Store a copy of the whole contact data state.
   * Pros: Easy to implement and to verify, and works the same for any command.
-  * Cons: Uses more memory as the number of contacts and history entries grows.
+  * Cons: Uses more memory as the number of contacts and history entries grows. The history is not trimmed (see [Known limitations](#known-limitations)).
 * **Alternative 2:** Each command stores how to reverse itself (e.g. `add` stores the person to remove).
   * Pros: Uses less memory.
   * Cons: Every command needs its own correct reversal logic.
@@ -1241,7 +1288,8 @@ Priorities: High (must have) - `* * *`, Medium (nice to have) - `* *`, Low (unli
 
 * 3b. UniMate detects a duplicate contact with the same name.
 
-    * 3a1. UniMate informs user that the contact already exists.
+    * 3b1. UniMate shows the existing contact's details and its displayed index, or a labelled saved
+      index with instructions to reveal the contact if hidden by the current filter.
       
       Use case ends.
 
@@ -1445,6 +1493,33 @@ testers are expected to do more *exploratory* testing.
       saved `ListValidation` contact remain unchanged.
    1. Run `  list  ` with surrounding spaces.<br>
       Expected: `ListValidation` is displayed and the count is `1 person(s) listed!`.
+
+### Identifying duplicate additions
+
+1. Visible duplicates in a sorted and filtered view
+
+   1. Prerequisites: Use a disposable test copy and ensure `DuplicateAlpha` and `DuplicateBeta` do not
+      already exist. Add `add n/DuplicateAlpha p/91234567 e/original@example.com a/NUS m/Computing c/2027 t/DuplicateDemo`
+      and `add n/DuplicateBeta a/Clementi t/DuplicateDemo`.
+   1. Run `filter t/DuplicateDemo`, then `sort name desc`.<br>
+      Expected: `DuplicateBeta` is displayed at index 1 and `DuplicateAlpha` at index 2.
+   1. Run `add n/duplicatealpha p/98765432 e/new@example.com a/Another address m/Law c/2029`.<br>
+      Expected: The duplicate is rejected. The error includes `Existing contact at displayed index 2:`
+      and the saved `DuplicateAlpha` details: phone `91234567`, email `original@example.com`, address
+      `NUS`, major `Computing` and class year `2027`. The two displayed cards and their order remain
+      unchanged. The submitted command remains in the command box for correction.
+
+1. Hidden duplicates and saved indices
+
+   1. Run `find DuplicateBeta`, then repeat the duplicate `add` above.<br>
+      Expected: Only `DuplicateBeta` remains displayed. The error identifies the hidden saved
+      `DuplicateAlpha` contact, labels its index as `saved index N`, and instructs `list`, then `sort reset`.
+   1. Run those two commands in order and inspect index `N`.<br>
+      Expected: That card is `DuplicateAlpha`, with all its original details. The saved index is
+      valid in this restored full list and saved order.
+   1. Run `find NoDuplicateFeedbackMatch`, ensuring it matches no contact, then repeat the duplicate `add`.<br>
+      Expected: The empty view is preserved, and the error still identifies the same saved contact.
+   1. Clean up the disposable contacts using `find DuplicateAlpha`, `delete 1`, then `find DuplicateBeta`, `delete 1`.
 
 ### Adding contacts with prefix-like address text
 
@@ -1672,6 +1747,45 @@ testers are expected to do more *exploratory* testing.
    1. Run `filter m/Computer Science and Information Systems c/2027 t/SortDemo` and narrow the window.<br>
       Expected: Long status text wraps within the window; all criteria and the sort description remain
       readable. Zero matches, if any, show `Showing 0 of N contacts` without deleting saved contacts.
+
+1. Latest update date
+
+   1. Prerequisites: Use a disposable copy with no contacts named `UpdatedAlpha`, `UpdatedBeta` or
+      `UpdatedGamma`, and no tag `UpdateSortDemo`. Add contacts in this order:
+
+      * `add n/UpdatedGamma p/91234567 t/UpdateSortDemo`
+      * `add n/UpdatedBeta p/92345678 t/UpdateSortDemo`
+      * `add n/UpdatedAlpha p/93456789 t/UpdateSortDemo`
+
+      Close UniMate. In the disposable `data/unimate.json`, set only these contacts' `lastUpdated`
+      properties: `UpdatedGamma` to `2025-01-01`, and `UpdatedBeta` and `UpdatedAlpha` to `2024-12-31`.
+      Relaunch and run `filter t/UpdateSortDemo`. Confirm the dates on the cards before continuing.
+   1. Run `sort updated asc`, then `sort updated desc`.<br>
+      Expected: Ascending shows `UpdatedAlpha`, `UpdatedBeta`, `UpdatedGamma`; descending shows
+      `UpdatedGamma`, `UpdatedAlpha`, `UpdatedBeta`. Both directions break equal dates by ascending
+      names. Only the three matching contacts appear. Status ends with `Sort: Last updated ascending`
+      or `Sort: Last updated descending`, and card numbers match the displayed order.
+   1. Run `sort updated asc`, then `edit 1 p/99999999`, then `filter t/UpdateSortDemo`.<br>
+      Expected: `UpdatedAlpha` changes phone and receives today's date, moving after the two older contacts.
+      It was third in saved order but is targeted using the first displayed card.
+      Run `sort updated desc`: `UpdatedAlpha`, `UpdatedGamma`, `UpdatedBeta` appear.
+   1. Run `undo`, then `filter t/UpdateSortDemo`.<br>
+      Expected: `UpdatedAlpha` regains its original phone and date; descending order becomes
+      `UpdatedGamma`, `UpdatedAlpha`, `UpdatedBeta`. Run `sort updated asc`, then `redo`, then reapply
+      the filter: the edited phone/date return, with `UpdatedBeta`, `UpdatedGamma`, `UpdatedAlpha`
+      in ascending order. Sorting has not consumed undo history or cleared redo.
+   1. Try `sort updated`, `sort updated ascending` and `sort updated desc extra` separately.<br>
+      Expected: Usage errors; the filter, order, dates and status remain unchanged.
+      Run `sort reset`: only the matching contacts remain, in saved order
+      `UpdatedGamma`, `UpdatedBeta`, `UpdatedAlpha`.
+   1. Close and reopen UniMate, then run `filter t/UpdateSortDemo`.<br>
+      Expected: The same saved order and edited phone/date remain. The temporary sort is reset and
+      status ends with `Sort: Saved order`.
+
+   1. Close UniMate and remove `UpdatedGamma`'s `lastUpdated` property from the disposable data file.
+      Relaunch, run `filter t/UpdateSortDemo`, then try `sort updated asc` and `sort updated desc`.<br>
+      Expected: `UpdatedGamma` shows `Last updated: Unknown` and stays last in both directions.
+      Saving and restarting preserve its unknown date; an actual basic-profile edit records today's date.
 
 ### Deleting contacts
 
