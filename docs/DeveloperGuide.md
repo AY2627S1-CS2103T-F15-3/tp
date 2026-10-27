@@ -1610,7 +1610,7 @@ Priorities: High (must have) - `* * *`, Medium (nice to have) - `* *`, Low (unli
 
 ## **Appendix: Instructions for manual testing**
 
-Given below are instructions to test v1.4 manually. Use a separate test folder and test contacts, as these checks modify saved data. Ensure the test contact names do not already exist before each scenario; use different unique names when repeating a scenario.
+Given below are instructions to test the v1.5 development version manually. Use a separate test folder and test contacts, as these checks modify saved data. Ensure the test contact names do not already exist before each scenario; use different unique names when repeating a scenario.
 
 <box type="info" seamless>
 
@@ -1618,11 +1618,28 @@ Given below are instructions to test v1.4 manually. Use a separate test folder a
 testers are expected to do more *exploratory* testing.
 </box>
 
+### Choosing a test scenario
+
+Use a fresh disposable folder for each section unless it explicitly continues an earlier scenario.
+Sample contacts may load on first launch; an empty folder does not mean an empty contact list.
+Use `clear` only when a scenario requests an empty list, and only in the disposable copy.
+Within a numbered scenario, perform the steps in order. Use unique test names and re-find the contact
+after an edit, undo, redo or restart before using its displayed index again.
+
+| Area | Checks |
+| --- | --- |
+| Basic commands and validation | The corresponding add, edit, search, filter, sort, delete and tag sections below. |
+| Cards and physical keys | [Contact-list interaction](#testing-contact-list-interaction) and [command recall](#testing-command-history). |
+| Contact flags and derived labels | [Favourites](#testing-favourites) and [reminders](#testing-derived-reminders). |
+| Notes and history | [Managing notes](#managing-contact-notes), [undo/redo](#undoing-and-redoing-changes) and the note-history cases. |
+| Persistence and errors | [Saving data](#saving-data) and [save-failure recovery](#testing-save-failure-recovery). |
+
 ### Launch and shutdown
 
 1. Initial launch
 
-   1. Ensure Java 25 or later is installed. Copy the v1.4 `unimate.jar` into an empty test folder.
+   1. Ensure Java 25 is installed (the prescribed JDK+FX on macOS). Build the revision under test,
+      or use its matching v1.5 JAR once published. Copy `unimate.jar` into an empty, writable test folder.
 
    1. Open a terminal, change to that folder, and run `java -jar unimate.jar`.<br>
       Expected: A window titled `UniMate` opens with sample contacts. Unspecified academic fields display `Not specified`. The window size may not be optimal.
@@ -1636,6 +1653,86 @@ testers are expected to do more *exploratory* testing.
 
    1. Relaunch the app from the same test folder with `java -jar unimate.jar`.<br>
        Expected: The most recent window size and location are retained.
+
+### Testing contact-list interaction
+
+1. Add `add n/UiCheck a/NUS` and the following long-value contact, using names not already saved:
+
+   ```text
+   add n/UiLongCheck Long Contact Long Contact Long Contact Long Contact Long Contact Long Contact Long Contact p/999999999999999999999999999999999999999999999999999999999999999999999999 e/averylongstudentemailaddressforcheckingthecontactcardlayout@example.com a/Lower Kent Ridge Road Lower Kent Ridge Road Lower Kent Ridge Road Lower Kent Ridge Road Lower Kent Ridge Road Lower Kent Ridge Road m/Computer Science Computer Science Computer Science Computer Science Computer Science c/2027 t/LongTagForCheckingCollapsedAndExpandedContactCardLayout12345678901234567890
+   ```
+
+1. Run `find UiCheck UiLongCheck`. Resize between a wide window and a narrow window.<br>
+   Expected: Wide cards use two columns; narrow cards stack the academic fields below contact details.
+   `UiCheck` shows `Not specified` for missing optional fields. Long values end in ellipses inside
+   their own fields and do not overlap captions, neighbouring fields or the next card.
+1. Click each shortened value, including the long name and tag, then click again.<br>
+   Expected: Expansion reveals the complete value inside a taller card; collapse restores the compact
+   layout. Scrolling and resizing retain expansion. Use the list scrollbar to reach the end of expanded
+   content. For a long list, add disposable contacts and check scrollbar dragging and smaller arrow steps.
+1. From the command box, press Tab, then use Up/Down to select the long contact. Follow the
+   [UG keyboard route](UserGuide.md#using-the-contact-list) forward and backward with Tab/Shift+Tab.<br>
+   Expected: The list selection has an orange border. Only expandable values on the selected contact
+   enter the route, including its long tag. Each focused value has an orange dotted outline;
+   Enter/Space toggles it. The route returns to the command box after the last value and reverses
+   correctly. Other cards and short values are skipped. Navigation does not submit a command.
+1. Expand a value, run `list`, then change that contact's address using its current displayed index.<br>
+   Expected: `list` preserves expansion; changed contact data can collapse it. Undo may restore the
+   retained expansion state of the earlier contact. Restart collapses all values.
+1. In a separate empty disposable book, press Tab and Shift+Tab in the command box.<br>
+   Expected: Focus stays in the command box because there is no contact to select.
+
+### Testing favourites
+
+1. In an empty disposable book, add `add n/FavouriteCheck a/NUS`, run `find FavouriteCheck`, then `fav 1`.<br>
+   Expected: A red heart appears. `listfav` contains the contact. Its other details and update date stay unchanged.
+1. Run `fav 1` again.<br>
+   Expected: An already-favourite error; no additional history change.
+1. Run `unfav 1`, then `unfav 1` again and `listfav`.<br>
+   Expected: The first command removes the heart, the repeated command reports the existing status,
+   and `listfav` reports no favourites.
+1. Run `undo`, then `find FavouriteCheck`.<br>
+   Expected: The heart returns. Run `redo` and find the contact again: the heart is absent.
+1. Run `fav 0` and `unfav 9999`, then restart and find the contact.<br>
+   Expected: Invalid-index errors change nothing; the saved unfavourited state persists.
+
+### Testing derived reminders
+
+1. Add `add n/ReminderCheck a/NUS t/update t/incomplete` and run `find ReminderCheck`.<br>
+   Expected: An amber `incomplete` system reminder and grey `update (custom)` / `incomplete (custom)`
+   tags coexist. There is no age-based reminder for a newly added contact.
+1. Run `edit 1 p/91234567`, find the contact again, then run `edit 1 p/ e/`.<br>
+   Expected: Providing a contact method removes `incomplete`; clearing both restores it.
+1. Close the app and back up the disposable JSON file. Change only ReminderCheck's `lastUpdated`,
+   relaunch and find it for each row below. Close before each file edit; retain valid ISO dates.
+
+   | Stored date | Expected system reminder |
+   | --- | --- |
+   | JSON `null`, or property omitted | No age-based `update`; the date is unknown. |
+   | A date whose one-year anniversary is today, where such a date exists | No age-based `update`. |
+   | A known date whose one-year anniversary is before today | `update` and `incomplete`, alongside both custom tags. |
+
+   Calculate anniversaries using the [calendar rule](UserGuide.md#automatic-update-reminders),
+   rather than keeping fixed dates that become stale. A leap-day boundary is also covered by automated date tests.
+1. With the older-date fixture, run `untag 1 t/update t/incomplete`.<br>
+   Expected: Custom tags disappear; the two automatic reminders remain and the saved date is unchanged.
+1. Run `edit 1 p/92345678`, then find the contact.<br>
+   Expected: A current update date, no age reminder and no incomplete reminder. Restore the backup afterwards.
+
+### Testing command history
+
+1. Submit `list`, `tags`, then `list`. Type `find ` without submitting it.<br>
+   Expected: Up recalls `list`, then `tags`; Down recalls `list`, then restores the draft `find `.
+   The result display and contacts do not change during recall.
+1. Submit `sort name asc`, `list`, `sort name desc`, then `list`. Type `sort ` without submitting.<br>
+   Expected: Alt+Up (Option+Up on macOS) recalls descending then ascending sort commands, retaining
+   the original `sort ` prefix. Alt+Down recalls descending then restores `sort `.
+   Another Alt+Down without an active search leaves the draft unchanged.
+1. Recall a match and edit its text, then start another prefix search. Also try ordinary Up/Down.<br>
+   Expected: Editing starts a new search at the current position; ordinary navigation ends prefix
+   matching and proceeds chronologically. Neither route executes the recalled command.
+1. Submit an invalid command, then press Up; also try a blank submission.<br>
+   Expected: The failed command is recallable; blank submissions add no entry. Restart clears history.
 
 ### Testing the saved-contact listing
 
@@ -1717,8 +1814,9 @@ testers are expected to do more *exploratory* testing.
       includes Amy's saved details. An appended line in the same feedback box reads
       `Warning - duplicate details detected: #2 Charlie (email); #4 Zara (phone)`.
       Both lines are amber with no coloured border. The full list is Amy, Charlie, Morgan, Zara.
-      Morgan's missing fields produce no match. Narrow the window to about 640 pixels: the original text area remains
-      scrollable within its unchanged 100-pixel height. Both lines can be selected and copied together.
+      Morgan's missing fields produce no match. Narrow the window to about 640 pixels. The result
+      area retains its 100-pixel height; both lines can be selected and copied. Scrolling is needed
+      only when the wrapped feedback exceeds that area.
    1. Run `undo`, then `redo`.<br>
       Expected: One undo removes Amy and one redo restores Amy. Their feedback describes the addition
       in light grey without repeating the warning, and Zara, Charlie and Morgan retain their original details.
@@ -1737,7 +1835,8 @@ testers are expected to do more *exploratory* testing.
    1. While a warning is showing, run `sort name sideways`, then `list`.<br>
       Expected: The invalid command replaces the warning with the usual light grey error feedback and input
       styling. `list` shows ordinary light grey success feedback. Neither command changes saved contacts.
-   1. Repeat a shared-details addition with long names or many matching contacts in the disposable copy.<br>
+   1. Repeat a shared-details addition with a deliberately long address (for example, ten repetitions
+      of Lower Kent Ridge Road) in the disposable copy, then narrow the window.<br>
       Expected: The complete ordinary success message and appended warning appear amber in the
       original text area, starting at the top. All names, displayed indices and reasons remain
       complete; the existing vertical scrollbar reveals any wrapped overflow.
@@ -1752,26 +1851,26 @@ testers are expected to do more *exploratory* testing.
    1. Run `find EditWarning`, then `sort name asc`.<br>
       Expected: Alice is index 1 and Bob is index 2 within the two-contact view.
    1. Run `edit 2 p/91112222`.<br>
-      Expected: The edit succeeds and the input clears. The normal `Edited person: ...` message
-      remains complete, followed by `Warning - duplicate details detected: #N EditWarning Alice (phone)`.
+      Expected: The edit succeeds and the input clears. `Edited EditWarning Bob:` and the changed
+      phone line appear first, followed by `Warning - duplicate details detected: #N EditWarning Alice (phone)`.
       `N` is Alice's current displayed index in the refreshed full sorted list, not necessarily her
-      previous index in the two-contact view. Both lines appear amber in the original feedback box,
+      previous index in the two-contact view. The complete feedback appears amber in the original feedback box,
       with no coloured border or additional warning control.
    1. Run `undo`, then `redo`.<br>
       Expected: One undo restores Bob's previous phone and one redo restores the shared phone.
       Both use ordinary light grey edit-history feedback without repeating the warning. Alice remains unchanged.
    1. Run `find EditWarning`, confirm Bob's displayed index, then edit that index with
       `e/ALICE.EDITWARNING@EXAMPLE.COM t/StudyGroup`.<br>
-      Expected: The normal success message shows the new email and `StudyGroup` tag. The next line is
+      Expected: `Edited EditWarning Bob:` is followed by the email difference, then
       `Tags replaced. Removed: None. Added: StudyGroup.` The final warning line identifies Alice for
-      `(email)` only; the already-shared unchanged phone is not reported as newly shared. All three
+      `(email)` only; the already-shared unchanged phone is not reported as newly shared. All feedback
       lines appear amber in the original feedback box. The uppercase email and replacement tags are saved unchanged.
    1. Run `undo`, then `redo`.<br>
       Expected: One undo restores both Bob's previous email and tags; redo restores both changes.
       Feedback remains light grey and includes only the base edited-contact details, not the tag summary
       or duplicate-details warning.
    1. Rename Bob while changing a contact method to another shared value, then inspect the full sorted list.<br>
-      Expected: The normal success feedback identifies his new name and saved details; the warning
+      Expected: The change summary identifies his new name and lists only actual differences; the warning
       still uses the matching contacts' refreshed indices even if the renamed contact has moved.
 
 1. Unchanged, unrelated and empty values
@@ -1779,13 +1878,14 @@ testers are expected to do more *exploratory* testing.
    1. Before each check, find the edited contact and use its actual displayed index.
    1. Repeat the current phone value, change only the major with `m/Mathematics`, or change only
       the email's capitalization.<br>
-      Expected: Ordinary light grey edit feedback, not a warning about existing shared values. An unchanged
-      edit does not create another undo step or clear redo availability.
+      Expected: Light grey changed-field feedback for actual changes, or `No changes made to NAME.
+      The supplied values match the existing details.` for an unchanged edit. Existing shared values
+      do not cause a warning. An unchanged edit preserves undo and redo.
    1. Clear a contact method with `p/` or `e/`.<br>
       Expected: Ordinary light grey success feedback; empty values do not match other empty contact methods.
    1. Change only tags with `t/StudyGroup`, then clear them with `t/`, checking the displayed index before each edit.<br>
-      Expected: Each result includes its actual removed/added tag summary in light grey, with `None` for
-      empty differences. Existing shared phone/email values do not trigger a warning for these tag-only edits.
+      Expected: A changed tag set produces the removed/added summary in light grey, with `None`
+      for an empty difference. An unchanged set produces no tag summary. Existing shared phone/email values do not trigger a warning for these tag-only edits.
    1. Close and reopen the disposable copy.<br>
       Expected: Edited values persist; the warnings did not modify or merge any other contact.
 
@@ -2042,9 +2142,9 @@ testers are expected to do more *exploratory* testing.
    1. Prerequisites: Use a disposable copy with no contacts named `UpdatedAlpha`, `UpdatedBeta` or
       `UpdatedGamma`, and no tag `UpdateSortDemo`. Add contacts in this order:
 
-      * `add n/UpdatedGamma p/91234567 t/UpdateSortDemo`
-      * `add n/UpdatedBeta p/92345678 t/UpdateSortDemo`
-      * `add n/UpdatedAlpha p/93456789 t/UpdateSortDemo`
+      * `add n/UpdatedGamma p/91234567 a/NUS t/UpdateSortDemo`
+      * `add n/UpdatedBeta p/92345678 a/NUS t/UpdateSortDemo`
+      * `add n/UpdatedAlpha p/93456789 a/NUS t/UpdateSortDemo`
 
       Close UniMate. In the disposable `data/unimate.json`, set only these contacts' `lastUpdated`
       properties: `UpdatedGamma` to `2025-01-01`, and `UpdatedBeta` and `UpdatedAlpha` to `2024-12-31`.
@@ -2162,6 +2262,7 @@ testers are expected to do more *exploratory* testing.
 
 1. Invalid input and filtered indices
 
+   1. Run `tag 1 t/NOC` so that the contact has a tag to preserve on rejection.
    1. Test cases: `tag 1 d/6`, `tag 1 t/`, `untag 1`, `untag 1 t/NOC t/`.<br>
       Expected: The corresponding default-index, tag-name or usage error described in the UG; no tags change, including `NOC` in the last example.
    1. Run `find KEYWORD`, replacing `KEYWORD` with a full name word matching an existing contact, then `tag 1 t/NOC` and `untag 1 t/NOC`.<br>
@@ -2176,9 +2277,9 @@ Perform these scenarios in order; each one relies on the contacts left by the pr
 1. Undoing and redoing an add
 
    1. Test case: `add n/UndoCheck p/91234567 e/undo@example.com a/10 Kent Ridge Road m/Computer Science c/2027 t/StudyGroup`, then `undo`.<br>
-      Expected: `UndoCheck` is removed and the full contact list is shown. The status message is `Undid: New person added: UndoCheck; …​`.
+      Expected: `UndoCheck` is removed and the full contact list is shown. The result display starts with `Undid: New person added: UndoCheck;`, followed by its original details.
    1. Test case: `redo`.<br>
-      Expected: `UndoCheck` reappears with all of its details, including its major, class year and tag. The status message is `Redid: New person added: UndoCheck; …​`.
+      Expected: `UndoCheck` reappears with all of its details, including its major, class year and tag. The result display starts with `Redid: New person added: UndoCheck;`, followed by its original details.
    1. Close and relaunch the app from the same folder, then run `find UndoCheck`.<br>
       Expected: `UndoCheck` is present; the redone state was saved.
    1. Test case: `undo`.<br>
@@ -2232,7 +2333,8 @@ Perform these scenarios in order; each one relies on the contacts left by the pr
 
 ### Managing contact notes
 
-Use a test contact for these checks. Run `list` and identify its displayed index; the examples use `1`.
+Add `add n/NoteCheck a/NUS`, then run `find NoteCheck`. Use this unique contact throughout.
+Re-run `find NoteCheck` after undo, redo, edit or restart before using index `1`.
 
 1. Run `shownote 1` on a contact with no note.<br>
    Expected: `No notes have been added to this contact.` No note icon is visible.
@@ -2250,8 +2352,8 @@ Use a test contact for these checks. Run `list` and identify its displayed index
    `Saved note: Project teammate` without adding an undo step.
 1. Paste `note 1 <NBSP>Hello<NBSP>`, replacing each `<NBSP>` with an actual non-breaking space (U+00A0),
    then run `shownote 1`.<br>
-   Expected: The note is exactly `Hello`, with five characters and no surrounding spaces. After restarting,
-   `shownote` still displays `Hello`. Non-breaking spaces between words in a note remain unchanged.
+   Expected: The note is exactly `Hello`, with five characters and no surrounding spaces. After restarting, run `find NoteCheck`, then
+   `shownote 1` still displays `Hello`. Non-breaking spaces between words in a note remain unchanged.
    Restore `note 1 Project teammate` before continuing with the following checks.
 1. Save a long note, then replace it with another long note, each up to 500 characters. Narrow the window.<br>
    Expected: The previous and saved text remain complete and wrap within the message area. Vertical
@@ -2270,7 +2372,8 @@ Use a test contact for these checks. Run `list` and identify its displayed index
 
 ### Undoing and redoing note changes
 
-Use test contacts and run `list` before each scenario. The examples below use the first displayed contact. Do not run unrelated data-changing commands between the steps.
+Add `add n/NoteHistoryCheck a/NUS` and run `find NoteHistoryCheck` before each scenario.
+Re-find it after undo, redo or restart before using index `1`. Do not insert unrelated data-changing commands.
 
 1. Note creation, replacement and deletion
 
@@ -2304,9 +2407,9 @@ Use test contacts and run `list` before each scenario. The examples below use th
 
 1. Filters, invalid arguments and session history
 
-   1. Run `note 1 Before undo`, then `note 1 After undo`. Use `find KEYWORD`, replacing `KEYWORD` with a full name word matching a test contact, then run `undo`.<br>
-      Expected: The full contact list is displayed, and the original first contact's note is `Before undo`.
-   1. Apply `find KEYWORD` again, then run `redo`.<br>
+   1. Run `note 1 Before undo`, then `note 1 After undo`, then `find NoteHistoryCheck` and `undo`.<br>
+      Expected: The full contact list is displayed, and NoteHistoryCheck's note is `Before undo`.
+   1. Apply `find NoteHistoryCheck` again, then run `redo`.<br>
       Expected: The full contact list is displayed, and the same contact's note is `After undo`.
    1. Try `undo 1` and `redo 1`.<br>
       Expected: Usage errors; contact data and history remain unchanged.
@@ -2324,7 +2427,7 @@ so repeat the search before the next indexed command.
 1. Close the app, back up `data/unimate.json`, and set only that test contact's `lastUpdated` to `2024-02-29`.
    Relaunch and run `find DateCheck`.<br>
    Expected: The saved date is displayed exactly; the `update` reminder appears if it is over one calendar year old.
-1. Run `edit 1 p/93456789`, then `note 1 Follow up`, `fav 1` and `tag 1 t/DateDemo`.<br>
+1. Run `edit 1 p/93456789`, then `find DateCheck`, then `note 1 Follow up`, `fav 1` and `tag 1 t/DateDemo`.<br>
    Expected: The date remains `2024-02-29`. Re-entering the same phone and changing annotations do not refresh it.
 1. Run `edit 1 p/94567890`, then `find DateCheck`.<br>
    Expected: The card shows today's date, the phone changes, and an outdated `update` reminder disappears.
@@ -2401,3 +2504,25 @@ Use only the separate test folder for these checks. The paths below are relative
       Expected: Sample contacts appear. UniMate v1.4 reads `data/unimate.json` and does not automatically migrate `data/addressbook.json`.
    1. Close the window using its close button. Copy `data/addressbook.json` to `data/unimate.json`, then relaunch and run `find SaveCheck`.<br>
       Expected: The saved contact and its academic fields and tag load correctly. The old file is unchanged. Restore the backup when finished.
+
+### Testing save-failure recovery
+
+Use only a disposable copy with a valid backup; this scenario intentionally blocks writing.
+
+1. Launch normally and run `list` once to create `data/unimate.json`. Keep UniMate open.
+   Move that file to a safe backup filename and create an **empty directory** named `unimate.json`
+   at its former path. This blocks saving without relying on OS-specific permission commands.
+1. Run `add n/SaveFailureCheck a/NUS`.<br>
+   Expected: A save error replaces success feedback, but the contact appears in memory. The error
+   explains that the change is unsaved and that `undo` can revert it. The command text remains for correction.
+1. Replace the input with `undo`, then `redo`, while the directory still blocks saving.<br>
+   Expected: Undo removes the contact in memory and its save error names `redo` as the reversal.
+   Redo restores it in memory and reports another save error. No successful save has occurred.
+1. Remove only the empty blocking directory and restore the backed-up file to its original path.
+   Run `list`, then restart and run `find SaveFailureCheck`.<br>
+   Expected: `list` saves the current in-memory contacts successfully. The newly added contact is
+   present after restart. Retain the original backup until the whole scenario is finished.
+
+For startup loading failures, use the separate [saving-data scenarios](#saving-data): close the
+window without commands before repairing a malformed file. That is different from this deliberately
+blocked save while a valid session is already running.
