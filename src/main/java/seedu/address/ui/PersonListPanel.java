@@ -43,6 +43,10 @@ public class PersonListPanel extends UiPart<Region> {
         personListView.setCellFactory(listView -> new PersonListCell(listView, expandedFields));
     }
 
+    ListView<Person> getPersonListView() {
+        return personListView;
+    }
+
     /**
      * Refreshes visible cards so date-based reminders are recalculated, even if the list is unchanged.
      */

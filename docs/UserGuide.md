@@ -53,13 +53,33 @@ Contact details appear in two columns when the window is wide enough. In a narro
 fields move below the phone, address and email fields.
 
 * Long names and field values show `...` when they cannot fit. Click a shortened value to expand it,
-  then click again to collapse it. You can also use Tab to focus the value and press Enter or Space.
+  then click again to collapse it. This also applies to shortened tags.
 * Use the scrollbar on the right of the contact list to reach other contacts or the bottom of an
   expanded card. Drag the thumb or use its arrow buttons for smaller movements.
 * Expanding a value changes only its display; the saved contact details remain unchanged.
 * Expanded values stay open while scrolling or resizing. Changing a contact resets its expanded
   values; restarting the app also resets expansion. A command that leaves the contact unchanged
   keeps its expansion state.
+
+**Keyboard navigation**
+
+| Key | Action |
+| --- | --- |
+| Tab from the command box | Focus the contact list, keeping the selection or selecting the first contact. |
+| Up / Down while the list is focused | Select the previous / next contact. The selected card has an orange border. |
+| Tab from the list | Focus the selected contact's first expandable value. If none exist, return to the command box. |
+| Tab from an expandable value | Focus the next expandable value on that contact; after the last, return to the command box. |
+| Shift+Tab from the command box | Focus the selected contact's last expandable value, or the list if none exist. |
+| Shift+Tab from an expandable value | Focus the previous expandable value; before the first, return to the list. |
+| Shift+Tab from the list | Return to the command box. |
+| Enter / Space on an expandable value | Expand or collapse that value. |
+
+Expandable values, including long tags, have an orange dotted outline when focused. Their order is:
+name, tags from left to right, phone, address, email, major, class year, last updated. Short values and
+other contacts are skipped. The list scrolls to keep the focused value visible; for a value taller
+than the viewport, it shows the start of that value. With an empty list, Tab and Shift+Tab keep focus
+in the command box.
+Up/Down in the command box still recalls command history.
 
 --------------------------------------------------------------------------------------------------------------------
 

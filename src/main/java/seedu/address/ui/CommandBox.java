@@ -51,6 +51,10 @@ public class CommandBox extends UiPart<Region> {
         });
     }
 
+    TextField getTextField() {
+        return commandTextField;
+    }
+
     /**
      * Handles the Enter button pressed event.
      */

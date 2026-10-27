@@ -4,6 +4,7 @@ import static java.util.Objects.requireNonNull;
 
 import java.time.Clock;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -96,6 +97,15 @@ public class PersonCard extends UiPart<Region> {
 
     void setOnContentChanged(Runnable handler) {
         onContentChanged = requireNonNull(handler);
+    }
+
+    /** Returns expandable values in reading order, including tags between the name and details. */
+    List<Label> getExpandableValues() {
+        List<Label> values = new ArrayList<>();
+        values.add(name);
+        tags.getChildren().stream().map(Label.class::cast).forEach(values::add);
+        values.addAll(List.of(phone, address, email, major, graduationYear, lastUpdated));
+        return values.stream().filter(Label::isFocusTraversable).toList();
     }
 
     private void populateDetails(int displayedIndex) {

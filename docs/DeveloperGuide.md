@@ -214,6 +214,13 @@ independently from their values in `DarkTheme.css`.
   not change contact data or undo/redo history. The map uses `Person` values as keys: replacing a
   contact with different data starts with collapsed fields, while an unchanged contact retains its
   state. Restarting the app clears the map.
+* `ContactListNavigation` filters Tab and Shift+Tab at the window root. It builds the route from the
+  command box, list and selected cell's expandable values, skipping the result display and other cards.
+  `PersonCard` supplies values in reading order; focusable tags are included. The route is rebuilt on
+  each press because scrolling and resizing can recycle cells or change which values are shortened.
+  The list skin's JavaFX `VirtualFlow.scrollPixels` brings focused values into view.
+  Shift+Tab reverses the route. An empty list returns focus to the command box. Up/Down selection uses
+  JavaFX's list behaviour; command-history keys and Enter/Space expansion keep their existing handlers.
 * `PersonCardPane` measures the card at its available width and stacks the detail groups below
   560 logical pixels of content width. `TagPane` measures and places tag rows using the same wrapping
   calculation. Cell and card clips prevent content from painting over neighbouring cards.
@@ -221,6 +228,8 @@ independently from their values in `DarkTheme.css`.
 `PersonCardEdgeCaseTest` covers all 128 combinations of optional fields and 12 long-value cases.
 `PersonCardLayoutTest` checks field captions and values at different widths. `ExpandableContactListTest`
 checks expansion, collapse, cell recycling, resizing and scrolling to the end of expanded content.
+`ContactListNavigationTest` checks forward/reverse traversal, selected-contact boundaries, arrow-key
+selection, empty lists and focused long-tag styling.
 
 ### Contact notes
 

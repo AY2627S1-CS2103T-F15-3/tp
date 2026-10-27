@@ -4,10 +4,12 @@ import static java.util.Objects.requireNonNull;
 
 import java.time.Clock;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import javafx.beans.binding.Bindings;
+import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.shape.Rectangle;
@@ -47,6 +49,10 @@ final class PersonListCell extends ListCell<Person> {
             card.setOnContentChanged(this::requestContentLayout);
             setGraphic(card.getRoot());
         }
+    }
+
+    List<Label> getExpandableValues() {
+        return card == null ? List.of() : card.getExpandableValues();
     }
 
     @Override

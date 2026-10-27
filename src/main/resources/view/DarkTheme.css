@@ -237,7 +237,7 @@
     -fx-cursor: hand;
 }
 
-.label:expandable:focused {
+#tags .label:expandable:focused, .label:expandable:focused {
     -fx-border-color: #d99664;
     -fx-border-style: dotted;
 }

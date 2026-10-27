@@ -35,12 +35,14 @@ public class PersonListCellTest {
 
             cell.updateItem(null, false);
             assertNull(cell.getGraphic());
+            assertTrue(cell.getExpandableValues().isEmpty());
             assertEquals(0, cell.computePrefHeight(300));
 
             cell.updateItem(person, false);
             assertNotNull(cell.getGraphic());
             cell.updateItem(null, true);
             assertNull(cell.getGraphic());
+            assertTrue(cell.getExpandableValues().isEmpty());
             assertEquals(0, cell.computePrefHeight(300));
             return null;
         });
