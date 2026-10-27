@@ -3,6 +3,7 @@ package seedu.address.ui;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -41,6 +42,18 @@ public class ContactListNavigationTest {
     @BeforeAll
     public static void startToolkit() throws Exception {
         FxTestUtil.startToolkit();
+    }
+
+    @Test
+    public void constructor_nullDependencies_throwsNullPointerException() throws Exception {
+        FxTestUtil.runActionOnFxThread(() -> {
+            VBox root = new VBox();
+            TextField command = new TextField();
+            ListView<Person> list = new ListView<>();
+            assertThrows(NullPointerException.class, () -> new ContactListNavigation(null, command, list));
+            assertThrows(NullPointerException.class, () -> new ContactListNavigation(root, null, list));
+            assertThrows(NullPointerException.class, () -> new ContactListNavigation(root, command, null));
+        });
     }
 
     @Test
