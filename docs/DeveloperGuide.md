@@ -362,8 +362,10 @@ filtered indices, clearing fields, preserved notes/favourite status, invalid edi
 `FindCommandParser` splits the input into keywords and passes them to `NameContainsKeywordsPredicate`.
 Despite its name, the predicate matches a `Person` if any keyword matches a full word in the person's
 `Name`, `Major` or `GraduationYear`, using `StringUtil.containsWordIgnoreCase`. Matching is therefore
-case-insensitive, whole-word and `OR`-based across all three fields. An empty `Major` or `GraduationYear`
-never matches a keyword. `FindCommand` applies the predicate through `Model#updateFilteredPersonList`;
+case-insensitive, whole-word and `OR`-based across all three fields. Partial words do not match, so `find Comp`
+does not match `Computer Science`. Each keyword is matched on its own, so `find Computer Science` also returns
+a contact whose major is `Data Science`. Exact matching on a whole field value is provided by `filter` instead.
+An empty `Major` or `GraduationYear` never matches a keyword. `FindCommand` applies the predicate through `Model#updateFilteredPersonList`;
 the model and storage format are unchanged.
 
 ### Filtering contacts by academic fields and tags
@@ -943,13 +945,18 @@ Continuing the example above, suppose an unrecorded change now replaces the cont
 
 To the user, such a change would only make `undo` and `redo` report that there is nothing to undo or redo, never restore the wrong data. `UndoCommandTest` covers this by changing the model directly without committing.
 
+#### Known limitations
+
+* **The history has no size limit.** Every recorded change stores a full copy of the contact list, and nothing is ever dropped from `undoStates` until the app closes or the history becomes stale. Memory use grows with the number of contacts times the number of changes in a session. This is acceptable for the expected size of a student's contact list. A future version could cap the number of entries and drop the oldest snapshot when the cap is reached.
+* **A failed save does not roll back the change.** Commands commit to the history in `Command#execute`. `LogicManager#execute` saves to storage only afterwards. If saving throws an `IOException`, `LogicManager` throws a `CommandException` with `FILE_OPS_ERROR_FORMAT` or `FILE_OPS_PERMISSION_ERROR_FORMAT`. The in-memory change and its history entry remain, and the UI shows only the save error instead of the command's success message. A following `undo` therefore reverts that change. To make this clear, `LogicManager` copies the person list (a shallow copy, as `Person` is immutable) before running the command. If the list changed, it appends `MESSAGE_UNSAVED_CHANGE` to the save error. The note says the change is applied but not saved, that it is lost if the app closes now, and which command would revert it: `redo` after a failed `undo`, otherwise `undo`. Commands that leave the data unchanged, such as `list`, get no note, because they have no change to describe. Any later successful command, including `list`, saves the current data again. The user guide documents this under [Saving the data](UserGuide.md#saving-the-data).
+
 #### Design considerations
 
 **Aspect: What is stored for each change**
 
 * **Alternative 1 (current choice):** Store a copy of the whole contact data state.
   * Pros: Easy to implement and to verify, and works the same for any command.
-  * Cons: Uses more memory as the number of contacts and history entries grows.
+  * Cons: Uses more memory as the number of contacts and history entries grows. The history is not trimmed (see [Known limitations](#known-limitations)).
 * **Alternative 2:** Each command stores how to reverse itself (e.g. `add` stores the person to remove).
   * Pros: Uses less memory.
   * Cons: Every command needs its own correct reversal logic.
