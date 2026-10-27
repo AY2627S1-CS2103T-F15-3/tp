@@ -318,6 +318,33 @@ After a successful add, it records the previous contact data state in the model'
 (see [Recording contact data history](#recording-contact-data-history)).
 The normal storage path then saves the contact, including its academic fields.
 
+### Identifying an existing contact when add rejects a duplicate
+
+`AddCommand` searches the saved person list once using `Person#isSamePerson` and branches on the
+resulting `Optional<Person>`. When a duplicate is found, it passes that same saved contact to
+`AddCommand#getDuplicateMessage`, which uses `Messages#format` to report the contact's actual details,
+including its original name capitalization and supplied academic fields. Values from the attempted
+addition do not replace the saved details.
+
+The command looks up that saved contact in `Model#getFilteredPersonList()`. If visible, its one-based
+index is labelled `displayed index` and follows the active filter and sort. If hidden, the error
+explicitly labels its one-based position in the saved person list as a `saved index` and instructs
+the user to run `list`, then `sort reset`. The command names come from `ListCommand.COMMAND_WORD` and
+`SortCommand.COMMAND_WORD`. Both commands are needed because `list` preserves sorting. The hidden
+contact may have been excluded by `filter`, `find` or `listfav`.
+The error also works when the displayed list is empty; it never treats the saved index as an index
+in the current filtered view.
+
+The lookup only reads the existing model. A duplicate throws before copying the address book,
+adding a contact or recording history, so contacts, filter, sort, status and history descriptions
+remain unchanged. `LogicManager` does not save after the exception. The GUI uses the existing
+wrapped result display and retains the submitted command for correction.
+
+`AddCommandIntegrationTest` checks displayed and saved indices, case-only duplicates with different
+details, empty views, unchanged saved files and preserved undo/redo after `filter`, `find` and
+`listfav`. `SortUiTest` checks the actual command box, result text, unchanged cards and the recovery
+instructions.
+
 ### Editing academic fields
 
 `EditCommandParser` recognises `m/` (major) and `c/` (graduation year) alongside existing edit prefixes.
@@ -857,7 +884,9 @@ Every stored state is a copy made with `new AddressBook(...)`. `Person` and its 
 
 Given below is the flow for a successful `add n/Alex Tan …​`:
 
-1. `AddCommand#execute` checks `Model#hasPerson`. A duplicate throws a `CommandException` here, so nothing is recorded.
+1. `AddCommand#execute` searches the saved person list using `Person#isSamePerson`. If the resulting
+   `Optional<Person>` contains a duplicate, it throws a `CommandException` identifying that contact
+   and its displayed or saved index, so nothing is recorded.
 1. The command creates `previousState = new AddressBook(model.getAddressBook())`, then calls `Model#addPerson`.
 1. The command formats its success message and calls `Model#commitAddressBook(previousState, message)`. `AddressBookHistory#commit` then:
    1. returns without recording if `previousState` holds the same contacts as the current data;
@@ -1246,7 +1275,8 @@ Priorities: High (must have) - `* * *`, Medium (nice to have) - `* *`, Low (unli
 
 * 3b. UniMate detects a duplicate contact with the same name.
 
-    * 3a1. UniMate informs user that the contact already exists.
+    * 3b1. UniMate shows the existing contact's details and its displayed index, or a labelled saved
+      index with instructions to reveal the contact if hidden by the current filter.
       
       Use case ends.
 
@@ -1450,6 +1480,33 @@ testers are expected to do more *exploratory* testing.
       saved `ListValidation` contact remain unchanged.
    1. Run `  list  ` with surrounding spaces.<br>
       Expected: `ListValidation` is displayed and the count is `1 person(s) listed!`.
+
+### Identifying duplicate additions
+
+1. Visible duplicates in a sorted and filtered view
+
+   1. Prerequisites: Use a disposable test copy and ensure `DuplicateAlpha` and `DuplicateBeta` do not
+      already exist. Add `add n/DuplicateAlpha p/91234567 e/original@example.com a/NUS m/Computing c/2027 t/DuplicateDemo`
+      and `add n/DuplicateBeta a/Clementi t/DuplicateDemo`.
+   1. Run `filter t/DuplicateDemo`, then `sort name desc`.<br>
+      Expected: `DuplicateBeta` is displayed at index 1 and `DuplicateAlpha` at index 2.
+   1. Run `add n/duplicatealpha p/98765432 e/new@example.com a/Another address m/Law c/2029`.<br>
+      Expected: The duplicate is rejected. The error includes `Existing contact at displayed index 2:`
+      and the saved `DuplicateAlpha` details: phone `91234567`, email `original@example.com`, address
+      `NUS`, major `Computing` and class year `2027`. The two displayed cards and their order remain
+      unchanged. The submitted command remains in the command box for correction.
+
+1. Hidden duplicates and saved indices
+
+   1. Run `find DuplicateBeta`, then repeat the duplicate `add` above.<br>
+      Expected: Only `DuplicateBeta` remains displayed. The error identifies the hidden saved
+      `DuplicateAlpha` contact, labels its index as `saved index N`, and instructs `list`, then `sort reset`.
+   1. Run those two commands in order and inspect index `N`.<br>
+      Expected: That card is `DuplicateAlpha`, with all its original details. The saved index is
+      valid in this restored full list and saved order.
+   1. Run `find NoDuplicateFeedbackMatch`, ensuring it matches no contact, then repeat the duplicate `add`.<br>
+      Expected: The empty view is preserved, and the error still identifies the same saved contact.
+   1. Clean up the disposable contacts using `find DuplicateAlpha`, `delete 1`, then `find DuplicateBeta`, `delete 1`.
 
 ### Adding contacts with prefix-like address text
 

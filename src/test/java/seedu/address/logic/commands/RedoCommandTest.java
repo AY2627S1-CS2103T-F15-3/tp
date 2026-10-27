@@ -15,6 +15,7 @@ import static seedu.address.testutil.TypicalPersons.getTypicalAddressBook;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import seedu.address.logic.Messages;
 import seedu.address.model.AddressBook;
 import seedu.address.model.Model;
 import seedu.address.model.ModelManager;
@@ -137,7 +138,8 @@ public class RedoCommandTest {
         model.undoAddressBook();
 
         Person existingPerson = model.getAddressBook().getPersonList().get(0);
-        assertCommandFailure(new AddCommand(existingPerson), model, AddCommand.MESSAGE_DUPLICATE_PERSON);
+        assertCommandFailure(new AddCommand(existingPerson), model,
+                String.format(AddCommand.MESSAGE_DUPLICATE_PERSON_DISPLAYED, 1, Messages.format(existingPerson)));
 
         assertCommandSuccess(new RedoCommand(), model, redoMessage(addMessage),
                 new ModelManager(stateAfterAdd, new UserPrefs()));

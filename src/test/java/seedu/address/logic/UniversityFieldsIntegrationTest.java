@@ -67,7 +67,9 @@ public class UniversityFieldsIntegrationTest {
         assertEquals(untagged, storage.readAddressBook().orElseThrow().getPersonList().get(0));
 
         // A different major/year does not bypass the existing duplicate-name rule.
-        assertThrows(CommandException.class, AddCommand.MESSAGE_DUPLICATE_PERSON, ()
+        String expectedDuplicateMessage = String.format(AddCommand.MESSAGE_DUPLICATE_PERSON_DISPLAYED,
+                1, Messages.format(untagged));
+        assertThrows(CommandException.class, expectedDuplicateMessage, ()
             -> logic.execute("add n/Alex Tan p/91234567 e/alex@example.com a/Kent Ridge m/Business c/2028"));
         assertEquals(1, model.getFilteredPersonList().size());
     }
