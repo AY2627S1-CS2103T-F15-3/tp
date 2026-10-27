@@ -318,12 +318,6 @@ public class AddCommandTest {
         }
 
         @Override
-        public boolean hasPerson(Person person) {
-            requireNonNull(person);
-            return this.person.isSamePerson(person);
-        }
-
-        @Override
         public ReadOnlyAddressBook getAddressBook() {
             AddressBook addressBook = new AddressBook();
             addressBook.addPerson(person);
@@ -343,12 +337,6 @@ public class AddCommandTest {
         final ArrayList<Person> personsAdded = new ArrayList<>();
         final ArrayList<ReadOnlyAddressBook> committedPreviousStates = new ArrayList<>();
         final ArrayList<String> committedDescriptions = new ArrayList<>();
-
-        @Override
-        public boolean hasPerson(Person person) {
-            requireNonNull(person);
-            return personsAdded.stream().anyMatch(person::isSamePerson);
-        }
 
         @Override
         public void addPerson(Person person) {

@@ -107,35 +107,17 @@ public class AddCommandIntegrationTest {
 
     @Test
     public void execute_duplicateThroughLogic_preservesDataFileAndHistory(@TempDir Path directory) throws Exception {
-        JsonAddressBookStorage storage = new JsonAddressBookStorage(directory.resolve("contacts.json"));
-        LogicManager logic = new LogicManager(model, new StorageManager(storage,
-                new JsonUserPrefsStorage(directory.resolve("prefs.json"))));
-        logic.execute("add n/HistoryFirstAdd a/NUS");
-        logic.execute("add n/HistorySecondAdd a/NUS");
-        AddressBook afterSecondAdd = new AddressBook(model.getAddressBook());
-        logic.execute("undo");
-        logic.execute("find Benson");
-        logic.execute("sort name desc");
-        AddressBook before = new AddressBook(model.getAddressBook());
-        List<Person> displayedBefore = List.copyOf(model.getFilteredPersonList());
-        String statusBefore = model.viewStatusProperty().get();
-        String savedBefore = FileUtil.readFromFile(storage.getAddressBookFilePath());
-        String undoDescription = model.getUndoDescription().orElseThrow();
-        String redoDescription = model.getRedoDescription().orElseThrow();
-        String expectedMessage = String.format(AddCommand.MESSAGE_DUPLICATE_PERSON_HIDDEN, 1, Messages.format(ALICE));
+        assertHiddenDuplicatePreservesDataFileAndHistory("find Benson", directory);
+    }
 
-        assertThrows(CommandException.class, expectedMessage, () -> logic.execute(
-                "add n/alice pauline p/88888888 e/new@example.com a/Different address m/Law c/2029"));
+    @Test
+    public void execute_duplicateAfterFilter_preservesDataFileAndHistory(@TempDir Path directory) throws Exception {
+        assertHiddenDuplicatePreservesDataFileAndHistory("filter t/owesMoney", directory);
+    }
 
-        assertEquals(before, model.getAddressBook());
-        assertEquals(displayedBefore, model.getFilteredPersonList());
-        assertEquals(statusBefore, model.viewStatusProperty().get());
-        assertEquals(savedBefore, FileUtil.readFromFile(storage.getAddressBookFilePath()));
-        assertEquals(undoDescription, model.getUndoDescription().orElseThrow());
-        assertEquals(redoDescription, model.getRedoDescription().orElseThrow());
-        logic.execute("redo");
-        assertEquals(afterSecondAdd, model.getAddressBook());
-        assertEquals(afterSecondAdd, storage.readAddressBook().orElseThrow());
+    @Test
+    public void execute_duplicateAfterListFav_preservesDataFileAndHistory(@TempDir Path directory) throws Exception {
+        assertHiddenDuplicatePreservesDataFileAndHistory("listfav", directory);
     }
 
     @Test
@@ -360,6 +342,41 @@ public class AddCommandIntegrationTest {
 
     private static String warningMessage(String matches) {
         return "Warning: Contact added. Use undo if unintended.\nShared details: " + matches;
+    }
+
+    /**
+     * Checks hidden-duplicate feedback and preservation through a parsed view command and persisted history.
+     */
+    private void assertHiddenDuplicatePreservesDataFileAndHistory(String viewCommand, Path directory) throws Exception {
+        JsonAddressBookStorage storage = new JsonAddressBookStorage(directory.resolve("contacts.json"));
+        LogicManager logic = new LogicManager(model, new StorageManager(storage,
+                new JsonUserPrefsStorage(directory.resolve("prefs.json"))));
+        logic.execute("add n/HistoryFirstAdd a/NUS");
+        logic.execute("add n/HistorySecondAdd a/NUS");
+        AddressBook afterSecondAdd = new AddressBook(model.getAddressBook());
+        logic.execute("undo");
+        logic.execute(viewCommand);
+        logic.execute("sort name desc");
+        AddressBook before = new AddressBook(model.getAddressBook());
+        List<Person> displayedBefore = List.copyOf(model.getFilteredPersonList());
+        String statusBefore = model.viewStatusProperty().get();
+        String savedBefore = FileUtil.readFromFile(storage.getAddressBookFilePath());
+        String undoDescription = model.getUndoDescription().orElseThrow();
+        String redoDescription = model.getRedoDescription().orElseThrow();
+        String expectedMessage = String.format(AddCommand.MESSAGE_DUPLICATE_PERSON_HIDDEN, 1, Messages.format(ALICE));
+
+        assertThrows(CommandException.class, expectedMessage, () -> logic.execute(
+                "add n/alice pauline p/88888888 e/new@example.com a/Different address m/Law c/2029"));
+
+        assertEquals(before, model.getAddressBook());
+        assertEquals(displayedBefore, model.getFilteredPersonList());
+        assertEquals(statusBefore, model.viewStatusProperty().get());
+        assertEquals(savedBefore, FileUtil.readFromFile(storage.getAddressBookFilePath()));
+        assertEquals(undoDescription, model.getUndoDescription().orElseThrow());
+        assertEquals(redoDescription, model.getRedoDescription().orElseThrow());
+        logic.execute("redo");
+        assertEquals(afterSecondAdd, model.getAddressBook());
+        assertEquals(afterSecondAdd, storage.readAddressBook().orElseThrow());
     }
 
 }
