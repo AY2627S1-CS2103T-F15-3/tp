@@ -1,0 +1,39 @@
+@startuml
+!include style.puml
+show members
+skinparam classAttributeIconSize 0
+skinparam classAttributeFontColor #FFFFFF
+skinparam genericDisplay old
+skinparam arrowThickness 1.1
+skinparam arrowColor MODEL_COLOR_T4
+skinparam classBackgroundColor MODEL_COLOR
+skinparam ArrowFontStyle plain
+top to bottom direction
+
+class EditCommand LOGIC_COLOR
+class Person {
+  -lastUpdated: LocalDate
+  +needsUpdate(today: LocalDate): boolean
+}
+enum SystemTag <<enumeration>> {
+  UPDATE
+  {static} +forPerson(person: Person, today: LocalDate): List<SystemTag>
+}
+class PersonCard UI_COLOR {
+  +refreshTags(): void
+}
+
+EditCommand ..> Person
+SystemTag ..> Person
+PersonCard --> "1\nperson" Person : displays >
+PersonCard ..> SystemTag
+
+note bottom of Person
+  UPDATE requires a known date strictly over one year old.
+  Unchanged profiles and tag/note/favourite operations retain the date.
+end note
+note bottom of SystemTag
+  Only the UPDATE enum constant is shown.
+  Reminders are derived, not stored as ordinary tags.
+end note
+@enduml

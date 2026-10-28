@@ -1,0 +1,42 @@
+@startuml
+!include style.puml
+show members
+skinparam classAttributeIconSize 0
+skinparam classAttributeFontColor #FFFFFF
+skinparam genericDisplay old
+skinparam arrowThickness 1.1
+skinparam arrowColor MODEL_COLOR_T4
+skinparam classBackgroundColor MODEL_COLOR
+skinparam ArrowFontStyle plain
+top to bottom direction
+
+enum SystemTag <<enumeration>> {
+  INCOMPLETE
+  {static} +forPerson(person: Person, today: LocalDate): List<SystemTag>
+}
+class Person {
+  +isIncomplete(): boolean
+}
+class Phone {
+  {static} +EMPTY: Phone
+  +value: String
+}
+class Email {
+  {static} +EMPTY: Email
+  +value: String
+}
+
+SystemTag ..> Person
+Person --> "1\nphone" Phone
+Person --> "1\nemail" Email
+
+note bottom of Person
+  Both value strings empty: incomplete.
+  Either contact method present: complete.
+  Phone and Email remain non-null and can be shared.
+end note
+note top of SystemTag
+  Only the INCOMPLETE enum constant is shown.
+  Derived independently of UPDATE; not stored in Person.tags.
+end note
+@enduml
