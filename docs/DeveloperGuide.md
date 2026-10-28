@@ -754,7 +754,7 @@ See [Contact card layout](#contact-card-layout) for layout and expansion behavio
 
 <puml src="diagrams/IncompleteReminderClassDiagram.puml" alt="Class structure of automatic incomplete reminders" />
 
-`Person` references one non-null `Phone` and one non-null `Email`; an empty value represents an unspecified contact method. The parsers implement the generic `Parser` interface and map omitted add fields or cleared edit fields to the corresponding `EMPTY` constants. `SystemTag` depends on `Person#isIncomplete`, while `PersonCard` uses the derived result for rendering. The JSON adapter reconstructs contact values rather than storing system reminders. The `Phone` and `Email` associations are not compositions because immutable values, including `EMPTY`, can be shared between contacts.
+The diagram isolates the completeness rule: `Person` references one non-null `Phone` and one non-null `Email`, and `SystemTag` derives `INCOMPLETE` only when both values are empty. The `phone` and `email` role names and multiplicities appear at their association ends; navigation follows the stored references. These are not compositions because immutable contact values can be shared. Parsing, persistence and UI details are omitted; only the relevant enum constant is shown. No ordinary tag is added to the contact.
 
 #### Design overview and responsibilities
 
@@ -835,7 +835,7 @@ legacy files and invalid date rejection.
 
 <puml src="diagrams/UpdateReminderClassDiagram.puml" alt="Class structure of automatic update reminders" />
 
-`EditCommand` extends `Command`, holds a copied `EditPersonDescriptor` and a `Clock`, and replaces a person through the `Model` interface. The private `createEditedPerson` method determines whether a basic field actually changed. `Person` stores the date; `SystemTag` queries that date through `needsUpdate`; `PersonCard` renders the resulting label. `JsonAdaptedPerson` converts between the model date and its JSON string. The dashed dependencies on `SystemTag` do not imply a stored collection of reminders in `Person`.
+The diagram shows the date-to-reminder design: an actual basic-field edit refreshes `Person.lastUpdated`, `SystemTag` evaluates `needsUpdate`, and `PersonCard` renders the derived reminder. The card retains one `Person` reference, shown by the `person` end role; the association name reads "PersonCard displays Person". Unknown dates do not trigger `UPDATE`. Only the relevant enum constant is shown; parser, model and storage infrastructure are omitted. The reminder is calculated rather than stored as an ordinary tag.
 
 #### Design overview and relevant classes
 
@@ -886,7 +886,7 @@ Tests cover calendar boundaries, profile edits and no-op edits, JSON round trips
 
 <puml src="diagrams/FavouriteContactsClassDiagram.puml" alt="Class structure of favourite contacts and list filtering" />
 
-The four commands inherit from `Command` and use the `Model` interface. `FavCommand` and `UnfavCommand` replace immutable persons with a changed favourite flag; `ListFavCommand` and the existing `ListCommand` change only the view predicate. `ModelManager` implements `Model` and owns the filtered and sorted views: the sorted view uses the filtered view as its source, and displayed indices follow that final view. `JsonAdaptedPerson` converts the favourite flag, and each `PersonCard` references the person whose heart it displays. Unrelated person fields and model services are omitted from this feature view.
+The diagram separates stored state from view selection. `FavCommand` and `UnfavCommand` replace a `Person` with a changed favourite flag, preserving other fields. `ListFavCommand` applies a `FavouritePredicate` that tests this flag without changing stored contacts or the current sorting. Dashed arrows show dependencies, not retained references or execution order. Shared command/filter supertypes, model infrastructure, persistence and UI classes are omitted to keep the feature view focused.
 
 #### Design overview and relevant classes
 
@@ -903,13 +903,11 @@ Favourite contacts use the existing command, model, storage and UI components. `
 
 #### Command execution flow
 
-For `fav 1`, `AddressBookParser` selects `FavCommandParser`, which parses a one-based index using `ParserUtil.parseIndex` and constructs a `FavCommand`. During execution, the command reads `Model#getFilteredPersonList`, checks the list bounds, then checks `Person#isFavourite`. An already favourited person produces a `CommandException` rather than a replacement.
-
-For a valid state change, the command constructs a new `Person` from the original name, phone, email, address, major, graduation year, tags and notes, with `favourite` set to `true`. `Model#setPerson` replaces the stored person, and the result starts with `Added to favourites: ` followed by `Messages.format` output. `unfav` follows the same path through `UnfavCommandParser` and `UnfavCommand`, requires an existing favourite, sets the value to `false`, and returns `Removed from favourites: `.
+`FavCommandParser` and `UnfavCommandParser` validate a one-based index. The commands resolve it against `Model#getFilteredPersonList`, so they act on the current displayed order. A valid operation replaces the selected `Person` through `Model#setPerson`, changing only the favourite flag and preserving all other fields, including notes and the update date. Success feedback starts with `Added to favourites: ` or `Removed from favourites: `, followed by `Messages.format` output.
 
 Invalid index syntax produces a `ParseException` with usage instructions; an out-of-range index produces `The person index provided is invalid.` Repeated `fav` and `unfav` errors include the selected contact's name, e.g., `Alice is already a favourite.` or `Alice is not a favourite.` This feedback change leaves favourite state transitions and Undo/Redo behaviour unchanged. Neither command resets the current filter.
 
-`AddressBookParser` accepts `listfav` only when its argument string is blank. `ListFavCommand#execute` calls `model.updateFilteredPersonList(new FavouritePredicate())` and reports the resulting count, or `No favourite contacts found.` This replaces any previous predicate. The existing `ListCommand` restores `PREDICATE_SHOW_ALL_PERSONS`. Both commands reuse the same filtered view; neither edits or deletes a contact. The current sorting is preserved.
+`AddressBookParser` accepts `listfav` only without arguments. `ListFavCommand` applies a new `FavouritePredicate` to the existing filtered view and reports the count, or `No favourite contacts found.` The existing `ListCommand` restores `PREDICATE_SHOW_ALL_PERSONS`. Both replace the active filter without editing stored contacts or resetting the current sorting.
 
 Because `fav` and `unfav` resolve their targets from that view, `unfav 1` after `listfav` acts on the first displayed favourite. Replacing it with a non-favourite causes the `FilteredList` to remove it immediately and reindex the remaining results. Existing `add` and `edit` behaviour still restores the full list; `tag` and `untag` retain the current predicate.
 
@@ -946,7 +944,7 @@ For user-facing formats and list-switching examples, see [Marking a favourite co
 
 <puml src="diagrams/TagManagementClassDiagram.puml" alt="Class structure of tag and untag commands" />
 
-The two parsers implement `Parser<T>` with different command types and create the corresponding `Command` subclasses. Both commands use `Model` to locate and replace the displayed person. Their requested tag sets, the person's stored tag set, and the five ordered default choices all reference the same ordinary `Tag` type. `ParserUtil` resolves default indices and validates custom names; dynamic `SystemTag` reminders are deliberately outside this structure. Navigable associations describe retained references, dashed arrows describe dependencies, and hollow triangles denote inheritance or interface realization. Static members are underlined; only feature-relevant members are shown in these four diagrams.
+The diagram focuses on the shared tag representation: a `Person` references a set of ordinary `Tag` values, and `TagCommand` and `UntagCommand` replace the person with tags added or removed. Default and custom inputs resolve to the same `Tag` type; dynamic system reminders remain separate. The association name reads "Person has Tag"; the `tags` role and `0..*` multiplicity belong at the `Tag` end. Small filled triangles beside association names indicate reading direction, whereas open arrowheads at association ends indicate navigation through stored references. Dashed arrows show dependencies, not execution steps. Parsing infrastructure and unrelated members and supertypes are omitted throughout these feature diagrams.
 
 #### Current implementation
 
@@ -970,18 +968,11 @@ The `tag` command adds tags to a person in the currently displayed list. The `un
 
 #### Execution flow
 
-Given below is the flow for `tag 1 d/2 t/NOC`:
+The command parsers convert the displayed index and requested tags before execution. For example, `tag 1 d/2 t/NOC` resolves `d/2` to `Classmate` and combines it with the validated custom tag `NOC`; `untag` accepts only names supplied through `t/`.
 
-1. `LogicManager#execute` passes the input to `AddressBookParser#parseCommand`, which calls `TagCommandParser#parse`.
-1. The parser tokenizes `d/` and `t/`. `ParserUtil#parseIndex` reads the preamble as a one-based person index. The parser requires at least one tag prefix.
-1. `ParserUtil#parseDefaultTags` maps `2` to `Classmate` using `DefaultTags.TAGS`. `ParserUtil#parseTags` validates `NOC` through `parseTag`. The parser merges both sets and creates a `TagCommand`.
-1. `TagCommand#execute` gets `Model#getFilteredPersonList` and checks that the index is within its size. Thus, index `1` selects the first displayed person, including when a search is active.
-1. The command copies `person.getTags()` into a `HashSet` and calls `addAll` with the requested tags. It constructs a new `Person` with the original name, phone, email, address, major and graduation year, together with the updated set, then calls `Model#setPerson`.
-1. The command returns a `CommandResult` containing `Tagged person: ` and `Messages.format(updatedPerson)`. `LogicManager` saves UniMate data before returning the result to the UI.
+Both commands resolve the contact against `Model#getFilteredPersonList` and replace it with a copy containing the updated tag set. `TagCommand` adds requested tags; `UntagCommand` removes them. All other contact fields are preserved. The active filter and sort order remain in place, while the observable view reflects any changed membership.
 
-For `untag 1 t/NOC`, `AddressBookParser` selects `UntagCommandParser`. This parser recognizes only `t/`, requires at least one value, and uses `ParserUtil#parseTags` to construct the removal set. `UntagCommand#execute` follows the same person lookup and replacement flow, but calls `removeAll` on the copied set. Its result starts with `Untagged person: `.
-
-Neither command calls `Model#updateFilteredPersonList`, so the current filter predicate is retained. The model's observable list exposes the updated person to the UI.
+Success feedback starts with `Tagged person: ` or `Untagged person: ` and includes `Messages.format` output. The existing history and storage paths record and save actual changes; no-op tag operations do not create an undo step.
 
 #### Validation and error handling
 

@@ -7,65 +7,33 @@ skinparam genericDisplay old
 skinparam arrowThickness 1.1
 skinparam arrowColor MODEL_COLOR_T4
 skinparam classBackgroundColor MODEL_COLOR
+skinparam ArrowFontStyle plain
 top to bottom direction
 
-abstract class Command LOGIC_COLOR {
-  {abstract} +execute(model: Model): CommandResult
-}
-class EditCommand LOGIC_COLOR {
-  -clock: Clock
-  -editPersonDescriptor: EditPersonDescriptor
-  +execute(model: Model): CommandResult
-  -createEditedPerson(personToEdit: Person,\n editPersonDescriptor: EditPersonDescriptor): Person
-}
-class "EditCommand.EditPersonDescriptor" as EditPersonDescriptor LOGIC_COLOR
-interface Model <<interface>> {
-  +setPerson(target: Person, editedPerson: Person): void
-}
+class EditCommand LOGIC_COLOR
 class Person {
   -lastUpdated: LocalDate
-  +getLastUpdated(): LocalDate
   +needsUpdate(today: LocalDate): boolean
 }
 enum SystemTag <<enumeration>> {
   UPDATE
-  INCOMPLETE
-  +label: String
   {static} +forPerson(person: Person, today: LocalDate): List<SystemTag>
 }
 class PersonCard UI_COLOR {
-  +person: Person
-  -clock: Clock
   +refreshTags(): void
 }
-class JsonAdaptedPerson STORAGE_COLOR {
-  -lastUpdated: String
-  +JsonAdaptedPerson(source: Person)
-  +toModelType(): Person
-}
 
-EditCommand -up-|> Command
-EditCommand --> "1" EditPersonDescriptor : editPersonDescriptor
-EditCommand ..> Model : replaces edited person
-EditCommand ..> Person : creates / compares basic fields
-Model ..> Person
-SystemTag ..> Person : evaluates needsUpdate(today)
-PersonCard --> "1" Person : person
-PersonCard ..> SystemTag : renders derived labels
-JsonAdaptedPerson ..> Person : converts ISO date
+EditCommand ..> Person
+SystemTag ..> Person
+PersonCard --> "1\n+person" Person : displays >
+PersonCard ..> SystemTag
 
 note bottom of Person
-  UPDATE applies only after the one-year anniversary.
-  Actual basic-field edits refresh the date using Clock.
-  Tag, note and favourite changes retain the date.
+  UPDATE requires a known date strictly over one year old.
+  Unchanged profiles and tag/note/favourite operations retain the date.
 end note
 note bottom of SystemTag
-  forPerson() derives reminders without adding ordinary tags.
-  PersonCard renders UPDATE with the yellow system-tag style.
-  INCOMPLETE is evaluated independently.
-end note
-note bottom of JsonAdaptedPerson
-  Missing legacy dates load as today's compatibility date.
-  System reminders themselves are not persisted.
+  Only the UPDATE enum constant is shown.
+  Reminders are derived, not stored as ordinary tags.
 end note
 @enduml

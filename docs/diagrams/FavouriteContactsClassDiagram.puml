@@ -3,82 +3,34 @@
 show members
 skinparam classAttributeIconSize 0
 skinparam classAttributeFontColor #FFFFFF
-skinparam genericDisplay old
 skinparam arrowThickness 1.1
 skinparam arrowColor LOGIC_COLOR_T4
 skinparam classBackgroundColor LOGIC_COLOR
+skinparam ArrowFontStyle plain
 top to bottom direction
 
-abstract class Command {
-  {abstract} +execute(model: Model): CommandResult
-}
-class FavCommand {
-  -index: Index
-  +execute(model: Model): CommandResult
-}
-class UnfavCommand {
-  -index: Index
-  +execute(model: Model): CommandResult
-}
-class ListFavCommand {
-  +execute(model: Model): CommandResult
-}
-class ListCommand {
-  +execute(model: Model): CommandResult
-}
-interface Model <<interface>> MODEL_COLOR {
-  {static} +PREDICATE_SHOW_ALL_PERSONS: Predicate<Person>
-  +getFilteredPersonList(): ObservableList<Person>
-  +setPerson(target: Person, editedPerson: Person): void
-  +updateFilteredPersonList(predicate: Predicate<Person>): void
-}
-class ModelManager MODEL_COLOR {
-  -filteredPersons: FilteredList<Person>
-  -sortedPersons: SortedList<Person>
-}
-class "FilteredList<Person>" as FilteredList MODEL_COLOR
-class "SortedList<Person>" as SortedList MODEL_COLOR
+class FavCommand
+class UnfavCommand
+class ListFavCommand
 class Person MODEL_COLOR {
   -favourite: boolean
   +isFavourite(): boolean
 }
-class JsonAdaptedPerson STORAGE_COLOR {
-  -favourite: boolean
-  +JsonAdaptedPerson(source: Person)
-  +toModelType(): Person
-}
-class PersonCard UI_COLOR {
-  +person: Person
-  -favouriteIcon: Label
-  +PersonCard(person: Person, displayedIndex: int)
+class FavouritePredicate MODEL_COLOR {
+  +test(person: Person): boolean
 }
 
-FavCommand -up-|> Command
-UnfavCommand -up-|> Command
-ListFavCommand -up-|> Command
-ListCommand -up-|> Command
-FavCommand -[hidden]right-> UnfavCommand
-UnfavCommand -[hidden]right-> ListFavCommand
-ListFavCommand -[hidden]right-> ListCommand
-Command ..> Model
-FavCommand ..> Person : copies with favourite = true
-UnfavCommand ..> Person : copies with favourite = false
-ListFavCommand ..> Person : predicate: isFavourite
-ModelManager .up.|> Model
-ModelManager *--> "1" FilteredList : filteredPersons
-ModelManager *--> "1" SortedList : sortedPersons
-SortedList --> "1" FilteredList : source
-FilteredList --> "0..*" Person : filtered elements
-JsonAdaptedPerson ..> Person : converts
-PersonCard --> "1" Person : person
+FavCommand ..> Person
+UnfavCommand ..> Person
+ListFavCommand ..> FavouritePredicate
+FavouritePredicate ..> Person
 
-note bottom of ModelManager
-  Displayed indices follow the sorted view.
-  listfav selects favourites; list restores all contacts.
-  Filtering does not modify stored contacts.
+note bottom of Person
+  Favourite status is independent of ordinary tags.
+  Replacement preserves all other contact fields.
 end note
-note bottom of PersonCard
-  The immutable favourite flag controls the red heart.
-  JSON persists the flag; missing legacy values default to false.
+note bottom of FavouritePredicate
+  Filtering changes the view, not stored contacts.
+  The current sorting is preserved.
 end note
 @enduml
