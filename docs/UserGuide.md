@@ -952,7 +952,9 @@ Format: `redo`
 4. You can only redo until you make a new change. After a new change, such as `add`, `delete` or `fav`, your undone changes are gone, even if you undo the new change.
 - `tag 1 t/Friend`, `undo`, `fav 2`, `undo`, then `redo` brings back only the `fav`. The tag cannot be redone
 
-5. Commands that failed, did not change anything, or only show contacts do not affect `redo`.
+5. Commands rejected before changing contact data, commands that make no changes, and commands that
+only show contacts do not affect `redo`. A command that changes contact data and then fails to save
+can still clear `redo`. See [Saving the data](#saving-the-data).
 
 6. Do not type anything after `redo`.
 - `redo 1` shows an error, and nothing is redone

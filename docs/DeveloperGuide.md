@@ -454,10 +454,8 @@ empty optional values display `Not specified`. Supplied fields whose values matc
 If the tag sets differ, a `Tags replaced. Removed: ... . Added: ... .` line lists the sorted set differences
 (`None` for an empty difference). An unchanged tag set adds no line, including when `t/` was supplied.
 
-Java assertions guard the private feedback path: `formatChanges` requires different original and
-replacement contacts, and its result must include at least one field or tag change line.
-The unchanged-contact branch returns before this formatter. These checks detect implementation errors;
-normal invalid input continues to use parser validation and `CommandException`.
+The unchanged-contact branch returns before `formatChanges`. Normal invalid input continues to use
+parser validation and `CommandException`.
 
 Email feedback compares stored values case-sensitively, while shared-email detection ignores case.
 Consequently, a capitalization-only email edit is a real profile change with an email change line
@@ -1480,9 +1478,8 @@ the prefix. `CommandBox` guards programmatic recalls so its text listener resets
 external edits. Switching navigation modes keeps the original draft and the current history position.
 
 Internally, `position` is zero-based in `0..commands.size()`, inclusive; the upper bound denotes
-the draft rather than a stored command. Assertions check this invariant when reporting the position
-and resetting a prefix search. The GUI converts stored positions to one-based labels; a no-match
-search preserves the cursor and therefore the label. Both activity diagrams include the label update,
+the draft rather than a stored command. The GUI converts stored positions to one-based labels; a
+no-match search preserves the cursor and therefore the label. Both activity diagrams include the label update,
 even when no text changes or a shortcut leaves the search inactive.
 
 `CommandHistory#getPosition()` exposes a one-based chronological index (zero at the draft), and
