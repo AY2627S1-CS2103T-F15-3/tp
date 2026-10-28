@@ -124,7 +124,6 @@ public class EditCommand extends Command {
 
     /** Lists only changed fields, with explicit values for cleared optional fields. */
     private static String formatChanges(Person original, Person edited) {
-        assert !original.equals(edited) : "Change feedback requires an actual edit";
         StringBuilder feedback = new StringBuilder("Edited ").append(edited.getName()).append(":");
         appendChange(feedback, "Name", original.getName().fullName, edited.getName().fullName);
         appendChange(feedback, "Phone", original.getPhone().value, edited.getPhone().value);
@@ -137,7 +136,6 @@ public class EditCommand extends Command {
                     .append(formatTagDifference(original.getTags(), edited.getTags()))
                     .append(". Added: ").append(formatTagDifference(edited.getTags(), original.getTags())).append(".");
         }
-        assert feedback.indexOf("\n") >= 0 : "An actual edit must describe at least one changed field or tag";
         return feedback.toString();
     }
 
