@@ -1649,6 +1649,12 @@ These are release targets, not completed verification. Record results using the
 6. Invalid command input should not corrupt or modify existing contact data.
 7. Invalid command input should produce a meaningful error without crashing.
 
+### Operating constraints
+
+UniMate supports only one running instance at a time. Concurrent use by multiple instances is
+unsupported, and behaviour in that situation is undefined. Users are informed of this restriction
+in the [Quick start](UserGuide.md#quick-start).
+
 ### Glossary
 
 * **Category**: A grouping used to organise contacts by a shared attribute or context, such as a module, major, CCA, event, or project.

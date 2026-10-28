@@ -19,6 +19,9 @@ Use a matching v1.5 release when available; developers can [build the current so
 
 ## Quick start
 
+Run only one instance of UniMate at a time. Running multiple instances simultaneously is
+unsupported and may overwrite saved changes.
+
 1. Ensure that Java `25` is installed on your computer.<br>
    **Mac users:** Ensure you have the precise JDK version prescribed [here](https://se-education.org/guides/tutorials/javaInstallationMac.html).
 
