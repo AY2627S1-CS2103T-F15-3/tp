@@ -17,7 +17,8 @@ Use this guide to find the component boundaries, design decisions and checks for
 | Change contact fields or validation | [Add prefixes](#parsing-add-prefixes), [academic fields](#adding-academic-fields) and [editing](#editing-existing-contacts-gui-and-execution-flow). |
 | Change the displayed contacts or their order | [Search](#searching-by-academic-fields), [filter](#filtering-contacts-by-academic-fields-and-tags), [sort](#sorting-the-displayed-contacts) and [view status](#persistent-view-status). |
 | Change card layout or keyboard interaction | [Contact card layout](#contact-card-layout). |
-| Change notes, tags or reminders | The corresponding feature sections under [Implementation](#implementation). |
+| Change deletion or contact notes | [Batch deletion](#deleting-one-or-more-contacts) and [contact notes](#contact-notes). |
+| Change tags or reminders | [Tagging](#tagging-and-untagging-contacts) and [system reminders](#automatic-system-reminders). |
 | Change undo/redo or command recall | [Contact data history](#recording-contact-data-history), [undo/redo](#undo-and-redo-commands) and [command history](#command-history-navigation). |
 | Check requirements or test a release | [Requirements](#appendix-requirements) and [manual testing](#appendix-instructions-for-manual-testing). |
 
@@ -228,88 +229,78 @@ checks expansion, collapse, cell recycling, resizing and scrolling to the end of
 `ContactListNavigationTest` checks forward/reverse traversal, selected-contact boundaries, arrow-key
 selection, empty lists and focused long-tag styling.
 
+<!-- @@author RayWHJ -->
+
 ### Contact notes
 
 #### Structure and responsibilities
 
-The following class diagram shows the notes-related members and dependencies. Unrelated contact
-fields, parser classes and history internals are omitted to keep the feature view focused.
+The class diagram shows how `NoteCommand` and `Person` reference `Notes`. Unrelated contact fields,
+parsers and history internals are omitted.
 
 <puml src="diagrams/NotesClassDiagram.puml" alt="Note command dependencies and the immutable note value stored by Person" />
 
-This partial view focuses on `Person` and its immutable note value; parsing, storage and indicators are explained below.
+`Notes` is an immutable value object; `Notes.EMPTY` represents no note. Supplied text must be non-blank,
+on one line, free of control characters and at most 500 Unicode code points. Every `Person` holds exactly
+one non-null `Notes` value. The relationships are ordinary associations because values can be shared
+by contacts, commands and history snapshots.
 
-`Person` stores an immutable `Notes` value. `Notes.EMPTY` represents an absent note, and existing constructors default to it. Supplied notes contain non-whitespace text on a single line, with no control characters and at most 500 Unicode code points. `Person#withNotes` returns a new contact while preserving all other fields. Notes participate in full equality and hashing, but not in contact identity. Existing `edit`, `tag` and `untag` replacement paths preserve them.
+`Person#withNotes` returns a replacement person with all other fields preserved, including favourite
+status and `lastUpdated`. Notes affect full equality and hashing, but not contact identity. Reusing
+the existing person-replacement mechanism keeps note changes compatible with undo/redo; `edit`, `tag`
+and `untag` also preserve notes.
 
-The `Person` to `Notes` association has multiplicity `1`: even a contact without note text has a
-non-null value object. It is an association rather than composition because immutable notes can be
-shared between contacts and history snapshots. `NoteCommand` also holds the validated `Notes` value
-that it will apply; all three note commands override `Command#execute(Model)` and use the model.
-
-`JsonAdaptedPerson` saves the text under `notes`. Missing or null values in older files become empty notes. Invalid stored note text produces the usual data-loading failure. The UI's presence indicator derives from `Person#getNotes().isEmpty()` and updates when the observable contact list replaces a person; note text is displayed through ordinary command feedback.
-
-`PersonCard` holds the displayed contact and its `noteIcon` label, whose JavaFX `SVGPath` graphic
-appears at the top right of the card. The label is an indicator, not a control that opens or expands
-the note. Its tooltip uses the card's current displayed index to suggest the corresponding `shownote`
-command.
+`JsonAdaptedPerson` stores the text as `notes` and validates it when loading; missing or null values
+default to empty notes. `PersonCard` derives its orange `noteIcon` from `getNotes().isEmpty()` and
+updates when the observable list replaces a person. Its tooltip suggests `shownote` using the current
+displayed index; the icon itself is an indicator, while note text appears in command feedback.
 
 #### Adding or replacing a note
 
-`AddressBookParser` routes `note`, `shownote` and `delnote` to their respective parsers. `NoteCommandParser` splits the first index from the remaining text and validates that text without interpreting field prefixes. `ShowNoteCommandParser` and `DeleteNoteCommandParser` accept only an index. Each command resolves the index against `Model#getFilteredPersonList()` and preserves the current filter.
+`AddressBookParser` dispatches the three note commands to their parsers. `NoteCommandParser` treats
+everything after the index as literal text. It uses `StringUtil.stripWhitespace` before validation
+to trim Unicode whitespace, including non-breaking spaces that `String.strip()` misses. Internal
+whitespace is preserved. The other two parsers accept only an index.
 
-`NoteCommandParser` uses `StringUtil.stripWhitespace` to remove surrounding Unicode whitespace from the
-arguments and note text. This includes non-breaking spaces (U+00A0), figure spaces (U+2007) and narrow
-non-breaking spaces (U+202F), which `String.strip()` does not remove. Trimming occurs before the
-blank-text and length checks. Whitespace inside the note is preserved without normalization.
-
-The sequence below focuses on the note command after parsing. It distinguishes unchanged notes
-from a replacement and one history commit. `m:Model` is implemented by `ModelManager`; its displayed
-list includes filtering and sorting. The numbered steps also explain parsing and saving, which are
-omitted from this interaction view.
+The sequence shows execution after parsing; validation-error paths, feedback formatting and storage
+are omitted. `m:Model` is implemented by `ModelManager` and supplies the filtered, sorted displayed list.
 
 <puml src="diagrams/NoteSequenceDiagram.puml" alt="Unchanged-note return or contact replacement with one history commit" />
 
-1. `LogicManager` asks `AddressBookParser` to parse the command. `NoteCommandParser` validates the
-   index and text, creates a `Notes` value, and returns a `NoteCommand`.
-1. The command checks the index against the displayed list and obtains that contact. If the note
-   is identical, it returns unchanged feedback immediately. Otherwise, it copies the current
-   address book before making any change.
-1. `Person#withNotes` creates a replacement contact while retaining all other fields, including
-   favourite status and `lastUpdated`. `Model#setPerson` installs the replacement without resetting
-   the filter or sort order.
-1. `Model#commitAddressBook` delegates to the existing history mechanism. The command then returns
-   feedback; it does not save the data or call the UI directly.
-1. `LogicManager` saves the resulting address book through `Storage` before returning the feedback
-   to its caller. The observable list supplies the updated contact to the UI's card rendering.
+1. Resolve the displayed index and compare `person.getNotes()` with the supplied value. Identical
+   notes return unchanged feedback before any snapshot, replacement or history commit.
+1. For a change, copy the address book, call `person.withNotes(notes)` and install the replacement
+   with `Model#setPerson`, preserving the current filter and sort order.
+1. Commit the previous state once and return a `CommandResult`. New-note feedback includes the saved
+   text; replacement feedback also includes the old text and an undo hint. The history description
+   omits that hint so it remains appropriate in undo/redo messages.
 
-`NoteCommand` compares the original immutable `Notes` value before requesting an address-book
-snapshot or calling `setPerson` and `commitAddressBook`. Identical text immediately produces
-`Note unchanged for NAME.` and the saved text. Actual changes retain the snapshot-and-commit flow:
-a new note includes its saved text, while a replacement includes both the previous and saved text
-plus an `undo` reminder. These messages use the standard `CommandResult` and existing result display
-without changing command syntax or storage.
+`LogicManager` saves through `Storage` after successful execution, including unchanged-note results.
+Invalid input fails before mutation. Save errors leave the in-memory change and history intact;
+see [history limitations](#known-limitations).
 
-`ResultDisplay.fxml` enables text wrapping, so long previous and saved notes can be read using
-vertical scrolling. At INFO level, `LogicManager` logs the parsed command type instead of raw input,
-and `MainWindow` logs `CommandResult#getLogSummary`, the feedback's first line, instead of its full
-contents. Failed commands are logged without their input. Full note text remains in the GUI feedback;
-this logging policy applies to INFO messages. Manual feedback checks are listed under
-[Managing contact notes](#managing-contact-notes).
-
-Malformed input fails during parsing; an index beyond the displayed list fails before the snapshot
-or replacement. Neither case changes contact data or history. If saving fails after execution,
-`LogicManager` reports a command error; it does not roll back the in-memory contact or history change.
+The existing result display wraps and scrolls long feedback. At INFO level, `LogicManager` logs the
+command type and `MainWindow` logs `CommandResult#getLogSummary`, rather than raw input or full note
+text. This does not describe logging at other levels.
 
 #### Viewing, deleting and history behaviour
 
-`NoteCommand` overwrites the contact's note. `DeleteNoteCommand` replaces it with `Notes.EMPTY`; deleting an already empty note reports an informational message. Both record actual data changes through the existing model history. `ShowNoteCommand` returns the note, or an empty-note message, in a standard `CommandResult`; it does not mutate contact data or history. `LogicManager` retains its normal save-after-success behaviour for all commands.
+| Command | Behaviour after resolving the displayed contact |
+| --- | --- |
+| `note` | Replace changed text and commit once; identical text preserves both history stacks. |
+| `shownote` | Return the saved text or empty-note feedback without changing data or history. |
+| `delnote` | Replace a non-empty note with `Notes.EMPTY` and commit once; an empty note preserves history. |
 
-Note creation, replacement and deletion are supported by the implemented [`undo` and `redo` commands](#undo-and-redo-commands). Saving identical note text returns before copying the address book, replacing a person or committing history. Deleting an already empty note also returns before changing the model or committing. Saving unchanged note text, deleting an already empty note, and viewing a note with `shownote` preserve any available redo history.
+All three preserve the current view. `delnote` reuses the illustrated snapshot/replacement flow, so
+another sequence diagram would repeat it. Actual changes use [contact data history](#recording-contact-data-history);
+read-only and unchanged results preserve redo.
 
-`delnote` follows the same snapshot, replacement and commit sequence when a note exists, using
-`Notes.EMPTY` instead of supplied text. `shownote` only reads the displayed contact and builds its
-feedback, so these variations are described here rather than repeated in separate sequence diagrams.
-The history checks themselves are described under [Recording contact data history](#recording-contact-data-history).
+`NotesCommandIntegrationTest` covers feedback, filtering, persistence and history;
+`ContactNotesPreservationTest` checks other replacement commands, and `PersonCardNoteIconTest` checks
+the indicator. For manual checks, see [Managing contact notes](#managing-contact-notes) and
+[Undoing and redoing note changes](#undoing-and-redoing-note-changes).
+
+<!-- @@author -->
 
 ### Parsing add prefixes
 
@@ -366,85 +357,52 @@ After a successful add, it records the previous contact data state in the model'
 (see [Recording contact data history](#recording-contact-data-history)).
 The normal storage path then saves the contact, including its academic fields.
 
+<!-- @@author RayWHJ -->
+
 ### Identifying an existing contact when add rejects a duplicate
 
-`AddCommand` searches the saved person list once using `Person#isSamePerson` and branches on the
-resulting `Optional<Person>`. When a duplicate is found, it passes that same saved contact to
-`AddCommand#getDuplicateMessage`, which uses `Messages#format` to report the contact's actual details,
-including its original name capitalization and supplied academic fields. Values from the attempted
-addition do not replace the saved details.
+`AddCommand` finds a saved contact using `Person#isSamePerson` and passes it to
+`getDuplicateMessage`. `Messages#format` reports that contact's actual details, rather than values
+from the rejected input.
 
-The command looks up that saved contact in `Model#getFilteredPersonList()`. If visible, its one-based
-index is labelled `displayed index` and follows the active filter and sort. If hidden, the error
-explicitly labels its one-based position in the saved person list as a `saved index` and instructs
-the user to run `list`, then `sort reset`. The command names come from `ListCommand.COMMAND_WORD` and
-`SortCommand.COMMAND_WORD`. Both commands are needed because `list` preserves sorting. The hidden
-contact may have been excluded by `filter`, `find` or `listfav`.
-The error also works when the displayed list is empty; it never treats the saved index as an index
-in the current filtered view.
+| Existing contact | Index reported and recovery |
+| --- | --- |
+| Visible in the current filtered/sorted list | Its one-based displayed index. |
+| Hidden, including an empty view | A labelled saved index; run `list`, then `sort reset`, before using it. |
 
-The lookup only reads the existing model. A duplicate throws before copying the address book,
-adding a contact or recording history, so contacts, filter, sort, status and history descriptions
-remain unchanged. `LogicManager` does not save after the exception. The GUI uses the existing
-wrapped result display and retains the submitted command for correction.
+Both recovery commands are necessary because `list` preserves sorting. Duplicate rejection occurs
+before the snapshot, addition and history commit, so data, view, saved file and history stay unchanged.
+The GUI retains the input for correction.
 
-`AddCommandIntegrationTest` checks displayed and saved indices, case-only duplicates with different
-details, empty views, unchanged saved files and preserved undo/redo after `filter`, `find` and
-`listfav`. `SortUiTest` checks the actual command box, result text, unchanged cards and the recovery
-instructions.
+`AddCommandIntegrationTest` checks visible/hidden indices, case-only duplicates and preserved state;
+`SortUiTest` checks the feedback and recovery instructions.
 
-### Warning about shared phone numbers or email addresses when adding
+### Warning when an add introduces same contact details
 
-After a successful addition, `AddCommand#getAddResult` delegates matching to
-`SharedContactDetailsWarning#describeMatches`, which scans the refreshed displayed list and skips
-the added contact by `Person#isSamePerson`. `ModelManager#addPerson` has already cleared the
-filter while preserving the active sort order, so the scan includes all existing contacts and its
-indices match the current cards. Looking up indices before the add would be incorrect when the
-added contact changes the sorted positions.
+After adding the contact, `AddCommand#getAddResult` calls
+`SharedContactDetailsWarning#describeMatches` on the refreshed full list. Sorting is retained, so
+warning indices match the current cards. Scanning after addition matters because a new contact can
+shift sorted positions.
 
-For each existing contact, the shared helper checks non-empty phone numbers using `Phone#equals` and
-non-empty email values using `String#equalsIgnoreCase`. Email comparison ignores case only for this
-advisory warning; stored values, `Email#equals` and the duplicate-name rule are unchanged. Empty
-optional fields never count as matches. Every matching contact is listed once, with a reason
-identifying the shared phone number, email address or both. Different contacts may match different
-fields, and all matches are included in displayed order.
+The helper excludes the added contact and compares non-empty phone numbers exactly and emails
+ignoring case. It lists every match once, in displayed order, with the reason `phone`, `email` or
+`phone and email`. These advisory comparisons do not change contact identity or stored values.
 
-When there are matches, the ordinary `New person added: ...` message remains complete.
-An additional line reads, for example, `Warning - duplicate details detected: #2 Alice (phone);
-#3 Bob (email)`. The reason is `phone and email` when both fields match the
-same contact. All matching names and current indices are retained.
+`SharedContactDetailsWarning#appendTo` appends the matches to the complete success feedback and
+returns a `CommandResult.warning`. Add and edit share this helper to keep formatting consistent.
+`MainWindow` passes the result's warning flag to `ResultDisplay`; the `warning` style in
+`DarkTheme.css` makes the whole message amber. The existing text area handles wrapping, selection
+and scrolling. The next ordinary result restores normal styling, and `getLogSummary()` excludes
+the appended matches.
 
-`SharedContactDetailsWarning#appendTo` joins the ordinary success message and advisory text with a
-newline and returns them in a single `CommandResult.warning`. Both add and edit use this method,
-so their warning wording and appended position stay consistent. `getFeedbackToUser()` supplies the
-complete plain-text message. Existing success text is preserved verbatim, including any additional
-summary lines or command-specific success header; only the warning is appended at the bottom.
-The warning flag selects amber feedback styling. `getLogSummary()` retains
-the ordinary success message's first line without logging the appended match list.
+The addition remains successful and is saved normally. The history description contains only the
+ordinary addition message: one undo removes the new contact, and redo restores it without repeating
+the advisory. Existing contacts are not modified or merged.
 
-`MainWindow` passes that complete message and `CommandResult#isWarning()` to the original
-`ResultDisplay` text area. `ResultDisplay#setFeedbackToUser` applies the `warning` style class only
-for warning results, and `DarkTheme.css` makes the text amber (`#ffcf66`). There is no additional
-warning control or scrollbar. JavaFX `TextArea` uses one text colour for its content, so both the
-success and appended warning appear amber, with no coloured border. Feedback without a warning
-remains light grey, including subsequent ordinary results, undo/redo and errors. Its existing
-100-pixel area retains wrapping, selection and vertical scrolling for long feedback. Each new result
-replaces the previous text and resets the caret and scroll position. The command follows the
-successful path, so input clears and is not styled as an error. A same-name duplicate still fails
-before this flow.
+`AddCommandIntegrationTest` covers matching, displayed indices, persistence and history;
+`SortUiTest` checks styling and long feedback. See [Shared phone or email warnings on add](#shared-phone-or-email-warnings-on-add).
 
-The model records one snapshot with the ordinary addition message as its history description.
-The warning is returned only in the `CommandResult`; undo and redo describe the addition
-without repeating the advisory warning. Storage saves the new contact normally. Shared contacts
-are not merged or modified, and one undo removes only the new contact.
-
-`AddCommandIntegrationTest` checks phone-only, email-only, combined and multiple matches; email case;
-blank and distinct values; refreshed sorted indices; persistence; and one-step undo/redo.
-`SortUiTest` checks complete success text followed by the warning in the same original amber-text area,
-matches hidden by the previous filter, current card indices, the successful command-box state and
-undo/redo through the GUI. It also checks wrapping, selectable text and scrollable overflow in the
-fixed-height result area in a narrowed window, and that subsequent normal feedback and errors replace
-the previous warning and restore light grey text. It also verifies that no additional warning text area is created.
+<!-- @@author -->
 
 ### Editing academic fields
 
@@ -529,44 +487,29 @@ GUI regression coverage is in `EditContactUiTest`: submissions through `MainWind
 filtered indices, clearing fields, preserved notes/favourite status, invalid edits and saved JSON.
 `EditCommandTest` and `EditCommandParserTest` cover command and parser boundaries.
 
-#### Warning when an edit introduces shared contact details
+<!-- @@author RayWHJ -->
 
-`EditCommand#getEditResult` checks the edited contact after `setPerson` and the full-list refresh,
-so the shared helper's indices follow the retained sort order even after a rename. It enables phone
-comparison only when `Phone#equals` reports a changed value, and email comparison only when the
-old and new email values differ ignoring case. It then calls
-`SharedContactDetailsWarning#describeMatches`, reusing the add warning's non-empty matching rules,
-self-exclusion, compact formatting and displayed order. The helper skips scanning when neither
-contact method changed. Pre-existing shared values are not reported for unrelated or unchanged edits.
+#### Warning when an edit introduces same contact details
 
-A match is passed to `SharedContactDetailsWarning#appendTo` with the complete success feedback.
-The `Edited NAME:` summary appears first and lists only fields whose values changed.
-A tag replacement summary follows only when the tag sets differ. A final line uses
-the same format as add:
-`Warning - duplicate details detected: #1 Alice (phone); #3 Carol (email)`.
-The complete message appears amber in the original feedback text area; no extra control, coloured border or
-command-input error style is added. Warning indices identify the other matching contacts, not the
-edited contact itself. The edit remains successful and is saved normally. Duplicate-name and
-invalid-index errors still occur before mutation. Results without a warning remain light grey, including
-ordinary edits and errors displayed after a warning.
+After replacement and the full-list refresh, `EditCommand#getEditResult` enables matching only for
+changed contact methods. Phone changes use `Phone#equals`; email changes use
+`String#equalsIgnoreCase`. Unchanged methods, email-capitalization-only changes, cleared values and
+unrelated edits therefore produce no new warning.
 
-The history description remains the ordinary `Edited person: ...` message, so one undo restores the
-complete previous contact and redo restores the edit without repeating the tag summary or warning feedback. No-op
-edits still preserve both history stacks. Notes, favourite status and all omitted fields are retained.
-`EditCommandSharedDetailsTest` covers changed phone/email values, case-insensitive matches, multiple
-matches, self-exclusion, empty fields, unchanged and unrelated edits, persistence and one-step history.
-Its combined edit changes the name, phone, email and tags together, checking the exact order of
-changed fields, the actual removed/added tag summary and the warning, plus persisted data
-and base-only history descriptions. Additional cases cover clearing or resupplying unchanged tags
-alongside a shared phone, and tag-only edits to already-shared contacts without a warning.
-`EditContactUiTest` checks the same combined case in the
-original feedback box with amber text, successful input clearing, preserved icons, refreshed sorted card
-indices and a return to light grey for ordinary edits, undo/redo and errors. `SharedContactDetailsWarningTest`
-checks that appending a warning preserves complete multiline success feedback and alternative add-success
-headers rather than replacing them. Supplemental feedback is composed before calling the warning helper;
-the helper does not generate tag summaries or change favourite semantics itself.
+The command reuses the [shared warning helper and display behaviour](#warning-when-an-add-introduces-same-contact-details).
+All field-change lines remain first, followed by any tag removal/addition summary, then the advisory.
+Matches exclude the edited contact and use the refreshed sorted indices, including previously hidden contacts.
 
-The manual procedures are in [Shared phone or email warnings on edit](#shared-phone-or-email-warnings-on-edit).
+The edit is saved normally. Its history description remains `Edited person: ...`, so undo/redo
+restores the complete contact without repeating the immediate change summary or warning.
+Unchanged edits preserve both history stacks; notes, favourite status and omitted fields are retained.
+
+`EditCommandSharedDetailsTest` checks matching rules, combined field/tag changes, persistence and
+history. `EditContactUiTest` checks feedback order, styling and refreshed indices;
+`SharedContactDetailsWarningTest` checks that multiline success feedback is preserved.
+See [Shared phone or email warnings on edit](#shared-phone-or-email-warnings-on-edit) for manual tests.
+
+<!-- @@author -->
 
 <!-- @@author sel-couth-ene -->
 
@@ -749,47 +692,38 @@ This centralizes full-contact formatting for add and delete results and stored e
 Immediate edit feedback uses `EditCommand#formatChanges` instead, so clearing an optional academic field
 explicitly shows `Not specified` rather than omitting the changed field.
 
+<!-- @@author RayWHJ -->
+
 ### Deleting one or more contacts
 
-The sequence focuses on safe batch deletion after parsing: resolve every target before mutation,
-then commit the batch once. Generic parsing, message formatting and saving are described below.
+The sequence shows successful batch deletion after parsing. Resolve every target before mutation,
+then commit once; parsing, validation-error branches and storage are omitted.
 
 <puml src="diagrams/DeleteSequenceDiagram.puml" alt="Capture original displayed targets, delete them and commit once" />
 
-`DeleteCommandParser` accepts `delete INDEX [INDEX]...`. It splits the arguments on whitespace and
-uses `ParserUtil#parseIndex` to validate every token as a positive integer. Empty input, zero, negative
-numbers, integer overflow, commas and ranges produce a usage error. `DeleteCommand` stores an
-immutable copy of the indices in input order; duplicates are rejected during command execution.
+1. `DeleteCommandParser` splits whitespace-separated arguments and validates positive integers with
+   `ParserUtil#parseIndex`. `DeleteCommand` stores the indices in input order.
+1. The command copies `Model#getFilteredPersonList()`, checks every selection and captures the target
+   `Person` references. Numeric duplicate detection also rejects equivalent indices such as `1 01`.
+1. After validation, it copies the address book once and calls `Model#deletePerson` for each captured
+   person. Resolving all targets first prevents shifting live indices from selecting the wrong contact.
+1. It formats the result with `Messages#format`, calls `commitAddressBook(previousState, message)` once
+   and returns a `CommandResult`. `LogicManager` then saves the completed batch once.
 
-`DeleteCommand` copies the filtered and sorted list returned by `Model#getFilteredPersonList()`.
-Before deletion, it rejects repeated indices and indices outside that view. An out-of-range error
-includes the supplied one-based index and the valid range,
-`1` to the displayed list size. When exactly one contact is displayed, the message instead states
-`The only valid index is 1.` An empty view reports that no contacts are displayed and suggests `list` when
-saved contacts exist; an empty address book instead suggests adding a contact. These checks throw a
-`CommandException` before any model mutation, preserving contacts, the current view and undo/redo history.
-Both out-of-range messages explicitly state `No contacts were deleted.` so users know the entire
-batch was rejected, including any valid indices supplied before the invalid one.
-Duplicate detection uses the numeric index values, so `delete 1 01` also rejects the repeated index.
+An invalid or repeated index rejects the whole batch before mutation, preserving contacts, view and
+history. Out-of-range errors include the valid range; an empty view suggests `list` if saved contacts
+exist, or adding a contact otherwise.
 
-After all indices pass validation, the command has captured every selected `Person` from the original
-displayed list. It copies the address book once, calls `Model#deletePerson` for each captured contact,
-and calls `Model#commitAddressBook(previousState, message)` once after constructing the batch feedback.
-That feedback is stored as the history description. It never looks up a target using an index from
-the changing live list. This supports nonconsecutive, adjacent and reversed index lists
-without deleting the wrong contacts as indices shift. Contacts outside the selection, the active
-filter and the active sort order are preserved. A single `undo` or `redo` restores or reapplies the
-whole batch using the existing history mechanism; undo/redo shows the full list as usual.
+Deletion removes each selected person and all their saved fields, including notes. Single-contact
+feedback starts with `Deleted person:`; batch feedback includes each original index in input order.
+The result also serves as the history description. One undo/redo reverses/reapplies the batch and
+shows the full list; deletion itself preserves the filter, sort order and all unselected contacts.
 
-Each deletion removes the entire `Person`, including academic details, tags, favourite status and
-notes. `Messages#format(Person)` supplies the usual contact details for the result. A single deletion
-retains `Deleted person: ...`. Multiple deletions return `Deleted N contacts:` and one detail line per
-contact, prefixed with its original displayed index in input order. The GUI's existing result display
-wraps these lines and supports vertical scrolling. `LogicManager` saves the completed batch once.
+This design extends the existing single-contact operation without introducing separate batch-history
+state. `DeleteCommandIntegrationTest` checks selection, rejection, persistence and one-step undo/redo;
+`SortUiTest` checks feedback and card renumbering. See [Deleting contacts](#deleting-contacts) for manual tests.
 
-`DeleteCommandIntegrationTest` covers original displayed indices, filtered and sorted views, complete
-batch rejection, saved-file preservation, one-step undo/redo and persistence across reloads.
-`SortUiTest` checks the batch through the command box, including feedback and renumbered cards.
+<!-- @@author -->
 
 ### Listing all saved contacts
 
@@ -1625,7 +1559,7 @@ Priorities: High (must have) - `* * *`, Medium (nice to have) - `* *`, Low (unli
 | `* * *`  | user           | add a person with contact information and optional major and graduation year     | retain their contact details and academic background                             |
 | `* * *`  | user           | view all my stored contacts                                                     | review the people in my collection                              |
 | `* * *`  | user           | view a contact's details                                                        | retrieve their information when needed                          |
-| `* * *`  | user           | delete a contact                                                                | remove an entry that I no longer need                           |
+| `* * *`  | user           | delete one or more contacts in one command                                      | remove unwanted entries together                               |
 | `* * *`  | user           | edit a contact's information                                                    | keep their details up to date                                   |
 | `* * *`  | returning user | access previously saved contacts                                                | continue using my collection without recreating it              |
 | `* * *`  | user           | categorise contacts by module, major, year, nationality, CCA, event, or project | organise people by their university-related context             |
@@ -1633,7 +1567,11 @@ Priorities: High (must have) - `* * *`, Medium (nice to have) - `* *`, Low (unli
 | `* * *`  | user           | find contacts by name                                                           | retrieve someone's details without browsing the entire list     |
 | `* * *`  | user           | filter contacts by university-related context                                   | find relevant people when I cannot remember their names         |
 | `* *`    | user           | identify contacts from the same tutorial group                                  | contact the appropriate classmates                              |
-| `* *`    | user           | add short notes to a contact                                                    | remember useful information, including how we met               |
+| `* *`    | user           | save or replace a short note for a contact                                      | remember useful information, including how we met               |
+| `* *`    | user           | view a contact's saved note                                                     | recall its details when needed                                 |
+| `* *`    | user           | remove a contact's note while keeping the contact                               | discard outdated context without losing contact details        |
+| `* *`    | user           | identify the saved contact behind a duplicate-add error                         | check the existing entry before deciding what to change         |
+| `* *`    | user           | be warned when an addition or edit shares another contact's phone or email      | check possible mistakes while keeping intentional shared details |
 | `* *`    | user           | distinguish academic contacts from personal contacts                            | focus on the group relevant to my current activity              |
 | `* *`    | user           | mark and retrieve favourite contacts                                            | quickly access people I contact frequently                      |
 | `* *`    | user           | undo a recent contact change                                                    | recover from an accidental change, such as a deletion or clear  |
@@ -1688,6 +1626,16 @@ Priorities: High (must have) - `* * *`, Medium (nice to have) - `* *`, Low (unli
       
       Use case ends.
 
+<!-- @@author RayWHJ -->
+
+* 5a. The added contact shares a non-empty phone number or email with another contact.
+
+    * 5a1. UniMate appends an advisory identifying the matches to the success feedback.
+
+      Use case ends.
+
+<!-- @@author -->
+
 **Use case: View contacts**
 
 **MSS**
@@ -1705,24 +1653,62 @@ Priorities: High (must have) - `* * *`, Medium (nice to have) - `* *`, Low (unli
 
       Use case ends.
 
+<!-- @@author RayWHJ -->
+
 **Use case: Delete contacts**
 
 **MSS**
 
-1.  <u>User views contacts (Use case: View contacts) </u>
+1.  User views contacts, optionally narrowing or sorting the list.
 2.  User requests to delete one or more contacts from the displayed list.
 3.  UniMate validates all selections, then deletes all selected contacts as one change.
-4.  UniMate reports the deleted contacts and their original displayed positions.
+4.  UniMate reports the deleted contacts, including their original displayed positions for a batch.
 
     Use case ends.
 
 **Extensions**
 
-* 2a. A selection is invalid or repeated.
+* 1a. No contacts are displayed.
 
-    * 2a1. UniMate reports the problem without deleting any selected contact.
+    * 1a1. UniMate shows an empty list. A deletion attempt suggests listing saved contacts or adding a contact.
+
+      Use case ends.
+
+* 3a. A selection is invalid or repeated.
+
+    * 3a1. UniMate reports the problem without deleting any selected contact or changing history.
+
+      Use case resumes at step 2.
+
+**Use case: Save a contact note**
+
+**MSS**
+
+1. User selects a displayed contact and supplies note text.
+2. UniMate validates the selection and text.
+3. UniMate saves the note and reports its text, including the previous text when replacing a note.
+
+   Use case ends.
+
+**Extensions**
+
+* 2a. The selection or text is missing or invalid.
+
+    * 2a1. UniMate reports the problem without changing contacts or history.
 
       Use case resumes at step 1.
+
+* 2b. The supplied text matches the existing note.
+
+    * 2b1. UniMate reports that the note is unchanged, preserving undo and redo history.
+
+      Use case ends.
+
+Viewing a note uses the same contact selection and validation, then returns the text or an empty-note
+message. Deleting a note clears only its text and records one change; an already empty note leaves
+data and history unchanged. Actual note changes support the undo and redo use cases below.
+
+<!-- @@author -->
 
 **Use case: Edit a contact**
 
@@ -1742,6 +1728,14 @@ Priorities: High (must have) - `* * *`, Medium (nice to have) - `* *`, Low (unli
 * 2b. All supplied values already match.
   * 2b1. UniMate reports that no change was made, preserving the contact and its history.
     Use case ends.
+
+<!-- @@author RayWHJ -->
+
+* 3a. The edit introduces a shared non-empty phone number or email.
+  * 3a1. UniMate appends an advisory identifying matching contacts to the success feedback.
+    Use case ends.
+
+<!-- @@author -->
 
 <!-- @@author sel-couth-ene -->
 
@@ -2487,66 +2481,53 @@ after an edit, undo, redo or restart before using its displayed index again.
       Expected: `UpdatedGamma` shows `Last updated: Unknown` and stays last in both directions.
       Saving and restarting preserve its unknown date; an actual basic-profile edit records today's date.
 
+<!-- @@author RayWHJ -->
+
 ### Deleting contacts
 
-1. Deleting a contact with academic fields
+Run these scenarios in order using disposable data. Add the following unique test contacts:
 
-   1. Prerequisites: Add a test contact using `add n/DeleteCheck p/91234567 e/delete@example.com a/10 Kent Ridge Road m/Computer Science c/2027 t/classmate`.
-   1. Run `find DeleteCheck` and confirm that it is the only result. Then run `delete 1`.
-      Expected: `DeleteCheck` is removed. The status message includes `Major: Computer Science`, `Class year: 2027` and the contact's tag. The filtered list becomes empty.
-   1. Run `list`.
-      Expected: Other contacts remain present; only `DeleteCheck` was removed.
-   1. Close and relaunch the app from the same folder, then run `find DeleteCheck`.
-      Expected: No matching contact is found; the deletion was saved.
-<br>
-1. Rejecting invalid indices
+* `add n/BatchDeleteA a/NUS t/BatchDeleteDemo`
+* `add n/BatchDeleteB a/NUS m/Computing c/2027 t/BatchDeleteDemo`
+* `add n/BatchDeleteC a/NUS t/BatchDeleteDemo`
 
-   1. Prerequisites: Run `list` with at least two contacts present.
-   1. Test cases: `delete 0`, `delete`, `delete x`.
-      Expected: An invalid-command-format error is shown and no contact is deleted.
-   1. Run `delete` with a numeric index greater than the displayed list size.
-      Expected: The error states `Index X is outside the current displayed list. No contacts were deleted.`
-      and `Choose an index from 1 to N.`, where `X` is the supplied index and `N` is the displayed list size.
-   1. Run `find DeleteIndexCheckNoMatch`, ensuring no saved contact matches, then `delete 1`.
-      Expected: `No contacts are currently displayed to delete. Use list to view all saved contacts.`
-      Saved contacts and the empty displayed list remain unchanged.
-   1. Run `list`, then `find` with a keyword matching exactly one saved contact. Run `delete 2`.
-      Expected: `Index 2 is outside the current displayed list. No contacts were deleted. The only valid index is 1.`
-      The matching contact remains displayed and no contact is deleted.
-   1. In an empty disposable address book, run `delete 1`.
-      Expected: `There are no saved contacts to delete. Add a contact before using delete.`
-<br>
-1. Deleting multiple contacts using original displayed indices
+1. Original indices and one-step history
 
-   1. Prerequisites: Use disposable test data and ensure these demo names do not already exist. Add:
+   1. Run `filter t/BatchDeleteDemo`, then `sort name asc`.<br>
+      Expected: A, B and C appear at indices 1, 2 and 3.
+   1. Run `delete 3 1`.<br>
+      Expected: Only B remains, renumbered 1. Feedback starts with `Deleted 2 contacts:` and lists C
+      with original index 3, then A with original index 1. Contacts outside the filter are unaffected.
+   1. Run `undo`, reapply the filter, then `redo` and reapply the filter again.<br>
+      Expected: One undo restores all three contacts; one redo removes A and C again. Undo/redo shows
+      the full list before the filter is reapplied.
+   1. Run `undo`, then `filter t/BatchDeleteDemo` to restore all three and leave redo available.
 
-      * `add n/BatchDeleteA a/NUS t/BatchDeleteDemo`
-      * `add n/BatchDeleteB a/NUS t/BatchDeleteDemo`
-      * `add n/BatchDeleteC a/NUS t/BatchDeleteDemo`
-      * `add n/BatchDeleteD a/NUS t/BatchDeleteDemo`
-      * `add n/BatchDeleteE a/NUS t/BatchDeleteDemo`
+1. Whole-batch rejection
 
-   1. Run `filter t/BatchDeleteDemo`, then `sort name asc`.
-      Expected: The five demo contacts appear as A, B, C, D, E, numbered 1 to 5.
-   1. Run `delete 1 3 5`.
-      Expected: Only A, C and E are deleted. B and D remain, renumbered 1 and 2. Feedback starts with
-      `Deleted 3 contacts:` and lists the original indices 1, 3 and 5 with the corresponding contact
-      details. Contacts outside the filter are unaffected.
-   1. Run `undo`, then `filter t/BatchDeleteDemo`.
-      Expected: All five contacts return in one undo step. Run `redo`, then reapply the filter:
-      only B and D remain. The batch result is saved after each operation.
-   1. Run `undo`, reapply the filter, then run `delete 5 1 3`.
-      Expected: The same A, C and E contacts are deleted. Feedback lists E, A and C using their
-      original indices 5, 1 and 3. Undo and reapply the filter before the next checks.
-   1. Try `delete 1 6`, `delete 1 0`, `delete 1 1`, `delete 1 01`, `delete 1,3` and `delete 1-3` separately.
-      Expected: Each whole command is rejected; all five contacts remain displayed. Repeated numeric
-      indices report `Index 1 is repeated. Specify each displayed index only once. No contacts were deleted.`
-      The out-of-range error for `delete 1 6` also states `No contacts were deleted.`, confirming that
-      the valid contact at index 1 remains present.
-      The failed commands preserve the redo opportunity: run `redo` and reapply the filter to see
-      only B and D again.
-   1. Clean up: Run `undo`, reapply the filter, then `delete 1 2 3 4 5`.
-      Expected: The demo results are empty and contacts outside the filter remain present.
+   1. Try `delete 1 4`, `delete 1 01`, `delete 1 0` and `delete 1,3` separately.<br>
+      Expected: Every command is rejected; all three contacts, their view and saved data remain unchanged.
+      The first reports the valid range 1 to 3; the second reports a repeated index. No valid selection
+      is partially deleted.
+   1. Run `redo`, then reapply the filter.<br>
+      Expected: Only B remains, proving that rejection preserved redo.
+   1. Run `undo`, then reapply the filter before continuing.
+
+1. Single deletion, persistence and empty results
+
+   1. Run `delete 2`.<br>
+      Expected: B is removed. Feedback starts with `Deleted person:` and includes its major and class year.
+   1. Restart from the same folder, run `filter t/BatchDeleteDemo`, then `sort name asc`.<br>
+      Expected: Only A and C remain; the deletion was saved.
+   1. Run `find NoBatchDeleteMatch`, then `delete 1`.<br>
+      Expected: No displayed contact is deleted; the error suggests `list` to reveal saved contacts.
+   1. Reapply the filter and run `delete 1 2` to clean up.<br>
+      Expected: No demo contacts remain; other contacts are untouched.
+
+For the empty-address-book boundary, use a separate disposable copy: run `clear`, then `delete 1`.
+The error should suggest adding a contact.
+
+<!-- @@author -->
 
 ### Tagging and untagging a person
 
@@ -2646,101 +2627,94 @@ Perform these scenarios in order; each one relies on the contacts left by the pr
 
 <!-- @@author -->
 
+<!-- @@author RayWHJ -->
+
 ### Managing contact notes
 
 Add `add n/NoteCheck a/NUS`, then run `find NoteCheck`. Use this unique contact throughout.
-Re-run `find NoteCheck` after undo, redo, edit or restart before using index `1`.
+After an edit, undo, redo or restart, run `find NoteCheck` again before using index `1`.
 
-1. Run `shownote 1` on a contact with no note.
-   Expected: `No notes have been added to this contact.` No note icon is visible.
-<br>
-1. Run `note 1 Met during CS2103T` and inspect its feedback, then run `shownote 1`.
-   Expected: The feedback starts with `Note saved for NAME.` and includes `Saved note: Met during CS2103T`.
-   An orange note icon appears at the top right of the card, and `shownote` displays the saved text.
-<br>
-1. Run `note 1 Project teammate` and inspect its feedback.
-   Expected: The feedback starts with `Note replaced for NAME. Use undo to restore the previous note.`
-   It includes `Previous note: Met during CS2103T` and `Saved note: Project teammate` on separate lines.
-   Other contact details are preserved.
-<br>
-1. Run `undo`, then `shownote 1`.
-   Expected: The original `Met during CS2103T` note is restored.
-<br>
-1. Run `redo`, then `note 1 Project teammate`.
-   Expected: The replacement is restored. Saving the same text reports `Note unchanged for NAME.` and
-   `Saved note: Project teammate` without adding an undo step.
-<br>
-1. Paste `note 1 <NBSP>Hello<NBSP>`, replacing each `<NBSP>` with an actual non-breaking space (U+00A0),
-   then run `shownote 1`.
-   Expected: The note is exactly `Hello`, with five characters and no surrounding spaces. After restarting, run `find NoteCheck`, then
-   `shownote 1` still displays `Hello`. Non-breaking spaces between words in a note remain unchanged.
-   Restore `note 1 Project teammate` before continuing with the following checks.
-<br>
-1. Save a long note, then replace it with another long note, each up to 500 characters. Narrow the window.
-   Expected: The previous and saved text remain complete and wrap within the message area. Vertical
-   scrolling reveals the full feedback. New INFO log entries contain the replacement summary without
-   either note's text. Restore `note 1 Project teammate` before continuing.
-<br>
-1. Edit the contact's phone, add a tag with `tag`, and remove it with `untag`, then run `shownote` using the contact's current index.
-   Expected: The note is still `Project teammate`.
-<br>
-1. Restart the app, locate the same contact, and run `shownote`.
-   Expected: The note and its icon are still present.
-<br>
-1. Use `find` to show a subset of contacts, then use `note 1 Filtered contact`, `shownote 1`, and `delnote 1`.
-   Expected: Each command targets the first displayed result and preserves the filter. Deleting the note removes its icon and leaves the contact present.
-<br>
-1. Repeat `delnote 1`, then run `shownote 1`.
-   Expected: `This contact has no note to delete.`, followed by `No notes have been added to this contact.` Restarting preserves the empty note.
-<br>
-1. Try `note 1`, `note 0 Text`, `shownote 1 extra`, `delnote 1 extra`, and a `note` containing more than 500 characters. Also try an index beyond the displayed list.
-   Expected: An appropriate usage, note-constraint or invalid-index error; existing notes and other contact details are unchanged.
+1. Save, replace and read
+
+   1. Run `shownote 1`.<br>
+      Expected: `No notes have been added to this contact.` No note icon is visible.
+   1. Run `note 1 Met during CS2103T`, then `shownote 1`.<br>
+      Expected: Saved-note feedback contains the text; an orange icon appears at the card's top right.
+      `shownote` returns the same text without changing the view.
+   1. Run `note 1 Project teammate`.<br>
+      Expected: Replacement feedback includes the previous text, saved text and undo hint.
+      Saving the same text again reports `Note unchanged for NoteCheck.`.
+
+1. Preserve other fields and reload
+
+   1. Run `edit 1 p/91234567`, then `find NoteCheck`, `tag 1 t/NoteDemo`, `untag 1 t/NoteDemo`
+      and `shownote 1`.<br>
+      Expected: The note remains `Project teammate` after each contact replacement.
+   1. Restart from the same folder, run `find NoteCheck`, then `shownote 1`.<br>
+      Expected: The note, icon and edited phone number remain.
+
+1. Whitespace, validation and long feedback
+
+   1. Copy `note 1  Hello ` (the spaces around `Hello` are non-breaking), then run `shownote 1`.<br>
+      Expected: Exactly `Hello` is saved. Whitespace inside a note remains unchanged.
+   1. Try `note 1`, `note 0 Text`, `shownote 1 extra`, `delnote 1 extra`, an out-of-range index
+      and a note longer than 500 characters.<br>
+      Expected: Informative errors; the existing note and other details remain unchanged.
+   1. Save a long note and replace it with another, each within 500 characters; narrow the window.<br>
+      Expected: Previous and saved text wrap and remain fully readable by vertical scrolling.
+      New INFO log entries contain the summary without either note's text.
+
+1. Delete only the note
+
+   1. Run `delnote 1`, then `shownote 1`.<br>
+      Expected: The note and icon disappear, the filtered contact remains, and `shownote` reports no note.
+   1. Repeat `delnote 1`.<br>
+      Expected: `This contact has no note to delete.` Restart and re-find the contact to confirm the note stays empty.
+
+Use the [note-history scenarios](#undoing-and-redoing-note-changes) to check undo/redo and unchanged results.
 
 ### Undoing and redoing note changes
 
-Add `add n/NoteHistoryCheck a/NUS` and run `find NoteHistoryCheck` before each scenario.
-Re-find it after undo, redo or restart before using index `1`. Do not insert unrelated data-changing commands.
+Add `add n/NoteHistoryCheck a/NUS`. Before each scenario, and after every undo, redo or restart,
+run `find NoteHistoryCheck` before using index `1`. Do not insert unrelated data-changing commands.
 
-1. Note creation, replacement and deletion
+1. Creation, replacement and deletion
 
-   1. Run `delnote 1` to start with an empty note, then `note 1 First note`, `note 1 Second note`, and `delnote 1`.
-   1. Run `undo` three times, checking `shownote 1` after each.
-      Expected: The note changes to `Second note`, then `First note`, then no note. The icon is present only when the note is non-empty. The second `undo` shows `Undid: Note replaced for NAME.`, followed by the previous and saved notes, without the `Use undo to restore the previous note.` hint.
-   1. Run `redo` three times, checking `shownote 1` after each.
-      Expected: The note changes to `First note`, then `Second note`, then no note. Other contact details stay unchanged.
-<br>
-1. Unchanged notes preserve redo
+   1. Run `delnote 1`, `note 1 First note`, `note 1 Second note`, then `delnote 1`.
+   1. Undo three times, re-finding the contact and running `shownote 1` after each.<br>
+      Expected: `Second note`, then `First note`, then no note. The replacement history message
+      omits the hint to use undo. The icon follows note presence.
+   1. Redo three times with the same checks.<br>
+      Expected: `First note`, then `Second note`, then no note; other details stay unchanged.
 
-   1. Run `note 1 First note`, `note 1 Second note`, then `undo`.
-   1. Run `note 1 First note` again, then `shownote 1`.
-      Expected: The note remains `First note`; neither command creates a new undo step or clears redo history.
-   1. Run `redo`, then `shownote 1`.
-      Expected: The note is restored to `Second note`.
-<br>
+1. Unchanged text preserves redo
+
+   1. Run `note 1 First note`, `note 1 Second note`, then `undo`; re-find the contact.
+   1. Run `note 1 First note`, `shownote 1`, then `redo`; re-find and run `shownote 1`.<br>
+      Expected: The unchanged result and read operation preserve redo; the final note is `Second note`.
+
 1. Deleting an empty note preserves redo
 
-   1. Run `delnote 1`, `note 1 Restore me`, then `undo`.
-   1. Run `delnote 1`, then `shownote 1`.
-      Expected: `This contact has no note to delete.`, followed by `No notes have been added to this contact.`
-   1. Run `redo`, then `shownote 1`.
-      Expected: The note is restored to `Restore me`.
-<br>
-1. A new note change clears redo
+   1. Run `delnote 1`, `note 1 Restore me`, then `undo`; re-find the contact.
+   1. Run `delnote 1`, `shownote 1`, then `redo`; re-find and run `shownote 1`.<br>
+      Expected: Deleting the empty note changes nothing; redo restores `Restore me`.
 
-   1. Run `note 1 First note`, `note 1 Second note`, `undo`, then `note 1 Replacement note`.
-   1. Run `redo`, then `shownote 1`.
-      Expected: Redo reports that no change is available to redo; the note remains `Replacement note`.
-<br>
-1. Filters, invalid arguments and session history
+1. A new change clears redo
 
-   1. Run `note 1 Before undo`, then `note 1 After undo`, then `find NoteHistoryCheck` and `undo`.
-      Expected: The full contact list is displayed, and NoteHistoryCheck's note is `Before undo`.
-   1. Apply `find NoteHistoryCheck` again, then run `redo`.
-      Expected: The full contact list is displayed, and the same contact's note is `After undo`.
-   1. Try `undo 1` and `redo 1`.
-      Expected: Usage errors; contact data and history remain unchanged.
-   1. Restart UniMate, check `shownote 1`, then try `undo` and `redo` before changing any data.
-      Expected: `After undo` is still saved, but neither command can restore a state because history does not persist across sessions.
+   1. Run `note 1 First note`, `note 1 Second note`, then `undo`; re-find the contact.
+   1. Run `note 1 Replacement note`, `redo`, then `shownote 1`.<br>
+      Expected: No change is available to redo; the note remains `Replacement note`.
+
+1. View reset and session history
+
+   1. Run `note 1 Before undo`, `note 1 After undo`, then `undo`.<br>
+      Expected: The full list appears. Re-find the contact: its note is `Before undo`.
+   1. Run `redo`.<br>
+      Expected: The full list appears again. Re-find the contact: its note is `After undo`.
+   1. Restart, run `find NoteHistoryCheck`, then `shownote 1`, `undo` and `redo`.<br>
+      Expected: `After undo` is saved, but session history is empty and both history commands report no available change.
+
+<!-- @@author -->
 
 ### Tracking contact update dates
 

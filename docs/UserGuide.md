@@ -204,19 +204,24 @@ contact, then `edit 1 a/NUS`.
 
 * Supply each single-value field only once. Leading and trailing spaces around values are ignored.
 * The fields are saved with the contact, can be edited using `edit`, are shown in the displayed contact list and appear in command messages when specified.
+
+<!-- @@author RayWHJ -->
+
 **Duplicate names**
 
-* A contact with the same name as an existing contact, ignoring case, is rejected as a duplicate, even if their major, class year or other details differ. For example, `John Doe` and `john doe` identify the same contact. Names retain their original capitalization for display and storage. Editing a contact's own name capitalization is allowed.
-* A duplicate `add` error shows the existing contact's saved details. If the contact is visible,
-  `Existing contact at displayed index N:` identifies its number in the current filtered and sorted list.
-  If `filter`, `find` or `listfav` hides it, the error labels its number as a **saved index** and tells
-  you to run `list`, then `sort reset`. After those commands, the contact is displayed at that index.
-  A saved index should only be used for an indexed command after following those instructions and checking the card.
+* Names match ignoring case: `John Doe` and `john doe` are duplicates even if other details differ.
+  Original capitalization is retained; editing a contact's own name capitalization is allowed.
+* A duplicate error shows the existing contact's saved details. A **displayed index** refers to its
+  current card. A **saved index** means the contact is hidden: run `list`, then `sort reset`, and check
+  the card before using that index. `list` alone retains the current sort order.
 * Rejecting a duplicate leaves the current view, saved contacts and undo/redo history unchanged.
 * Before opening an older data file, back it up. Give contacts whose names differ only in case
   distinct names; they are not automatically merged or renamed. See [data-file recovery](#editing-the-data-file)
   before continuing after a loading error.
 * A successful `add` can be reverted with [`undo`](#undoing-a-change-undo).
+
+<!-- @@author -->
+
 **Favourite status**
 
 * Include `f/` to create the contact as a favourite immediately, with a red heart beside their name.
@@ -229,23 +234,24 @@ contact, then `edit 1 a/NUS`.
   [`unfav INDEX`](#removing-favourite-status-unfav) to change favourite status. `edit` preserves the current
   favourite status and cannot change it.
 * Phone and email are independently optional. Omit `p/` or `e/` when unknown; do not supply an empty prefix in `add`. Non-empty values must satisfy the existing phone and email format rules. A contact without either receives the [automatic incomplete reminder](#automatic-incomplete-reminders).
+
+<!-- @@author RayWHJ -->
+
 **Shared contact details**
 
-* Adding a different name with a shared phone number or email succeeds with the usual
-  `New person added: ...` feedback and an additional warning line in the same feedback box.
-  For example: `Warning - duplicate details detected: #2 Alice (phone); #3 Bob (email)`.
-  The complete message is amber when a warning is present; ordinary success feedback remains light grey.
-  There is no coloured border or additional warning control.
-  Every matching contact is listed by current displayed index and name, with `phone`, `email` or
-  `phone and email` identifying the shared fields. The original feedback box supports wrapping, text
-  selection and scrolling for the complete message. The next command replaces the previous feedback.
-* Shared-detail warnings compare non-empty phone numbers exactly and email addresses ignoring case.
-  Missing phone/email values do not count as shared details. These warnings do not change the
-  duplicate-name rule or alter the stored capitalization of email addresses.
-* A successful `add` shows the full contact list while retaining the current sort order. Warning
-  indices refer to that refreshed list, including contacts hidden by the previous filter.
+* A different name with a shared phone number or email is added successfully. An amber advisory
+  follows the normal success message, for example:
+  `Warning - duplicate details detected: #2 Alice (phone); #3 Bob (email)`.
+  All matches are listed with their names, current indices and shared fields; scroll to read long feedback.
+* Non-empty phone numbers match exactly; emails match ignoring case. Empty values are ignored.
+  Shared details do not merge contacts or change the duplicate-name rule.
+* Adding shows the full contact list and retains sorting. Warning indices refer to this refreshed list,
+  including contacts hidden by the previous filter. One undo removes only the newly added contact.
+
+<!-- @@author -->
 
 Examples:
+
 * `add n/Alice p/91234567 a/NUS f/` creates Alice as a favourite; `listfav` includes Alice immediately.
 * `add n/Alex Tan p/91234567 e/alex@example.com a/10 Kent Ridge Road m/Computer Science c/2027 t/classmate`
 * `add n/John Doe p/98765432 e/johnd@example.com a/John street, block 123, #01-01`
@@ -510,32 +516,28 @@ Format: `listfav`
 * For example, run `list`, then `fav 1`, then `listfav`. Run `unfav 1` to remove the first person shown in the favourite list, then `list` to see all contacts again.
 * The existing `add` and `edit` commands restore the full list after success. Run `listfav` again to return to favourites. Tag and untag operations preserve the current filter and favourite status.
 
+<!-- @@author RayWHJ -->
+
 ### Adding or replacing a contact's note: `note`
 
-Saves a short note for an existing contact. Each contact has one note; saving another replaces the previous text.
+Saves one note for an existing contact. Saving another note replaces its text; new contacts start without a note.
 
 Format: `note INDEX TEXT`
 
-* `INDEX` is the positive index shown in the current contact list, including search results.
-* `TEXT` is required and must be a single line of up to 500 characters. Spaces, punctuation and Unicode text are allowed; control characters such as tabs are not.
-* Leading and trailing whitespace, including non-breaking spaces (U+00A0), is trimmed before the
-  500-character limit is checked. Spaces within the note, including Unicode spaces, are preserved.
-* Everything after the index is note text. No field prefix or quotation marks are needed; text such as `n/` or `t/` is saved literally.
-* The contact's other details and the current list filter are preserved.
-* Notes are saved automatically with contact data and remain available after restarting UniMate. New contacts have no note; use `note` after `add`.
-* Adding or replacing a note can be [undone](#undoing-a-change-undo) and [redone](#redoing-an-undone-change-redo). Saving the same text again does not create an undo step or clear any available redo history, because the note has not changed.
+* Use the positive `INDEX` in the current displayed list, including search, filter and favourite results.
+* `TEXT` must contain non-whitespace text on one line, with at most 500 characters. Unicode text and
+  punctuation are allowed; control characters such as tabs are rejected.
+* Surrounding whitespace, including non-breaking spaces, is trimmed before checking the length.
+  Spaces within the note are preserved.
+* Everything after the index is saved as text, including prefixes such as `n/` and `t/`.
+  No quotation marks are needed.
+* Other contact details, the filter and sort order are preserved. Notes are saved automatically
+  and remain available after restarting UniMate.
 
 Example: `note 2 Met during CS2103T`
 
-The message area identifies what happened and includes the saved text:
-
-* A new note starts with `Note saved for NAME.`, followed by `Saved note: TEXT`.
-* Replacing a different existing note starts with `Note replaced for NAME. Use undo to restore the previous note.`,
-  followed by `Previous note: OLD_TEXT` and `Saved note: NEW_TEXT` on separate lines.
-* Saving identical text starts with `Note unchanged for NAME.`, followed by `Saved note: TEXT`.
-  This does not create an undo step or clear redo history.
-
-For example, replacing `Met during CS2103T` with `Met at hackathon` for Alice displays:
+Feedback includes the saved text. Replacing Alice's existing note with `note 2 Met at hackathon`,
+where Alice is the second displayed contact, shows:
 
 ```text
 Note replaced for Alice. Use undo to restore the previous note.
@@ -543,11 +545,11 @@ Previous note: Met during CS2103T
 Saved note: Met at hackathon
 ```
 
-Long feedback wraps within the message area. Scroll vertically to compare the complete previous
-and saved notes.
+Adding or replacing a note supports [undo](#undoing-a-change-undo) and [redo](#redoing-an-undone-change-redo).
+Saving identical text reports `Note unchanged for NAME.` and creates no undo step or change to redo history.
 
-A small orange note icon at the top right of the contact card indicates that a note is present.
-Use `shownote` to read it again.
+A small orange icon at the card's top right indicates a saved note. Use [`shownote`](#viewing-a-contact-s-note-shownote)
+to read it; scroll vertically in the message area to read long feedback.
 
 ### Viewing a contact's note: `shownote`
 
@@ -557,7 +559,8 @@ Format: `shownote INDEX`
 
 Example: `shownote 2`
 
-The message starts with `Note for NAME:`, followed by the saved text on the next line. If the contact has no note, it displays `No notes have been added to this contact.` Contact data, the current list filter, and undo/redo history are preserved.
+The message starts with `Note for NAME:`, followed by the saved text. An empty note reports
+`No notes have been added to this contact.` This preserves contact data, the current view and undo/redo history.
 
 ### Deleting a contact's note: `delnote`
 
@@ -567,11 +570,15 @@ Format: `delnote INDEX`
 
 Example: `delnote 2`
 
-The message area displays `Note deleted for NAME.`, and the note icon disappears. The current list filter is preserved. If the contact already has no note, the message is `This contact has no note to delete.` and its data stays unchanged.
+The message `Note deleted for NAME.` appears and the note icon disappears. The filter and sort order
+are preserved. Use [undo](#undoing-a-change-undo) or [redo](#redoing-an-undone-change-redo) to reverse or repeat the deletion.
 
-Deleting an existing note can be [undone](#undoing-a-change-undo) and [redone](#redoing-an-undone-change-redo). Deleting an already empty note does not create an undo step or clear any available redo history.
+If the note is already empty, `This contact has no note to delete.` appears; contact data and history stay unchanged.
 
-For all three note commands, an index outside the displayed list reports `The person index provided is invalid.` Missing or invalid index syntax produces a usage error. `note INDEX` without text is also a usage error; use `delnote INDEX` to clear a note. `shownote` and `delnote` reject extra arguments. Invalid note text is rejected without changing the existing note.
+All three note commands require an index in the displayed list. Invalid input leaves contacts and history
+unchanged. `shownote` and `delnote` accept only an index; use `delnote`, rather than an empty `note`, to clear text.
+
+<!-- @@author -->
 
 ### Listing all persons: `list`
 
@@ -626,14 +633,11 @@ See the shared [field rules](#field-rules) for accepted values.
 
 Name and address cannot be cleared. Supply at least one field; `edit INDEX` alone is invalid.
 
-* Edits the person at the specified `INDEX`. The index refers to the index number shown in the displayed person list. The index **must be a positive integer** 1, 2, 3, ...
-* At least one of the optional fields must be provided.
-* Existing values will be updated to the input values. Fields whose prefixes are omitted remain unchanged.
+* `INDEX` is the positive index in the current displayed list.
 * Supply each single-value prefix only once.
 * Leading and trailing spaces are ignored. If any supplied value is invalid or an academic prefix is repeated, no fields are updated.
 * After a successful edit, the full contact list is shown while retaining the active sort order.
   If editing search or filter results, run `find` or `filter` again before using a result index for another edit.
-* When editing tags, all of the person's existing tags are removed; adding tags is not cumulative.
 * When the supplied `t/` values change the tag set, feedback includes `Tags replaced. Removed: ... . Added: ... .`
   with actual changes sorted by tag name (`None` for an empty list). Unchanged tags are excluded.
   For example, replacing `Friend` and `Classmate` with `Project` reports
@@ -654,19 +658,17 @@ Name and address cannot be cleared. Supply at least one field; `edit INDEX` alon
   `No changes made to NAME. The supplied values match the existing details.`
   The contact's update date and undo/redo history are preserved; no undo step is created and available redo
   remains available. The full contact list is still shown and the command box is cleared.
+<!-- @@author RayWHJ -->
+
 * Changing a phone number or email to one used by another contact keeps the field change summary
   and appends a line such as `Warning - duplicate details detected: #2 Alice (phone); #3 Bob (email)`.
-  If the tags also change, the tag replacement summary appears between the field change summary
-  and the warning; neither is dropped. The complete message appears amber in the original feedback
-  box, without a coloured border or an additional warning control. Feedback without a warning remains
-  light grey, including tag-only edits. Indices identify matching contacts in the refreshed full list,
-  including matches hidden before the edit. The edited contact's updated name and details remain in
-  the field change summary. All matches are retained; long feedback wraps and can be scrolled.
-* Warning comparisons match non-empty phone numbers exactly and email addresses ignoring case.
-  Only methods whose values changed are checked. Unchanged values, email-capitalization-only changes,
-  unrelated field edits, cleared methods and the edited contact itself do not trigger a warning.
-  The edit is saved normally, and one `undo` restores the previous contact. Undo and redo use ordinary
-  edit feedback without repeating the warning.
+  Tag changes, when present, appear before the warning. The complete feedback is amber and scrollable;
+  indices refer to the refreshed full list, including previously hidden contacts.
+* Warnings check only changed, non-empty contact methods: phone matching is exact and email matching
+  ignores case. Unchanged values, email-capitalization-only changes and cleared fields do not trigger
+  warnings. The edit is saved normally; undo/redo does not repeat the advisory.
+<!-- @@author -->
+
 * Notes and favourite status are preserved. Use [`fav INDEX`](#marking-a-favourite-contact-fav) or
   [`unfav INDEX`](#removing-favourite-status-unfav) to change favourite status; it cannot be changed with `edit`.
   Changing a basic profile field refreshes the contact's update date;
@@ -844,44 +846,34 @@ Examples:
 * `filter t/Classmate`, then `sort year asc`, shows only classmates, earliest class year first.
   `list` then shows all contacts in the same year order.
 
+<!-- @@author RayWHJ -->
+
 ### Deleting contacts: `delete`
 
-Deletes one or more specified contacts from UniMate.
+Deletes one or more contacts, including their notes and other saved details.
 
 Format: `delete INDEX [INDEX]...`
 
-* Supply one or more **distinct positive integers** separated by spaces, such as `delete 1 3 5`.
-  Commas and ranges such as `delete 1,3` and `delete 1-3` are not accepted.
-* Every index refers to the filtered and sorted list displayed **before the command starts**.
-  For example, `delete 1 3 5` removes the original 1st, 3rd and 5th displayed contacts, even as the
-  remaining cards are renumbered. Indices can be supplied in any order, such as `delete 5 1 3`.
-* Every index is checked before any contact is deleted. If any index is invalid or repeated, the
-  whole command is rejected. For example, `delete 1 1` reports
-  `Index 1 is repeated. Specify each displayed index only once. No contacts were deleted.`
-* An index beyond the displayed list is rejected with the valid range for that view. For example, if
-  `find Alpha` displays one contact, `delete 2` reports
-  `Index 2 is outside the current displayed list. No contacts were deleted. The only valid index is 1.`
-  If three contacts are displayed, `delete 1 3 4` reports that index 4 is out of range and states
-  `No contacts were deleted.` Contacts 1 and 3 remain present too.
-* If no contacts are displayed but saved contacts exist, the error suggests `list` to show them.
-  If there are no saved contacts, it suggests adding a contact first. Rejected commands leave contacts,
-  the displayed list and undo/redo history unchanged.
-* Deleting one contact keeps the `Deleted person: ...` feedback. Deleting several contacts reports
-  `Deleted N contacts:`, followed by their details on separate lines, labelled with their original
-  displayed indices in the order you entered them. Major and class year are included when specified.
-* Deletion preserves the current filter and sort order. Contacts outside the displayed results are unaffected.
-* One [undo](#undoing-a-change-undo) restores the entire batch, and one
-  [redo](#redoing-an-undone-change-redo) deletes that batch again.
+* Supply distinct positive integers separated by spaces, in any order. Commas and ranges such as
+  `delete 1,3` and `delete 1-3` are not accepted.
+* Indices refer to the filtered and sorted list displayed **before deletion**. Remaining contacts
+  are renumbered afterwards; the current filter and sort order are preserved.
+* If any index is invalid or repeated, **nothing is deleted**. Contacts, the current view and undo/redo
+  history remain unchanged. The error identifies the problem and, for an out-of-range index, the valid range.
+* If the displayed list is empty, use `list` to reveal saved contacts or `add` if none are saved.
+* Single-contact feedback starts with `Deleted person:`. Batch feedback starts with `Deleted N contacts:`
+  and lists contact details with their original indices, in the order you supplied them.
+* One [undo](#undoing-a-change-undo) restores the whole batch; one [redo](#redoing-an-undone-change-redo)
+  deletes it again. Undo history is available only during the current session.
 
 Examples:
 
-* `list` followed by `delete 2` deletes the 2nd person in UniMate.
-* `list` followed by `delete 1 3 5` deletes the original 1st, 3rd and 5th displayed contacts together.
-* `find Betsy` followed by `delete 1` deletes the 1st person in the results of the `find` command.
-* `filter t/Classmate`, then `sort name asc`, then `delete 1 3` deletes the original 1st and 3rd
-  classmates in ascending name order, provided at least three results are displayed.
-* Deleting a contact with academic fields shows a message such as
-  `Deleted person: Alex Tan; Phone: 91234567; Email: alex@example.com; Address: 10 Kent Ridge Road; Major: Computer Science; Class year: 2027; Tags: [classmate]`.
+* `find Betsy`, then `delete 1`, removes the first displayed search result.
+* With at least five contacts displayed, `delete 5 1 3` removes the original fifth, first and third
+  contacts. Feedback lists them in that order; all other contacts remain.
+* With three contacts displayed, `delete 1 4` rejects the whole command, including the valid selection `1`.
+
+<!-- @@author -->
 
 ### Clearing all entries: `clear`
 
