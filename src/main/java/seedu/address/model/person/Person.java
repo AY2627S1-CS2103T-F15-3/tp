@@ -134,6 +134,7 @@ public class Person {
         return lastUpdated;
     }
 
+    //@@author aziz-Almarzooq
     /**
      * Returns a copy with the specified basic-profile date, preserving all other contact state.
      */
@@ -141,6 +142,7 @@ public class Person {
         return new Person(name, phone, email, address, major, graduationYear, tags, notes,
                 favourite, updatedDate);
     }
+    //@@author
 
     /**
      * Returns whether both ways to contact this person are unspecified.
