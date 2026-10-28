@@ -671,6 +671,10 @@ Examples:
 
    Repeating the command reports `No changes made to Alice Tan. The supplied values match the existing details.`
 
+*  `edit 1 e/ALICE@example.com` changes `alice@example.com` to the supplied capitalization.
+   Feedback includes `Email: alice@example.com → ALICE@example.com` and the profile date is refreshed.
+   Email matching ignores case, so this capitalization-only edit does not introduce a shared-email warning.
+
 *  `edit 2 n/Betsy Crower t/` Edits the name of the 2nd person to be `Betsy Crower` and clears all existing tags.
 
 ### Locating persons by name, major or class year: `find`
@@ -958,6 +962,13 @@ left the end of history, and neither executes commands.
 
 For example, submit `add n/Alice a/NUS`, `list`, `add n/Bob a/NUS`, then `list`. Type `add ` without pressing Enter.
 Alt+↑ recalls `add n/Bob a/NUS`, then `add n/Alice a/NUS`; Alt+↓ recalls `add n/Bob a/NUS`, then restores `add `.
+
+To check the position label, start a fresh session and submit `list`, `find Alice`, then `list`.
+Type `li` and press Alt+↑ twice: the label shows **History 3/3**, then **History 1/3**.
+Pressing Alt+↑ again keeps **History 1/3** and pulses the label. Alt+↓ returns to **History 3/3**;
+the next Alt+↓ restores `li` and hides the label. These numbers count all submissions, including
+`find Alice`, rather than only the two matches. This session's command recall is separate from
+[`undo`](#undoing-a-change-undo), which restores contact data.
 
 ### Saving the data
 

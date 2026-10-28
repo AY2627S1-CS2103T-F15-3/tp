@@ -29,8 +29,8 @@ Record pass/fail and a screenshot for each OS, rather than assuming identical fo
 | Resolution and scaling | At 1920×1080 or higher, check 100% and 125% for a comfortable experience. At 1280×720 or higher and 150%, all functions must remain usable. Record the actual settings and check text, icons, focus outlines and scrollbars. 200% is optional. |
 | Keyboard | Follow the UG Tab/Shift+Tab route with physical keys. Only the selected contact's expandable values join the route; the outline must identify focus. |
 | Expansion | Expand and collapse long names, tags and each field using mouse and Enter/Space. Scroll to the end, resize and check that adjacent cards do not overlap. |
-| History | Check Up/Down draft restoration and Alt+Up/Down (Option on macOS). Expansion and history keys must not execute commands. |
-| Feedback | Submit long note replacements and shared-detail warnings. Read/select the whole message and scroll to its last line; the next ordinary result replaces it. |
+| History | Check Up/Down draft restoration and Alt+Up/Down (Option on macOS). Repeated submissions occupy separate `History i/N` positions; prefix search skips positions, boundary presses pulse the label, and returning to the draft or submitting a failed command hides it. History keys must not execute commands. |
+| Feedback | Check changed-field edit summaries, optional-field clearing (`Not specified`), sorted tag differences and unchanged edits that preserve redo. An email-capitalization-only edit shows a change without a new shared-email warning. Submit long note replacements and shared-detail warnings. Read/select the whole message and scroll to its last line; the next ordinary result replaces it. |
 | Storage | Run the DG save/load failure cases in a disposable folder. After a loading error, close the window without executing commands before repairing the file. |
 | Restart | Close and reopen. Contacts persist; filters, sorting, command history and expansions return to their documented restart state. |
 

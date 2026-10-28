@@ -20,5 +20,11 @@ if () then ([command found])
 else ([else])
   :Keep existing text unchanged;
 endif
+if (At draft position?) then (yes)
+  :Hide History label;
+else (no)
+  :Show absolute History i/N
+and restart label pulse;
+endif
 stop
 @enduml

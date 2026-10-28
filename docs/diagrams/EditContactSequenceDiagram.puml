@@ -11,22 +11,33 @@ Edit -> Edit : createEditedPerson(person, descriptor)
 note right of Edit
   Validate the displayed index and duplicate name
   before changing contact data.
+  SHOW_ALL denotes PREDICATE_SHOW_ALL_PERSONS.
 end note
 alt Contact unchanged
-  Edit -> Model : show all contacts
+  Edit -> Model : updateFilteredPersonList(SHOW_ALL)
+  note over Edit, Model
+    No replacement or commit; date and redo are preserved.
+  end note
   Edit -->[ : No changes made feedback
 else Contact changed
   Edit -> Model : getAddressBook()
   Model --> Edit : contact data to snapshot
   Edit -> Edit : previousState = new AddressBook(contact data)
   Edit -> Model : setPerson(person, editedPerson)
-  Edit -> Model : show all contacts
-  Edit -> Model : commitAddressBook(previousState, message)
+  Edit -> Model : updateFilteredPersonList(SHOW_ALL)
+  Edit -> Model : commitAddressBook(previousState, fullContactDescription)
   note over Edit, Model
     History uses the full-contact description.
+    Immediate summaries and warnings are not stored.
   end note
-  Edit -> Edit : formatChanges(person, editedPerson)
-  Edit -> Edit : append shared-detail warning if needed
+  Edit -> Edit : summary = formatChanges(person, editedPerson)
+  Edit -> Edit : getEditResult(model, person, editedPerson, summary)
+  note right of Edit
+    Summary: only changed fields; cleared values use
+    "Not specified"; tag differences are sorted.
+    Shared-detail warnings check changed methods only;
+    email-capitalization-only edits add no warning.
+  end note
   Edit -->[ : changed-field feedback
 end
 @enduml

@@ -96,6 +96,7 @@ public class CommandHistory {
      * Returns the one-based chronological position, or zero while at the draft.
      */
     public int getPosition() {
+        assert position >= 0 && position <= commands.size() : "History cursor must refer to an entry or the draft";
         return position == commands.size() ? 0 : position + 1;
     }
 
@@ -110,6 +111,7 @@ public class CommandHistory {
      * Lets the next prefix search use the current input after editing or changing navigation mode.
      */
     public void resetPrefixSearch() {
+        assert position >= 0 && position <= commands.size() : "History cursor must remain valid across mode changes";
         searchPrefix = null;
     }
 }

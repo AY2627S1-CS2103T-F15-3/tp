@@ -496,6 +496,15 @@ empty optional values display `Not specified`. Supplied fields whose values matc
 If the tag sets differ, a `Tags replaced. Removed: ... . Added: ... .` line lists the sorted set differences
 (`None` for an empty difference). An unchanged tag set adds no line, including when `t/` was supplied.
 
+Java assertions guard the private feedback path: `formatChanges` requires different original and
+replacement contacts, and its result must include at least one field or tag change line.
+The unchanged-contact branch returns before this formatter. These checks detect implementation errors;
+normal invalid input continues to use parser validation and `CommandException`.
+
+Email feedback compares stored values case-sensitively, while shared-email detection ignores case.
+Consequently, a capitalization-only email edit is a real profile change with an email change line
+and a refreshed date, but no new shared-email warning.
+
 The existing full-contact `Edited person: ...` description is still passed to
 `Model#commitAddressBook(previousState, message)`. Immediate change summaries are not stored in history;
 undo/redo feedback and state restoration retain their previous behavior. `UndoRedoIntegrationTest`
@@ -691,8 +700,9 @@ Commands that report a contact's full details use `Messages#format(Person)`. The
 `Class year` before tags when those optional academic fields are specified. If either academic field is unspecified,
 that field is omitted from the command message.
 
-This centralizes command-message formatting for add, edit, and delete results while preserving the independent
-optional behavior of major and class year.
+This centralizes full-contact formatting for add and delete results and stored edit history descriptions.
+Immediate edit feedback uses `EditCommand#formatChanges` instead, so clearing an optional academic field
+explicitly shows `Not specified` rather than omitting the changed field.
 
 ### Deleting one or more contacts
 
@@ -1356,12 +1366,20 @@ search, Alt+Down is a no-op. Editing input, submitting a command or using chrono
 the prefix. `CommandBox` guards programmatic recalls so its text listener resets the search only for
 external edits. Switching navigation modes keeps the original draft and the current history position.
 
+Internally, `position` is zero-based in `0..commands.size()`, inclusive; the upper bound denotes
+the draft rather than a stored command. Assertions check this invariant when reporting the position
+and resetting a prefix search. The GUI converts stored positions to one-based labels; a no-match
+search preserves the cursor and therefore the label. Both activity diagrams include the label update,
+even when no text changes or a shortcut leaves the search inactive.
+
 `CommandHistory#getPosition()` exposes a one-based chronological index (zero at the draft), and
 `size()` includes all submissions, even duplicates. After each navigation event, `CommandBox` updates
 the adjacent `historyPositionLabel` to `History i/N`. A 200 ms `FadeTransition` restarts from 35% to
 full opacity on each press, including boundary presses and identical recalls. At the draft and on Enter,
 the transition stops and the label becomes invisible and unmanaged so the input reclaims its space.
 Failed submissions also hide the label. Prefix search displays absolute positions rather than match counts.
+This recall history stores command strings independently of `AddressBookHistory`: recalling a failed
+command is valid even though that command created no contact-data undo entry.
 
 `CommandHistoryTest` covers boundaries, duplicates, exact prefixes, mode switching and draft state. `CommandBoxTest` exercises the real
 FXML text field on the JavaFX thread: Up/Down event consumption, caret placement, draft restoration,

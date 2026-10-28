@@ -6,6 +6,12 @@ start
 if () then ([Alt/Option pressed])
   if () then ([search inactive or at draft])
     :Keep existing text unchanged;
+    if (At draft position?) then (yes)
+      :Hide History label;
+    else (no)
+      :Show absolute History i/N
+and restart label pulse;
+    endif
     stop
   else ([else])
   endif
@@ -23,6 +29,12 @@ else ([else])
   else ([else])
     :Keep existing text unchanged;
   endif
+endif
+if (At draft position?) then (yes)
+  :Hide History label;
+else (no)
+  :Show absolute History i/N
+and restart label pulse;
 endif
 stop
 @enduml
