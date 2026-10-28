@@ -284,28 +284,38 @@ Phone/email values are saved normally. Older JSON files with valid contact detai
 
 ### Tracking a contact's latest update date
 
-Every contact card shows `Last updated: YYYY-MM-DD` below the academic fields, including contacts
-without an `update` reminder. For example, `Last updated: 2026-10-20` means the contact was added
-or its basic information last changed on 20 October 2026. Use `list` to view all saved contacts and
-their dates, or `find` and `filter` to narrow the displayed contacts. Use `sort updated asc` to review
-the oldest updates first, or `sort updated desc` for the newest first.
+Use this date to check how recently a contact's basic information was maintained. Run `list` and
+look for **Last updated** below **Class year** on each card, as shown in the
+[Quick start screenshot](#quick-start). The date is visible even without an `update` reminder.
+Hover over the date for an explanation of what it records.
 
-* A new contact receives the date when `add` succeeds, using your computer's local date.
-* A successful `edit` that changes the name, phone, email, address, major or class year records
-  the current date. Clearing a previously specified optional field also counts as a change.
-* Re-entering unchanged values, commands rejected before changing a contact, tag-only edits, notes,
-  favourites and commands that only change the displayed list keep the previous date. The date measures maintenance of
-  the contact's basic information, rather than changes to your personal annotations.
-* Dates are saved automatically with the contacts and remain visible after restarting UniMate once saving succeeds.
-  `undo` and `redo` restore the saved date belonging to the restored contact state.
-* The date has day precision: several changes on the same day show the same date.
+Dates use `YYYY-MM-DD`: for example, `2026-10-20` means 20 October 2026. UniMate records the date
+automatically using your computer's local date; there is no command parameter for setting it yourself.
 
-Example: run `list`, identify the displayed index of the contact, then enter `edit 1 p/91234567`.
-If the first contact's phone changes, its card immediately shows today's date. If that phone was
-already `91234567`, the previous date remains.
+| Action | Effect on the contact's date |
+| --- | --- |
+| Successfully add a new contact | Records today's date. |
+| Edit the name, phone, email, address, major or class year to a different value | Records today's date. Clearing a previously specified optional field also counts. |
+| Re-enter the same values, or submit a command that is rejected before changing a contact | Keeps the previous date. |
+| Change only tags, notes or favourite status | Keeps the previous date. These are your annotations, rather than changes to basic contact information. |
+| View, search, filter or sort contacts | Keeps the previous date. |
+| Undo or redo a contact change | Restores the date belonging to that contact state, rather than recording the date of the undo or redo. |
 
-Contacts from older files without an update date show `Last updated: Unknown`. They stay last
-in both ascending and descending update-date sorting until an actual basic-profile edit records a date.
+The date has day precision, so several changes on the same day show the same date. Once saving
+succeeds, it remains available when you reopen UniMate from the same folder.
+
+Example: run `list` and identify the contact's current displayed index. Enter `edit 1 p/91234567`,
+replacing `1` with that index. If that contact's phone changes, its card immediately shows today's
+date. If the phone was already `91234567`, the previous date remains.
+
+Contacts from older files without a recorded date show `Last updated: Unknown`. This means no date
+was saved; it does not mean the contact was updated today. The date stays unknown after reopening
+until you actually change one of the basic fields above.
+
+To review your collection, use [update-date sorting](#sorting-contacts-by-name-major-class-year-or-update-date-sort):
+`sort updated asc` puts the oldest known dates first, while `sort updated desc` puts the newest first.
+Unknown dates stay last in both directions. The separate [update reminder](#automatic-update-reminders)
+flags contacts whose known dates are over a calendar year old.
 
 ### Automatic update reminders
 
@@ -565,7 +575,8 @@ For all three note commands, an index outside the displayed list reports `The pe
 
 ### Listing all persons: `list`
 
-Displays every contact currently saved in UniMate, including contacts loaded when you reopen the app.
+Use `list` to view previously added contacts or return to your full collection after a search or filter.
+It displays every contact currently saved in UniMate, including contacts loaded when you reopen the app.
 Each contact card includes the person's name, tags, phone number,
 address, email address, major, class year and [latest update date](#tracking-a-contact-s-latest-update-date).
 Optional academic fields that have no saved value are displayed as
@@ -582,14 +593,20 @@ Format: `list`
 * Lists all saved contacts; it does not provide a recently added view or sort contacts by their creation date.
 * The result starts with `Listed all persons.` and reports `N person(s) listed!` on the next line, where `N` is the
   total number of contacts displayed. An empty address book succeeds with `0 person(s) listed!`.
+  The status above the cards shows `Showing N of N contacts` and `Filter: All contacts`, followed by the current sort order.
 * Viewing contacts does not change their details, recorded update dates or undo/redo history. Saved contacts remain
   available after restarting UniMate from the same folder; active searches, filters and sort choices are temporary.
 
-Examples:
+Examples (enter each command separately):
 
-* Run `find Alex`, then `list` to return from search results to every saved contact.
-* Run `listfav`, then `list` to include non-favourites again.
-* Run `sort name asc`, then `filter m/Computing`, then `list` to show all contacts in ascending name order.
+| Commands | What to expect after `list` |
+| --- | --- |
+| `find Alex`, then `list` | Every saved contact returns, even if the search found no matches. The reported count is the full collection size. |
+| `listfav`, then `list` | Non-favourites appear alongside favourites; favourite hearts are preserved. |
+| `sort name asc`, then `filter m/Computing`, then `list` | All saved contacts appear in ascending name order; the major filter is cleared. |
+
+For a long collection, scroll through the cards. If a value ends in `...`, click it to read the full
+value. See [Using the contact list](#using-the-contact-list) for the layout and keyboard controls.
 
 ### Editing a person: `edit`
 

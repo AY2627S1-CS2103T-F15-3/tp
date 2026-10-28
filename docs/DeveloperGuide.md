@@ -799,24 +799,43 @@ maintaining a separate list of earlier additions. Deleted contacts are absent fr
 There is no separate creation timestamp or recently added view; `lastUpdated` tracks basic-profile maintenance
 and cannot be used to reconstruct each contact's original creation date.
 
+#### Parsing and execution
+
 `AddressBookParser` dispatches `list` only when its argument string is blank; additional input raises a
 `ParseException` with `Messages.MESSAGE_INVALID_COMMAND_FORMAT` and `ListCommand.MESSAGE_USAGE` before execution.
 Surrounding whitespace is accepted, and the command word is case-insensitive, as for all commands.
 
-`ListCommand#execute` applies `Model.PREDICATE_SHOW_ALL_PERSONS` through `Model#updateFilteredPersonList`, replacing
-the predicate established by `find`, `filter` or `listfav`. It then reads the restored view's size and returns
-`ListCommand.MESSAGE_SUCCESS` followed by a newline and `Messages.MESSAGE_PERSONS_LISTED_OVERVIEW`. Calculating the
-count after replacing the predicate ensures feedback describes every restored contact, even when the previous view
-was empty. An empty address book reports zero successfully.
+For example, after `find ListAlice` shows one matching contact in a collection of ten:
+
+1. `ListCommand#execute` applies `Model.PREDICATE_SHOW_ALL_PERSONS` through
+   `Model#updateFilteredPersonList`, replacing the search predicate. The same path clears `filter` and `listfav` views.
+1. `Model#getFilteredPersonList` exposes the restored view. Its name refers to the filtered-list API,
+   but `ModelManager` returns the final `SortedList<Person>`, including any active comparator.
+1. The command reads that view's size and returns `ListCommand.MESSAGE_SUCCESS`, a newline and the
+   formatted `Messages.MESSAGE_PERSONS_LISTED_OVERVIEW`. Feedback reports ten contacts, rather than
+   the previous one search result. An empty address book follows the same path and reports zero.
+
+#### Observable view and persistence
 
 `ModelManager` exposes a `SortedList<Person>` over its `FilteredList<Person>`, so changing only the predicate retains
 the active comparator. The saved contact order is untouched. `PersonListPanel` observes this final view and creates
 cards with one-based display indices. Existing cards provide contact details and reminders; listing does not replace
 persons or alter their update dates.
 
+The view status is derived from the same filtered and sorted lists. After `list`, it reads
+`Showing N of N contacts | Filter: All contacts | Sort: ...`; the sort description remains the active
+sort, or `Saved order` when there is no comparator. Display indices belong to this current view,
+so they may differ from indices in the previous search results.
+
 The command does not commit contact history, consume undo steps or discard redo states. `LogicManager` still uses its
 existing save-after-success path, retaining the same contact data on disk. On reopening, storage reconstructs the saved
 contacts and a new model starts without temporary filters or sort choices.
+
+#### Design considerations and verification
+
+Reusing the observable view avoids a second collection that could become inconsistent after an edit
+or deletion. Keeping filtering separate from sorting lets `list` restore the collection without
+discarding the user's chosen order. It also keeps a view change separate from contact-data history.
 
 `ListCommandTest` covers empty and populated lists, restoring search/filter/favourite results, active sort preservation,
 unchanged data and undo/redo availability. `AddressBookParserTest` checks whitespace and extra-argument rejection.
@@ -898,6 +917,8 @@ actual change to the basic profile: name, phone, email, address, major and gradu
 notes and favourite status retain the original date. Date values participate in full equality,
 hashing and history snapshots, but do not affect name-based contact identity.
 
+#### Assigning and preserving the date
+
 `AddCommand` obtains `LocalDate.now(clock)` during successful execution, rather than relying on the
 date from when its `Person` was constructed. `Person#withLastUpdated` creates a dated copy preserving
 all other fields. This handles a command prepared before midnight but executed afterwards. The
@@ -909,6 +930,12 @@ An actual change, including clearing a specified optional field, refreshes the d
 An unchanged edit or tag-only edit retains the previous date. Failed parsing, an invalid index and
 duplicate-name rejection leave the stored contact unchanged. Undo and redo restore the recorded
 date, rather than calculating a new date when restoring a snapshot.
+
+For example, a contact starts with date `2024-02-29`. Submitting its existing phone or changing only
+a tag keeps that date. A subsequent phone change on `2026-10-28` records `2026-10-28`. Undoing the
+phone change restores `2024-02-29`, and redoing it restores `2026-10-28`, even if redo runs on a later day.
+
+#### Display and JSON compatibility
 
 `PersonCard` sets the always-visible `lastUpdated` label from `Person#getLastUpdated()` in
 `PersonListCard.fxml`, producing `Last updated: YYYY-MM-DD` for ordinary four-digit years or
@@ -922,11 +949,20 @@ dates remain unknown and are saved as JSON null until an actual basic-profile ed
 Invalid supplied dates fail data loading.
 No new JSON property or user-supplied date prefix is introduced.
 
+#### Design considerations and verification
+
+Storing the date on the immutable `Person` keeps it with contact data through persistence and history
+restoration. Calculating it only for actual basic-field changes prevents a note, favourite or repeated
+edit from making old profile information appear current. `LocalDate` matches the day-level display;
+it does not provide a time of day or an interaction history. Preserving an unknown legacy date avoids
+inventing an update when an older contact is loaded.
+
 `LastUpdatedDisplayTest` exercises actual JavaFX cards and list cells for recent and older dates,
 search/list transitions, annotation changes, edits, undo/redo, persistence and reopening saved data.
 `UpdateReminderTest` additionally checks execution-time add dates, time-zone boundaries, failed
 duplicate adds and the existing profile-edit rules. `LastUpdatedStorageTest` covers stored dates,
-legacy files and invalid date rejection.
+legacy files and invalid date rejection. See the [UG date rules](UserGuide.md#tracking-a-contact-s-latest-update-date)
+and [manual date checks](#tracking-contact-update-dates) for the corresponding user-visible behaviour.
 
 ### Automatic update reminders
 
@@ -2002,6 +2038,8 @@ after an edit, undo, redo or restart before using its displayed index again.
    1. Run `find ListAlice`, then `list`.
       Expected: Every saved contact appears, including both test contacts. Feedback starts with `Listed all persons.`
       and the next line reports `N person(s) listed!`, where `N` equals the full displayed count.
+      The status above the cards shows `Showing N of N contacts | Filter: All contacts | Sort: Saved order`
+      if no sort was applied.
    1. Run `filter m/Computing`, then `list`; repeat with `listfav`, then `list`.
       Expected: Each `list` restores all contacts and their current details. Favourite hearts and update dates remain unchanged.
    1. Run `find NoSuchListContact`, then `list`.
@@ -2011,6 +2049,7 @@ after an edit, undo, redo or restart before using its displayed index again.
 
    1. Run `sort name desc`, then `find ListAlice`, then `list`.
       Expected: Every contact returns in descending name order, numbered consecutively from `1`.
+      The status shows `Filter: All contacts` and still ends with `Sort: Name descending`.
    1. Close and relaunch the app from the same folder, then run `list`.
       Expected: Both test contacts and all other saved details remain available. The temporary sort is reset to saved order.
    1. Run `add n/ListUndo a/NUS`, then `undo`, then `list`, then `redo`.
@@ -2705,12 +2744,17 @@ Re-find it after undo, redo or restart before using index `1`. Do not insert unr
 
 ### Tracking contact update dates
 
+Use a disposable test copy in a separate folder. Close the app before changing its `data/unimate.json`
+and retain a backup outside the `data` folder. These checks cover the date itself; reminder boundaries
+are covered under [Testing derived reminders](#testing-derived-reminders).
+
 Before each indexed `edit`, `note`, `fav` or `tag` command below, run `find DateCheck` and confirm
 the test contact is the only result. An `edit` returns to the full list even when its values are unchanged,
 so repeat the search before the next indexed command.
 
 1. Add a test contact using `add n/DateCheck a/NUS p/93456789`, run `find DateCheck` and inspect its card.
    Expected: `Last updated: YYYY-MM-DD` shows your computer's current date even without an `update` reminder.
+   Hover over the date: its tooltip explains that basic fields affect it, while tags, notes and favourites do not.
 <br>
 1. Close the app, back up `data/unimate.json`, and set only that test contact's `lastUpdated` to `2024-02-29`.
    Relaunch and run `find DateCheck`.
@@ -2730,7 +2774,19 @@ so repeat the search before the next indexed command.
    Expected: The unchanged edit and failed input leave the saved date unchanged.
 <br>
 1. Restart the app from the same folder and run `find DateCheck`.
-   Expected: The edited phone and saved date remain. Remove the test contact or restore the backup afterwards.
+   Expected: The edited phone and saved date remain.
+<br>
+1. Close the app and remove only DateCheck's `lastUpdated` property from the disposable JSON file.
+   Relaunch, run `find DateCheck`, then `list` and close the app. Relaunch and locate DateCheck again.
+   Expected: The date shows `Unknown` on both launches. Viewing and saving do not invent a date.
+   Repeat with `"lastUpdated": null` instead of an omitted property; the result is the same.
+<br>
+1. With DateCheck still showing `Unknown`, run `find DateCheck`, then `edit 1 p/94567890`.
+   Expected: The phone is unchanged, so the date remains `Unknown`. Run `find DateCheck`, then
+   `edit 1 p/` to clear its existing phone.
+   Expected: The phone becomes `Not specified` and the date becomes today's date, because clearing
+   a specified basic field is a real change. Restart and locate DateCheck to confirm both were saved.
+   Remove the test contact or restore the backup with the app closed afterwards.
 
 ### Saving data
 
