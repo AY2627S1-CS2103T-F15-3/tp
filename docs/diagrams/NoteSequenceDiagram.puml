@@ -1,26 +1,68 @@
 @startuml
+' @@author RayWHJ
 !include style.puml
 skinparam ArrowFontStyle plain
+
 participant "n:NoteCommand" as NoteCommand LOGIC_COLOR
-participant "person:Person" as Person MODEL_COLOR
 participant "m:Model" as Model MODEL_COLOR
+participant "person:Person" as Person MODEL_COLOR
+participant "previousState:AddressBook" as PreviousState MODEL_COLOR
 
 [-> NoteCommand : execute(m)
+activate NoteCommand
+
 NoteCommand -> Model : getFilteredPersonList()
+activate Model
 Model --> NoteCommand : displayedPersons
+deactivate Model
+
 note over NoteCommand, Model
-  Check the index and select the displayed contact.
+  Validate the index and select person from displayedPersons.
+  The invalid-index path is omitted.
 end note
-alt Identical note
-  NoteCommand -->[ : unchanged feedback
-else Note changed
+
+NoteCommand -> Person : getNotes()
+activate Person
+Person --> NoteCommand : previousNotes
+deactivate Person
+
+alt previousNotes.equals(notes)
+  note right of NoteCommand
+    Prepare unchanged feedback.
+  end note
+else else
   NoteCommand -> Model : getAddressBook()
-  Model --> NoteCommand : currentData
-  NoteCommand -> NoteCommand : previousState = new AddressBook(currentData)
+  activate Model
+  Model --> NoteCommand : currentAddressBook
+  deactivate Model
+
+  create PreviousState
+  NoteCommand -> PreviousState : AddressBook(currentAddressBook)
+  activate PreviousState
+  PreviousState --> NoteCommand
+  deactivate PreviousState
+
   NoteCommand -> Person : withNotes(notes)
+  activate Person
   Person --> NoteCommand : updatedPerson
+  deactivate Person
+
   NoteCommand -> Model : setPerson(person, updatedPerson)
-  NoteCommand -> Model : commitAddressBook(previousState, message)
-  NoteCommand -->[ : saved or replaced feedback
+  activate Model
+  Model --> NoteCommand
+  deactivate Model
+
+  note over NoteCommand, Model
+    Prepare the history description
+    and saved or replaced feedback.
+  end note
+
+  NoteCommand -> Model : commitAddressBook(previousState, description)
+  activate Model
+  Model --> NoteCommand
+  deactivate Model
 end
+
+NoteCommand -->[ : result
+deactivate NoteCommand
 @enduml

@@ -1,23 +1,53 @@
 @startuml
+' @@author RayWHJ
 !include style.puml
 skinparam ArrowFontStyle plain
+
 participant "d:DeleteCommand" as DeleteCommand LOGIC_COLOR
 participant "m:Model" as Model MODEL_COLOR
+participant "previousState:AddressBook" as PreviousState MODEL_COLOR
 
 [-> DeleteCommand : execute(m)
+activate DeleteCommand
+
 DeleteCommand -> Model : getFilteredPersonList()
+activate Model
 Model --> DeleteCommand : lastShownList
+deactivate Model
+
 note over DeleteCommand, Model
-  Reject repeated or out-of-range indices.
-  Capture all targets from the original displayed list.
+  Copy the displayed list and validate all indices.
+  Collect personsToDelete in input order before mutation.
+  Validation error paths are omitted.
 end note
+
 DeleteCommand -> Model : getAddressBook()
+activate Model
 Model --> DeleteCommand : currentAddressBook
-DeleteCommand -> DeleteCommand : previousState = new AddressBook(currentAddressBook)
-loop For each captured contact
+deactivate Model
+
+create PreviousState
+DeleteCommand -> PreviousState : AddressBook(currentAddressBook)
+activate PreviousState
+PreviousState --> DeleteCommand
+deactivate PreviousState
+
+loop for each personToDelete in personsToDelete
   DeleteCommand -> Model : deletePerson(personToDelete)
+  activate Model
+  Model --> DeleteCommand
+  deactivate Model
 end
-DeleteCommand -> DeleteCommand : format feedback in input order
+
+note over DeleteCommand, Model
+  Format message in input order.
+end note
+
 DeleteCommand -> Model : commitAddressBook(previousState, message)
-DeleteCommand -->[ : CommandResult(message)
+activate Model
+Model --> DeleteCommand
+deactivate Model
+
+DeleteCommand -->[ : result
+deactivate DeleteCommand
 @enduml

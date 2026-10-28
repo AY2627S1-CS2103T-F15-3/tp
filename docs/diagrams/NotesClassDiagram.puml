@@ -1,4 +1,5 @@
 @startuml
+' @@author RayWHJ
 !include style.puml
 show members
 skinparam classAttributeIconSize 0
@@ -7,24 +8,28 @@ skinparam arrowColor MODEL_COLOR_T4
 skinparam classBackgroundColor MODEL_COLOR
 
 class NoteCommand LOGIC_COLOR {
-  +execute(model: Model): CommandResult
+  + execute(model: Model): CommandResult
 }
 class Person {
-  +getNotes(): Notes
-  +withNotes(updatedNotes: Notes): Person
+  + getNotes(): Notes
+  + withNotes(updatedNotes: Notes): Person
 }
 class Notes {
-  {static} +EMPTY: Notes
-  {static} +MAX_LENGTH: int = 500
-  +value: String
-  +isEmpty(): boolean
+  {static} + EMPTY: Notes
+  {static} + MAX_LENGTH: int = 500
+  + value: String
+  + isEmpty(): boolean
 }
-NoteCommand ..> Person : reads / replaces
-NoteCommand --> "1" Notes : notes
-Person --> "1" Notes : notes
 
-note bottom of Notes
-  Immutable and non-null; empty means no note.
-  Notes.EMPTY is shared, so these are associations.
+NoteCommand ..> Person
+NoteCommand "0..*" --> "1\nnotes" Notes
+Person "0..*" --> "1\nnotes" Notes
+
+note as NotesInfo
+  Immutable; an empty value means no note.
+  The same Notes value can be shared by contacts.
 end note
+Notes .. NotesInfo
+' Keep the connector dashed instead of merging it into a callout pointer.
+Notes .[hidden]. NotesInfo
 @enduml
