@@ -27,8 +27,8 @@ class Email {
 }
 
 SystemTag ..> Person
-Person --> "1\n-phone" Phone
-Person --> "1\n-email" Email
+Person --> "1\nphone" Phone
+Person --> "1\nemail" Email
 
 note bottom of Person
   Both value strings empty: incomplete.

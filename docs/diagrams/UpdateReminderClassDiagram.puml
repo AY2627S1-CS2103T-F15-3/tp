@@ -25,7 +25,7 @@ class PersonCard UI_COLOR {
 
 EditCommand ..> Person
 SystemTag ..> Person
-PersonCard --> "1\n+person" Person : displays >
+PersonCard --> "1\nperson" Person : displays >
 PersonCard ..> SystemTag
 
 note bottom of Person

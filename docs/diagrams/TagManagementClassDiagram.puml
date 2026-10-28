@@ -20,7 +20,7 @@ class Tag MODEL_COLOR {
 
 TagCommand ..> Person
 UntagCommand ..> Person
-Person --> "0..*\n-tags {unique}" Tag : has >
+Person --> "0..*\ntags {unique}" Tag : has >
 
 note bottom of Person
   Commands copy the tag set and preserve other fields.
