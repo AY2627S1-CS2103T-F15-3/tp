@@ -116,7 +116,7 @@ than the viewport, it shows the start of that value. With an empty list, Tab and
 in the command box.
 Up/Down in the command box still recalls command history.
 Plain Tab and Shift+Tab never enter the message area; use Ctrl+Tab for that. The Ctrl+Tab route
-works on macOS and Linux; it has not yet been tested on Windows. Clicking inside the message area also focuses it.
+works on macOS, Linux and Windows. Clicking inside the message area also focuses it.
 
 <box type="warning" seamless>
 
@@ -173,7 +173,7 @@ Format: `help`
 * The help window shows the User Guide's web address and a **Copy URL** button. It opens and copies
   the address even without an internet connection.
 * Opening the copied address in a web browser needs an internet connection.
-* Offline use was tested on macOS and Linux, and works as described. It has not yet been tested on Windows.
+* Offline use was tested on macOS, Linux and Windows, and works as described.
 
 
 ### Adding a person: `add`
@@ -1076,7 +1076,7 @@ If UniMate cannot write the data file, for example because the file or its folde
 * `Could not save data to file ... due to insufficient permissions to write to the file or the folder.`
 * `Could not save data due to the following error: ...`
 
-The read-only case was tested on macOS and Linux, and behaves as described. It has not yet been tested on Windows.
+The read-only case was tested on macOS, Linux and Windows, and behaves as described.
 
 If the command changed your contacts, the error explains that the change was applied but not saved,
 how to revert it, and how to save it after fixing the problem. It names `undo` to revert an ordinary
@@ -1144,14 +1144,14 @@ remedy or workaround where one exists.
 
 ### Window and display
 
-1. **When using multiple screens**, if you move the application to a secondary screen, and later switch to using only the primary screen, the GUI will open off-screen. The remedy is to delete the `preferences.json` file created by the application before running the application again. Other multiple-monitor setups have not been tested.
+1. **When using multiple screens**, if you move the application to a secondary screen, and later switch to using only the primary screen, the GUI will open off-screen. The remedy is to delete the `preferences.json` file created by the application before running the application again.
 2. **If you minimize the Help Window** and then run the `help` command (or use the `Help` menu, or the keyboard shortcut `F1`) again, the original Help Window will remain minimized, and no new Help Window will appear. The remedy is to manually restore the minimized Help Window.
 3. **If `preferences.json` contains `"guiSettings": null`**, UniMate may fail to start instead of using default window settings. The remedy is to delete `preferences.json` before launching again; UniMate recreates it with defaults.
 
 ### Keyboard
 
 4. **The message area shows no focus outline.** After Ctrl+Tab moves focus to the message area, nothing on screen changes. The remedy is to press Down to check (the message scrolls if it has focus), and press Ctrl+Shift+Tab or click the command box before typing. See [Using the contact list](#using-the-contact-list).
-5. **Ctrl+Tab into the message area is standard Java behaviour, not a UniMate shortcut.** UniMate handles only plain Tab and Shift+Tab. Ctrl+Tab and Ctrl+Shift+Tab work because the Java window toolkit that UniMate uses moves focus between controls with them. The route works on macOS and Linux but has not yet been tested on Windows. Clicking inside the message area also focuses it.
+5. **Ctrl+Tab into the message area is standard Java behaviour, not a UniMate shortcut.** UniMate handles only plain Tab and Shift+Tab. Ctrl+Tab and Ctrl+Shift+Tab work because the Java window toolkit that UniMate uses moves focus between controls with them. The route works on macOS, Linux and Windows. Clicking inside the message area also focuses it.
 6. **Tabs and line breaks in pasted text are removed** by the command box before submission, so pasted words can be joined. See [`note`](#adding-or-replacing-a-contact-s-note-note).
 
 ### Data and saving
@@ -1164,7 +1164,3 @@ remedy or workaround where one exists.
 
 10. **Some valid-looking email domains are rejected.** If the last part of the domain (after the final `.`) contains a hyphen, it needs at least two letters or digits on one side of a hyphen. For example, `a@x.y-z` and `a@a-b` are rejected, while `a@x.ab-c` is accepted. The error message does not mention this rule. There is no remedy other than omitting or changing that email; see the [email field rules](#adding-a-person-add).
 11. **An extremely long email address** (thousands of characters, far beyond any real address) may be accepted and saved, but UniMate then fails to start on the next launch. The remedy is to close UniMate, edit `data/unimate.json` to shorten or remove that email, then relaunch. Keep backups before testing unusual input.
-
-### Platforms not yet tested
-
-12. **Windows has not yet been tested** for the offline help window, the read-only data-file error or Ctrl+Tab. All three work on macOS and Linux. **Multiple monitors** have not been tested beyond the issue above. These features may behave differently in untested setups.

@@ -2026,7 +2026,7 @@ after an edit, undo, redo or restart before using its displayed index again.
 <br>
 3. Help window without an internet connection
 
-   **Result:** Passed on macOS and Linux (v1.5 development build). Not yet tested on Windows.
+   **Result:** Passed on macOS, Linux and Windows (v1.5 development build).
 
    1. Turn off Wi-Fi and unplug any network cable. Launch the app.
    2. Press F1, or run `help`.
@@ -2939,9 +2939,8 @@ Use only the separate test folder for these checks. The paths below are relative
 
 ### Testing a permission-denied save
 
-**Result:** Passed on macOS and Linux (v1.5 development build). On macOS, the permission message
-appeared, `PermCheck` was shown in memory, and the read-only file was left unchanged. Not yet tested
-on Windows.
+**Result:** Passed on macOS, Linux and Windows (v1.5 development build). On macOS, the permission
+message appeared, `PermCheck` was shown in memory, and the read-only file was left unchanged.
 
 Use a disposable test folder only.
 
@@ -3104,8 +3103,6 @@ These are described in detail, with their planned fixes, in
    * F1, the **Help** menu and the window's close button do not go through `Logic` and still work.
    * A future version could skip saving for commands that cannot change data, such as `help`, `exit`, `list` and `find`.
 
-5. **Untested platforms and requirements.**
-   * Windows has not yet been tested for the offline help window, the permission-denied save or Ctrl+Tab; all three pass on macOS and Linux.
-   * Multiple-monitor setups have not been tested. The only known multi-monitor issue is the off-screen window inherited from AddressBook-Level3, documented in the User Guide.
+5. **Untested requirements.**
    * The null-preferences startup failure (planned enhancement 4) was reproduced at the storage and model level, but not by launching the full app.
    * The one-second response target with 1,000 contacts (non-functional requirement 2) has not been measured end to end, including UI rendering.
