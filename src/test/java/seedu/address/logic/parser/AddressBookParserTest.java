@@ -39,9 +39,9 @@ import seedu.address.logic.parser.exceptions.ParseException;
 import seedu.address.model.person.ContactFilterPredicate;
 import seedu.address.model.person.GraduationYear;
 import seedu.address.model.person.Major;
-import seedu.address.model.person.NameContainsKeywordsPredicate;
 import seedu.address.model.person.Notes;
 import seedu.address.model.person.Person;
+import seedu.address.model.person.PersonContainsKeywordsPredicate;
 import seedu.address.model.person.PersonSortComparator.SortDirection;
 import seedu.address.model.person.PersonSortComparator.SortField;
 import seedu.address.model.tag.Tag;
@@ -95,7 +95,7 @@ public class AddressBookParserTest {
         List<String> keywords = List.of("foo", "bar", "baz");
         FindCommand command = (FindCommand) parser.parseCommand(
                 FindCommand.COMMAND_WORD + " " + keywords.stream().collect(Collectors.joining(" ")));
-        assertEquals(new FindCommand(new NameContainsKeywordsPredicate(keywords)), command);
+        assertEquals(new FindCommand(new PersonContainsKeywordsPredicate(keywords)), command);
     }
 
     @Test
@@ -114,7 +114,7 @@ public class AddressBookParserTest {
         assertTrue(parser.parseCommand("\u3000list\u00A0") instanceof ListCommand);
 
         // Keywords separated by Unicode spaces
-        assertEquals(new FindCommand(new NameContainsKeywordsPredicate(List.of("Computer", "Science"))),
+        assertEquals(new FindCommand(new PersonContainsKeywordsPredicate(List.of("Computer", "Science"))),
                 parser.parseCommand("find\u2003Computer\u2003Science"));
 
         // Prefixes preceded by Unicode spaces, and Unicode spaces within values
@@ -342,7 +342,7 @@ public class AddressBookParserTest {
         assertEquals(new TagCommand(INDEX_FIRST_PERSON, tags), parser.parseCommand("TAG 1 t/NOC t/noc"));
         assertEquals(new UntagCommand(INDEX_FIRST_PERSON, Set.of(new Tag("NOC"))),
                 parser.parseCommand("UNTAG 1 t/NOC"));
-        assertEquals(new FindCommand(new NameContainsKeywordsPredicate(List.of("Alice", "NUS"))),
+        assertEquals(new FindCommand(new PersonContainsKeywordsPredicate(List.of("Alice", "NUS"))),
                 parser.parseCommand("FIND Alice NUS"));
         assertEquals(new NoteCommand(INDEX_FIRST_PERSON, new Notes("Met at NUS t/NOC")),
                 parser.parseCommand("NOTE 1 Met at NUS t/NOC"));

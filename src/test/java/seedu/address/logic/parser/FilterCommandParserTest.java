@@ -44,6 +44,17 @@ public class FilterCommandParserTest {
     }
 
     @Test
+    public void parse_prefixLikeTextInsideMajor_preservesLiteralValue() {
+        for (String major : new String[]{"Mathematics w/ Computing", "Computing x/value", "Computing n/Alice"}) {
+            assertParseSuccess(parser, "m/" + major, command(major, null, null));
+        }
+        assertParseSuccess(parser, "m/Mathematics w/ Computing c/2027 t/Classmate",
+                command("Mathematics w/ Computing", "2027", "Classmate"));
+        assertParseSuccess(parser, "t/Classmate c/2027 m/Mathematics w/ Computing",
+                command("Mathematics w/ Computing", "2027", "Classmate"));
+    }
+
+    @Test
     public void parse_yearBoundaries_acceptsBothEndpoints() {
         assertParseSuccess(parser, "c/2000", command(null, "2000", null));
         assertParseSuccess(parser, "c/2099", command(null, "2099", null));
@@ -52,7 +63,7 @@ public class FilterCommandParserTest {
     @Test
     public void parse_missingCriteriaOrUnexpectedArguments_showsUsage() {
         for (String input : new String[]{"", "   ", "Computer Science", "or m/Computing", "n/Alice",
-            "d/2", "x/value", "m/Computing x/value", "m/Computing n/Alice", "M/Computing"}) {
+            "d/2", "x/value", "x/value m/Computing", "n/Alice m/Computing", "M/Computing"}) {
             assertParseFailure(parser, input,
                     String.format(MESSAGE_INVALID_COMMAND_FORMAT, FilterCommand.MESSAGE_USAGE));
         }
@@ -76,6 +87,8 @@ public class FilterCommandParserTest {
         assertParseFailure(parser, "m/Computer\nScience", Major.MESSAGE_CONSTRAINTS);
         assertParseFailure(parser, "t/Study Group", Tag.MESSAGE_CONSTRAINTS);
         assertParseFailure(parser, "t/Friend!", Tag.MESSAGE_CONSTRAINTS);
+        assertParseFailure(parser, "c/2027 x/value", GraduationYear.MESSAGE_CONSTRAINTS);
+        assertParseFailure(parser, "t/Friend x/value", Tag.MESSAGE_CONSTRAINTS);
     }
 
     @Test

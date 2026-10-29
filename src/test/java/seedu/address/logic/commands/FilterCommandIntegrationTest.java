@@ -110,11 +110,42 @@ public class FilterCommandIntegrationTest {
     }
 
     @Test
+    public void execute_filterMajorContainingPrefixLikeText_matchesAddedContact() throws Exception {
+        logic.execute("add n/FilterProbe a/NUS m/Mathematics w/ Computing");
+        Person added = model.getAddressBook().getPersonList().getLast();
+        AddressBook beforeFilter = new AddressBook(model.getAddressBook());
+
+        CommandResult result = logic.execute("filter m/Mathematics w/ Computing");
+
+        assertEquals("Mathematics w/ Computing", added.getMajor().value);
+        assertEquals(List.of(added), model.getFilteredPersonList());
+        assertEquals("1 person(s) listed!", result.getFeedbackToUser());
+        assertEquals(beforeFilter, model.getAddressBook());
+        assertEquals(beforeFilter, new AddressBook(storage.readAddressBook().orElseThrow()));
+    }
+
+    @Test
+    public void execute_filterLiteralMajorWithOtherCriteria_requiresExactMajorAndAllCriteria() throws Exception {
+        logic.execute("add n/LiteralMatch a/NUS m/Mathematics w/ Computing c/2027 t/Classmate");
+        Person expected = model.getAddressBook().getPersonList().getLast();
+        logic.execute("add n/LiteralOtherYear a/NUS m/Mathematics w/ Computing c/2028 t/Classmate");
+        logic.execute("add n/LiteralOtherTag a/NUS m/Mathematics w/ Computing c/2027 t/Friend");
+        logic.execute("add n/LiteralLongerMajor a/NUS m/Mathematics w/ Computing Advanced c/2027 t/Classmate");
+        AddressBook beforeFilter = new AddressBook(model.getAddressBook());
+
+        logic.execute("filter m/mathematics w/ computing c/2027 t/classmate");
+
+        assertEquals(List.of(expected), model.getFilteredPersonList());
+        assertEquals(beforeFilter, model.getAddressBook());
+        assertEquals(beforeFilter, new AddressBook(storage.readAddressBook().orElseThrow()));
+    }
+
+    @Test
     public void execute_invalidInput_preservesViewContactsAndSavedData() throws Exception {
         logic.execute("filter t/Classmate");
         AddressBook before = new AddressBook(model.getAddressBook());
         for (String input : new String[]{"filter", "filter m/", "filter c/2100", "filter t/",
-            "filter t/Classmate t/Friend", "filter n/Alice", "filter m/Computer Science x/value"}) {
+            "filter t/Classmate t/Friend", "filter n/Alice", "filter x/value m/Computer Science"}) {
             assertThrows(ParseException.class, () -> logic.execute(input));
             assertEquals(List.of(bob, charlie), model.getFilteredPersonList());
             assertEquals(before, model.getAddressBook());

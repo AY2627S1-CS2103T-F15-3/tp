@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Optional;
 
+import seedu.address.commons.core.GuiSettings;
 import seedu.address.commons.exceptions.DataLoadingException;
 import seedu.address.commons.util.JsonUtil;
 import seedu.address.model.ReadOnlyUserPrefs;
@@ -36,11 +37,16 @@ public class JsonUserPrefsStorage {
 
     /**
      * Similar to {@link #readUserPrefs()}
+     * Missing or explicitly null GUI settings use the default settings without rewriting the file.
      * @param prefsFilePath location of the data. Cannot be null.
      * @throws DataLoadingException if the file format is not as expected.
      */
     public Optional<UserPrefs> readUserPrefs(Path prefsFilePath) throws DataLoadingException {
-        return JsonUtil.readJsonFile(prefsFilePath, UserPrefs.class);
+        Optional<UserPrefs> userPrefs = JsonUtil.readJsonFile(prefsFilePath, UserPrefs.class);
+        if (userPrefs.isPresent() && userPrefs.get().getGuiSettings() == null) {
+            userPrefs.get().setGuiSettings(new GuiSettings());
+        }
+        return userPrefs;
     }
 
     /**

@@ -1,31 +1,18 @@
 @startuml
-skin rose
-skinparam ActivityFontSize 15
-skinparam ArrowFontSize 12
+!include style.puml
+skinparam ArrowFontStyle plain
 start
-:Command copies the contact data
-as previousState and changes it;
-:Command calls
-Model#commitAddressBook(previousState, message);
-
-'Since the beta syntax does not support placing the condition outside the
-'diamond we place it as the true branch instead.
-
-if () then ([previousState has the same
-contacts as the current data])
-    :Ignore the commit;
+:Command attempts to commit the previous state;
+if () then ([data unchanged])
+  :Ignore the commit;
 else ([else])
-    if () then ([previousState differs
-from currentState])
-        :Clear undoStates,
-        which are stale;
-    else ([else])
-    endif
-    :Push a copy of previousState
-    with message onto undoStates;
-    :Clear redoStates;
-    :Set currentState to a copy
-    of the current data;
+  if () then ([previous state differs from currentState])
+    :Discard stale undoStates;
+  else ([else])
+  endif
+  :Push the previous state onto undoStates;
+  :Clear redoStates;
+  :Copy current contact data into currentState;
 endif
 stop
 @enduml

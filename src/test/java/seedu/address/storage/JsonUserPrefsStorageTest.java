@@ -5,8 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static seedu.address.testutil.Assert.assertThrows;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -14,6 +16,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 import seedu.address.commons.core.GuiSettings;
 import seedu.address.commons.exceptions.DataLoadingException;
+import seedu.address.commons.util.JsonUtil;
 import seedu.address.model.UserPrefs;
 
 public class JsonUserPrefsStorageTest {
@@ -22,6 +25,65 @@ public class JsonUserPrefsStorageTest {
 
     @TempDir
     public Path testFolder;
+
+    @Test
+    public void readUserPrefs_nullGuiSettings_usesDefaultsWithoutChangingFile() throws Exception {
+        Path path = testFolder.resolve("preferences.json");
+        String json = "{\"guiSettings\":null}";
+        Files.writeString(path, json);
+
+        UserPrefs loaded = new JsonUserPrefsStorage(path).readUserPrefs(path).orElseThrow();
+
+        assertEquals(new GuiSettings(), loaded.getGuiSettings());
+        assertEquals(json, Files.readString(path));
+    }
+
+    @Test
+    public void readUserPrefs_missingGuiSettings_usesDefaultsWithoutChangingFile() throws Exception {
+        Path path = testFolder.resolve("preferences.json");
+        Files.writeString(path, "{}");
+
+        assertEquals(new UserPrefs(), new JsonUserPrefsStorage(path).readUserPrefs().orElseThrow());
+        assertEquals("{}", Files.readString(path));
+    }
+
+    @Test
+    public void readUserPrefs_validGuiSettings_preservesSizeAndPosition() throws Exception {
+        Path path = testFolder.resolve("preferences.json");
+        String json = "{\"guiSettings\":{\"windowWidth\":1000,\"windowHeight\":500,"
+                + "\"windowCoordinates\":{\"x\":300,\"y\":100}}}";
+        Files.writeString(path, json);
+
+        assertEquals(new GuiSettings(1000, 500, 300, 100),
+                new JsonUserPrefsStorage(path).readUserPrefs().orElseThrow().getGuiSettings());
+        assertEquals(json, Files.readString(path));
+    }
+
+    @Test
+    public void saveUserPrefs_recoveredGuiSettings_persistsDefaults() throws Exception {
+        Path path = testFolder.resolve("preferences.json");
+        Files.writeString(path, "{\"guiSettings\":null}");
+        JsonUserPrefsStorage storage = new JsonUserPrefsStorage(path);
+        UserPrefs recovered = storage.readUserPrefs().orElseThrow();
+
+        storage.saveUserPrefs(recovered);
+
+        // Inspect raw deserialization too, so read-time recovery cannot mask a null saved value.
+        UserPrefs saved = JsonUtil.fromJsonString(Files.readString(path), UserPrefs.class);
+        assertEquals(new GuiSettings(), saved.getGuiSettings());
+        assertEquals(recovered, storage.readUserPrefs().orElseThrow());
+    }
+
+    @Test
+    public void readUserPrefs_malformedJsonOrNullRoot_stillRejected() throws Exception {
+        Path path = testFolder.resolve("preferences.json");
+        JsonUserPrefsStorage storage = new JsonUserPrefsStorage(path);
+        for (String json : List.of("not JSON", "{\"guiSettings\":", "null")) {
+            Files.writeString(path, json);
+            assertThrows(DataLoadingException.class, () -> storage.readUserPrefs());
+            assertEquals(json, Files.readString(path));
+        }
+    }
 
     @Test
     public void readUserPrefs_nullFilePath_throwsNullPointerException() {

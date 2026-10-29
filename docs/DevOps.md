@@ -80,3 +80,8 @@ Here are the steps to create a new release.
 1. Generate a fat JAR file using Gradle (i.e., `./gradlew shadowJar`).
 1. Tag the repo with the version number. e.g. `v0.1`
 1. [Create a new release using GitHub](https://help.github.com/articles/creating-releases/). Upload the JAR file you created.
+
+## Release verification
+
+Follow the [release testing checklist](ReleaseTesting.md) before publishing a JAR. It includes a
+manual three-platform screenshot workflow and native desktop, scaling and performance checks.

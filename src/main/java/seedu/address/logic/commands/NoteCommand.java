@@ -28,6 +28,9 @@ public class NoteCommand extends Command {
     public static final String MESSAGE_SUCCESS = "Note saved for %1$s.\nSaved note: %2$s";
     public static final String MESSAGE_REPLACED = "Note replaced for %1$s. Use undo to restore the previous note."
             + "\nPrevious note: %2$s\nSaved note: %3$s";
+    /** Describes a replacement in undo and redo messages, where the hint to use undo would be misleading. */
+    public static final String MESSAGE_REPLACED_DESCRIPTION = "Note replaced for %1$s."
+            + "\nPrevious note: %2$s\nSaved note: %3$s";
     public static final String MESSAGE_UNCHANGED = "Note unchanged for %1$s.\nSaved note: %2$s";
 
     private final Index index;
@@ -58,11 +61,16 @@ public class NoteCommand extends Command {
 
         ReadOnlyAddressBook previousState = new AddressBook(model.getAddressBook());
         model.setPerson(person, person.withNotes(notes));
-        String message = previousNotes.isEmpty()
-                ? String.format(MESSAGE_SUCCESS, person.getName(), notes.value)
-                : String.format(MESSAGE_REPLACED, person.getName(), previousNotes.value, notes.value);
-        model.commitAddressBook(previousState, message);
-        return new CommandResult(message);
+        if (previousNotes.isEmpty()) {
+            String message = String.format(MESSAGE_SUCCESS, person.getName(), notes.value);
+            model.commitAddressBook(previousState, message);
+            return new CommandResult(message);
+        }
+
+        model.commitAddressBook(previousState,
+                String.format(MESSAGE_REPLACED_DESCRIPTION, person.getName(), previousNotes.value, notes.value));
+        return new CommandResult(
+                String.format(MESSAGE_REPLACED, person.getName(), previousNotes.value, notes.value));
     }
 
     @Override

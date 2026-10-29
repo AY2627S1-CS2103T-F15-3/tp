@@ -12,20 +12,20 @@ participant "c:PersonSortComparator" as Comparator MODEL_COLOR
 participant "m:Model" as Model MODEL_COLOR
 end box
 
-[-> Parser : parse(" year desc")
+[-> Parser : parse("year desc")
 activate Parser
 create Command
-Parser -> Command : SortCommand(YEAR, DESC)
-[<-- Parser : s
+Parser -> Command : sort by year, descending
+[<-- Parser
 deactivate Parser
 
 ...
 
-[-> Command : execute(m)
+[-> Command : execute
 activate Command
 create Comparator
-Command -> Comparator : PersonSortComparator(YEAR, DESC)
-Command -> Model : updateSortedPersonList(c)
+Command -> Comparator : compare by year, descending
+Command -> Model : sort shown contacts with c
 activate Model
 Model --> Command
 deactivate Model

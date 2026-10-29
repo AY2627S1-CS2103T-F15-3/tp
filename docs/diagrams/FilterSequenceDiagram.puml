@@ -4,35 +4,52 @@ skinparam ArrowFontStyle plain
 
 box Logic LOGIC_COLOR_T1
 participant ":FilterCommandParser" as Parser LOGIC_COLOR
-participant "f:FilterCommand" as Command LOGIC_COLOR
+participant "<<class>>\nArgumentTokenizer" as Tokenizer LOGIC_COLOR
+participant "<<class>>\nParserUtil" as ParserUtil LOGIC_COLOR
+participant ":FilterCommand" as Command LOGIC_COLOR
 end box
 
 box Model MODEL_COLOR_T1
-participant "p:ContactFilterPredicate" as Predicate MODEL_COLOR
-participant "m:Model" as Model MODEL_COLOR
+participant ":ContactFilter\nPredicate" as Predicate MODEL_COLOR
 end box
 
-[-> Parser : parse(args)
+[-> Parser : parse("m/CS c/2027")
 activate Parser
+
+Parser -> Parser : reject unsupported prefixes
+
+Parser -> Tokenizer : tokenize m/, c/, t/
+activate Tokenizer
+Tokenizer --> Parser : criteria
+deactivate Tokenizer
+
+Parser -> ParserUtil : parseMajor("CS")
+activate ParserUtil
+ParserUtil --> Parser : major
+deactivate ParserUtil
+
+Parser -> ParserUtil : parseGraduationYear("2027")
+activate ParserUtil
+ParserUtil --> Parser : year
+deactivate ParserUtil
+
+note right of Parser
+  t/ omitted:
+  tag stays empty
+end note
+
 create Predicate
-Parser -> Predicate : ContactFilterPredicate(major, year, tag)
+Parser -> Predicate : create predicate
+activate Predicate
+Predicate --> Parser
+deactivate Predicate
+
 create Command
-Parser -> Command : FilterCommand(p)
-[<-- Parser : f
-deactivate Parser
-
-...
-
-[-> Command : execute(m)
+Parser -> Command : filter with predicate
 activate Command
-Command -> Model : updateFilteredPersonList(p)
-activate Model
-Model --> Command
-deactivate Model
-Command -> Model : getFilteredPersonList()
-activate Model
-Model --> Command : displayedContacts
-deactivate Model
-[<-- Command : result with match count
+Command --> Parser
 deactivate Command
+
+[<-- Parser
+deactivate Parser
 @enduml

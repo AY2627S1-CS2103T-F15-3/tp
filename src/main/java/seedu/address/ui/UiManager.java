@@ -1,5 +1,7 @@
 package seedu.address.ui;
 
+import static java.util.Objects.requireNonNull;
+
 import java.nio.file.Path;
 import java.util.logging.Logger;
 
@@ -26,14 +28,23 @@ public class UiManager implements Ui {
     private Logic logic;
     private Path dataFilePath;
     private MainWindow mainWindow;
+    private final String startupWarning;
 
     /**
      * Creates a {@code UiManager} with the given {@code Logic} and the data file path
      * to show in the status bar.
      */
     public UiManager(Logic logic, Path dataFilePath) {
+        this(logic, dataFilePath, "");
+    }
+
+    /**
+     * Creates a UI that displays a recovery warning after loading the main window.
+     */
+    public UiManager(Logic logic, Path dataFilePath, String startupWarning) {
         this.logic = logic;
         this.dataFilePath = dataFilePath;
+        this.startupWarning = requireNonNull(startupWarning);
     }
 
     @Override
@@ -47,6 +58,9 @@ public class UiManager implements Ui {
             mainWindow = new MainWindow(primaryStage, logic, dataFilePath);
             mainWindow.show(); //This should be called before creating other UI parts
             mainWindow.fillInnerParts();
+            if (!startupWarning.isEmpty()) {
+                mainWindow.showStartupWarning(startupWarning);
+            }
 
         } catch (Throwable e) {
             logger.severe(StringUtil.getDetails(e));

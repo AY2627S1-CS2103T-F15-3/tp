@@ -10,16 +10,18 @@ import java.util.Optional;
  * An in-memory undo/redo history of an {@code AddressBook}.
  *
  * <p>Snapshots are stored as defensive copies in two stacks:
- * {@code undoStates} holds the states before each recorded change
- * {@code redoStates} holds the states that were undone
+ * <ul>
+ *     <li>{@code undoStates} holds the states before each recorded change.</li>
+ *     <li>{@code redoStates} holds the states that were undone.</li>
+ * </ul>
  * Each snapshot is paired with a short description of the change it reverses or reapplies,
  * so that undo and redo can report which change was affected.
  * Undoing and redoing reset the data of the tracked address book in place,
  * so references to it (and lists backed by it) remain valid.
  *
- * <p>{@code currentState} is a copy of the state that the tracked address book is expected to be in
+ * <p>{@code currentState} is a copy of the state that the tracked address book is expected to be in.
  * If the tracked address book no longer matches it, a change was made without being recorded
- * (e.g. by a future command that forgets to commit its change) and the history is stale
+ * (e.g. by a future command that forgets to commit its change) and the history is stale.
  * Stale history is never restored, so an old snapshot cannot silently revert unrecorded changes.
  */
 public class AddressBookHistory {

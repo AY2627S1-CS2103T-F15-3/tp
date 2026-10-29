@@ -1,0 +1,24 @@
+@startuml
+!include style.puml
+show members
+hide empty members
+skinparam classAttributeIconSize 0
+skinparam classAttributeFontColor #FFFFFF
+skinparam arrowColor MODEL_COLOR_T4
+skinparam classBackgroundColor MODEL_COLOR
+top to bottom direction
+
+class Person {
+  +isIncomplete(): boolean
+  +needsUpdate(today: LocalDate): boolean
+}
+enum SystemTag <<enumeration>> {
+  UPDATE
+  INCOMPLETE
+}
+class PersonCard UI_COLOR
+
+PersonCard --> "1" Person : person
+PersonCard ..> SystemTag : requests derived reminders
+SystemTag ..> Person : evaluates reminder predicates
+@enduml
