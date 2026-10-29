@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static seedu.address.logic.Messages.MESSAGE_PERSONS_LISTED_OVERVIEW;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 
@@ -80,6 +81,14 @@ public class FilterCommandTest {
         assertFalse(command.equals(new FilterCommand(predicate("Mathematics", null, null))));
         assertFalse(command.equals(null));
         assertFalse(command.equals(new ListCommand()));
+    }
+
+    @Test
+    public void hashCode_equalValues_supportHashSetLookup() {
+        FilterCommand command = new FilterCommand(predicate("Computer Science", "2027", "Classmate"));
+        FilterCommand equalCommand = new FilterCommand(predicate("Computer Science", "2027", "Classmate"));
+        assertEquals(command.hashCode(), equalCommand.hashCode());
+        assertTrue(new HashSet<>(List.of(command)).contains(equalCommand));
     }
 
     @Test

@@ -5,6 +5,7 @@ import static seedu.address.commons.util.CollectionUtil.requireAllNonNull;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 import seedu.address.commons.util.ToStringBuilder;
@@ -54,6 +55,11 @@ public class ContactFilterPredicate implements PersonFilter {
         return other == this || (other instanceof ContactFilterPredicate otherPredicate
                 && major.equals(otherPredicate.major) && graduationYear.equals(otherPredicate.graduationYear)
                 && tag.equals(otherPredicate.tag));
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(major, graduationYear, tag);
     }
 
     @Override
