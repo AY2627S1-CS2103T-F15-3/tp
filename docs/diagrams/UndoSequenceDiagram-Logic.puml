@@ -5,89 +5,48 @@ skinparam ArrowFontStyle plain
 box Logic LOGIC_COLOR_T1
 participant ":LogicManager" as LogicManager LOGIC_COLOR
 participant ":AddressBookParser" as AddressBookParser LOGIC_COLOR
-participant "u:UndoCommand" as UndoCommand LOGIC_COLOR
-participant "r:CommandResult" as CommandResult LOGIC_COLOR
+participant ":UndoCommand" as UndoCommand LOGIC_COLOR
+participant ":CommandResult" as CommandResult LOGIC_COLOR
 end box
 
 box Model MODEL_COLOR_T1
-participant "m:Model" as Model MODEL_COLOR
-end box
-
-box Storage STORAGE_COLOR_T1
-participant ":Storage" as Storage STORAGE_COLOR
+participant ":Model" as Model MODEL_COLOR
 end box
 
 [-> LogicManager : execute("undo")
-activate LogicManager
 
-LogicManager -> AddressBookParser : parseCommand("undo")
-activate AddressBookParser
+LogicManager -> AddressBookParser : parse "undo"
 
 create UndoCommand
 AddressBookParser -> UndoCommand
-activate UndoCommand
-
 UndoCommand --> AddressBookParser
-deactivate UndoCommand
 
-AddressBookParser --> LogicManager : u
-deactivate AddressBookParser
+AddressBookParser --> LogicManager
 
-LogicManager -> UndoCommand : execute(m)
-activate UndoCommand
+LogicManager -> UndoCommand : execute undo action
 
-UndoCommand -> Model : canUndoAddressBook()
-activate Model
-
+UndoCommand -> Model : check if there is a change to undo
 Model --> UndoCommand : canUndo
-deactivate Model
 
-alt canUndo is false
-    UndoCommand --> LogicManager : throw CommandException
-    deactivate UndoCommand
-    [<-- LogicManager : throw CommandException
-else else
-    'Reactivates the command, since the branches above and below are drawn one after the other.
-    activate UndoCommand
-    UndoCommand -> Model : getUndoDescription()
-    activate Model
-
+alt canUndo
+    UndoCommand -> Model : get description of the change to undo
     Model --> UndoCommand : description
-    deactivate Model
 
-    UndoCommand -> Model : undoAddressBook()
-    activate Model
-
+    UndoCommand -> Model : restore the previous contact data
     Model --> UndoCommand
-    deactivate Model
 
-    UndoCommand -> Model : updateFilteredPersonList(PREDICATE_SHOW_ALL_PERSONS)
-    activate Model
-
+    UndoCommand -> Model : show all contacts
     Model --> UndoCommand
-    deactivate Model
 
     create CommandResult
     UndoCommand -> CommandResult : "Undid: " + description
-    activate CommandResult
-
     CommandResult --> UndoCommand
-    deactivate CommandResult
 
-    UndoCommand --> LogicManager : r
-    deactivate UndoCommand
-
-    LogicManager -> Storage : saveAddressBook(addressBook)
-    activate Storage
-
-    Storage --> LogicManager
-    deactivate Storage
-
-    [<-- LogicManager : r
+    UndoCommand --> LogicManager
+    [<-- LogicManager
+else else
+    UndoCommand --> LogicManager : throw CommandException
+    [<-- LogicManager
 end
-deactivate LogicManager
 
-'Hidden arrow to position the destroy marker below the end of the activation bar.
-UndoCommand -[hidden]-> LogicManager
-destroy UndoCommand
 @enduml

@@ -2,8 +2,10 @@ package seedu.address.storage;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static seedu.address.testutil.TypicalPersons.getTypicalAddressBook;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -11,6 +13,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import seedu.address.commons.core.GuiSettings;
+import seedu.address.commons.exceptions.DataLoadingException;
+import seedu.address.commons.exceptions.DataRecoveryRequiredException;
 import seedu.address.model.AddressBook;
 import seedu.address.model.ReadOnlyAddressBook;
 import seedu.address.model.UserPrefs;
@@ -58,6 +62,35 @@ public class StorageManagerTest {
         storageManager.saveAddressBook(original);
         ReadOnlyAddressBook retrieved = storageManager.readAddressBook().get();
         assertEquals(original, new AddressBook(retrieved));
+    }
+
+    @Test
+    public void addressBook_loadFailure_staysProtectedUntilReopenedWithValidData() throws Exception {
+        Path dataPath = storageManager.getAddressBookFilePath();
+        Files.writeString(dataPath, "not valid JSON");
+        assertThrows(DataLoadingException.class, storageManager::readAddressBook);
+        AddressBook empty = new AddressBook();
+        assertThrows(DataRecoveryRequiredException.class, () -> storageManager.saveAddressBook(empty));
+        assertEquals("not valid JSON", Files.readString(dataPath));
+
+        // Repairing the file alone must not enable a stale empty model to overwrite the restored contacts.
+        AddressBook restored = getTypicalAddressBook();
+        new JsonAddressBookStorage(dataPath).saveAddressBook(restored);
+        String repairedJson = Files.readString(dataPath);
+        assertEquals(restored, storageManager.readAddressBook().orElseThrow());
+        assertThrows(DataRecoveryRequiredException.class, () -> storageManager.saveAddressBook(empty));
+        assertEquals(repairedJson, Files.readString(dataPath));
+
+        // Preferences still save normally, including when the protected session is closed.
+        UserPrefs prefs = new UserPrefs();
+        storageManager.saveUserPrefs(prefs);
+        assertEquals(prefs, storageManager.readUserPrefs().orElseThrow());
+
+        StorageManager reopened = new StorageManager(new JsonAddressBookStorage(dataPath),
+                new JsonUserPrefsStorage(storageManager.getUserPrefsFilePath()));
+        assertEquals(restored, reopened.readAddressBook().orElseThrow());
+        reopened.saveAddressBook(restored);
+        assertEquals(restored, reopened.readAddressBook().orElseThrow());
     }
 
     @Test

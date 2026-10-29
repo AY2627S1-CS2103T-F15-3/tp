@@ -1,94 +1,43 @@
 @startuml
 !include style.puml
 skinparam ArrowFontStyle plain
-participant ":CommandBox" as Box UI_COLOR
-participant ":MainWindow" as Window UI_COLOR
-participant ":LogicManager" as Logic LOGIC_COLOR
-participant ":AddressBookParser" as Parser LOGIC_COLOR
-participant ":EditCommandParser" as EditParser LOGIC_COLOR
 participant "edit:EditCommand" as Edit LOGIC_COLOR
 participant "model:Model" as Model MODEL_COLOR
-participant "storage:Storage" as Storage STORAGE_COLOR
 
-note over Box, Storage
-  Successful edit of the first displayed contact.
-  Email parsing errors include no consecutive special characters.
-  Parsing, invalid-index and duplicate-name errors stop before mutation.
-end note
-Box -> Window : executeCommand("edit 1 m/Mathematics c/ t/Project")
-activate Window
-Window -> Logic : execute(commandText)
-activate Logic
-Logic -> Parser : parseCommand(commandText)
-Parser -> EditParser : parse(" 1 m/Mathematics c/ t/Project")
-create Edit
-EditParser -> Edit : new EditCommand(index, descriptor)
-EditParser --> Parser : edit
-Parser --> Logic : edit
-Logic -> Edit : execute(model)
-activate Edit
+[-> Edit : execute(model)
 Edit -> Model : getFilteredPersonList()
 Model --> Edit : displayed contacts
 Edit -> Edit : createEditedPerson(person, descriptor)
 note right of Edit
-  Omitted fields, notes and favourite status survive.
-  Blank c/ becomes GraduationYear.EMPTY.
-  A basic profile change updates lastUpdated.
+  Validate the displayed index and duplicate name
+  before changing contact data.
+  SHOW_ALL denotes PREDICATE_SHOW_ALL_PERSONS.
 end note
-opt Name changed
-  Edit -> Model : hasPerson(editedPerson)
-  Model --> Edit : false
-end
 alt Contact unchanged
-  Edit -> Model : updateFilteredPersonList(PREDICATE_SHOW_ALL_PERSONS)
-  Edit --> Logic : CommandResult("No changes made to NAME. ...")
-  note right of Edit : Preserve the date and both history stacks.
-else Contact changed
-Edit -> Model : getAddressBook()
-Model --> Edit : contact data to snapshot
-Edit -> Edit : previousState = new AddressBook(contact data)
-Edit -> Model : setPerson(person, editedPerson)
-Edit -> Model : updateFilteredPersonList(PREDICATE_SHOW_ALL_PERSONS)
-Edit -> Edit : message = "Edited person: ..."
-Edit -> Model : commitAddressBook(previousState, message)
-Edit -> Edit : formatChanges(person, editedPerson)
-note right of Edit
-  Edited NAME: followed by actual field changes.
-  Field: old value → new value.
-  Empty optional fields show Not specified.
-end note
-opt Tags changed
-  Edit -> Edit : formatTagDifference(oldTags, newTags)
-  Edit -> Edit : formatTagDifference(newTags, oldTags)
-  note right of Edit
-    Append Tags replaced. Removed: ... . Added: ... .
-    Sorted actual differences; None when empty.
-    Summary appears only in immediate edit feedback.
-    Undo/redo description retains the base message.
+  Edit -> Model : updateFilteredPersonList(SHOW_ALL)
+  note over Edit, Model
+    No replacement or commit; date and redo are preserved.
   end note
+  Edit -->[ : No changes made feedback
+else Contact changed
+  Edit -> Model : getAddressBook()
+  Model --> Edit : contact data to snapshot
+  Edit -> Edit : previousState = new AddressBook(contact data)
+  Edit -> Model : setPerson(person, editedPerson)
+  Edit -> Model : updateFilteredPersonList(SHOW_ALL)
+  Edit -> Model : commitAddressBook(previousState, fullContactDescription)
+  note over Edit, Model
+    History uses the full-contact description.
+    Immediate summaries and warnings are not stored.
+  end note
+  Edit -> Edit : summary = formatChanges(person, editedPerson)
+  Edit -> Edit : getEditResult(model, person, editedPerson, summary)
+  note right of Edit
+    Summary: only changed fields; cleared values use
+    "Not specified"; tag differences are sorted.
+    Shared-detail warnings check changed methods only;
+    email-capitalization-only edits add no warning.
+  end note
+  Edit -->[ : changed-field feedback
 end
-Edit -> Edit : getEditResult(model, person, editedPerson, change summary)
-note right of Edit
-  Append a warning for shared changed phone/email values.
-  Use refreshed displayed indices; preserve the change summary.
-  This academic-field and tag edit does not trigger a warning.
-end note
-Edit --> Logic : CommandResult(feedback)
-end
-deactivate Edit
-Logic -> Model : getAddressBook()
-Model --> Logic : updated contact data
-Logic -> Storage : saveAddressBook(updated contact data)
-Storage --> Logic
-Logic --> Window : CommandResult
-deactivate Logic
-Window -> Window : personListPanel.refresh()
-Window -> Window : resultDisplay.setFeedbackToUser(feedback, isWarning)
-Window --> Box : CommandResult
-deactivate Window
-note over Box : Clear the command text after success.
-note over Window, Model
-  The observable list updates contact cards and displayed indices.
-  Cleared academic fields display Not specified.
-end note
 @enduml

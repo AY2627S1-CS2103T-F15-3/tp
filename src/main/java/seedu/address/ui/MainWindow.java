@@ -130,6 +130,13 @@ public class MainWindow extends UiPart<Stage> {
     }
 
     /**
+     * Shows a contact-loading warning before the user submits any command.
+     */
+    void showStartupWarning(String warning) {
+        resultDisplay.setFeedbackToUser(warning, true);
+    }
+
+    /**
      * Sets the default size based on {@code guiSettings}.
      */
     private void setWindowDefaultSize(GuiSettings guiSettings) {
