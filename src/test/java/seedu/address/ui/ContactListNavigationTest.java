@@ -3,6 +3,7 @@ package seedu.address.ui;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -41,6 +42,48 @@ public class ContactListNavigationTest {
     @BeforeAll
     public static void startToolkit() throws Exception {
         FxTestUtil.startToolkit();
+    }
+
+    @Test
+    public void constructor_nullDependencies_throwsNullPointerException() throws Exception {
+        FxTestUtil.runActionOnFxThread(() -> {
+            VBox root = new VBox();
+            TextField command = new TextField();
+            ListView<Person> list = new ListView<>();
+            assertThrows(NullPointerException.class, () -> new ContactListNavigation(null, command, list));
+            assertThrows(NullPointerException.class, () -> new ContactListNavigation(root, null, list));
+            assertThrows(NullPointerException.class, () -> new ContactListNavigation(root, command, null));
+        });
+    }
+
+    @Test
+    public void constructor_outsideFxThread_throwsAssertionError() throws Exception {
+        try (View view = open(List.of())) {
+            AssertionError error = assertThrows(AssertionError.class, () -> {
+                new ContactListNavigation(view.root, view.command, view.list);
+            });
+            assertEquals("Contact navigation must be installed on the JavaFX thread", error.getMessage());
+        }
+    }
+
+    @Test
+    public void tab_missingViewport_throwsAssertionError() throws Exception {
+        try (View view = open(List.of(longContact("Long")))) {
+            FxTestUtil.runActionOnFxThread(() -> {
+                view.press(KeyCode.TAB, false);
+                Node viewport = view.list.lookup(".virtual-flow");
+                // Simulate a skin change that removes the viewport expected by contact navigation.
+                viewport.getStyleClass().remove("virtual-flow");
+                try {
+                    AssertionError error = assertThrows(AssertionError.class, () -> {
+                        view.press(KeyCode.TAB, false);
+                    });
+                    assertEquals("Contact list skin must provide a VirtualFlow", error.getMessage());
+                } finally {
+                    viewport.getStyleClass().add("virtual-flow");
+                }
+            });
+        }
     }
 
     @Test
@@ -197,17 +240,11 @@ public class ContactListNavigationTest {
                 view.list.scrollTo(0);
                 FxTestUtil.layout(view.root);
                 view.press(KeyCode.TAB, true);
-                assertEquals("name", view.focused().getId());
-                Bounds name = view.focused().localToScene(view.focused().getBoundsInLocal());
-                assertTrue(name.getMinY() >= viewport.getMinY());
-                assertTrue(name.getMinY() <= viewport.getMinY() + 8);
+                assertNameFocusedAtViewportTop(view);
                 view.press(KeyCode.TAB, false);
                 assertEquals(LONG_TAG, ((Label) view.focused()).getTooltip().getText());
                 view.press(KeyCode.TAB, true);
-                assertEquals("name", view.focused().getId());
-                name = view.focused().localToScene(view.focused().getBoundsInLocal());
-                assertTrue(name.getMinY() >= viewport.getMinY());
-                assertTrue(name.getMinY() <= viewport.getMinY() + 8);
+                assertNameFocusedAtViewportTop(view);
                 return null;
             });
         }
@@ -232,6 +269,14 @@ public class ContactListNavigationTest {
                 return null;
             });
         }
+    }
+
+    private void assertNameFocusedAtViewportTop(View view) {
+        assertEquals("name", view.focused().getId());
+        Bounds name = view.focused().localToScene(view.focused().getBoundsInLocal());
+        Bounds viewport = view.list.localToScene(view.list.getBoundsInLocal());
+        assertTrue(name.getMinY() >= viewport.getMinY());
+        assertTrue(name.getMinY() <= viewport.getMinY() + 8);
     }
 
     private static Person longContact(String prefix) {

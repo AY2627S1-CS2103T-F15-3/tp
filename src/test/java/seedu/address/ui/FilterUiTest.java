@@ -2,33 +2,22 @@ package seedu.address.ui;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
+import static seedu.address.ui.FxTestUtil.runActionOnFxThread;
+import static seedu.address.ui.MainWindowTestUtil.assertCard;
+import static seedu.address.ui.MainWindowTestUtil.enter;
+import static seedu.address.ui.MainWindowTestUtil.feedback;
+import static seedu.address.ui.MainWindowTestUtil.list;
 
 import java.nio.file.Path;
 import java.util.List;
-import java.util.concurrent.FutureTask;
-import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-import javafx.application.Platform;
-import javafx.event.ActionEvent;
-import javafx.scene.control.Label;
-import javafx.scene.control.ListCell;
-import javafx.scene.control.ListView;
-import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
-import javafx.stage.Stage;
-import seedu.address.logic.LogicManager;
-import seedu.address.model.Model;
-import seedu.address.model.ModelManager;
 import seedu.address.model.person.GraduationYear;
 import seedu.address.model.person.Person;
-import seedu.address.storage.JsonAddressBookStorage;
-import seedu.address.storage.JsonUserPrefsStorage;
-import seedu.address.storage.StorageManager;
 import seedu.address.testutil.PersonBuilder;
 
 /**
@@ -47,23 +36,12 @@ public class FilterUiTest {
 
     @BeforeAll
     public static void startToolkit() throws Exception {
-        assumeTrue(!System.getProperty("os.name").startsWith("Linux") || System.getenv("DISPLAY") != null,
-                "JavaFX UI tests require a display");
-        FutureTask<Void> started = new FutureTask<>(() -> {
-            Platform.setImplicitExit(false);
-            return null;
-        });
-        try {
-            Platform.startup(started);
-        } catch (IllegalStateException e) {
-            Platform.runLater(started);
-        }
-        started.get(10, TimeUnit.SECONDS);
+        FxTestUtil.startToolkit();
     }
 
     @Test
     public void commandBox_filter_updatesCardsFeedbackAndDisplayedIndices() throws Exception {
-        runOnFxThread(() -> {
+        runActionOnFxThread(() -> {
             MainWindow window = createWindow();
             try {
                 enter(window, "filter m/computer science c/2027 t/classmate");
@@ -89,7 +67,7 @@ public class FilterUiTest {
 
     @Test
     public void commandBox_mutations_refreshResultsAndRenumberCards() throws Exception {
-        runOnFxThread(() -> {
+        runActionOnFxThread(() -> {
             MainWindow window = createWindow();
             try {
                 enter(window, "filter t/Classmate");
@@ -110,7 +88,7 @@ public class FilterUiTest {
 
     @Test
     public void commandBox_edit_resetsViewAndReapplyingFilterReflectsChangedMajor() throws Exception {
-        runOnFxThread(() -> {
+        runActionOnFxThread(() -> {
             MainWindow window = createWindow();
             try {
                 enter(window, "filter m/Computer Science");
@@ -126,49 +104,6 @@ public class FilterUiTest {
     }
 
     private MainWindow createWindow() {
-        Model model = new ModelManager();
-        model.addPerson(alice);
-        model.addPerson(bob);
-        model.addPerson(charlie);
-        Path data = directory.resolve("contacts.json");
-        LogicManager logic = new LogicManager(model, new StorageManager(new JsonAddressBookStorage(data),
-                new JsonUserPrefsStorage(directory.resolve("prefs.json"))));
-        MainWindow window = new MainWindow(new Stage(), logic, data);
-        window.show();
-        window.fillInnerParts();
-        return window;
-    }
-
-    private void enter(MainWindow window, String command) {
-        TextField input = (TextField) window.getRoot().getScene().lookup("#commandTextField");
-        input.setText(command);
-        input.fireEvent(new ActionEvent());
-        window.getRoot().getScene().getRoot().applyCss();
-        window.getRoot().getScene().getRoot().layout();
-    }
-
-    private ListView<?> list(MainWindow window) {
-        return (ListView<?>) window.getRoot().getScene().lookup("#personListView");
-    }
-
-    private String feedback(MainWindow window) {
-        return ((TextArea) window.getRoot().getScene().lookup("#resultDisplay")).getText();
-    }
-
-    private void assertCard(MainWindow window, Person person, String index) {
-        ListCell<?> cell = list(window).lookupAll(".list-cell").stream()
-                .filter(node -> node instanceof ListCell<?> candidate && person.equals(candidate.getItem()))
-                .map(node -> (ListCell<?>) node).findFirst().orElseThrow();
-        assertEquals(index, ((Label) cell.getGraphic().lookup("#id")).getText());
-        assertEquals(person.getName().fullName, ((Label) cell.getGraphic().lookup("#name")).getText());
-    }
-
-    private void runOnFxThread(Runnable action) throws Exception {
-        FutureTask<Void> task = new FutureTask<>(() -> {
-            action.run();
-            return null;
-        });
-        Platform.runLater(task);
-        task.get(20, TimeUnit.SECONDS);
+        return MainWindowTestUtil.createWindow(directory, alice, bob, charlie);
     }
 }
