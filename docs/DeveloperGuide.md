@@ -171,6 +171,14 @@ The `Storage` component,
 * is implemented by `StorageManager`, which delegates the actual JSON file access to `JsonAddressBookStorage` and `JsonUserPrefsStorage` (one class per data file).
 * depends on some classes in the `Model` component (because the `Storage` component's job is to save/retrieve objects that belong to the `Model`)
 
+`FileUtil#writeToFile` writes UTF-8 content to a temporary file in the destination's directory and
+closes the stream before replacing the destination with `ATOMIC_MOVE`. It does not fall back to a
+direct overwrite if atomic replacement is unsupported. A failed write, close or replacement leaves
+the previous saved file intact and triggers temporary-file cleanup; cleanup failures are suppressed
+on the original exception. `JsonAddressBookStorage` no longer creates an empty destination before saving.
+`FileUtilTest` injects failures during writing and replacement to check preservation of the original,
+first-save behaviour and cleanup, as well as read-only files and symbolic links.
+
 `JsonAdaptedPerson` stores each contact's academic fields as the JSON properties `major` and
 `graduationYear`. Unspecified values are saved as empty strings. When loading older data files that
 omit either property, it treats the missing value as an empty string and constructs an unspecified
@@ -304,7 +312,7 @@ or replacement. Neither case changes contact data or history. If saving fails af
 
 #### Viewing, deleting and history behaviour
 
-`NoteCommand` overwrites the contact's note. `DeleteNoteCommand` replaces it with `Notes.EMPTY`; deleting an already empty note reports an informational message. Both record actual data changes through the existing model history. `ShowNoteCommand` returns the note, or an empty-note message, in a standard `CommandResult`; it does not mutate contact data or history. `LogicManager` retains its normal save-after-success behaviour for all commands.
+`NoteCommand` overwrites the contact's note. `DeleteNoteCommand` replaces it with `Notes.EMPTY`; deleting an already empty note reports an informational message. Both record actual data changes through the existing model history. `ShowNoteCommand` returns the note, or an empty-note message, in a standard `CommandResult`; it does not mutate contact data or history. These note commands retain `LogicManager`'s normal save-after-success behaviour.
 
 Note creation, replacement and deletion are supported by the implemented [`undo` and `redo` commands](#undo-and-redo-commands). Saving identical note text returns before copying the address book, replacing a person or committing history. Deleting an already empty note also returns before changing the model or committing. Saving unchanged note text, deleting an already empty note, and viewing a note with `shownote` preserve any available redo history.
 
@@ -562,10 +570,13 @@ the model and storage format are unchanged.
 ### Filtering contacts by academic fields and tags
 
 `FilterCommandParser` recognises the existing `m/`, `c/` and `t/` prefixes, requires at least one,
-and rejects repeated criteria, a non-empty preamble and unsupported single-letter prefixes.
+and rejects repeated criteria and a non-empty preamble. Only those three prefixes delimit criteria;
+other prefix-like text remains part of the preceding value. For example, `m/Mathematics w/ Computing`
+represents the complete major `Mathematics w/ Computing`, consistently with `add` and `edit`.
 It uses `ParserUtil.parseMajor`, `parseGraduationYear` and `parseTag` to trim and validate supplied
 values. An omitted criterion is represented by an empty `Optional`; a supplied blank value is invalid.
-As with other prefixed commands, prefix-like tokens are reserved syntax rather than literal major text.
+Recognised prefixes remain reserved syntax. Unknown text before the first criterion is a usage
+error; unknown text within a year or tag is rejected by that field's validation.
 
 `ContactFilterPredicate` holds the optional `Major`, `GraduationYear` and `Tag` criteria.
 Its `test(Person)` combines them using AND. Major and tag comparisons use full-value,
@@ -1141,7 +1152,21 @@ To the user, such a change would only make `undo` and `redo` report that there i
 #### Known limitations
 
 * **The history has no size limit.** Every recorded change stores a full copy of the contact list, and nothing is ever dropped from `undoStates` until the app closes or the history becomes stale. Memory use grows with the number of contacts times the number of changes in a session. This is acceptable for the expected size of a student's contact list. A future version could cap the number of entries and drop the oldest snapshot when the cap is reached.
-* **A failed save does not roll back the change.** Commands commit to the history in `Command#execute`. `LogicManager#execute` saves to storage only afterwards. If saving throws an `IOException`, `LogicManager` throws a `CommandException` with `FILE_OPS_ERROR_FORMAT` or `FILE_OPS_PERMISSION_ERROR_FORMAT`. The in-memory change and its history entry remain, and the UI shows only the save error instead of the command's success message. A following `undo` therefore reverts that change. To make this clear, `LogicManager` copies the person list (a shallow copy, as `Person` is immutable) before running the command. If the list changed, it appends `MESSAGE_UNSAVED_CHANGE` to the save error. The note says the change is applied but not saved, that it is lost if the app closes now, and which command would revert it: `redo` after a failed `undo`, otherwise `undo`. Commands that leave the data unchanged, such as `list`, get no note, because they have no change to describe. Any later successful command, including `list`, saves the current data again. The user guide documents this under [Saving the data](UserGuide.md#saving-the-data).
+* **A failed save does not roll back the change.** Commands commit to history before
+  `LogicManager#execute` saves to storage. An `IOException` becomes a saving-related `CommandException`;
+  the in-memory change and history remain. `LogicManager` compares the current immutable person list
+  with its initial state or most recent successful save to identify pending changes. A failed changed
+  command gets `MESSAGE_UNSAVED_CHANGE`; a failed retry such as `list` gets
+  `MESSAGE_PENDING_UNSAVED_CHANGES` when earlier changes still need saving. Restoring the saved state
+  through undo removes the pending-change condition. See [Saving the data](UserGuide.md#saving-the-data).
+
+`help` returns its UI action without attempting contact storage. `exit` also bypasses contact storage
+when the current data matches the saved state. Otherwise, it retries saving and returns its exit flag
+only on success; a failure adds `MESSAGE_UNSAVED_EXIT`, leaving the window open with the pending data.
+Other commands, including `list`, retain the save path so users can retry a failed save. The saved-state
+comparison tracks contact data independently of undo history and temporary view settings.
+`LogicManagerUiActionTest` checks recovery and pending-state transitions; `StorageFailureUiTest`
+submits `help` and `exit` through the actual JavaFX command box with failing storage.
 
 #### Design considerations
 
@@ -2306,6 +2331,20 @@ Use only the separate test folder for these checks. The paths below are relative
    1. Run `list`.<br>
       Expected: `data/unimate.json` is created with the sample contacts. Close the app and restore the backup before the next scenario.
 
+1. Help, exit and pending changes with read-only contact storage
+
+   1. With the app closed and a valid disposable contact file backed up, make only that file read-only
+      using your operating system's file permissions. Relaunch without changing any contacts.
+   1. Run `help`, close the Help window, then run `exit`.<br>
+      Expected: Help opens and exit closes the app without a contact-save error.
+   1. Relaunch with the contact file still read-only. Run `add n/SavePending a/NUS`, then `help`.<br>
+      Expected: The add shows a saving error but keeps `SavePending` in memory; Help still opens.
+   1. Close Help and run `exit`.<br>
+      Expected: The main window stays open and explains that contact changes remain unsaved.
+   1. Restore write permission while the app remains open, then run `exit` again and relaunch.<br>
+      Expected: Exit saves successfully; `find SavePending` retrieves the saved contact.
+      Close the app and restore the backup before continuing.
+
 1. Malformed JSON
 
    1. With the app closed and the valid backup retained, replace the contents of the test copy's `data/unimate.json` with `not valid JSON`.
@@ -2319,7 +2358,8 @@ Use only the separate test folder for these checks. The paths below are relative
    1. With the app closed and the valid backup retained, change `SaveCheck`'s `graduationYear` value to `"1999"` in the test file. Keep the JSON syntax valid.
    1. Relaunch the app without entering a command.<br>
       Expected: The whole data file is rejected and the app opens with an empty contact list. It does not partially load the other contacts or silently correct the invalid year. The invalid file remains unchanged at this point.
-   1. Close the window using its close button, then restore the valid backup. Do not enter `exit` before restoring, because a successfully executed command would save the empty in-memory list over the invalid file.
+   1. Close the window or run `exit` without changing any contacts, then restore the valid backup.
+      Expected: The invalid saved file remains unchanged; exiting an unchanged session does not save contacts.
 
 1. Null entries and null JSON roots
 
