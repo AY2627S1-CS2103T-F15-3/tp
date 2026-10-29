@@ -808,8 +808,12 @@ Format: `filter [m/MAJOR] [c/CLASS_YEAR] [t/TAG]`
 * Omitted criteria leave those fields unrestricted. An unspecified academic field does not match a
   supplied criterion for that field, but the contact can still match a criterion on another field.
 * Leading and trailing spaces around values are ignored; spaces within a major remain significant.
-* Blank values, repeated prefixes, unsupported single-letter prefixes and invalid values produce an
-  error without changing the current results. Use `t/Friend` to filter a default tag; `d/` is not supported.
+* Only `m/`, `c/` and `t/` start filter criteria. Other prefix-like text within a major is part of its
+  value: `filter m/Mathematics w/ Computing` matches that complete major. Check your prefixes carefully;
+  for example, `filter m/Computing x/value` searches for the literal major `Computing x/value`.
+* Blank values, repeated criteria, unexpected text before the first criterion and invalid values
+  produce an error without changing the current results. Use `t/Friend` to filter a default tag;
+  `d/` does not select a default tag in a filter.
 * The result message shows the number of matching contacts. Zero matches displays an empty list;
   no contacts are deleted.
 * A persistent status line above the contact list shows the displayed/total contact counts, active
@@ -1018,6 +1022,10 @@ Exits the program.
 
 Format: `exit`
 
+If earlier contact changes have not been saved, `exit` retries saving them. If saving still fails,
+the window stays open with a recovery message. Fix the saving problem and run `exit` again.
+With no unsaved contact changes, `exit` works even when the data file is read-only.
+
 ### Navigating command history
 
 With the command box focused, press **↑** to recall the most recently submitted command.
@@ -1069,25 +1077,38 @@ the next Alt+↓ restores `li` and hides the label. These numbers count all subm
 
 ### Saving the data
 
-UniMate automatically saves data after every command. You do not need to save manually.
+UniMate automatically saves contact data after successful commands, except `help`. The `exit`
+command saves only when contact changes remain unsaved. You do not need to save manually.
 
-If UniMate cannot write the data file, for example because the file or its folder is read-only, the command still takes effect inside UniMate. Instead of the usual success message, the result box shows one of these errors:
+If UniMate cannot write the data file, for example because the file or its folder is read-only,
+contact changes already made by the command remain inside UniMate. Instead of the usual success
+message, the result box shows one of these errors:
 
 * `Could not save data to file ... due to insufficient permissions to write to the file or the folder.`
 * `Could not save data due to the following error: ...`
 
-The read-only case was tested on macOS, Linux and Windows, and behaves as described.
+Earlier release testing confirmed read-only contact-save errors on macOS, Linux and Windows.
+The new save and UI recovery regressions were checked on Windows.
 
-If the command changed your contacts, the error explains that the change was applied but not saved,
-how to revert it, and how to save it after fixing the problem. It names `undo` to revert an ordinary
-change, or `redo` after a failed `undo`. A command that leaves contacts unchanged, such as `list`,
-does not add this unsaved-change explanation.
+When contact changes remain unsaved, the message also explains how to recover. For a new change,
+`undo` reverts it; after an `undo`, `redo` restores it. A failed `list` retry identifies earlier
+unsaved changes. If the current contacts already match the last saved state, no unsaved-change
+note is added.
 
-The contact list shows the change, and `undo` treats it like any other change. Only the copy on your disk is out of date.
+Saving writes a separate temporary copy before replacing the saved file. A failure while writing
+that temporary copy leaves your previously saved contacts intact. The contact list and undo/redo
+history still reflect any changes kept in memory.
+
+`help` opens without trying to save, so it remains available during a storage problem. If `exit`
+cannot save pending changes, it keeps the window open and explains that those changes still need
+saving. Fix the problem, then run `list` to retry saving or `exit` to save and close.
 
 <box type="warning" seamless>
 
-**Caution:** A save error does **not** mean your command was cancelled. Do not run `undo` to "retry" or "cancel" it: `undo` would revert the change, showing `Undid:` followed by that change's message. Instead, fix the cause (such as making the data file writable), then run any command that succeeds, such as `list`. UniMate then saves all your current contacts, including the earlier change. If you close UniMate before a save succeeds, changes made since the last successful save are lost.
+**Caution:** A save error does **not** mean a contact change was cancelled. Run `undo` only if you
+want to revert that change. To keep it, fix the cause of the error, then run `list` to save all current
+contacts. Closing with the window's close button before saving discards changes since the last
+successful save.
 </box>
 
 ### Editing the data file
@@ -1101,7 +1122,7 @@ Advanced users can edit that file while UniMate is closed; back it up first.
 **Caution:** If your changes make the data file invalid, UniMate starts with an empty contact list at the next run.
 
 * **No warning appears in the window**; the message area is blank and the loading error is written only to the log.
-* The invalid file remains on disk until you run a command that executes successfully (including `list` or `help`), which then **overwrites the original file with the current in-memory contacts**.
+* The invalid file remains on disk until a command saves the current contacts, such as `list`, which then **overwrites the original file with the current in-memory contacts**. `help` and an `exit` with no contact changes do not rewrite it.
 * If UniMate unexpectedly opens with no contacts, close the window without running any command, then repair or restore the file.
 * Always back up the file before editing it.
 
@@ -1156,9 +1177,9 @@ remedy or workaround where one exists.
 
 ### Data and saving
 
-7. **If saving the data file fails**, the command's change is still applied inside UniMate. The save error replaces the usual success message, and says that the change is applied but not saved. To reverse that change, follow the reversal command named in the error: `redo` after `undo`, otherwise `undo`. The remedy is to fix the cause of the error and then run any successful command, such as `list`, to save your contacts. See [Saving the data](#saving-the-data).
-8. **While saving fails, typed `help` and `exit` do not work.** UniMate saves after every command, so these commands show the save error instead of opening the help window or closing. Press F1 or use the **Help** menu to open help, and use the window's close button to exit. Closing loses any unsaved changes.
-9. **If the data file cannot be loaded**, UniMate opens with an empty contact list without showing a warning, and the next successful command overwrites the file. The remedy is to close the window without running a command, then repair or restore the file. See [Editing the data file](#editing-the-data-file).
+7. **If saving the data file fails**, contact changes already applied remain inside UniMate. The save error replaces the usual success message and explains which changes still need saving. For a change made by that command, it names `redo` after `undo`, or `undo` otherwise, to reverse it. To keep the changes, fix the saving problem and run `list` to retry. See [Saving the data](#saving-the-data).
+8. **If pending changes cannot be saved, `exit` keeps UniMate open.** Fix the saving problem, then run `list` to retry saving or `exit` to save and close. `help` still works. With no unsaved contact changes, `exit` works even when the data file is read-only. Using the window's close button discards unsaved changes.
+9. **If the data file cannot be loaded**, UniMate opens with an empty contact list without showing a warning, and a later save overwrites the file with the current in-memory contacts. The remedy is to close the window without running a command, then repair or restore the file. See [Editing the data file](#editing-the-data-file).
 
 ### Input
 

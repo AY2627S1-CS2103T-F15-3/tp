@@ -164,6 +164,20 @@ The `Storage` component,
 * is implemented by `StorageManager`, which delegates the actual JSON file access to `JsonAddressBookStorage` and `JsonUserPrefsStorage` (one class per data file).
 * depends on some classes in the `Model` component (because the `Storage` component's job is to save/retrieve objects that belong to the `Model`)
 
+`FileUtil#writeToFile` writes UTF-8 content to a sibling temporary file, closes the stream, then
+replaces the destination using `ATOMIC_MOVE`. It does not fall back to a direct overwrite when
+atomic replacement is unsupported. A failed write, close or replacement preserves the saved file
+and triggers temporary-file cleanup; cleanup failures are suppressed on the original exception.
+`JsonAddressBookStorage` no longer pre-creates an empty destination. `FileUtilTest` covers partial
+writes, replacement and cleanup failures, first saves, read-only files and symbolic links.
+
+`LogicManager` keeps a snapshot of the initial contact data and updates it after each successful
+save. `help` returns its UI action without saving. `exit` also skips contact storage when the current
+contacts match that snapshot; otherwise, it retries saving and returns the exit flag only on success.
+A failed exit adds `MESSAGE_UNSAVED_EXIT`, so `MainWindow` keeps the window open with the pending
+contacts. `list` retains its save path for recovery. `LogicManagerUiActionTest` checks these state
+transitions, and `StorageFailureUiTest` submits Help and Exit through the actual command box.
+
 `JsonAdaptedPerson` stores each contact's academic fields as the JSON properties `major` and
 `graduationYear`. Unspecified values are saved as empty strings. When loading older data files that
 omit either property, it treats the missing value as an empty string and constructs an unspecified
@@ -592,17 +606,23 @@ This section covers only how `filter` differs.
 
 ##### Parsing
 
-`FilterCommandParser` first rejects any single-letter prefix other than `m/`, `c/` and `t/`. It then
-tokenizes the input and rejects a non-empty preamble, missing criteria and repeated prefixes. Each
-supplied value is validated with `ParserUtil.parseMajor`, `parseGraduationYear` or `parseTag`; a
+`FilterCommandParser` tokenizes only `m/`, `c/` and `t/` as criterion delimiters, then rejects a
+non-empty preamble, missing criteria and repeated prefixes. Other prefix-like text stays within the
+preceding value: `m/Mathematics w/ Computing` represents the complete major `Mathematics w/ Computing`,
+as in `add` and `edit`. Each supplied value is validated with `ParserUtil.parseMajor`,
+`parseGraduationYear` or `parseTag`; a
 blank supplied value is invalid. An omitted criterion becomes an empty `Optional` and is ignored by
-`ContactFilterPredicate#test`.
+`ContactFilterPredicate#test`. Unknown text before the first criterion is a usage error; unknown text
+within a year or tag fails that field's validation. Recognised criterion prefixes remain reserved syntax.
 
 The sequence diagram below shows how `filter m/CS c/2027` is parsed. Execution is omitted because it
 follows the [`find` sequence diagram](#searching-by-academic-fields), with `ContactFilterPredicate`
 in place of `PersonContainsKeywordsPredicate`.
 
 <puml src="diagrams/FilterSequenceDiagram.puml" alt="Filter command parsing into a ContactFilterPredicate" />
+
+The diagram's separate unsupported-prefix scan is no longer performed; current tokenization and
+field validation follow the rules above, allowing literal prefix-like text inside a major.
 
 ##### Interaction with tag commands
 
@@ -1441,7 +1461,7 @@ Given below is the flow for `undo`:
 2. The parser returns a new `UndoCommand`, and `LogicManager` calls `UndoCommand#execute(model)`.
 3. The command checks `Model#canUndoAddressBook()`. If it returns `false`, the command throws a `CommandException` with `UndoCommand.MESSAGE_FAILURE`. The exception propagates out of `LogicManager#execute` before the save step, so neither the data nor the data file changes.
 4. Otherwise, the command reads the description of the change about to be reversed with `Model#getUndoDescription()`, then calls `Model#undoAddressBook()`, which restores the previous state in place. It then calls `Model#updateFilteredPersonList(PREDICATE_SHOW_ALL_PERSONS)` so that every restored contact is visible, even if a `find`, `filter` or `listfav` view was active, and returns a `CommandResult` with `UndoCommand.MESSAGE_SUCCESS` formatted with that description.
-5. `LogicManager` saves the restored contact data through `Storage#saveAddressBook`, as it does for every successful command.
+5. `LogicManager` saves the restored contact data through `Storage#saveAddressBook`, as it does for other contact-data commands.
 
 The sequence diagram below shows steps 1 to 4 for `execute("undo")`, including the failure path when there is nothing to undo. The save to storage in step 5 is omitted.
 
@@ -2479,6 +2499,16 @@ after an edit, undo, redo or restart before using its displayed index again.
    4. Run `filter t/FilterDemo`, close and relaunch the app from the same folder.
       Expected: The full list is shown. Saved contacts and the changes above remain; the filter is temporary.
 
+<br>
+4. Majors containing prefix-like text
+
+   1. Add `add n/FilterLiteral a/NUS m/Mathematics w/ Computing c/2027 t/FilterDemo`,
+      using an unused name.
+   2. Run `filter m/Mathematics w/ Computing c/2027 t/FilterDemo`.
+      Expected: `FilterLiteral` appears with `1 person(s) listed!`, assuming no other contact has the
+      same complete major, class year and tag. The `w/` text remains part of the major; `c/` and `t/`
+      still start separate criteria.
+
 ### Sorting contacts
 
 1. Directions, ties and unspecified fields
@@ -2903,7 +2933,8 @@ Use only the separate test folder for these checks. The paths below are relative
    1. With the app closed and the valid backup retained, change `SaveCheck`'s `graduationYear` value to `"1999"` in the test file. Keep the JSON syntax valid.
    2. Relaunch the app without entering a command.
       Expected: The whole data file is rejected and the app opens with an empty contact list. It does not partially load the other contacts or silently correct the invalid year. The invalid file remains unchanged at this point.
-   3. Close the window using its close button, then restore the valid backup. Do not enter `exit` before restoring, because a successfully executed command would save the empty in-memory list over the invalid file.
+   3. Close the window or run `exit` without changing any contacts, then restore the valid backup.
+      Expected: The invalid file remains unchanged; exiting an unchanged session does not save contacts.
 <br>
 5. Null entries and null JSON roots
 
@@ -2936,6 +2967,22 @@ Use only the separate test folder for these checks. The paths below are relative
       Expected: Sample contacts appear. UniMate reads `data/unimate.json` and does not automatically migrate `data/addressbook.json`.
    3. Close the window using its close button. Copy `data/addressbook.json` to `data/unimate.json`, then relaunch and run `find SaveCheck`.
       Expected: The saved contact and its academic fields and tag load correctly. The old file is unchanged. Restore the backup when finished.
+
+<br>
+7. Help, exit and pending changes with read-only contact storage
+
+   1. With the app closed and a valid disposable contact file backed up, make only that file read-only
+      using the permission steps below. Relaunch without changing any contacts.
+   2. Run `help`, close the Help window, then run `exit`.
+      Expected: Help opens and exit closes the app without a contact-save error.
+   3. Relaunch with the file still read-only. Run `add n/SavePending a/NUS`, using an unused name,
+      then run `help`.
+      Expected: The add shows a saving error but keeps the contact in memory; Help still opens.
+   4. Close Help and run `exit`.
+      Expected: The main window stays open and explains that contact changes remain unsaved.
+   5. Restore write permission while the app remains open, then run `exit` again and relaunch.
+      Expected: Exit saves successfully; `find SavePending` retrieves the saved contact.
+      Close the app and restore the backup before continuing.
 
 ### Testing a permission-denied save
 
@@ -2971,8 +3018,9 @@ Use only a disposable copy with a valid backup; this scenario intentionally bloc
    explains that the change is unsaved and that `undo` can revert it. The command text remains for correction.
 <br>
 3. Replace the input with `undo`, then `redo`, while the directory still blocks saving.
-   Expected: Undo removes the contact in memory and its save error names `redo` as the reversal.
-   Redo restores it in memory and reports another save error. No successful save has occurred.
+   Expected: Undo removes the contact in memory, restoring the saved state, so its save error has no
+   unsaved-change note. Redo restores the contact in memory and reports another save error naming
+   `undo` as the reversal. No successful save has occurred.
 <br>
 4. Remove only the empty blocking directory and restore the backed-up file to its original path.
    Run `list`, then restart and run `find SaveFailureCheck`.
@@ -3019,8 +3067,8 @@ Each item below is a planned fix for a limitation listed in
 
 3. **Warn about, and protect, a data file that fails to load.**
    When `Storage#readAddressBook` throws `DataLoadingException`, `MainApp#initModelManager` logs a
-   warning and starts with an empty `AddressBook`, but the UI shows nothing. The next successful
-   command overwrites the original file with the current in-memory contacts, destroying the user's
+   warning and starts with an empty `AddressBook`, but the UI shows nothing. A later successful
+   contact save overwrites the original file with the current in-memory contacts, destroying the user's
    only copy of it.
    *Planned fix:* show a startup message in the result display naming the file and the problem, and
    copy the original file to a backup name (e.g., `unimate.json.bak`) before any save replaces it.
@@ -3067,7 +3115,7 @@ These are described in detail, with their planned fixes, in
 | --- | --- |
 | An extremely long email can overflow the regex stack, so a saved file stops the next launch. | 1 |
 | A final domain label containing a hyphen needs two characters on one side, so `a@x.y-z` is rejected. | 2 |
-| A data file that fails to load gives no warning, and the next successful command overwrites it. | 3 |
+| A data file that fails to load gives no warning, and a later successful save overwrites it. | 3 |
 | `"guiSettings": null` in `preferences.json` throws at model construction instead of using defaults. | 4 |
 | The command box silently removes pasted tabs and line breaks. | 5 |
 | The message area shows no focus outline. | 6 |
@@ -3081,13 +3129,12 @@ These are described in detail, with their planned fixes, in
    * this is acceptable for the expected size of a student's contact list; a future version could cap the number of entries and drop the oldest snapshot when the cap is reached
 
 2. **A failed save does not roll back the change.**
-   * commands commit to the history in `Command#execute`, and `LogicManager#execute` saves to storage only afterwards
-      * if saving throws an `IOException`, `LogicManager` throws a `CommandException` with `FILE_OPS_ERROR_FORMAT` or `FILE_OPS_PERMISSION_ERROR_FORMAT`
-   * the in-memory change and its history entry remain, and the UI shows only the save error instead of the command's success message, so the reversal command named in the error reverts it: `redo` after `undo`, otherwise `undo`
-   * to make this clear, `LogicManager` copies the person list (a shallow copy, as `Person` is immutable) before running the command, and appends `MESSAGE_UNSAVED_CHANGE` to the save error if the list changed
-   * the note says the change is applied but not saved, that it is lost if the app closes now, and which command would revert it: `redo` after a failed `undo`, otherwise `undo`
-   * commands that leave the data unchanged, such as `list`, get no note, because they have no change to describe
-   * any later successful command, including `list`, saves the current data again
+   * contact-data commands commit to history before `LogicManager#execute` saves to storage; an `IOException` becomes a saving-related `CommandException`
+   * the in-memory change and history remain, while the saved file is protected by the temporary-file replacement described under [Storage](#storage-component)
+   * `LogicManager` compares the current immutable person list with its initial state or last successful save to identify pending changes
+   * a failed changed command gets `MESSAGE_UNSAVED_CHANGE`, naming `redo` after `undo` and `undo` otherwise; a failed retry such as `list` gets `MESSAGE_PENDING_UNSAVED_CHANGES` when earlier changes still need saving
+   * returning to the saved state through undo clears the pending-change condition, so no unsaved-change note is added in that case
+   * `list` retries saving all current contacts; Help remains available, while Exit retries pending saves and stays open if they still fail
    * the user guide documents this under [Saving the data](UserGuide.md#saving-the-data)
 
 3. **Ctrl+Tab into the message area is not implemented by UniMate.**
@@ -3097,12 +3144,6 @@ These are described in detail, with their planned fixes, in
    * The route is fragile: reordering the layout, making the text area non-traversable or consuming Ctrl+Tab in `handleTab` would remove it silently. No automated test covers it.
    * A future version could handle Ctrl+Tab explicitly in `ContactListNavigation` and add a GUI test for the command box → message area → command box route.
 
-4. **Typed `help` and `exit` do not work while saving fails.**
-   * `LogicManager#execute` saves after every command, including `help` and `exit`. If saving throws, it raises a `CommandException`.
-   * `MainWindow#executeCommand` opens the help window or exits only after `logic.execute` returns, so neither happens.
-   * F1, the **Help** menu and the window's close button do not go through `Logic` and still work.
-   * A future version could skip saving for commands that cannot change data, such as `help`, `exit`, `list` and `find`.
-
-5. **Untested requirements.**
+4. **Untested requirements.**
    * The null-preferences startup failure (planned enhancement 4) was reproduced at the storage and model level, but not by launching the full app.
    * The one-second response target with 1,000 contacts (non-functional requirement 2) has not been measured end to end, including UI rendering.

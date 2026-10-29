@@ -7,10 +7,7 @@ import static seedu.address.logic.parser.CliSyntax.PREFIX_MAJOR;
 import static seedu.address.logic.parser.CliSyntax.PREFIX_TAG;
 
 import java.util.Optional;
-import java.util.Set;
 import java.util.logging.Logger;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import seedu.address.commons.core.LogsCenter;
 import seedu.address.logic.commands.FilterCommand;
@@ -25,12 +22,10 @@ import seedu.address.model.tag.Tag;
  */
 public class FilterCommandParser implements Parser<FilterCommand> {
     private static final Logger logger = LogsCenter.getLogger(FilterCommandParser.class);
-    private static final Pattern PREFIX_PATTERN = Pattern.compile("(?<!\\S)([a-zA-Z]/)");
-    private static final Set<String> SUPPORTED_PREFIXES = Set.of(PREFIX_MAJOR.getPrefix(),
-            PREFIX_GRADUATION_YEAR.getPrefix(), PREFIX_TAG.getPrefix());
 
     /**
-     * Parses at least one criterion, rejecting repeated prefixes, unsupported prefixes and invalid values.
+     * Parses at least one criterion, rejecting repeated prefixes, unexpected preamble and invalid values.
+     * Prefix-like text inside a major is retained unless it is a supported criterion prefix.
      *
      * @throws ParseException if the input is not a valid filter argument string.
      */
@@ -46,7 +41,6 @@ public class FilterCommandParser implements Parser<FilterCommand> {
     }
 
     private FilterCommand parseCriteria(String args) throws ParseException {
-        rejectUnsupportedPrefixes(args);
         ArgumentMultimap arguments = ArgumentTokenizer.tokenize(" " + args,
                 PREFIX_MAJOR, PREFIX_GRADUATION_YEAR, PREFIX_TAG);
         Optional<String> majorValue = arguments.getValue(PREFIX_MAJOR);
@@ -64,14 +58,5 @@ public class FilterCommandParser implements Parser<FilterCommand> {
         Optional<Tag> tag = tagValue.isPresent()
                 ? Optional.of(ParserUtil.parseTag(tagValue.get())) : Optional.empty();
         return new FilterCommand(new ContactFilterPredicate(major, year, tag));
-    }
-
-    private void rejectUnsupportedPrefixes(String args) throws ParseException {
-        Matcher matcher = PREFIX_PATTERN.matcher(args);
-        while (matcher.find()) {
-            if (!SUPPORTED_PREFIXES.contains(matcher.group(1))) {
-                throw new ParseException(String.format(MESSAGE_INVALID_COMMAND_FORMAT, FilterCommand.MESSAGE_USAGE));
-            }
-        }
     }
 }
