@@ -106,6 +106,8 @@ fields move below the phone, address and email fields.
 | Shift+Tab from an expandable value | Focus the previous expandable value; before the first, return to the list. |
 | Shift+Tab from the list | Return to the command box. |
 | Enter / Space on an expandable value | Expand or collapse that value. |
+| Ctrl+Tab from the command box | Focus the message area to read long feedback. Use Up / Down or Page Up / Page Down to scroll it (Command+Down jumps to the end on macOS). |
+| Ctrl+Shift+Tab from the message area | Return to the command box. |
 
 Expandable values, including long tags, have an orange dotted outline when focused. Their order is:
 name, tags from left to right, phone, address, email, major, class year, last updated. Short values and
@@ -113,6 +115,8 @@ other contacts are skipped. The list scrolls to keep the focused value visible; 
 than the viewport, it shows the start of that value. With an empty list, Tab and Shift+Tab keep focus
 in the command box.
 Up/Down in the command box still recalls command history.
+Plain Tab and Shift+Tab never enter the message area; use Ctrl+Tab for that. The Ctrl+Tab route
+was checked on macOS; on Windows and Linux, clicking inside the message area also focuses it.
 
 --------------------------------------------------------------------------------------------------------------------
 
@@ -170,7 +174,7 @@ Format: `add n/NAME [p/PHONE_NUMBER] [e/EMAIL] a/ADDRESS [m/MAJOR] [c/CLASS_YEAR
 | Name `n/` | Required. English letters, digits and spaces; must not be blank. |
 | Address `a/` | Required, non-blank text. See the prefix warning below. |
 | Phone `p/` | Optional. At least three digits, without spaces, `+` or punctuation. |
-| Email `e/` | Optional. `local-part@domain`; letters and digits with separated `+`, `_`, `.` or `-` in the local part, never at either end. Domain labels use letters/digits with separated internal hyphens; the final label has at least two characters. |
+| Email `e/` | Optional. `local-part@domain`; letters and digits with separated `+`, `_`, `.` or `-` in the local part, never at either end. Domain labels use letters/digits with separated internal hyphens; the final label has at least two characters. A final label containing a hyphen must have at least two letters/digits on one side of a hyphen (`a@x.ab-c` is accepted; `a@x.y-z` is rejected). |
 | Major `m/` | Optional, non-blank text on one line. |
 | Class year `c/` | Optional. Four digits from `2000` to `2099`. |
 | Tag `t/` | Optional. English letters and digits, without spaces. Repeat the prefix for multiple tags. |
@@ -526,7 +530,10 @@ Format: `note INDEX TEXT`
 
 * Use the positive `INDEX` in the current displayed list, including search, filter and favourite results.
 * `TEXT` must contain non-whitespace text on one line, with at most 500 characters. Unicode text and
-  punctuation are allowed; control characters such as tabs are rejected.
+  punctuation are allowed.
+* The command box is a single line, so it removes tabs and line breaks from pasted text before you
+  press Enter. For example, pasting `Left`, a tab, then `Right` saves `LeftRight`, not an error.
+  Check the text in the command box before submitting, and type a space where you want one.
 * Surrounding whitespace, including non-breaking spaces, is trimmed before checking the length.
   Spaces within the note are preserved.
 * Everything after the index is saved as text, including prefixes such as `n/` and `t/`.
@@ -549,7 +556,8 @@ Adding or replacing a note supports [undo](#undoing-a-change-undo) and [redo](#r
 Saving identical text reports `Note unchanged for NAME.` and creates no undo step or change to redo history.
 
 A small orange icon at the card's top right indicates a saved note. Use [`shownote`](#viewing-a-contact-s-note-shownote)
-to read it; scroll vertically in the message area to read long feedback.
+to read it; scroll vertically in the message area to read long feedback. With the keyboard, press
+Ctrl+Tab to focus the message area (see [Using the contact list](#using-the-contact-list)).
 
 ### Viewing a contact's note: `shownote`
 
@@ -1061,7 +1069,7 @@ Advanced users can edit that file while UniMate is closed; back it up first.
 <box type="warning" seamless>
 
 **Caution:**
-If your changes make the data file invalid, UniMate starts with an empty contact list at the next run. The invalid file remains on disk until you run a command that executes successfully (including `list` or `help`). Still, we recommend backing up the file before editing it.<br>
+If your changes make the data file invalid, UniMate starts with an empty contact list at the next run. **No warning appears in the window**; the message area is blank and the loading error is written only to the log. The invalid file remains on disk until you run a command that executes successfully (including `list` or `help`), which then **replaces it with the empty list**. If UniMate unexpectedly opens with no contacts, close the window without running any command, then repair or restore the file. Always back up the file before editing it.<br>
 Furthermore, certain edits can cause UniMate to behave in unexpected ways (e.g., if a value entered is outside of the acceptable range). Therefore, edit the data file only if you are confident that you can update it correctly.
 </box>
 
@@ -1099,3 +1107,8 @@ the backup. See [Editing the data file](#editing-the-data-file) for the file loc
 1. **When using multiple screens**, if you move the application to a secondary screen, and later switch to using only the primary screen, the GUI will open off-screen. The remedy is to delete the `preferences.json` file created by the application before running the application again.
 2. **If you minimize the Help Window** and then run the `help` command (or use the `Help` menu, or the keyboard shortcut `F1`) again, the original Help Window will remain minimized, and no new Help Window will appear. The remedy is to manually restore the minimized Help Window.
 3. **If saving the data file fails**, the command's change is still applied inside UniMate. The save error replaces the usual success message, and says that the change is applied but not saved. Running `undo` at this point reverts that change. The remedy is to fix the cause of the error and then run any successful command, such as `list`, to save your contacts. See [Saving the data](#saving-the-data).
+4. **If the data file cannot be loaded**, UniMate opens with an empty contact list without showing a warning, and the next successful command overwrites the file. The remedy is to close the window without running a command, then repair or restore the file. See [Editing the data file](#editing-the-data-file).
+5. **An extremely long email address** (thousands of characters, far beyond any real address) may be accepted and saved, but UniMate then fails to start on the next launch. The remedy is to close UniMate, edit `data/unimate.json` to shorten or remove that email, then relaunch. Keep backups before testing unusual input.
+6. **If `preferences.json` contains `"guiSettings": null`**, UniMate may fail to start instead of using default window settings. The remedy is to delete `preferences.json` before launching again; UniMate recreates it with defaults.
+7. **Tabs and line breaks in pasted text are removed** by the command box before submission, so pasted words can be joined. See [`note`](#adding-or-replacing-a-contact-s-note-note).
+8. **Some valid-looking email domains are rejected.** If the last part of the domain (after the final `.`) contains a hyphen, it needs at least two letters or digits on one side of a hyphen. For example, `a@x.y-z` and `a@a-b` are rejected, while `a@x.ab-c` is accepted. The error message does not mention this rule. There is no remedy other than omitting or changing that email; see the [email field rules](#adding-a-person-add).

@@ -29,11 +29,10 @@ PersonCard --> "1\nperson" Person : displays >
 PersonCard ..> SystemTag
 
 note bottom of Person
-  UPDATE requires a known date strictly over one year old.
-  Unchanged profiles and tag/note/favourite operations retain the date.
+  UPDATE: known date over one year old.
+  Tag, note and favourite changes keep the date.
 end note
 note bottom of SystemTag
-  Only the UPDATE enum constant is shown.
-  Reminders are derived, not stored as ordinary tags.
+  Only UPDATE shown; derived, not stored.
 end note
 @enduml

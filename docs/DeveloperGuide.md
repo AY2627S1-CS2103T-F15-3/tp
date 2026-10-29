@@ -46,7 +46,7 @@ Refer to the guide [_Setting up and getting started_](SettingUp.md).
 
 ### Architecture
 
-<puml src="diagrams/ArchitectureDiagram.puml" width="650" />
+<puml src="diagrams/ArchitectureDiagram.puml" width="300" />
 
 The ***Architecture Diagram*** given above explains the high-level design of the App.
 
@@ -80,7 +80,7 @@ Each of the four main components (also shown in the diagram above),
 
 For example, the `Logic` component defines its API in `Logic.java` and implements it in `LogicManager.java`. Other components interact with a component through its interface rather than its concrete class, preventing them from coupling to that component's implementation, as illustrated in the following partial class diagram.
 
-<puml src="diagrams/ComponentManagers.puml" width="600" />
+<puml src="diagrams/ComponentManagers.puml" width="340" />
 
 The sections below give more details of each component.
 
@@ -88,9 +88,9 @@ The sections below give more details of each component.
 
 The **API** of this component is specified in [`Ui.java`](https://github.com/AY2627S1-CS2103T-F15-3/tp/tree/master/src/main/java/seedu/address/ui/Ui.java)
 
-<puml src="diagrams/UiClassDiagram.puml" alt="Structure of the UI Component"/>
+<puml src="diagrams/UiComponentDiagram.puml" alt="Structure of the UI Component"/>
 
-The UI consists of a `MainWindow` and its parts, such as `CommandBox`, `ResultDisplay`, `PersonListPanel`, and `StatusBarFooter`. All of these, including `MainWindow`, inherit from the abstract `UiPart` class, which captures common behavior among classes that represent visible GUI parts.
+The UI consists of a `MainWindow` and its parts, such as `CommandBox`, `ResultDisplay`, `PersonListPanel`, and `StatusBarFooter`. All of these, including `MainWindow`, inherit from the abstract `UiPart` class, which captures common behavior among classes that represent visible GUI parts. For readability, the diagram omits `StatusBarFooter` and `HelpWindow`.
 
 The `UI` component uses the JavaFX UI framework. The layouts of these UI parts are defined in matching `.fxml` files in `src/main/resources/view`. For example, [`MainWindow.fxml`](https://github.com/AY2627S1-CS2103T-F15-3/tp/tree/master/src/main/resources/view/MainWindow.fxml) specifies the layout of [`MainWindow`](https://github.com/AY2627S1-CS2103T-F15-3/tp/tree/master/src/main/java/seedu/address/ui/MainWindow.java).
 
@@ -111,26 +111,21 @@ Here's a (partial) class diagram of the `Logic` component:
 
 <puml src="diagrams/LogicClassDiagram.puml" width="550"/>
 
-The [batch-delete interaction](#deleting-one-or-more-contacts) illustrates the command/model boundary
-without repeating the generic parsing path here.
-
 How the `Logic` component works:
 
 1. When `Logic` is called upon to execute a command, the command is passed to an `AddressBookParser` object, which in turn creates a parser that matches the command (e.g., `DeleteCommandParser`) and uses it to parse the command.
 1. This results in a `Command` object (more precisely, an object of one of its subclasses e.g., `DeleteCommand`) which is executed by the `LogicManager`.
-1. The command can communicate with the `Model` when it is executed. For deletion, it obtains the
-   filtered and sorted displayed list, validates every supplied index and captures the selected
-   `Person` objects before deletion. It passes each captured contact to `Model#deletePerson` and
-   commits the whole batch as one history entry.
-1. `Messages#format` formats each deleted contact's details, including major and class year only when
-   specified. A single deletion keeps the `Deleted person: ` prefix. A batch reports its count and
-   details labelled with the original displayed indices in input order, then returns a `CommandResult`.
-   `LogicManager` saves the updated address book through `Storage` before returning that result to
-   its caller; the storage interactions are not shown in this diagram.
+1. The command can communicate with the `Model` when it is executed (e.g., to delete a contact).
+   A command that changes contact data also commits the change to the undo history.
+1. The command returns a `CommandResult`. `LogicManager` then saves the address book through `Storage`
+   before returning that result to the `UI`.
+
+For an example interaction trace, including batch-index validation, see
+[Deleting one or more contacts](#deleting-one-or-more-contacts).
 
 Here are the other classes in `Logic` (omitted from the class diagram above) that are used for parsing a user command:
 
-<puml src="diagrams/ParserClasses.puml" width="600"/>
+<puml src="diagrams/ParserClasses.puml" />
 
 How the parsing works:
 * `AddressBookParser#parseCommand` dispatches on `commandWord.toLowerCase(Locale.ROOT)`, so all command words are case-insensitive regardless of the system locale. Argument capitalization is retained. Whitespace is normalized before dispatch except for `note`,
@@ -141,7 +136,7 @@ How the parsing works:
 ### Model component
 **API** : [`Model.java`](https://github.com/AY2627S1-CS2103T-F15-3/tp/tree/master/src/main/java/seedu/address/model/Model.java)
 
-<puml src="diagrams/ModelClassDiagram.puml" width="600" alt="Model structure with academic fields and filtered and sorted contact views" />
+<puml src="diagrams/ModelClassDiagram.puml" alt="Model structure with academic fields and filtered and sorted contact views" />
 
 
 The `Model` component,
@@ -473,6 +468,9 @@ from the stored history description and do not block the edit.
 
 `Email.MESSAGE_CONSTRAINTS` uses short newline-separated rules and
 explicitly forbids consecutive local-part special characters; the validation regex is unchanged.
+The regex has two known limitations, listed under [Planned enhancements](#appendix-planned-enhancements):
+`DOMAIN_LAST_PART_REGEX` repeats the whole label pattern at least twice instead of checking the
+final label's length, and the nested repeated groups can overflow the stack on extremely long input.
 `ResultDisplay.fxml` enables text wrapping so narrow windows do not require horizontal scrolling.
 
 The replacement `Person` retains notes and favourite status. Changes to name, phone, email, address,
@@ -543,10 +541,11 @@ The predicate matches a `Person` if any keyword matches a full word in the perso
 
 ##### Updating the displayed list
 
-`FindCommand` applies the predicate through `Model#updateFilteredPersonList`.
+`FindCommand` applies the predicate through `Model#updateFilteredPersonList`. [`filter`](#filtering-contacts-by-academic-fields-and-tags) reuses this path unchanged.
 
 1. The new predicate replaces the previous one, so every `find` searches all saved contacts, not just the displayed ones.
 - `find` replaces any `filter` or `listfav` view
+- `list`, `add`, `edit`, `undo` and `redo` show all contacts again; the view is not saved, so a restart also shows all contacts
 
 2. The `SortedList` comparator is untouched, so an active sort is kept.
 
@@ -559,7 +558,7 @@ The predicate matches a `Person` if any keyword matches a full word in the perso
 
 ##### Sequence diagram
 
-The sequence diagram below shows how `find alex david` is parsed and executed.
+The sequence diagram below shows how `find Alice Computer` is parsed and executed.
 
 `AddressBookParser`, which creates the `FindCommandParser`, and the later save in `LogicManager` are omitted.
 
@@ -578,35 +577,37 @@ The sequence diagram below shows how `find alex david` is parsed and executed.
 
 ### Filtering contacts by academic fields and tags
 
-`FilterCommandParser` recognises the existing `m/`, `c/` and `t/` prefixes, requires at least one,
-and rejects repeated criteria, a non-empty preamble and unsupported single-letter prefixes.
-It uses `ParserUtil.parseMajor`, `parseGraduationYear` and `parseTag` to trim and validate supplied
-values. An omitted criterion is represented by an empty `Optional`; a supplied blank value is invalid.
-As with other prefixed commands, prefix-like tokens are reserved syntax rather than literal major text.
+`filter` updates the displayed list in the same way as [`find`](#searching-by-academic-fields):
+`FilterCommand` passes its predicate to `Model#updateFilteredPersonList` and reports the number of
+shown contacts. It also replaces the previous view, keeps the active sort and records no history.
+This section covers only how `filter` differs.
 
-`ContactFilterPredicate` holds the optional `Major`, `GraduationYear` and `Tag` criteria.
-Its `test(Person)` combines them using AND. Major and tag comparisons use full-value,
-case-insensitive matching; graduation years use exact equality. A tag criterion succeeds if any of
-that person's tags matches. This differs from `PersonContainsKeywordsPredicate`, which uses OR
-matching over whole-word keywords in names, majors and graduation years.
+| | `find` | `filter` |
+| --- | --- | --- |
+| Input | Free-text keywords split on whitespace; prefixes are literal words | `m/`, `c/` and `t/` prefixes; at least one, each at most once |
+| Predicate | `PersonContainsKeywordsPredicate` | `ContactFilterPredicate` |
+| Fields checked | Name, major, class year | Major, class year, tags |
+| Combining | OR: any keyword may match | AND: every supplied criterion must match |
+| Match type | Whole word, case-insensitive | Whole value, case-insensitive; class year by exact equality; a tag criterion matches any of the contact's tags |
 
-`AddressBookParser` routes `filter` to `FilterCommandParser`. `FilterCommand` then passes the predicate
-to `Model#updateFilteredPersonList` and reports the size of `Model#getFilteredPersonList`.
-The existing observable list updates `PersonListPanel`, including the displayed indices;
-no new storage fields are needed. Commands that use displayed indices continue
-to obtain their targets from that same list.
+##### Parsing
 
-The sequence below shows how valid filter criteria become a predicate and are applied through the Model API.
-Routing, validation details and Model internals are omitted.
+`FilterCommandParser` first rejects any single-letter prefix other than `m/`, `c/` and `t/`. It then
+tokenizes the input and rejects a non-empty preamble, missing criteria and repeated prefixes. Each
+supplied value is validated with `ParserUtil.parseMajor`, `parseGraduationYear` or `parseTag`; a
+blank supplied value is invalid. An omitted criterion becomes an empty `Optional` and is ignored by
+`ContactFilterPredicate#test`.
 
-<puml src="diagrams/FilterSequenceDiagram.puml" alt="Filter command parsing and execution" />
+The sequence diagram below shows how `filter m/CS c/2027` is parsed. Execution is omitted because it
+follows the [`find` sequence diagram](#searching-by-academic-fields), with `ContactFilterPredicate`
+in place of `PersonContainsKeywordsPredicate`.
 
-A filter replaces the previous `find` or `filter` predicate. `list` restores all contacts;
-`add` and `edit` keep their existing behaviour of showing all contacts after success. Tag and untag
-preserve the predicate, so a contact can disappear from the results when its tags no longer match.
-Filtering changes no contact data and records no history entry, preserving undo and redo availability.
-The active sort is preserved when the filter changes. Filters are not persisted and the full list
-is shown on restart.
+<puml src="diagrams/FilterSequenceDiagram.puml" alt="Filter command parsing into a ContactFilterPredicate" />
+
+##### Interaction with tag commands
+
+Unlike `find`, the predicate depends on tags. `tag` and `untag` keep the current predicate, so a
+contact disappears from the results when its tags no longer match.
 
 ### Sorting the displayed contacts
 
@@ -798,17 +799,29 @@ Reminders are derived when rendering; they are not stored in `Person#getTags` or
 | `INCOMPLETE` | Both phone and email are empty. | [Incomplete reminders](#automatic-incomplete-reminders). |
 | `UPDATE` | The last update date is known and its one-year anniversary is before today. | [Update reminders](#automatic-update-reminders). |
 
+Both reminders share the rendering and refresh path below.
+
+* `PersonCard#refreshTags` clears the tag pane, recreates the user's tags, then appends each
+  reminder with the `system-tag` style class (dark brown background, amber border and text in `DarkTheme.css`).
+* A stored user tag named `incomplete` or `update` is shown as a grey `incomplete (custom)` or
+  `update (custom)` tag, detected by `SystemTag.isSystemLabel`. It is not renamed or removed from JSON.
+* After a successful command, `MainWindow` calls `PersonListPanel#refresh`, so every card evaluates
+  its reminders again, even when the command changed no data.
+
+Deriving reminders instead of storing them avoids stale tags and data migration, and stops `untag`
+from permanently disabling a reminder.
+
 ### Automatic incomplete reminders
 
 #### Class structure
 
 <puml src="diagrams/IncompleteReminderClassDiagram.puml" alt="Class structure of automatic incomplete reminders" />
 
-The diagram isolates the completeness rule: `Person` references one non-null `Phone` and one non-null `Email`, and `SystemTag` derives `INCOMPLETE` only when both values are empty. The `phone` and `email` role names and multiplicities appear at their association ends; navigation follows the stored references. These are not compositions because immutable contact values can be shared. Parsing, persistence and UI details are omitted; only the relevant enum constant is shown. No ordinary tag is added to the contact.
+`Person` references one non-null `Phone` and one non-null `Email`; `SystemTag` derives `INCOMPLETE` only when both values are empty. These are plain associations, not compositions, because immutable values can be shared. Parsing, persistence and UI are omitted.
 
 #### Design overview and responsibilities
 
-Incomplete reminders reuse the dynamic system-tag pipeline without adding a stored tag or a command. `Person#isIncomplete` returns true only when both `getPhone().value` and `getEmail().value` are empty. Address, academic fields, user tags, notes and favourite status are irrelevant to this predicate.
+`Person#isIncomplete` returns true only when both `getPhone().value` and `getEmail().value` are empty. No other field affects it.
 
 | Class | Responsibility |
 |-------|----------------|
@@ -816,9 +829,7 @@ Incomplete reminders reuse the dynamic system-tag pipeline without adding a stor
 | `Person` | Evaluates contact completeness without modifying contact state. |
 | `AddCommandParser`, `ParserUtil` | Allow omitted phone/email prefixes, but reject explicitly blank or malformed supplied values in `add`. |
 | `EditCommandParser`, `EditCommand` | Map empty `p/` and `e/` values to `EMPTY`, preserve omitted fields, and apply the existing basic-profile date rules. |
-| `SystemTag` | Independently appends `UPDATE` and `INCOMPLETE` in `forPerson`, and identifies custom-name collisions using `isSystemLabel`. |
 | `JsonAdaptedPerson` | Converts absent/null phone and email fields to empty values while retaining validation of supplied non-empty values. |
-| `PersonCard`, `PersonListPanel`, `MainWindow` | Render and refresh system labels using the existing observable contact list and successful-command refresh path. |
 
 #### Add/edit behaviour and validation
 
@@ -828,19 +839,15 @@ Phone and email objects remain non-null throughout the model. `Phone.isValidPhon
 
 `EditCommand` already compares phone/email as basic fields, so filling or clearing either changes `lastUpdated` only when its value changes. Existing person replacement preserves favourite status, tags, notes and academic fields. Notes, favourite and tag commands retain the date. Sorting, searching and list commands retain their existing view-only behaviour.
 
-#### System tags, rendering and refresh
+#### Rendering and refresh
 
-`SystemTag.forPerson` evaluates the age and completeness predicates independently and returns at most one of each reminder. A profile may therefore have both labels. `PersonCard#refreshTags` clears and rebuilds the pane, preserving ordinary grey labels, and appends each derived reminder with the existing `system-tag` CSS class. The `system-tag` style uses amber text on a dark brown background, with the same padding, font and corner radii as ordinary tags. Missing phone/email display as `Not specified`.
-
-`SystemTag.isSystemLabel` distinguishes both reserved display names. A user's stored `incomplete` tag is shown as a grey `incomplete (custom)` tag with a tooltip explaining `t/incomplete`; it is neither renamed nor removed from JSON. Tag commands still operate only on user tags. The incomplete reminder has a contact-detail tooltip rather than the date tooltip used by `UPDATE`.
-
-Successful commands use the existing `MainWindow` to `PersonListPanel.refresh` path, and model replacements update the observable list. Filling either contact method removes `INCOMPLETE`; clearing the last one adds it. A successful actual basic-field edit also refreshes the profile date and can independently remove `UPDATE`. If the edit leaves both methods empty, `INCOMPLETE` remains applicable.
+Rendering is the [shared reminder path](#automatic-system-reminders). The `INCOMPLETE` tooltip asks the user to add a phone number or email address, and missing values display as `Not specified`. Filling either contact method removes `INCOMPLETE`; clearing the last one adds it. The same edit can independently remove `UPDATE`, because it refreshes the profile date.
 
 #### JSON compatibility and design considerations
 
 The JSON shape is unchanged: phone and email remain strings and empty strings represent unspecified values. Missing/null values load as unspecified; malformed non-empty strings still fail validation. Older complete contacts load as before, and name/address and other field validation are unchanged. Favourite, notes, tags and `lastUpdated` retain their existing serialization and copy rules.
 
-Derived reminders require no migration flag or synchronization with a stored system-tag collection. Reusing the existing value objects avoids nullable fields throughout commands and UI. Keeping custom tags separate preserves user data and prevents `untag` from permanently disabling a reminder. Tests cover all four combinations, fill/clear transitions, failed input atomicity, legacy JSON, both reminders together and actual JavaFX command-box rendering. See [Automatic incomplete reminders](UserGuide.md#automatic-incomplete-reminders).
+Reusing `EMPTY` value objects avoids nullable fields throughout commands and UI. Tests cover all four phone/email combinations, fill/clear transitions, failed input atomicity, legacy JSON, both reminders together and actual JavaFX rendering. See [Automatic incomplete reminders](UserGuide.md#automatic-incomplete-reminders).
 
 ### Tracking and displaying contact update dates
 
@@ -906,48 +913,23 @@ commands assign and preserve the stored date; this section explains the reminder
 
 <puml src="diagrams/UpdateReminderClassDiagram.puml" alt="Class structure of automatic update reminders" />
 
-The diagram shows the date-to-reminder design: an actual basic-field edit refreshes `Person.lastUpdated`, `SystemTag` evaluates `needsUpdate`, and `PersonCard` renders the derived reminder. The card retains one `Person` reference, shown by the `person` end role; the association name reads "PersonCard displays Person". Unknown dates do not trigger `UPDATE`. Only the relevant enum constant is shown; parser, model and storage infrastructure are omitted. The reminder is calculated rather than stored as an ordinary tag.
+An actual basic-field edit refreshes `Person.lastUpdated`, `SystemTag` evaluates `needsUpdate`, and `PersonCard` renders the result. Parser, model and storage infrastructure are omitted.
 
-#### Design overview and relevant classes
-
-The reminder is derived from a contact's basic-profile modification date rather than stored as a user tag. This keeps reminders consistent with the current date without requiring a new command or background scheduler.
-
-| Class | Responsibility |
-|-------|----------------|
-| `Person` | Stores immutable `LocalDate lastUpdated`, exposes `getLastUpdated()`, and evaluates `needsUpdate(LocalDate)`. |
-| `AddCommand` | Assigns the execution date using its clock while preserving the new contact's other fields. |
-| `SystemTag` | Returns applicable derived reminders through `forPerson(Person, LocalDate)`, including `UPDATE` and `INCOMPLETE`. |
-| `EditCommand` | Detects actual basic-field changes and obtains today's date from an injectable `Clock`. |
-| `TagCommand`, `UntagCommand`, `FavCommand`, `UnfavCommand` | Carry the previous date through contact replacement. |
-| `JsonAdaptedPerson` | Stores an ISO date string and converts it back to `LocalDate`, including legacy-data handling. |
-| `PersonCard` | Rebuilds ordinary labels and system reminders using its injectable clock. |
-| `PersonListPanel`, `MainWindow` | Refresh visible cards after successful command execution, including commands that leave model data unchanged. |
-
-#### Date tracking and persistence
-
-The existing `Person` constructor overloads initialize new contacts using `LocalDate.now()`. The full constructor accepts a null date for legacy contacts with no recorded update date. Equality, hashing, immutable copies and history snapshots preserve this unknown state.
-
-`EditCommand#createEditedPerson` compares the resulting name, phone, email, address, major and graduation year with the original values. If at least one differs, it uses `LocalDate.now(clock)`; otherwise it retains the existing date. Tag-only edits and unsuccessful edits do not reset the date. Date injection makes anniversary tests reproducible. Tag, note and favourite changes retain the previous date, while read-only commands only change the view or feedback. Existing undo/redo restores the full recorded person, including the date.
-
-`JsonAdaptedPerson` serializes known dates as ISO strings such as `2026-10-18` and unknown dates as JSON null. Missing or null dates remain unknown after loading and saving. Invalid supplied dates still raise `IllegalValueException` through the existing storage loading path.
+How commands assign, preserve and store the date is covered in [Tracking and displaying contact update dates](#tracking-and-displaying-contact-update-dates). An unknown (null) date never triggers `UPDATE`.
 
 #### Reminder logic
 
 `Person#needsUpdate(today)` requires a known date preceding today and its one-year anniversary to be strictly before today. Unknown dates produce no age-based reminder. Exactly one year produces no reminder. Calendar-year arithmetic uses `lastUpdated.plusYears(1)`, so a leap-day anniversary follows Java's calendar rule: `2024-02-29` reaches its anniversary on `2025-02-28`, with a reminder starting on `2025-03-01`.
 
-`SystemTag.forPerson` appends one `UPDATE` reminder when the age condition applies, independently of `INCOMPLETE`. It does not mutate `Person#getTags` or write automatic labels to JSON. This representation can accommodate other system reminders later.
+`SystemTag.forPerson` appends `UPDATE` when this condition applies, independently of `INCOMPLETE`.
 
 #### GUI implementation
 
-`PersonCard#refreshTags` clears the tag pane, recreates the sorted user labels and appends the current `SystemTag` labels. Each update reminder has the `system-tag` style class and a tooltip showing the recorded date. `#tags .label.system-tag` in `DarkTheme.css` sets the dark brown background, amber border and text, inheriting ordinary tag padding, font size and corner radii. Favourite and note icons remain independent.
-
-An ordinary tag whose exact stored name is `update` is rendered as a grey `update (custom)` tag, with a tooltip explaining that it is managed using `t/update`. The underlying name, validation, filtering and storage remain unchanged. Rebuilding the pane prevents duplicate system labels and lets a custom tag coexist with the reminder.
-
-After `LogicManager#execute` succeeds, `MainWindow` calls `PersonListPanel#refresh`, which calls `ListView#refresh`. Recreated cards evaluate the current date again even when the contact data did not change. An actual basic-profile edit both replaces the model person and triggers this refresh, removing an outdated reminder immediately. No timer refreshes an idle window.
+Similar to incomplete reminders, rendering uses the [shared reminder path](#automatic-system-reminders). The differences: the `UPDATE` tooltip shows the recorded date, and `PersonCard` evaluates the date with an injectable clock. Cards re-check the date only after a successful command; no timer refreshes an idle window, so a reminder that becomes due while UniMate sits idle appears after the next successful command.
 
 #### Design considerations and verification
 
-Dynamic reminders avoid stale stored tags, prevent user tag removal from disabling a date-based reminder, and preserve legacy custom tags without silently deleting data. Dates remain separate from favourite state and notes; future commands that reconstruct a person must carry all three forward unless intentionally updating one.
+The rationale for deriving reminders is the same as for incomplete reminders. Dates are kept separate from favourite state and notes, so a future command that reconstructs a `Person` must carry all three forward unless it intentionally updates one.
 
 Tests cover calendar boundaries, profile edits and no-op edits, JSON round trips and migration, note/tag/favourite interactions, undo/redo and actual command-box rendering. GUI tests run on the JavaFX application thread; the existing Linux CI virtual display ensures they execute when coverage is collected. See [Automatic update reminders](UserGuide.md#automatic-update-reminders) for user-facing behaviour.
 
@@ -1158,7 +1140,7 @@ Below is the flow for a successful `add n/Alex Tan …​`:
 
 The activity diagram below summarises what happens when a command commits. The check for unrecorded changes is described in [Unrecorded changes](#unrecorded-changes).
 
-<puml src="diagrams/CommitActivityDiagram.puml" width="650" alt="Commit decisions for unchanged data, stale undo history and a new history entry" />
+<puml src="diagrams/CommitActivityDiagram.puml" alt="Commit decisions for unchanged data, stale undo history and a new history entry" />
 
 A command that fails validation, such as a duplicate `add`, throws before copying the data and never reaches this flow.
 
@@ -1256,7 +1238,8 @@ As a safety net, `AddressBookHistory` compares `currentState` with the live cont
 
 Continuing the example above, suppose an unrecorded change now replaces the contacts in the model with `ab4`, so they no longer match `currentState`, `ab3`.
 - the history is now stale
-- a following `undo` discards both stacks and reports that there is no change to undo, rather than restoring `ab1` and reversing the unrecorded change
+- a following user `undo` command is rejected with `There is no change to undo.`, rather than restoring `ab1` and reversing the unrecorded change; `UndoCommand` checks `canUndoAddressBook()` first, so it does not call `undoAddressBook()` and the stale stacks are left in place
+- the stale stacks are only discarded when `undoAddressBook()` or `redoAddressBook()` is called directly on the model, or by the next data-changing commit
 
 To the user, such a change only makes `undo` and `redo` report that there is nothing to undo or redo, never restore the wrong data. `UndoCommandTest` covers this by changing the model directly without committing.
 
@@ -2017,8 +2000,10 @@ after an edit, undo, redo or restart before using its displayed index again.
    Expected: Editing starts a new search at the current position; ordinary navigation ends prefix
    matching and proceeds chronologically. Neither route executes the recalled command.
 <br>
-1. Submit an invalid command, then press Up; also try a blank submission.
-   Expected: The failed command is recallable; blank submissions add no entry. Restart clears history.
+1. Submit an invalid command, then press Up. Also press Enter with the input completely empty, and
+   separately submit only spaces.
+   Expected: The failed command is recallable. Completely empty input adds no entry. Whitespace-only
+   input is reported as an invalid command and is added as a recallable entry. Restart clears history.
 
 ### Testing the saved-contact listing
 
@@ -2849,3 +2834,59 @@ Use only a disposable copy with a valid backup; this scenario intentionally bloc
 For startup loading failures, use the separate [saving-data scenarios](#saving-data): close the
 window without commands before repairing a malformed file. That is different from this deliberately
 blocked save while a valid session is already running.
+
+--------------------------------------------------------------------------------------------------------------------
+
+## **Appendix: Planned enhancements**
+
+Team size: 6
+
+The following are known limitations of the current release. Each is documented here, and in the
+User Guide where users can encounter it, rather than left unstated.
+
+1. **Make email validation stack-safe for extremely long input.**
+   `Email.VALIDATION_REGEX` uses nested repeated groups such as `([+_.-][^\W_]+)*`. Java's regex
+   engine matches these recursively, so an email with thousands of repeated segments (e.g.,
+   `"a."` repeated 5,000 times followed by `a@example.com`) throws `StackOverflowError`. The exact
+   threshold depends on the thread stack size and JVM, so no fixed limit is documented. Such a value
+   can be accepted when added in the UI and saved, but the same check then fails while
+   `JsonAdaptedPerson#toModelType` loads the file, so the next launch terminates in `MainApp#init`.
+   The input is far outside any real email address, so this is a robustness limitation rather than a
+   normal-use failure.
+   *Planned fix:* replace the repeated-group regex with an iterative check that splits the local part
+   and domain on their separators and validates each segment, and add a test that saves an accepted
+   long email and reloads it in a fresh storage instance. Catching `StackOverflowError` alone is not
+   planned, as it would hide the design problem.
+
+2. **Check the final domain label's length separately from its syntax.**
+   `DOMAIN_LAST_PART_REGEX` is `(label){2,}$`, which requires the label *pattern* to repeat at least
+   twice, not the final label to have at least two characters. As a result, `a@x.y-z` and `a@a-b` are
+   rejected although they satisfy the stated rules, while `a@ab-c` and `a@a-bc` are accepted. The
+   command is rejected cleanly without changing data. The User Guide currently states the narrower
+   accepted rule.
+   *Planned fix:* match the final label with the ordinary label pattern and check its length with a
+   separate condition, so the validator matches `Email.MESSAGE_CONSTRAINTS`.
+
+3. **Warn about, and protect, a data file that fails to load.**
+   When `Storage#readAddressBook` throws `DataLoadingException`, `MainApp#initModelManager` logs a
+   warning and starts with an empty `AddressBook`, but the UI shows nothing. The next successful
+   command saves `{"persons":[]}` over the unreadable file, destroying the user's only copy of it.
+   *Planned fix:* show a startup message in the result display naming the file and the problem, and
+   copy the original file to a backup name (e.g., `unimate.json.bak`) before any save replaces it.
+   All-or-nothing contact validation is kept.
+
+4. **Fall back to default GUI settings when preferences are null.**
+   `JsonUserPrefsStorage` accepts `{"guiSettings":null}`, but `new ModelManager(..., userPrefs)` then
+   throws `NullPointerException` through `UserPrefs#setGuiSettings`. `MainApp#initPrefs` catches
+   only `DataLoadingException`, so this later error is not recovered. This was reproduced at the
+   storage and model level. The User Guide's remedy is to delete `preferences.json`.
+   *Planned fix:* treat a missing or null `guiSettings` as default `GuiSettings` when reading
+   preferences, and log a warning.
+
+5. **Report, instead of silently removing, control characters in pasted input.**
+   `Notes` rejects tabs and line breaks, but the command box is a single-line JavaFX `TextField`,
+   which strips them from pasted text before `CommandBox#handleCommandEntered` runs. Pasting
+   `Left<TAB>Right` into `note 1 ...` therefore saves `LeftRight`. The parser-level rejection still
+   applies to text that reaches it by other routes. The User Guide documents the stripping.
+   *Planned fix:* add a `TextFormatter` to the command box that replaces pasted tabs and line breaks
+   with spaces, so words stay separated and the user can see the result before pressing Enter.

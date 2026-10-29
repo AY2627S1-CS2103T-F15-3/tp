@@ -9,21 +9,21 @@ participant ":CommandResult" as CommandResult LOGIC_COLOR
 end box
 
 box Model MODEL_COLOR_T1
-participant ":PersonContainsKeywordsPredicate" as Predicate MODEL_COLOR
 participant ":Model" as Model MODEL_COLOR
+participant ":PersonContains\nKeywordsPredicate" as Predicate MODEL_COLOR
 end box
 
-[-> Parser : parse "alex david"
+[-> Parser : parse "Alice Computer"
 activate Parser
 
 create Predicate
-Parser -> Predicate : ["alex", "david"]
+Parser -> Predicate : keywords
 activate Predicate
 Predicate --> Parser
 deactivate Predicate
 
 create Command
-Parser -> Command : predicate
+Parser -> Command : find with predicate
 activate Command
 Command --> Parser
 deactivate Command
@@ -45,7 +45,7 @@ Model --> Command
 deactivate Model
 
 create CommandResult
-Command -> CommandResult : "N person(s) listed!"
+Command -> CommandResult : feedback
 activate CommandResult
 CommandResult --> Command
 deactivate CommandResult

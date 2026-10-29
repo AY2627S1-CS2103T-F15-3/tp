@@ -42,6 +42,15 @@ tables, actual screenshots and UML labels at normal reading size. A diagram that
 still needs visual inspection for readable text, crossings and clipping. Check both guides from a
 fresh build so cached or incomplete assets cannot hide a publication problem.
 
+<box type="info" seamless>
+
+**Note:** Judge diagram readability at a stated browser window width. The text column is about 940px
+wide at 1280px. At 1300px the right-hand page outline appears and the column drops to about 660px,
+returning to about 960px only at 1600px. In that range, wide diagrams are scaled down. This comes from
+the site layout, not from an individual diagram. See the [documentation guide](Documentation.md) for
+the column widths.
+</box>
+
 ## Performance and release record
 
 The DG's 1,000-contact and one-second response targets are requirements, not measured guarantees.

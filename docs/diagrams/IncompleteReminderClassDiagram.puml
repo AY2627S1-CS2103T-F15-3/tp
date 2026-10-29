@@ -31,12 +31,9 @@ Person --> "1\nphone" Phone
 Person --> "1\nemail" Email
 
 note bottom of Person
-  Both value strings empty: incomplete.
-  Either contact method present: complete.
-  Phone and Email remain non-null and can be shared.
+  Incomplete when both values are empty.
 end note
 note top of SystemTag
-  Only the INCOMPLETE enum constant is shown.
-  Derived independently of UPDATE; not stored in Person.tags.
+  Only INCOMPLETE shown; derived, not stored.
 end note
 @enduml
