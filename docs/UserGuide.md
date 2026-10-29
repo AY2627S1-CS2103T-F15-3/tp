@@ -106,7 +106,7 @@ fields move below the phone, address and email fields.
 | Shift+Tab from an expandable value | Focus the previous expandable value; before the first, return to the list. |
 | Shift+Tab from the list | Return to the command box. |
 | Enter / Space on an expandable value | Expand or collapse that value. |
-| Ctrl+Tab from the command box | Focus the message area to read long feedback. Use Up / Down or Page Up / Page Down to scroll it (Command+Down jumps to the end on macOS). |
+| Ctrl+Tab from the command box | Focus the message area to read long feedback. Use Up / Down or Page Up / Page Down to scroll it (Command+Down jumps to the end on macOS). The message area shows **no focus outline**; see the note below. |
 | Ctrl+Shift+Tab from the message area | Return to the command box. |
 
 Expandable values, including long tags, have an orange dotted outline when focused. Their order is:
@@ -116,7 +116,17 @@ than the viewport, it shows the start of that value. With an empty list, Tab and
 in the command box.
 Up/Down in the command box still recalls command history.
 Plain Tab and Shift+Tab never enter the message area; use Ctrl+Tab for that. The Ctrl+Tab route
-was checked on macOS; on Windows and Linux, clicking inside the message area also focuses it.
+works on macOS and Linux; it has not yet been tested on Windows. Clicking inside the message area also focuses it.
+
+<box type="warning" seamless>
+
+**Caution:** The message area does **not** show an outline or highlight when it has focus, so nothing
+on screen changes when Ctrl+Tab moves focus there.
+
+* To check where focus is, press Down: if the message text scrolls, the message area has focus.
+* Typing does nothing while the message area has focus. Press Ctrl+Shift+Tab, or click the command
+  box, before typing your next command.
+</box>
 
 --------------------------------------------------------------------------------------------------------------------
 
@@ -159,6 +169,11 @@ Shows a message explaining how to access the help page.
 ![help message](images/helpMessage.png)
 
 Format: `help`
+
+* The help window shows the User Guide's web address and a **Copy URL** button. It opens and copies
+  the address even without an internet connection.
+* Opening the copied address in a web browser needs an internet connection.
+* Offline use was tested on macOS and Linux, and works as described. It has not yet been tested on Windows.
 
 
 ### Adding a person: `add`
@@ -569,7 +584,8 @@ Saving identical text reports `Note unchanged for NAME.` and creates no undo ste
 
 A small orange icon at the card's top right indicates a saved note. Use [`shownote`](#viewing-a-contact-s-note-shownote)
 to read it; scroll vertically in the message area to read long feedback. With the keyboard, press
-Ctrl+Tab to focus the message area (see [Using the contact list](#using-the-contact-list)).
+Ctrl+Tab to focus the message area (see [Using the contact list](#using-the-contact-list)). The message
+area shows no focus outline, so press Ctrl+Shift+Tab to return to the command box before typing.
 
 ### Viewing a contact's note: `shownote`
 
@@ -1060,6 +1076,8 @@ If UniMate cannot write the data file, for example because the file or its folde
 * `Could not save data to file ... due to insufficient permissions to write to the file or the folder.`
 * `Could not save data due to the following error: ...`
 
+The read-only case was tested on macOS and Linux, and behaves as described. It has not yet been tested on Windows.
+
 If the command changed your contacts, the error explains that the change was applied but not saved,
 how to revert it, and how to save it after fixing the problem. It names `undo` to revert an ordinary
 change, or `redo` after a failed `undo`. A command that leaves contacts unchanged, such as `list`,
@@ -1119,13 +1137,34 @@ the backup. See [Editing the data file](#editing-the-data-file) for the file loc
 
 --------------------------------------------------------------------------------------------------------------------
 
-## Known issues
+## Known issues and limitations
 
-1. **When using multiple screens**, if you move the application to a secondary screen, and later switch to using only the primary screen, the GUI will open off-screen. The remedy is to delete the `preferences.json` file created by the application before running the application again.
+This section lists every known issue and limitation of the current release. Each entry gives a
+remedy or workaround where one exists.
+
+### Window and display
+
+1. **When using multiple screens**, if you move the application to a secondary screen, and later switch to using only the primary screen, the GUI will open off-screen. The remedy is to delete the `preferences.json` file created by the application before running the application again. Other multiple-monitor setups have not been tested.
 2. **If you minimize the Help Window** and then run the `help` command (or use the `Help` menu, or the keyboard shortcut `F1`) again, the original Help Window will remain minimized, and no new Help Window will appear. The remedy is to manually restore the minimized Help Window.
-3. **If saving the data file fails**, the command's change is still applied inside UniMate. The save error replaces the usual success message, and says that the change is applied but not saved. Running `undo` at this point reverts that change. The remedy is to fix the cause of the error and then run any successful command, such as `list`, to save your contacts. See [Saving the data](#saving-the-data).
-4. **If the data file cannot be loaded**, UniMate opens with an empty contact list without showing a warning, and the next successful command overwrites the file. The remedy is to close the window without running a command, then repair or restore the file. See [Editing the data file](#editing-the-data-file).
-5. **An extremely long email address** (thousands of characters, far beyond any real address) may be accepted and saved, but UniMate then fails to start on the next launch. The remedy is to close UniMate, edit `data/unimate.json` to shorten or remove that email, then relaunch. Keep backups before testing unusual input.
-6. **If `preferences.json` contains `"guiSettings": null`**, UniMate may fail to start instead of using default window settings. The remedy is to delete `preferences.json` before launching again; UniMate recreates it with defaults.
-7. **Tabs and line breaks in pasted text are removed** by the command box before submission, so pasted words can be joined. See [`note`](#adding-or-replacing-a-contact-s-note-note).
-8. **Some valid-looking email domains are rejected.** If the last part of the domain (after the final `.`) contains a hyphen, it needs at least two letters or digits on one side of a hyphen. For example, `a@x.y-z` and `a@a-b` are rejected, while `a@x.ab-c` is accepted. The error message does not mention this rule. There is no remedy other than omitting or changing that email; see the [email field rules](#adding-a-person-add).
+3. **If `preferences.json` contains `"guiSettings": null`**, UniMate may fail to start instead of using default window settings. The remedy is to delete `preferences.json` before launching again; UniMate recreates it with defaults.
+
+### Keyboard
+
+4. **The message area shows no focus outline.** After Ctrl+Tab moves focus to the message area, nothing on screen changes. The remedy is to press Down to check (the message scrolls if it has focus), and press Ctrl+Shift+Tab or click the command box before typing. See [Using the contact list](#using-the-contact-list).
+5. **Ctrl+Tab into the message area is standard Java behaviour, not a UniMate shortcut.** UniMate handles only plain Tab and Shift+Tab. Ctrl+Tab and Ctrl+Shift+Tab work because the Java window toolkit that UniMate uses moves focus between controls with them. The route works on macOS and Linux but has not yet been tested on Windows. Clicking inside the message area also focuses it.
+6. **Tabs and line breaks in pasted text are removed** by the command box before submission, so pasted words can be joined. See [`note`](#adding-or-replacing-a-contact-s-note-note).
+
+### Data and saving
+
+7. **If saving the data file fails**, the command's change is still applied inside UniMate. The save error replaces the usual success message, and says that the change is applied but not saved. Running `undo` at this point reverts that change. The remedy is to fix the cause of the error and then run any successful command, such as `list`, to save your contacts. See [Saving the data](#saving-the-data).
+8. **While saving fails, typed `help` and `exit` do not work.** UniMate saves after every command, so these commands show the save error instead of opening the help window or closing. Press F1 or use the **Help** menu to open help, and use the window's close button to exit. Closing loses any unsaved changes.
+9. **If the data file cannot be loaded**, UniMate opens with an empty contact list without showing a warning, and the next successful command overwrites the file. The remedy is to close the window without running a command, then repair or restore the file. See [Editing the data file](#editing-the-data-file).
+
+### Input
+
+10. **Some valid-looking email domains are rejected.** If the last part of the domain (after the final `.`) contains a hyphen, it needs at least two letters or digits on one side of a hyphen. For example, `a@x.y-z` and `a@a-b` are rejected, while `a@x.ab-c` is accepted. The error message does not mention this rule. There is no remedy other than omitting or changing that email; see the [email field rules](#adding-a-person-add).
+11. **An extremely long email address** (thousands of characters, far beyond any real address) may be accepted and saved, but UniMate then fails to start on the next launch. The remedy is to close UniMate, edit `data/unimate.json` to shorten or remove that email, then relaunch. Keep backups before testing unusual input.
+
+### Platforms not yet tested
+
+12. **Windows has not yet been tested** for the offline help window, the read-only data-file error or Ctrl+Tab. All three work on macOS and Linux. **Multiple monitors** have not been tested beyond the issue above. These features may behave differently in untested setups.

@@ -272,7 +272,7 @@ are omitted. `m:Model` is implemented by `ModelManager` and supplies the filtere
 
 `LogicManager` saves through `Storage` after successful execution, including unchanged-note results.
 Invalid input fails before mutation. Save errors leave the in-memory change and history intact;
-see [history limitations](#known-limitations).
+see [history limitations](#appendix-known-limitations).
 
 The existing result display wraps and scrolls long feedback. At INFO level, `LogicManager` logs the
 command type and `MainWindow` logs `CommandResult#getLogSummary`, rather than raw input or full note
@@ -427,7 +427,7 @@ The sequence below focuses on contact replacement and history for
 rather than repeated as lifelines. Index `1` refers to the currently displayed list, including
 `find`, `filter`, `listfav` and sorted views. `EditCommand` checks the index and duplicate name before
 changing the model. A failed save does not roll back an applied change; see
-[history limitations](#known-limitations).
+[history limitations](#appendix-known-limitations).
 
 <puml src="diagrams/EditContactSequenceDiagram.puml" alt="Edit command interaction with the model for changed and unchanged contacts" />
 
@@ -986,7 +986,7 @@ Favourite commands distinguish a stored state change from a view change:
 Both indexed commands validate the displayed index before mutation and preserve the contact's other
 fields, including its update date. Invalid indices and favourite-state errors leave the data, view
 and history unchanged. A failed save does not roll back an applied change; see
-[history limitations](#known-limitations).
+[history limitations](#appendix-known-limitations).
 The [filtering section](#filtering-contacts-by-academic-fields-and-tags) explains the shared view pipeline.
 
 #### Design overview and relevant classes
@@ -1322,21 +1322,8 @@ To the user, such a change only makes `undo` and `redo` report that there is not
 
 #### Known limitations
 
-1. **The history has no size limit.**
-   * every recorded change stores a full copy of the contact list, with no automatic cap or eviction of the oldest snapshots
-   * undo and redo still move entries between the stacks, and a new change clears the redo branch
-   * memory use grows with the number of contacts times the number of changes in a session
-   * this is acceptable for the expected size of a student's contact list; a future version could cap the number of entries and drop the oldest snapshot when the cap is reached
-
-2. **A failed save does not roll back the change.**
-   * commands commit to the history in `Command#execute`, and `LogicManager#execute` saves to storage only afterwards
-      * if saving throws an `IOException`, `LogicManager` throws a `CommandException` with `FILE_OPS_ERROR_FORMAT` or `FILE_OPS_PERMISSION_ERROR_FORMAT`
-   * the in-memory change and its history entry remain, and the UI shows only the save error instead of the command's success message, so a following `undo` reverts that change
-   * to make this clear, `LogicManager` copies the person list (a shallow copy, as `Person` is immutable) before running the command, and appends `MESSAGE_UNSAVED_CHANGE` to the save error if the list changed
-   * the note says the change is applied but not saved, that it is lost if the app closes now, and which command would revert it: `redo` after a failed `undo`, otherwise `undo`
-   * commands that leave the data unchanged, such as `list`, get no note, because they have no change to describe
-   * any later successful command, including `list`, saves the current data again
-   * the user guide documents this under [Saving the data](UserGuide.md#saving-the-data)
+The history has no size limit, and a failed save does not roll back the change. Both are described
+in [Appendix: Known limitations](#appendix-known-limitations).
 
 #### Design considerations
 
@@ -1344,7 +1331,7 @@ To the user, such a change only makes `undo` and `redo` report that there is not
 
 * **Alternative 1 (current choice):** Store a copy of the whole contact data state.
   * Pros: Easy to implement and to verify, and works the same for any command.
-  * Cons: Uses more memory as the number of contacts and history entries grows. The history is not trimmed (see [Known limitations](#known-limitations)).
+  * Cons: Uses more memory as the number of contacts and history entries grows. The history is not trimmed (see [Known limitations](#appendix-known-limitations)).
 * **Alternative 2:** Each command stores how to reverse itself (e.g. `add` stores the person to remove).
   * Pros: Uses less memory.
   * Cons: Every command needs its own correct reversal logic.
@@ -1984,6 +1971,17 @@ after an edit, undo, redo or restart before using its displayed index again.
 
    2. Relaunch the app from the same test folder with `java -jar unimate.jar`.
        Expected: The most recent window size and location are retained.
+<br>
+3. Help window without an internet connection
+
+   **Result:** Passed on macOS and Linux (v1.5 development build). Not yet tested on Windows.
+
+   1. Turn off Wi-Fi and unplug any network cable. Launch the app.
+   2. Press F1, or run `help`.
+      Expected: The help window opens and shows the User Guide's web address.
+   3. Click **Copy URL**, close the help window, then paste into the command box.
+      Expected: The exact User Guide address is pasted. UniMate shows no network error. Clear the
+      command box and turn the network back on.
 
 ### Testing contact-list interaction
 
@@ -2887,6 +2885,28 @@ Use only the separate test folder for these checks. The paths below are relative
    3. Close the window using its close button. Copy `data/addressbook.json` to `data/unimate.json`, then relaunch and run `find SaveCheck`.
       Expected: The saved contact and its academic fields and tag load correctly. The old file is unchanged. Restore the backup when finished.
 
+### Testing a permission-denied save
+
+**Result:** Passed on macOS and Linux (v1.5 development build). On macOS, the permission message
+appeared, `PermCheck` was shown in memory, and the read-only file was left unchanged. Not yet tested
+on Windows.
+
+Use a disposable test folder only.
+
+1. Launch the app and run `list` once so that `data/unimate.json` exists, then close the app.
+2. Make the data file read-only:
+   * macOS/Linux: run `chmod 444 data/unimate.json` from the test folder.
+   * Windows: right-click `data\unimate.json`, choose **Properties**, tick **Read-only**, then click **OK**.
+3. Relaunch the app and run `add n/PermCheck a/NUS`.
+   Expected: The contacts load normally at startup. The command shows `Could not save data to file ...
+   due to insufficient permissions to write to the file or the folder.`, followed by the explanation that
+   the change is applied but not saved. `PermCheck` appears in the list.
+4. Close the app and open `data/unimate.json` in a text editor.
+   Expected: It does not contain `PermCheck`.
+5. Make the file writable again (`chmod 644 data/unimate.json`, or untick **Read-only** on Windows).
+   Relaunch, run `add n/PermCheck a/NUS`, close and relaunch.
+   Expected: The command succeeds, and `PermCheck` is still present after relaunching.
+
 ### Testing save-failure recovery
 
 Use only a disposable copy with a valid backup; this scenario intentionally blocks writing.
@@ -2918,8 +2938,8 @@ blocked save while a valid session is already running.
 
 Team size: 6
 
-The following are known limitations of the current release. Each is documented here, and in the
-User Guide where users can encounter it, rather than left unstated.
+Each item below is a planned fix for a limitation listed in
+[Appendix: Known limitations](#appendix-known-limitations).
 
 1. **Make email validation stack-safe for extremely long input.**
    `Email.VALIDATION_REGEX` uses nested repeated groups such as `([+_.-][^\W_]+)*`. Java's regex
@@ -2967,3 +2987,70 @@ User Guide where users can encounter it, rather than left unstated.
    applies to text that reaches it by other routes. The User Guide documents the stripping.
    *Planned fix:* add a `TextFormatter` to the command box that replaces pasted tabs and line breaks
    with spaces, so words stay separated and the user can see the result before pressing Enter.
+
+6. **Show a focus outline on the message area.**
+   Ctrl+Tab moves focus to the `ResultDisplay` text area, but nothing on screen shows it. The
+   `.result-display` rule in `DarkTheme.css` replaces the text area's background with one flat colour
+   and zero insets, and JavaFX draws a text area's focus ring as part of that background. This falls
+   short of the requirement that focus remain visible (non-functional requirement 3). Keyboard
+   scrolling and Ctrl+Shift+Tab still work, and the User Guide explains how to check focus.
+   *Planned fix:* add a `.result-display:focused` rule that draws a border in the existing
+   `-fx-focus-color` (orange), matching the outline used for expandable contact values.
+
+--------------------------------------------------------------------------------------------------------------------
+
+## Appendix: Known limitations
+
+This appendix lists every known limitation of the current release. Limitations users can meet are
+also listed in the User Guide's [Known issues and limitations](UserGuide.md#known-issues-and-limitations).
+
+### Limitations with a planned fix
+
+These are described in detail, with their planned fixes, in
+[Appendix: Planned enhancements](#appendix-planned-enhancements).
+
+| Limitation | Planned enhancement |
+| --- | --- |
+| An extremely long email can overflow the regex stack, so a saved file stops the next launch. | 1 |
+| A final domain label containing a hyphen needs two characters on one side, so `a@x.y-z` is rejected. | 2 |
+| A data file that fails to load gives no warning, and the next successful command overwrites it. | 3 |
+| `"guiSettings": null` in `preferences.json` throws at model construction instead of using defaults. | 4 |
+| The command box silently removes pasted tabs and line breaks. | 5 |
+| The message area shows no focus outline. | 6 |
+
+### Other limitations
+
+1. **The history has no size limit.**
+   * every recorded change stores a full copy of the contact list, with no automatic cap or eviction of the oldest snapshots
+   * undo and redo still move entries between the stacks, and a new change clears the redo branch
+   * memory use grows with the number of contacts times the number of changes in a session
+   * this is acceptable for the expected size of a student's contact list; a future version could cap the number of entries and drop the oldest snapshot when the cap is reached
+
+2. **A failed save does not roll back the change.**
+   * commands commit to the history in `Command#execute`, and `LogicManager#execute` saves to storage only afterwards
+      * if saving throws an `IOException`, `LogicManager` throws a `CommandException` with `FILE_OPS_ERROR_FORMAT` or `FILE_OPS_PERMISSION_ERROR_FORMAT`
+   * the in-memory change and its history entry remain, and the UI shows only the save error instead of the command's success message, so a following `undo` reverts that change
+   * to make this clear, `LogicManager` copies the person list (a shallow copy, as `Person` is immutable) before running the command, and appends `MESSAGE_UNSAVED_CHANGE` to the save error if the list changed
+   * the note says the change is applied but not saved, that it is lost if the app closes now, and which command would revert it: `redo` after a failed `undo`, otherwise `undo`
+   * commands that leave the data unchanged, such as `list`, get no note, because they have no change to describe
+   * any later successful command, including `list`, saves the current data again
+   * the user guide documents this under [Saving the data](UserGuide.md#saving-the-data)
+
+3. **Ctrl+Tab into the message area is not implemented by UniMate.**
+   * `ContactListNavigation#handleTab` consumes only plain Tab and Shift+Tab. It returns early when Ctrl, Alt or Meta is held, leaving Ctrl+Tab to JavaFX's default focus traversal.
+   * JavaFX binds Ctrl+Tab and Ctrl+Shift+Tab to "next/previous control", because a text area normally keeps plain Tab for typing.
+   * The default order follows `MainWindow.fxml`: command box, then `ResultDisplay`, then the contact list. `ResultDisplay`'s `TextArea` is focus-traversable by default, so Ctrl+Tab from the command box reaches it.
+   * The route is fragile: reordering the layout, making the text area non-traversable or consuming Ctrl+Tab in `handleTab` would remove it silently. No automated test covers it.
+   * A future version could handle Ctrl+Tab explicitly in `ContactListNavigation` and add a GUI test for the command box → message area → command box route.
+
+4. **Typed `help` and `exit` do not work while saving fails.**
+   * `LogicManager#execute` saves after every command, including `help` and `exit`. If saving throws, it raises a `CommandException`.
+   * `MainWindow#executeCommand` opens the help window or exits only after `logic.execute` returns, so neither happens.
+   * F1, the **Help** menu and the window's close button do not go through `Logic` and still work.
+   * A future version could skip saving for commands that cannot change data, such as `help`, `exit`, `list` and `find`.
+
+5. **Untested platforms and requirements.**
+   * Windows has not yet been tested for the offline help window, the permission-denied save or Ctrl+Tab; all three pass on macOS and Linux.
+   * Multiple-monitor setups have not been tested. The only known multi-monitor issue is the off-screen window inherited from AddressBook-Level3, documented in the User Guide.
+   * The null-preferences startup failure (planned enhancement 4) was reproduced at the storage and model level, but not by launching the full app.
+   * The one-second response target with 1,000 contacts (non-functional requirement 2) has not been measured end to end, including UI rendering.
