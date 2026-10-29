@@ -735,7 +735,7 @@ Examples:
 
 *  `edit 2 n/Betsy Crower t/` Edits the name of the 2nd person to be `Betsy Crower` and clears all existing tags.
 
-<!-- @@author Chan Lok Tung -->
+<!-- @@author sel-couth-ene -->
 
 ### Locating persons by name, major or class year: `find`
 
@@ -922,7 +922,7 @@ Format: `clear`
 **Caution:** `clear` removes all your contacts. You can bring them back with [`undo`](#undoing-a-change-undo), but only while UniMate is still open: undo history is cleared when you close UniMate.
 </box>
 
-<!-- @@author Chan Lok Tung -->
+<!-- @@author sel-couth-ene -->
 
 ### Undoing a change: `undo`
 

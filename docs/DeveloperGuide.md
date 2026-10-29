@@ -833,6 +833,8 @@ from permanently disabling a reminder.
 
 #### Add/edit behaviour and validation
 
+<!-- @@author zruixuan -->
+
 * **Model:** Phone and email objects remain non-null throughout the model.
   * `Phone.isValidPhone` and `Email.isValidEmail` accept exactly the empty string in addition to their previous valid values; whitespace-only values remain invalid at the model layer.
   * `ParserUtil.parsePhone` and `parseEmail` still reject a trimmed empty value, preserving malformed-input feedback when an optional prefix is explicitly supplied to `add`.
@@ -844,11 +846,15 @@ from permanently disabling a reminder.
   * Notes, favourite and tag commands retain the date.
   * Sorting, searching and list commands retain their existing view-only behaviour.
 
+<!-- @@author -->
+
 #### Rendering and refresh
 
 Rendering is the [shared reminder path](#automatic-system-reminders). The `INCOMPLETE` tooltip asks the user to add a phone number or email address, and missing values display as `Not specified`. Filling either contact method removes `INCOMPLETE`; clearing the last one adds it. The same edit can independently remove `UPDATE`, because it refreshes the profile date.
 
 #### JSON compatibility and design considerations
+
+<!-- @@author zruixuan -->
 
 The JSON shape is unchanged:
 
@@ -856,6 +862,8 @@ The JSON shape is unchanged:
 * Missing/null values load as unspecified; malformed non-empty strings still fail validation.
 * Older complete contacts load as before, and name/address and other field validation are unchanged.
 * Favourite, notes, tags and `lastUpdated` retain their existing serialization and copy rules.
+
+<!-- @@author -->
 
 Reusing `EMPTY` value objects avoids nullable fields throughout commands and UI. Tests cover all four phone/email combinations, fill/clear transitions, failed input atomicity, legacy JSON, both reminders together and actual JavaFX rendering. See [Automatic incomplete reminders](UserGuide.md#automatic-incomplete-reminders).
 
@@ -929,11 +937,15 @@ How commands assign, preserve and store the date is covered in [Tracking and dis
 
 #### Reminder logic
 
+<!-- @@author zruixuan -->
+
 `Person#needsUpdate(today)` requires a known date preceding today and its one-year anniversary to be strictly before today.
 
 * Unknown dates produce no age-based reminder.
 * Exactly one year produces no reminder.
 * Calendar-year arithmetic uses `lastUpdated.plusYears(1)`, so a leap-day anniversary follows Java's calendar rule: `2024-02-29` reaches its anniversary on `2025-02-28`, with a reminder starting on `2025-03-01`.
+
+<!-- @@author -->
 
 `SystemTag.forPerson` appends `UPDATE` when this condition applies, independently of `INCOMPLETE`.
 
@@ -949,6 +961,8 @@ Similar to incomplete reminders, rendering uses the [shared reminder path](#auto
 
 The rationale for deriving reminders is the same as for incomplete reminders. Dates are kept separate from favourite state and notes, so a future command that reconstructs a `Person` must carry all three forward unless it intentionally updates one.
 
+<!-- @@author zruixuan -->
+
 Tests cover:
 
 * calendar boundaries
@@ -959,11 +973,15 @@ Tests cover:
 
 GUI tests run on the JavaFX application thread; the existing Linux CI virtual display ensures they execute when coverage is collected. See [Automatic update reminders](UserGuide.md#automatic-update-reminders) for user-facing behaviour.
 
+<!-- @@author -->
+
 ### Favourite contacts
 
 #### Class structure
 
 <puml src="diagrams/FavouriteContactsClassDiagram.puml" alt="Class structure of favourite contacts and list filtering" />
+
+<!-- @@author zruixuan -->
 
 The diagram separates stored state from view selection.
 
@@ -971,6 +989,8 @@ The diagram separates stored state from view selection.
 * `ListFavCommand` applies a `FavouritePredicate` that tests this flag without changing stored contacts or the current sorting.
 * Dashed arrows show dependencies, not retained references or execution order.
 * Shared command/filter supertypes, model infrastructure, persistence and UI classes are omitted to keep the feature view focused.
+
+<!-- @@author -->
 
 #### Operations and state
 
@@ -991,11 +1011,15 @@ The [filtering section](#filtering-contacts-by-academic-fields-and-tags) explain
 
 #### Design overview and relevant classes
 
+<!-- @@author zruixuan -->
+
 Favourite contacts use the existing command, model, storage and UI components.
 
 * `Person` holds an immutable `boolean favourite`, exposed through `isFavourite()`.
 * It defaults to `false` in the existing constructor; an overloaded constructor accepts an explicit state.
 * Favourite status participates in `equals` and `hashCode`, while `isSamePerson` continues to identify contacts by name.
+
+<!-- @@author -->
 
 | Class | Role in this feature |
 |-------|----------------------|
@@ -1007,6 +1031,8 @@ Favourite contacts use the existing command, model, storage and UI components.
 | `PersonCard`, `PersonListPanel` | Display the state and rebuild visible list-cell graphics when model contents change. |
 
 #### Command execution flow
+
+<!-- @@author zruixuan -->
 
 `fav` and `unfav`:
 
@@ -1031,7 +1057,11 @@ Errors:
 
 Because `fav` and `unfav` resolve their targets from that view, `unfav 1` after `listfav` acts on the first displayed favourite. Replacing it with a non-favourite causes the `FilteredList` to remove it immediately and reindex the remaining results. Existing `add` and `edit` behaviour still restores the full list; `tag` and `untag` retain the current predicate.
 
+<!-- @@author -->
+
 #### Data persistence
+
+<!-- @@author zruixuan -->
 
 * **JSON:** `JsonAdaptedPerson` writes the `favourite` boolean alongside the existing contact fields.
   * Its JSON creator accepts a nullable `Boolean` and uses `Boolean.TRUE.equals(favourite)`, so missing or null values in older data become `false`.
@@ -1042,7 +1072,11 @@ Because `fav` and `unfav` resolve their targets from that view, `unfav 1` after 
   * When adding future contact fields or commands that copy a `Person`, preserve both the favourite state and all other unaffected fields in that copy and in JSON conversion.
 * **Notes:** Notes and favourite status are preserved together by the combined `Person` constructor and JSON creator. `Person#withNotes` carries the existing favourite value through note changes, so note commands and their undo/redo history retain it.
 
+<!-- @@author -->
+
 #### GUI implementation
+
+<!-- @@author zruixuan -->
 
 * **Layout:** `PersonListCard.fxml` defines a `favouriteIcon` label next to the name, containing the solid heart character (`♥`).
   * `PersonCard` sets both its `visible` and `managed` properties from `person.isFavourite()`: ordinary contacts show no icon and reserve no icon space.
@@ -1053,6 +1087,8 @@ Because `fav` and `unfav` resolve their targets from that view, `unfav 1` after 
 * **Refresh:** `PersonListPanel` observes the displayed list. Its `PersonListCell#updateItem` creates a new `PersonCard`, using `getIndex() + 1` for numbering.
   * Model replacement therefore updates the heart immediately.
   * Removing a person from the favourite filter updates the visible cards and indices without a separate favourite list or refresh command.
+
+<!-- @@author -->
 
 #### Design considerations
 
@@ -1068,6 +1104,8 @@ For user-facing formats and list-switching examples, see [Marking a favourite co
 
 <puml src="diagrams/TagManagementClassDiagram.puml" alt="Class structure of tag and untag commands" />
 
+<!-- @@author zruixuan -->
+
 The diagram focuses on the shared tag representation:
 
 * A `Person` references a set of ordinary `Tag` values, and `TagCommand` and `UntagCommand` replace the person with tags added or removed.
@@ -1079,6 +1117,8 @@ Reading the diagram:
 * Small filled triangles beside association names indicate reading direction, whereas open arrowheads at association ends indicate navigation through stored references.
 * Dashed arrows show dependencies, not execution steps.
 * Parsing infrastructure and unrelated members and supertypes are omitted throughout these feature diagrams.
+
+<!-- @@author -->
 
 #### Current implementation
 
@@ -1102,6 +1142,8 @@ The `tag` command adds tags to a person in the currently displayed list. The `un
 
 #### Execution flow
 
+<!-- @@author zruixuan -->
+
 1. The command parsers convert the displayed index and requested tags before execution. For example, `tag 1 d/2 t/NOC` resolves `d/2` to `Classmate` and combines it with the validated custom tag `NOC`; `untag` accepts only names supplied through `t/`.
 2. Both commands resolve the contact against `Model#getFilteredPersonList` and replace it with a copy containing the updated tag set.
    * `TagCommand` adds requested tags; `UntagCommand` removes them.
@@ -1109,6 +1151,8 @@ The `tag` command adds tags to a person in the currently displayed list. The `un
    * The active filter and sort order remain in place, while the observable view reflects any changed membership.
 3. Success feedback starts with `Tagged person: ` or `Untagged person: ` and includes `Messages.format` output.
 4. The existing history and storage paths record and save actual changes; no-op tag operations do not create an undo step.
+
+<!-- @@author -->
 
 #### Validation and error handling
 
@@ -1128,17 +1172,23 @@ Both kinds use the same `Person.tags` field (`Set<Tag>`). Default indices are in
 
 **Aspect: Set-based, non-destructive updates**
 
+<!-- @@author zruixuan -->
+
 * `Person#getTags` returns an unmodifiable view.
 * Each command stores a defensive `Set.copyOf` of its input, copies the person's tags for the update, and replaces the `Person` rather than mutating its exposed set.
 * `addAll` preserves existing tags; `removeAll` preserves tags not requested for removal.
 * Duplicate additions and absent removals are no-ops that still return success.
 * Tag order is not guaranteed. Equality remains case-sensitive, so `NOC` and `noc` are distinct.
 
+<!-- @@author -->
+
 **Aspect: Compatibility with existing editing**
 
 The current `EditCommand` still supports replacing the entire tag set through `edit INDEX t/TAG`, and clearing it with `edit INDEX t/`. These operations have not been removed. `tag` and `untag` provide incremental changes; an empty `t/` is rejected by both.
 
 #### Long tag display and hover access
+
+<!-- @@author zruixuan -->
 
 * **Abbreviation:** `PersonCard#refreshTags` abbreviates ordinary tag names longer than `MAX_DISPLAYED_TAG_CHARACTERS` (20) before constructing their JavaFX `Label`: the first 20 characters are followed by `...`.
   * The full value remains in `Person#getTags`; custom/system name collisions retain their `(custom)` display suffix.
@@ -1153,6 +1203,8 @@ The current `EditCommand` still supports replacing the entire tag set through `e
   * Resizing the content container directly avoids assumptions about native window decorations, usable monitor size or asynchronous window-manager resize timing.
   * Separate tests retain real-window command/refresh/storage checks and verify that mouse-enter opens the tooltip and mouse-exit closes it.
   * No platform is excluded from these checks when a display is available.
+
+<!-- @@author -->
 
 For command formats and user-facing examples, see [Adding tags](UserGuide.md#adding-tags-to-a-person-tag) and [Removing tags](UserGuide.md#removing-tags-from-a-person-untag). Manual checks are listed under [Tagging and untagging a person](#tagging-and-untagging-a-person).
 
