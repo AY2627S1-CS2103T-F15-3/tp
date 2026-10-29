@@ -1156,6 +1156,10 @@ back up both data files. Copy `data/unimate.json` from the old launch folder int
 folder's `data` directory, replacing its file. Reopen UniMate and check your contacts before deleting
 the backup. See [Editing the data file](#editing-the-data-file) for the file location.
 
+**Q**: What happens if window settings are missing or null?<br>
+**A**: If `guiSettings` is missing or null in `preferences.json`, UniMate uses its default window
+size and position. Valid saved settings are preserved, and your contacts are unaffected.
+
 --------------------------------------------------------------------------------------------------------------------
 
 ## Known issues and limitations
@@ -1167,21 +1171,20 @@ remedy or workaround where one exists.
 
 1. **When using multiple screens**, if you move the application to a secondary screen, and later switch to using only the primary screen, the GUI will open off-screen. The remedy is to delete the `preferences.json` file created by the application before running the application again.
 2. **If you minimize the Help Window** and then run the `help` command (or use the `Help` menu, or the keyboard shortcut `F1`) again, the original Help Window will remain minimized, and no new Help Window will appear. The remedy is to manually restore the minimized Help Window.
-3. **If `preferences.json` contains `"guiSettings": null`**, UniMate may fail to start instead of using default window settings. The remedy is to delete `preferences.json` before launching again; UniMate recreates it with defaults.
 
 ### Keyboard
 
-4. **The message area shows no focus outline.** After Ctrl+Tab moves focus to the message area, nothing on screen changes. The remedy is to press Down to check (the message scrolls if it has focus), and press Ctrl+Shift+Tab or click the command box before typing. See [Using the contact list](#using-the-contact-list).
-5. **Ctrl+Tab into the message area is standard Java behaviour, not a UniMate shortcut.** UniMate handles only plain Tab and Shift+Tab. Ctrl+Tab and Ctrl+Shift+Tab work because the Java window toolkit that UniMate uses moves focus between controls with them. The route works on macOS, Linux and Windows. Clicking inside the message area also focuses it.
-6. **Tabs and line breaks in pasted text are removed** by the command box before submission, so pasted words can be joined. See [`note`](#adding-or-replacing-a-contact-s-note-note).
+3. **The message area shows no focus outline.** After Ctrl+Tab moves focus to the message area, nothing on screen changes. The remedy is to press Down to check (the message scrolls if it has focus), and press Ctrl+Shift+Tab or click the command box before typing. See [Using the contact list](#using-the-contact-list).
+4. **Ctrl+Tab into the message area is standard Java behaviour, not a UniMate shortcut.** UniMate handles only plain Tab and Shift+Tab. Ctrl+Tab and Ctrl+Shift+Tab work because the Java window toolkit that UniMate uses moves focus between controls with them. The route works on macOS, Linux and Windows. Clicking inside the message area also focuses it.
+5. **Tabs and line breaks in pasted text are removed** by the command box before submission, so pasted words can be joined. See [`note`](#adding-or-replacing-a-contact-s-note-note).
 
 ### Data and saving
 
-7. **If saving the data file fails**, contact changes already applied remain inside UniMate. The save error replaces the usual success message and explains which changes still need saving. For a change made by that command, it names `redo` after `undo`, or `undo` otherwise, to reverse it. To keep the changes, fix the saving problem and run `list` to retry. See [Saving the data](#saving-the-data).
-8. **If pending changes cannot be saved, `exit` keeps UniMate open.** Fix the saving problem, then run `list` to retry saving or `exit` to save and close. `help` still works. With no unsaved contact changes, `exit` works even when the data file is read-only. Using the window's close button discards unsaved changes.
-9. **If the data file cannot be loaded**, UniMate opens with an empty contact list without showing a warning, and a later save overwrites the file with the current in-memory contacts. The remedy is to close the window without running a command, then repair or restore the file. See [Editing the data file](#editing-the-data-file).
+6. **If saving the data file fails**, contact changes already applied remain inside UniMate. The save error replaces the usual success message and explains which changes still need saving. For a change made by that command, it names `redo` after `undo`, or `undo` otherwise, to reverse it. To keep the changes, fix the saving problem and run `list` to retry. See [Saving the data](#saving-the-data).
+7. **If pending changes cannot be saved, `exit` keeps UniMate open.** Fix the saving problem, then run `list` to retry saving or `exit` to save and close. `help` still works. With no unsaved contact changes, `exit` works even when the data file is read-only. Using the window's close button discards unsaved changes.
+8. **If the data file cannot be loaded**, UniMate opens with an empty contact list without showing a warning, and a later save overwrites the file with the current in-memory contacts. The remedy is to close the window without running a command, then repair or restore the file. See [Editing the data file](#editing-the-data-file).
 
 ### Input
 
-10. **Some valid-looking email domains are rejected.** If the last part of the domain (after the final `.`) contains a hyphen, it needs at least two letters or digits on one side of a hyphen. For example, `a@x.y-z` and `a@a-b` are rejected, while `a@x.ab-c` is accepted. The error message does not mention this rule. There is no remedy other than omitting or changing that email; see the [email field rules](#adding-a-person-add).
-11. **An extremely long email address** (thousands of characters, far beyond any real address) may be accepted and saved, but UniMate then fails to start on the next launch. The remedy is to close UniMate, edit `data/unimate.json` to shorten or remove that email, then relaunch. Keep backups before testing unusual input.
+9. **Some valid-looking email domains are rejected.** If the last part of the domain (after the final `.`) contains a hyphen, it needs at least two letters or digits on one side of a hyphen. For example, `a@x.y-z` and `a@a-b` are rejected, while `a@x.ab-c` is accepted. The error message does not mention this rule. There is no remedy other than omitting or changing that email; see the [email field rules](#adding-a-person-add).
+10. **An extremely long email address** (thousands of characters, far beyond any real address) may be accepted and saved, but UniMate then fails to start on the next launch. The remedy is to close UniMate, edit `data/unimate.json` to shorten or remove that email, then relaunch. Keep backups before testing unusual input.

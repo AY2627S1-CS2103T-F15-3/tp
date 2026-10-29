@@ -116,6 +116,25 @@ public class MainAppTest {
     }
 
     @Test
+    public void initPrefs_nullGuiSettings_modelInitializesWithoutChangingContacts() throws Exception {
+        FileUtil.writeToFile(userPrefsStorage.getUserPrefsFilePath(), "{\"guiSettings\":null}");
+        AddressBook contacts = getTypicalAddressBook();
+        addressBookStorage.saveAddressBook(contacts);
+        String originalJson = FileUtil.readFromFile(addressBookStorage.getAddressBookFilePath());
+
+        UserPrefs recovered = mainApp.initPrefs(userPrefsStorage);
+        Method initializer = MainApp.class.getDeclaredMethod("initModelManager",
+                Storage.class, ReadOnlyUserPrefs.class);
+        initializer.setAccessible(true);
+        mainApp.model = assertDoesNotThrow(() -> (Model) initializer.invoke(mainApp, mainApp.storage, recovered));
+
+        assertEquals(new GuiSettings(), mainApp.model.getGuiSettings());
+        assertEquals(contacts, mainApp.model.getAddressBook());
+        assertEquals(recovered, userPrefsStorage.readUserPrefs().orElseThrow());
+        assertEquals(originalJson, FileUtil.readFromFile(addressBookStorage.getAddressBookFilePath()));
+    }
+
+    @Test
     public void stop_updatedPreferences_savesPreferencesWithoutChangingContacts() throws Exception {
         UserPrefs originalPrefs = new UserPrefs();
         originalPrefs.setGuiSettings(new GuiSettings(640, 480, 10, 20));

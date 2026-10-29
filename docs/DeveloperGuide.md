@@ -164,6 +164,13 @@ The `Storage` component,
 * is implemented by `StorageManager`, which delegates the actual JSON file access to `JsonAddressBookStorage` and `JsonUserPrefsStorage` (one class per data file).
 * depends on some classes in the `Model` component (because the `Storage` component's job is to save/retrieve objects that belong to the `Model`)
 
+`JsonUserPrefsStorage#readUserPrefs` replaces explicitly null `guiSettings` with a default
+`GuiSettings` after deserialization. Missing settings already use the `UserPrefs` default; valid
+settings are preserved. This loading-boundary recovery keeps `UserPrefs#setGuiSettings(null)`
+invalid and prevents a null setting from reaching startup model initialization. Reading does not
+rewrite the file; the existing startup save persists the recovered defaults. Malformed JSON and
+null root values still follow the existing `DataLoadingException` recovery path.
+
 `FileUtil#writeToFile` writes UTF-8 content to a sibling temporary file, closes the stream, then
 replaces the destination using `ATOMIC_MOVE`. It does not fall back to a direct overwrite when
 atomic replacement is unsupported. A failed write, close or replacement preserves the saved file
@@ -3074,15 +3081,7 @@ Each item below is a planned fix for a limitation listed in
    copy the original file to a backup name (e.g., `unimate.json.bak`) before any save replaces it.
    All-or-nothing contact validation is kept.
 
-4. **Fall back to default GUI settings when preferences are null.**
-   `JsonUserPrefsStorage` accepts `{"guiSettings":null}`, but `new ModelManager(..., userPrefs)` then
-   throws `NullPointerException` through `UserPrefs#setGuiSettings`. `MainApp#initPrefs` catches
-   only `DataLoadingException`, so this later error is not recovered. This was reproduced at the
-   storage and model level. The User Guide's remedy is to delete `preferences.json`.
-   *Planned fix:* treat a missing or null `guiSettings` as default `GuiSettings` when reading
-   preferences, and log a warning.
-
-5. **Report, instead of silently removing, control characters in pasted input.**
+4. **Report, instead of silently removing, control characters in pasted input.**
    `Notes` rejects tabs and line breaks, but the command box is a single-line JavaFX `TextField`,
    which strips them from pasted text before `CommandBox#handleCommandEntered` runs. Pasting
    `Left<TAB>Right` into `note 1 ...` therefore saves `LeftRight`. The parser-level rejection still
@@ -3090,7 +3089,7 @@ Each item below is a planned fix for a limitation listed in
    *Planned fix:* add a `TextFormatter` to the command box that replaces pasted tabs and line breaks
    with spaces, so words stay separated and the user can see the result before pressing Enter.
 
-6. **Show a focus outline on the message area.**
+5. **Show a focus outline on the message area.**
    Ctrl+Tab moves focus to the `ResultDisplay` text area, but nothing on screen shows it. The
    `.result-display` rule in `DarkTheme.css` replaces the text area's background with one flat colour
    and zero insets, and JavaFX draws a text area's focus ring as part of that background. This falls
@@ -3116,9 +3115,8 @@ These are described in detail, with their planned fixes, in
 | An extremely long email can overflow the regex stack, so a saved file stops the next launch. | 1 |
 | A final domain label containing a hyphen needs two characters on one side, so `a@x.y-z` is rejected. | 2 |
 | A data file that fails to load gives no warning, and a later successful save overwrites it. | 3 |
-| `"guiSettings": null` in `preferences.json` throws at model construction instead of using defaults. | 4 |
-| The command box silently removes pasted tabs and line breaks. | 5 |
-| The message area shows no focus outline. | 6 |
+| The command box silently removes pasted tabs and line breaks. | 4 |
+| The message area shows no focus outline. | 5 |
 
 ### Other limitations
 
@@ -3145,5 +3143,4 @@ These are described in detail, with their planned fixes, in
    * A future version could handle Ctrl+Tab explicitly in `ContactListNavigation` and add a GUI test for the command box → message area → command box route.
 
 4. **Untested requirements.**
-   * The null-preferences startup failure (planned enhancement 4) was reproduced at the storage and model level, but not by launching the full app.
    * The one-second response target with 1,000 contacts (non-functional requirement 2) has not been measured end to end, including UI rendering.
