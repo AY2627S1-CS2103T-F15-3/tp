@@ -134,6 +134,7 @@ public class LastUpdatedDisplayTest {
         });
     }
 
+    //@@author aziz-Almarzooq
     @Test
     public void annotationsAndSort_preserveDisplayedProfileDate() throws Exception {
         runOnFxThread(() -> {
@@ -146,7 +147,9 @@ public class LastUpdatedDisplayTest {
             return null;
         });
     }
+    //@@author
 
+    //@@author aziz-Almarzooq
     @Test
     public void edit_refreshesDisplayedDate() throws Exception {
         runOnFxThread(() -> {
@@ -161,7 +164,9 @@ public class LastUpdatedDisplayTest {
             return null;
         });
     }
+    //@@author
 
+    //@@author aziz-Almarzooq
     @Test
     public void undo_restoresOriginalDisplayedAndSavedDate() throws Exception {
         runOnFxThread(() -> {
@@ -174,6 +179,7 @@ public class LastUpdatedDisplayTest {
             return null;
         });
     }
+    //@@author
 
     @Test
     public void redo_restoresEditedDisplayedAndSavedDate() throws Exception {
@@ -189,6 +195,7 @@ public class LastUpdatedDisplayTest {
         });
     }
 
+    //@@author aziz-Almarzooq
     @Test
     public void restart_preservesSavedDates() throws Exception {
         runOnFxThread(() -> {
@@ -205,11 +212,14 @@ public class LastUpdatedDisplayTest {
             return null;
         });
     }
+    //@@author
 
+    //@@author aziz-Almarzooq
     private Person editAlice() throws Exception {
         logic.execute("edit 1 p/91234567");
         return model.getFilteredPersonList().get(0);
     }
+    //@@author
 
     private Scene listScene(Model model) {
         PersonListPanel panel = new PersonListPanel(model.getFilteredPersonList());
@@ -234,9 +244,11 @@ public class LastUpdatedDisplayTest {
         assertTrue(label.getHeight() > 0);
     }
 
+    //@@author aziz-Almarzooq
     private Label dateLabel(Node card) {
         return assertInstanceOf(Label.class, card.lookup("#lastUpdated"));
     }
+    //@@author
 
     private void runOnFxThread(java.util.concurrent.Callable<Void> action) throws Exception {
         FutureTask<Void> task = new FutureTask<>(action);

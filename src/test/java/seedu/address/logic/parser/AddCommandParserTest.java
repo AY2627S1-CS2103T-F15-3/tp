@@ -83,6 +83,7 @@ public class AddCommandParserTest {
         }
     }
 
+    //@@author aziz-Almarzooq
     @Test
     public void parse_favouriteFlagWithOtherOptionalFields_success() {
         Person expected = new PersonBuilder().withName("Alice").withAddress("NUS").withPhone("").withEmail("")
@@ -94,7 +95,9 @@ public class AddCommandParserTest {
                 .withTags().withFavourite(true).build();
         assertParseSuccess(parser, " n/Alice a/NUS f/", new AddCommand(minimal));
     }
+    //@@author
 
+    //@@author aziz-Almarzooq
     @Test
     public void parse_favouriteFlagWithValue_failure() {
         String expectedMessage = "The f/ flag does not take a value. "
@@ -103,14 +106,18 @@ public class AddCommandParserTest {
             assertParseFailure(parser, NAME_DESC_BOB + ADDRESS_DESC_BOB + " f/" + value, expectedMessage);
         }
     }
+    //@@author
 
+    //@@author aziz-Almarzooq
     @Test
     public void parse_addressContainingEmbeddedFavouritePrefix_preservesAddressWithoutFavourite() {
         Person expected = new PersonBuilder().withName("Alice").withAddress("Blockf/3")
                 .withPhone("").withEmail("").build();
         assertParseSuccess(parser, " n/Alice a/Blockf/3", new AddCommand(expected));
     }
+    //@@author
 
+    //@@author aziz-Almarzooq
     @Test
     public void parse_addressFollowedByFavouritePrefix_recognisesFlag() {
         Person expected = new PersonBuilder().withName("Alice").withAddress("Block")
@@ -119,12 +126,16 @@ public class AddCommandParserTest {
         assertParseSuccess(parser, " n/Alice a/Block f/ p/91234567",
                 new AddCommand(new PersonBuilder(expected).withPhone("91234567").build()));
     }
+    //@@author
 
+    //@@author aziz-Almarzooq
     @Test
     public void parse_addressContainingSpaceBeforeFavouritePrefixWithValue_failure() {
         assertParseFailure(parser, " n/Alice a/Block f/3", AddCommandParser.MESSAGE_FAVOURITE_FLAG_VALUE);
     }
+    //@@author
 
+    //@@author aziz-Almarzooq
     @Test
     public void parse_repeatedFavouriteFlag_failure() {
         String expectedMessage = Messages.getErrorMessageForDuplicatePrefixes(PREFIX_FAVOURITE);
@@ -132,6 +143,7 @@ public class AddCommandParserTest {
             assertParseFailure(parser, NAME_DESC_BOB + ADDRESS_DESC_BOB + flags, expectedMessage);
         }
     }
+    //@@author
 
     @Test
     public void parse_repeatedNonTagValue_failure() {

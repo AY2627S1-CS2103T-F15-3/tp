@@ -203,7 +203,9 @@ public class PersonCard extends UiPart<Region> {
         graduationYearTextSetter.accept(getValueOrFallback(person.getGraduationYear().value));
     }
 
+    //@@author aziz-Almarzooq
     private static String getValueOrFallback(String value) {
         return value.isEmpty() ? "Not specified" : value;
     }
+    //@@author
 }

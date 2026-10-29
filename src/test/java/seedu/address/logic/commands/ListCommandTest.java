@@ -53,12 +53,14 @@ public class ListCommandTest {
                 expectedModel);
     }
 
+    //@@author aziz-Almarzooq
     @Test
     public void execute_emptyAddressBook_reportsZeroContacts() {
         Model emptyModel = new ModelManager();
         assertCommandSuccess(new ListCommand(), emptyModel, expectedFeedback(0), new ModelManager());
         assertFalse(emptyModel.canUndoAddressBook());
     }
+    //@@author
 
     @Test
     public void execute_afterSearchFilterAndFavourites_restoresEveryContact() throws Exception {
