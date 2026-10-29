@@ -33,7 +33,8 @@
         "continuous-integration-ci": "Continuous integration (CI)",
         "code-coverage": "Code coverage",
         "repository-wide-checks": "Repository-wide checks",
-        "making-a-release": "Making a release"
+        "making-a-release": "Making a release",
+        "release-verification": "Release verification"
       },
       "headingKeywords": {}
     },
@@ -57,7 +58,7 @@
         "parsing-add-prefixes": "Parsing add prefixes",
         "adding-academic-fields": "Adding academic fields",
         "identifying-an-existing-contact-when-add-rejects-a-duplicate": "Identifying an existing contact when add rejects a duplicate",
-        "warning-about-shared-phone-numbers-or-email-addresses-when-adding": "Warning about shared phone numbers or email addresses when adding",
+        "warning-when-an-add-introduces-same-contact-details": "Warning when an add introduces same contact details",
         "editing-academic-fields": "Editing academic fields",
         "searching-by-academic-fields": "Searching by academic fields",
         "filtering-contacts-by-academic-fields-and-tags": "Filtering contacts by academic fields and tags",
@@ -66,6 +67,7 @@
         "deleting-one-or-more-contacts": "Deleting one or more contacts",
         "listing-all-saved-contacts": "Listing all saved contacts",
         "displaying-academic-fields-in-the-contact-list": "Displaying academic fields in the contact list",
+        "automatic-system-reminders": "Automatic system reminders",
         "automatic-incomplete-reminders": "Automatic incomplete reminders",
         "tracking-and-displaying-contact-update-dates": "Tracking and displaying contact update dates",
         "automatic-update-reminders": "Automatic update reminders",
@@ -74,17 +76,21 @@
         "recording-contact-data-history": "Recording contact data history",
         "undo-and-redo-commands": "Undo and redo commands",
         "command-history-navigation": "Command history navigation",
-        "coming-soon": "Coming soon",
-        "proposed-data-archiving": "[Proposed] Data archiving",
         "documentation-logging-testing-dev-ops": "Documentation, logging, testing, dev-ops",
         "appendix-requirements": "Appendix: Requirements",
         "product-scope": "Product scope",
         "user-stories": "User stories",
         "use-cases": "Use cases",
         "non-functional-requirements": "Non-Functional Requirements",
+        "operating-constraints": "Operating constraints",
         "glossary": "Glossary",
         "appendix-instructions-for-manual-testing": "Appendix: Instructions for manual testing",
+        "choosing-a-test-scenario": "Choosing a test scenario",
         "launch-and-shutdown": "Launch and shutdown",
+        "testing-contact-list-interaction": "Testing contact-list interaction",
+        "testing-favourites": "Testing favourites",
+        "testing-derived-reminders": "Testing derived reminders",
+        "testing-command-history": "Testing command history",
         "testing-the-saved-contact-listing": "Testing the saved-contact listing",
         "identifying-duplicate-additions": "Identifying duplicate additions",
         "shared-phone-or-email-warnings-on-add": "Shared phone or email warnings on add",
@@ -99,9 +105,15 @@
         "tagging-and-untagging-a-person": "Tagging and untagging a person",
         "undoing-and-redoing-changes": "Undoing and redoing changes",
         "managing-contact-notes": "Managing contact notes",
-        "undoing-and-redoing-contact-changes": "Undoing and redoing contact changes",
+        "undoing-and-redoing-note-changes": "Undoing and redoing note changes",
         "tracking-contact-update-dates": "Tracking contact update dates",
-        "saving-data": "Saving data"
+        "saving-data": "Saving data",
+        "testing-a-permission-denied-save": "Testing a permission-denied save",
+        "testing-save-failure-recovery": "Testing save-failure recovery",
+        "appendix-planned-enhancements": "Appendix: Planned enhancements",
+        "appendix-known-limitations": "Appendix: Known limitations",
+        "limitations-with-a-planned-fix": "Limitations with a planned fix",
+        "other-limitations": "Other limitations"
       },
       "headingKeywords": {}
     },
@@ -118,6 +130,18 @@
       "title": "Logging guide",
       "headings": {
         "logging-guide": "Logging guide"
+      },
+      "headingKeywords": {}
+    },
+    {
+      "src": "ReleaseTesting.md",
+      "title": "Release testing",
+      "headings": {
+        "release-testing": "Release testing",
+        "before-testing": "Before testing",
+        "native-desktop-checks": "Native desktop checks",
+        "online-guide-checks": "Online guide checks",
+        "performance-and-release-record": "Performance and release record"
       },
       "headingKeywords": {}
     },
@@ -147,7 +171,9 @@
       "headings": {
         "unimate-user-guide": "UniMate User Guide",
         "quick-start": "Quick start",
+        "command-summary": "Command summary",
         "using-the-contact-list": "Using the contact list",
+        "keyboard-navigation": "Keyboard navigation",
         "features": "Features",
         "viewing-help-help": "Viewing help: help",
         "adding-a-person-add": "Adding a person: add",
@@ -176,11 +202,12 @@
         "navigating-command-history": "Navigating command history",
         "saving-the-data": "Saving the data",
         "editing-the-data-file": "Editing the data file",
-        "coming-soon": "Coming soon",
-        "archiving-data-files-coming-in-v2-0": "Archiving data files [coming in v2.0]",
         "faq": "FAQ",
-        "known-issues": "Known issues",
-        "command-summary": "Command summary"
+        "known-issues-and-limitations": "Known issues and limitations",
+        "window-and-display": "Window and display",
+        "keyboard": "Keyboard",
+        "data-and-saving": "Data and saving",
+        "input": "Input"
       },
       "headingKeywords": {}
     },

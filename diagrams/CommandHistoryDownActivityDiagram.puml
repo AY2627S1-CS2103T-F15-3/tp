@@ -1,0 +1,40 @@
+@startuml
+!include style.puml
+skinparam ArrowFontStyle plain
+start
+:User presses DOWN in the command box;
+if () then ([Alt/Option pressed])
+  if () then ([search inactive or at draft])
+    :Keep existing text unchanged;
+    if (At draft position?) then (yes)
+      :Hide History label;
+    else (no)
+      :Show absolute History i/N
+and restart label pulse;
+    endif
+    stop
+  else ([else])
+  endif
+  :Look for a newer command
+matching the initial prefix;
+else ([else])
+  :End any prefix search;
+  :Look for the next command;
+endif
+if () then ([command found])
+  :Show command;
+else ([else])
+  if () then ([browsing past commands])
+    :Restore draft and end prefix search;
+  else ([else])
+    :Keep existing text unchanged;
+  endif
+endif
+if (At draft position?) then (yes)
+  :Hide History label;
+else (no)
+  :Show absolute History i/N
+and restart label pulse;
+endif
+stop
+@enduml

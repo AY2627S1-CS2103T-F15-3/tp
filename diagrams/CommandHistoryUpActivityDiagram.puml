@@ -1,0 +1,30 @@
+@startuml
+!include style.puml
+skinparam ArrowFontStyle plain
+start
+:User presses UP in the command box;
+:Save draft if leaving the end of history;
+if () then ([Alt/Option pressed])
+  if () then ([no active prefix search])
+    :Remember input as the initial prefix;
+  else ([else])
+  endif
+  :Look for an older command
+matching the initial prefix;
+else ([else])
+  :End any prefix search;
+  :Look for the previous command;
+endif
+if () then ([command found])
+  :Show command;
+else ([else])
+  :Keep existing text unchanged;
+endif
+if (At draft position?) then (yes)
+  :Hide History label;
+else (no)
+  :Show absolute History i/N
+and restart label pulse;
+endif
+stop
+@enduml

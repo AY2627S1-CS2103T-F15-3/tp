@@ -1,104 +1,68 @@
 @startuml
+' @@author RayWHJ
 !include style.puml
 skinparam ArrowFontStyle plain
 
-box Logic LOGIC_COLOR_T1
-participant ":LogicManager" as LogicManager LOGIC_COLOR
-participant ":AddressBookParser" as AddressBookParser LOGIC_COLOR
-participant ":NoteCommandParser" as NoteCommandParser LOGIC_COLOR
 participant "n:NoteCommand" as NoteCommand LOGIC_COLOR
-end box
-
-box Model MODEL_COLOR_T1
-participant "person:Person" as Person MODEL_COLOR
 participant "m:Model" as Model MODEL_COLOR
-end box
+participant "person:Person" as Person MODEL_COLOR
+participant "previousState:AddressBook" as PreviousState MODEL_COLOR
 
-box Storage STORAGE_COLOR_T1
-participant ":Storage" as Storage STORAGE_COLOR
-end box
-
-note over LogicManager, AddressBookParser
-  commandText = "note 1 Met during CS2103T"
-end note
-[-> LogicManager : execute(commandText)
-activate LogicManager
-
-LogicManager -> AddressBookParser : parseCommand(commandText)
-activate AddressBookParser
-
-create NoteCommandParser
-AddressBookParser -> NoteCommandParser : NoteCommandParser()
-activate NoteCommandParser
-NoteCommandParser --> AddressBookParser
-deactivate NoteCommandParser
-
-AddressBookParser -> NoteCommandParser : parse(" 1 Met during CS2103T")
-activate NoteCommandParser
-note right of NoteCommandParser
-  Validate the index and text,
-  then construct Notes(text).
-end note
-
-create NoteCommand
-NoteCommandParser -> NoteCommand : NoteCommand(index, notes)
+[-> NoteCommand : execute(m)
 activate NoteCommand
-NoteCommand --> NoteCommandParser
-deactivate NoteCommand
-NoteCommandParser --> AddressBookParser : n
-deactivate NoteCommandParser
-AddressBookParser --> LogicManager : n
-deactivate AddressBookParser
 
-LogicManager -> NoteCommand : execute(m)
-activate NoteCommand
 NoteCommand -> Model : getFilteredPersonList()
 activate Model
 Model --> NoteCommand : displayedPersons
 deactivate Model
+
 note over NoteCommand, Model
-  Check the index, then select person = displayedPersons.get(0).
-  This list follows the current filter and sort order.
-  Identical notes return unchanged feedback before the snapshot or mutation.
+  Validate the index and select person from displayedPersons.
+  The invalid-index path is omitted.
 end note
 
-NoteCommand -> Model : getAddressBook()
-activate Model
-Model --> NoteCommand : currentData
-deactivate Model
-note right of NoteCommand
-  previousState = new AddressBook(currentData)
-  copies the contact data before the change.
-end note
-
-NoteCommand -> Person : withNotes(notes)
+NoteCommand -> Person : getNotes()
 activate Person
-Person --> NoteCommand : updatedPerson
+Person --> NoteCommand : previousNotes
 deactivate Person
-NoteCommand -> Model : setPerson(person, updatedPerson)
-activate Model
-Model --> NoteCommand
-deactivate Model
 
-NoteCommand -> Model : commitAddressBook(previousState, message)
-activate Model
-Model --> NoteCommand
-deactivate Model
-note over NoteCommand, Model
-  History records actual data changes only.
-  Unchanged notes return before this flow and preserve history.
-end note
+alt previousNotes.equals(notes)
+  note right of NoteCommand
+    Prepare unchanged feedback.
+  end note
+else else
+  NoteCommand -> Model : getAddressBook()
+  activate Model
+  Model --> NoteCommand : currentAddressBook
+  deactivate Model
 
-NoteCommand --> LogicManager : result: CommandResult
+  create PreviousState
+  NoteCommand -> PreviousState : AddressBook(currentAddressBook)
+  activate PreviousState
+  PreviousState --> NoteCommand
+  deactivate PreviousState
+
+  NoteCommand -> Person : withNotes(notes)
+  activate Person
+  Person --> NoteCommand : updatedPerson
+  deactivate Person
+
+  NoteCommand -> Model : setPerson(person, updatedPerson)
+  activate Model
+  Model --> NoteCommand
+  deactivate Model
+
+  note over NoteCommand, Model
+    Prepare the history description
+    and saved or replaced feedback.
+  end note
+
+  NoteCommand -> Model : commitAddressBook(previousState, description)
+  activate Model
+  Model --> NoteCommand
+  deactivate Model
+end
+
+NoteCommand -->[ : result
 deactivate NoteCommand
-LogicManager -> Model : getAddressBook()
-activate Model
-Model --> LogicManager : currentData
-deactivate Model
-LogicManager -> Storage : saveAddressBook(currentData)
-activate Storage
-Storage --> LogicManager
-deactivate Storage
-[<-- LogicManager : result
-deactivate LogicManager
 @enduml

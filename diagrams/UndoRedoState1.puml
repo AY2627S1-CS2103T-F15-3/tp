@@ -4,20 +4,22 @@ skinparam ClassFontColor #000000
 skinparam ClassBorderColor #000000
 skinparam ClassBackgroundColor #FFFFAA
 
-title After command "add n/Alex Tan ..."
+title After undo
 
-package "undoStates" <<rectangle>> {
+package "undoStates (stack)" <<rectangle>> {
     class U0 as "<u>ab0:AddressBook</u>"
 }
 
 package "currentState" <<rectangle>> {
-    class C as "<u>ab1:AddressBook</u>"
+    class C as "<u>ab1:AddressBook</u>\nAlex"
 }
 
-package "redoStates" <<rectangle>> {
-    class RE as "(empty)" #FFFFFF
+package "redoStates (stack)" <<rectangle>> {
+    class R0 as "<u>ab2:AddressBook</u>\nAlex: phone edited (undone)"
 }
 
 U0 -[hidden]right-> C
-C -[hidden]right-> RE
+C -[hidden]right-> R0
+
+caption Undo pushes ab2 onto redoStates and pops ab1 from undoStates.
 @enduml

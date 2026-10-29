@@ -1,53 +1,13 @@
 @startuml
+' @@author RayWHJ
 !include style.puml
 skinparam ArrowFontStyle plain
 
-box Logic LOGIC_COLOR_T1
-participant ":LogicManager" as LogicManager LOGIC_COLOR
-participant ":AddressBookParser" as AddressBookParser LOGIC_COLOR
-participant ":DeleteCommandParser" as DeleteCommandParser LOGIC_COLOR
 participant "d:DeleteCommand" as DeleteCommand LOGIC_COLOR
-participant "Messages" as Messages LOGIC_COLOR
-participant "r:CommandResult" as CommandResult LOGIC_COLOR
-end box
-
-box Model MODEL_COLOR_T1
 participant "m:Model" as Model MODEL_COLOR
-end box
+participant "previousState:AddressBook" as PreviousState MODEL_COLOR
 
-[-> LogicManager : execute("delete 1 3 5")
-activate LogicManager
-
-LogicManager -> AddressBookParser : parseCommand("delete 1 3 5")
-activate AddressBookParser
-
-create DeleteCommandParser
-AddressBookParser -> DeleteCommandParser : DeleteCommandParser()
-activate DeleteCommandParser
-
-DeleteCommandParser --> AddressBookParser
-deactivate DeleteCommandParser
-
-AddressBookParser -> DeleteCommandParser : parse(" 1 3 5")
-activate DeleteCommandParser
-
-create DeleteCommand
-DeleteCommandParser -> DeleteCommand : DeleteCommand(indices)
-activate DeleteCommand
-
-DeleteCommand --> DeleteCommandParser :
-deactivate DeleteCommand
-
-DeleteCommandParser --> AddressBookParser : d
-deactivate DeleteCommandParser
-'Hidden arrow to position the destroy marker below the end of the activation bar.
-DeleteCommandParser -[hidden]-> AddressBookParser
-destroy DeleteCommandParser
-
-AddressBookParser --> LogicManager : d
-deactivate AddressBookParser
-
-LogicManager -> DeleteCommand : execute(m)
+[-> DeleteCommand : execute(m)
 activate DeleteCommand
 
 DeleteCommand -> Model : getFilteredPersonList()
@@ -56,10 +16,9 @@ Model --> DeleteCommand : lastShownList
 deactivate Model
 
 note over DeleteCommand, Model
-  Copy the filtered and sorted displayed list.
-  Reject repeated or out-of-range indices before mutation.
-  Capture the original contacts at indices 1, 3 and 5.
-  All targets are resolved before the first deletion.
+  Copy the displayed list and validate all indices.
+  Collect personsToDelete in input order before mutation.
+  Validation error paths are omitted.
 end note
 
 DeleteCommand -> Model : getAddressBook()
@@ -67,32 +26,21 @@ activate Model
 Model --> DeleteCommand : currentAddressBook
 deactivate Model
 
-note right of DeleteCommand
-  previousState = new AddressBook(currentAddressBook)
-end note
+create PreviousState
+DeleteCommand -> PreviousState : AddressBook(currentAddressBook)
+activate PreviousState
+PreviousState --> DeleteCommand
+deactivate PreviousState
 
-loop For each captured contact
-    DeleteCommand -> Model : deletePerson(personToDelete)
-    activate Model
-    Model --> DeleteCommand
-    deactivate Model
+loop for each personToDelete in personsToDelete
+  DeleteCommand -> Model : deletePerson(personToDelete)
+  activate Model
+  Model --> DeleteCommand
+  deactivate Model
 end
 
-loop For each captured contact in input order
-    DeleteCommand -> Messages : format(personToDelete)
-    activate Messages
-    note right of Messages
-      Include Major and Class year
-      only when their values are specified.
-    end note
-    Messages --> DeleteCommand : formattedPerson
-    deactivate Messages
-end
-
-note over DeleteCommand, CommandResult
-  message = "Deleted 3 contacts:" and contact detail lines
-  labelled with their original displayed indices 1, 3 and 5.
-  A single deletion retains "Deleted person: " feedback.
+note over DeleteCommand, Model
+  Format message in input order.
 end note
 
 DeleteCommand -> Model : commitAddressBook(previousState, message)
@@ -100,21 +48,6 @@ activate Model
 Model --> DeleteCommand
 deactivate Model
 
-create CommandResult
-DeleteCommand -> CommandResult : CommandResult(message)
-activate CommandResult
-
-CommandResult --> DeleteCommand
-deactivate CommandResult
-
-DeleteCommand --> LogicManager : r
+DeleteCommand -->[ : result
 deactivate DeleteCommand
-
-note over LogicManager, Model
-  LogicManager saves the resulting address book through Storage
-  before returning r. The storage interactions are omitted here.
-end note
-
-[<--LogicManager : r
-deactivate LogicManager
 @enduml

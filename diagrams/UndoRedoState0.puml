@@ -4,20 +4,24 @@ skinparam ClassFontColor #000000
 skinparam ClassBorderColor #000000
 skinparam ClassBackgroundColor #FFFFAA
 
-title Initial state
+title After add and edit
 
-package "undoStates" <<rectangle>> {
-    class UE as "(empty)" #FFFFFF
+package "undoStates (stack)" <<rectangle>> {
+    class U0 as "<u>ab1:AddressBook</u>\nAlex"
+    class U1 as "<u>ab0:AddressBook</u>"
 }
 
 package "currentState" <<rectangle>> {
-    class C as "<u>ab0:AddressBook</u>"
+    class C as "<u>ab2:AddressBook</u>\nAlex: phone edited"
 }
 
-package "redoStates" <<rectangle>> {
-    class RE as "(empty)" #FFFFFF
+package "redoStates (stack)" <<rectangle>> {
+    class RE as "empty" #FFFFFF
 }
 
-UE -[hidden]right-> C
+U0 -[hidden]down-> U1
+U0 -[hidden]right-> C
 C -[hidden]right-> RE
+
+caption Each commit pushes the previous state onto undoStates.
 @enduml
