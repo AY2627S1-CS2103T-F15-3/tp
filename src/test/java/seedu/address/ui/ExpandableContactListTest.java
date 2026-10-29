@@ -3,6 +3,8 @@ package seedu.address.ui;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static seedu.address.ui.MainWindowTestUtil.enter;
+import static seedu.address.ui.MainWindowTestUtil.list;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -12,15 +14,12 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-import javafx.event.ActionEvent;
 import javafx.geometry.Bounds;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
-import javafx.scene.control.ListView;
 import javafx.scene.control.ScrollBar;
-import javafx.scene.control.TextField;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseButton;
@@ -51,37 +50,7 @@ public class ExpandableContactListTest {
         try {
             for (String field : List.of("phone", "address", "email", "major", "name")) {
                 for (double width : List.of(1000.0, 450.0, 820.0)) {
-                    FxTestUtil.runOnFxThread(() -> {
-                        window.getRoot().setWidth(width);
-                        enter(window, "find LongAll");
-                        settle(window);
-                        Node card = firstCard(window);
-                        Label label = (Label) card.lookup("#" + field);
-                        if (label.isWrapText()) {
-                            pressEnter(label);
-                            settle(window);
-                        }
-                        assertFalse(label.isWrapText());
-                        assertTrue(((Text) label.lookup(".text")).getText().endsWith("..."),
-                                field + " width=" + label.getWidth() + " card=" + card.getBoundsInLocal()
-                                + " rendered=" + ((Text) label.lookup(".text")).getText());
-                        double collapsedHeight = card.getBoundsInLocal().getHeight();
-                        label.fireEvent(new MouseEvent(MouseEvent.MOUSE_CLICKED, 0, 0, 0, 0,
-                                MouseButton.PRIMARY, 1, false, false, false, false,
-                                false, false, false, false, false, true, null));
-                        settle(window);
-                        Label expanded = (Label) firstCard(window).lookup("#" + field);
-                        assertTrue(expanded.isWrapText(), field);
-                        assertEquals(expanded.getText(), ((Text) expanded.lookup(".text")).getText(), field);
-                        assertTrue(firstCard(window).getBoundsInLocal().getHeight() > collapsedHeight, field);
-                        assertVisibleCardsFit(window);
-                        pressEnter(expanded);
-                        settle(window);
-                        assertFalse(((Label) firstCard(window).lookup("#" + field)).isWrapText());
-                        assertEquals(collapsedHeight, firstCard(window).getBoundsInLocal().getHeight(), 2.0, field);
-                        assertVisibleCardsFit(window);
-                        return null;
-                    });
+                    FxTestUtil.runActionOnFxThread(() -> assertExpansionCycle(window, field, width));
                 }
             }
         } finally {
@@ -226,6 +195,39 @@ public class ExpandableContactListTest {
         }
     }
 
+    private void assertExpansionCycle(MainWindow window, String field, double width) {
+        window.getRoot().setWidth(width);
+        enter(window, "find LongAll");
+        Node card = firstCard(window);
+        Label label = (Label) card.lookup("#" + field);
+        if (label.isWrapText()) {
+            pressEnter(label);
+            settle(window);
+        }
+        assertCollapsed(label, field);
+        double collapsedHeight = card.getBoundsInLocal().getHeight();
+        label.fireEvent(new MouseEvent(MouseEvent.MOUSE_CLICKED, 0, 0, 0, 0,
+                MouseButton.PRIMARY, 1, false, false, false, false,
+                false, false, false, false, false, true, null));
+        settle(window);
+        Label expanded = (Label) firstCard(window).lookup("#" + field);
+        assertTrue(expanded.isWrapText(), field);
+        assertEquals(expanded.getText(), ((Text) expanded.lookup(".text")).getText(), field);
+        assertTrue(firstCard(window).getBoundsInLocal().getHeight() > collapsedHeight, field);
+        assertVisibleCardsFit(window);
+        pressEnter(expanded);
+        settle(window);
+        assertCollapsed((Label) firstCard(window).lookup("#" + field), field);
+        assertEquals(collapsedHeight, firstCard(window).getBoundsInLocal().getHeight(), 2.0, field);
+        assertVisibleCardsFit(window);
+    }
+
+    private void assertCollapsed(Label label, String field) {
+        assertFalse(label.isWrapText(), field);
+        String rendered = ((Text) label.lookup(".text")).getText();
+        assertTrue(rendered.endsWith("..."), field + " width=" + label.getWidth() + " rendered=" + rendered);
+    }
+
     private MainWindow createWindow() {
         ModelManager model = new ModelManager();
         model.addPerson(new PersonBuilder().withName("ManyTags").withTags(IntStream.range(0, 25)
@@ -290,19 +292,8 @@ public class ExpandableContactListTest {
                 .map(node -> ((ListCell<?>) node).getGraphic()).findFirst().orElseThrow();
     }
 
-    private ListView<?> list(MainWindow window) {
-        return (ListView<?>) window.getRoot().getScene().lookup("#personListView");
-    }
-
     private void pressEnter(Label label) {
         label.fireEvent(new KeyEvent(KeyEvent.KEY_PRESSED, "", "", KeyCode.ENTER, false, false, false, false));
-    }
-
-    private void enter(MainWindow window, String command) {
-        TextField input = (TextField) window.getRoot().getScene().lookup("#commandTextField");
-        input.setText(command);
-        input.fireEvent(new ActionEvent());
-        settle(window);
     }
 
     private void settle(MainWindow window) {

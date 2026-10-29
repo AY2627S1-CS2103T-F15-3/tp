@@ -49,20 +49,20 @@ public class FilterCommandParser implements Parser<FilterCommand> {
         rejectUnsupportedPrefixes(args);
         ArgumentMultimap arguments = ArgumentTokenizer.tokenize(" " + args,
                 PREFIX_MAJOR, PREFIX_GRADUATION_YEAR, PREFIX_TAG);
-        if (!arguments.getPreamble().isEmpty()
-                || (arguments.getValue(PREFIX_MAJOR).isEmpty()
-                && arguments.getValue(PREFIX_GRADUATION_YEAR).isEmpty()
-                && arguments.getValue(PREFIX_TAG).isEmpty())) {
+        Optional<String> majorValue = arguments.getValue(PREFIX_MAJOR);
+        Optional<String> yearValue = arguments.getValue(PREFIX_GRADUATION_YEAR);
+        Optional<String> tagValue = arguments.getValue(PREFIX_TAG);
+        boolean hasCriteria = majorValue.isPresent() || yearValue.isPresent() || tagValue.isPresent();
+        if (!arguments.getPreamble().isEmpty() || !hasCriteria) {
             throw new ParseException(String.format(MESSAGE_INVALID_COMMAND_FORMAT, FilterCommand.MESSAGE_USAGE));
         }
         arguments.verifyNoDuplicatePrefixesFor(PREFIX_MAJOR, PREFIX_GRADUATION_YEAR, PREFIX_TAG);
-        Optional<Major> major = arguments.getValue(PREFIX_MAJOR).isPresent()
-                ? Optional.of(ParserUtil.parseMajor(arguments.getValue(PREFIX_MAJOR).get())) : Optional.empty();
-        Optional<GraduationYear> year = arguments.getValue(PREFIX_GRADUATION_YEAR).isPresent()
-                ? Optional.of(ParserUtil.parseGraduationYear(arguments.getValue(PREFIX_GRADUATION_YEAR).get()))
-                : Optional.empty();
-        Optional<Tag> tag = arguments.getValue(PREFIX_TAG).isPresent()
-                ? Optional.of(ParserUtil.parseTag(arguments.getValue(PREFIX_TAG).get())) : Optional.empty();
+        Optional<Major> major = majorValue.isPresent()
+                ? Optional.of(ParserUtil.parseMajor(majorValue.get())) : Optional.empty();
+        Optional<GraduationYear> year = yearValue.isPresent()
+                ? Optional.of(ParserUtil.parseGraduationYear(yearValue.get())) : Optional.empty();
+        Optional<Tag> tag = tagValue.isPresent()
+                ? Optional.of(ParserUtil.parseTag(tagValue.get())) : Optional.empty();
         return new FilterCommand(new ContactFilterPredicate(major, year, tag));
     }
 

@@ -4,40 +4,31 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
+import static seedu.address.ui.FxTestUtil.runActionOnFxThread;
+import static seedu.address.ui.MainWindowTestUtil.assertCard;
+import static seedu.address.ui.MainWindowTestUtil.enter;
+import static seedu.address.ui.MainWindowTestUtil.feedback;
+import static seedu.address.ui.MainWindowTestUtil.list;
 
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.concurrent.FutureTask;
-import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-import javafx.application.Platform;
-import javafx.event.ActionEvent;
 import javafx.scene.control.Label;
-import javafx.scene.control.ListCell;
-import javafx.scene.control.ListView;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.skin.VirtualFlow;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Text;
-import javafx.stage.Stage;
-import seedu.address.logic.LogicManager;
 import seedu.address.logic.Messages;
 import seedu.address.logic.commands.AddCommand;
 import seedu.address.logic.commands.SortCommand;
-import seedu.address.model.Model;
-import seedu.address.model.ModelManager;
 import seedu.address.model.person.Person;
-import seedu.address.storage.JsonAddressBookStorage;
-import seedu.address.storage.JsonUserPrefsStorage;
-import seedu.address.storage.StorageManager;
 import seedu.address.testutil.PersonBuilder;
 
 /**
@@ -55,23 +46,12 @@ public class SortUiTest {
 
     @BeforeAll
     public static void startToolkit() throws Exception {
-        assumeTrue(!System.getProperty("os.name").startsWith("Linux") || System.getenv("DISPLAY") != null,
-                "JavaFX UI tests require a display");
-        FutureTask<Void> started = new FutureTask<>(() -> {
-            Platform.setImplicitExit(false);
-            return null;
-        });
-        try {
-            Platform.startup(started);
-        } catch (IllegalStateException e) {
-            Platform.runLater(started);
-        }
-        started.get(10, TimeUnit.SECONDS);
+        FxTestUtil.startToolkit();
     }
 
     @Test
     public void commandBox_sort_updatesCardsFeedbackAndAcademicOrder() throws Exception {
-        runOnFxThread(() -> {
+        runActionOnFxThread(() -> {
             MainWindow window = createWindow();
             try {
                 enter(window, "sort name asc");
@@ -94,7 +74,7 @@ public class SortUiTest {
         Person alice = new PersonBuilder(this.alice).withLastUpdated(LocalDate.of(2024, 12, 31)).build();
         Person bob = new PersonBuilder(this.bob).withLastUpdated(LocalDate.of(2024, 12, 31)).build();
         Person charlie = new PersonBuilder(this.charlie).withLastUpdated(LocalDate.of(2025, 1, 1)).build();
-        runOnFxThread(() -> {
+        runActionOnFxThread(() -> {
             MainWindow window = createWindow(alice, bob, charlie);
             try {
                 enter(window, "sort updated asc");
@@ -118,7 +98,7 @@ public class SortUiTest {
 
     @Test
     public void commandBox_sortedFilteredMutations_targetDisplayedCardsAndRenumber() throws Exception {
-        runOnFxThread(() -> {
+        runActionOnFxThread(() -> {
             MainWindow window = createWindow();
             try {
                 enter(window, "filter t/Classmate");
@@ -142,7 +122,7 @@ public class SortUiTest {
 
     @Test
     public void commandBox_batchDelete_usesOriginalIndicesAndRenumbersCards() throws Exception {
-        runOnFxThread(() -> {
+        runActionOnFxThread(() -> {
             MainWindow window = createWindow();
             try {
                 enter(window, "sort name asc");
@@ -163,7 +143,7 @@ public class SortUiTest {
 
     @Test
     public void commandBox_duplicateAdd_identifiesDisplayedAndHiddenContacts() throws Exception {
-        runOnFxThread(() -> {
+        runActionOnFxThread(() -> {
             MainWindow window = createWindow();
             try {
                 enter(window, "sort name asc");
@@ -195,7 +175,7 @@ public class SortUiTest {
 
     @Test
     public void commandBox_sharedDetailsWarning_addsContactAndShowsCurrentIndices() throws Exception {
-        runOnFxThread(() -> {
+        runActionOnFxThread(() -> {
             MainWindow window = createWindow();
             try {
                 enter(window, "sort name asc");
@@ -236,7 +216,7 @@ public class SortUiTest {
 
     @Test
     public void commandBox_successAndWarning_shareOriginalScrollableTextArea() throws Exception {
-        runOnFxThread(() -> {
+        runActionOnFxThread(() -> {
             MainWindow window = createWindow();
             try {
                 window.getRoot().setWidth(640);
@@ -287,7 +267,7 @@ public class SortUiTest {
 
     @Test
     public void commandBox_invalidSortAndEditUndoRedo_preserveExpectedView() throws Exception {
-        runOnFxThread(() -> {
+        runActionOnFxThread(() -> {
             MainWindow window = createWindow();
             try {
                 enter(window, "sort name asc");
@@ -317,41 +297,14 @@ public class SortUiTest {
     }
 
     private MainWindow createWindow(Person alice, Person bob, Person charlie) {
-        Model model = new ModelManager();
-        model.addPerson(charlie);
-        model.addPerson(bob);
-        model.addPerson(alice);
-        Path data = directory.resolve("contacts.json");
-        LogicManager logic = new LogicManager(model, new StorageManager(new JsonAddressBookStorage(data),
-                new JsonUserPrefsStorage(directory.resolve("prefs.json"))));
-        MainWindow window = new MainWindow(new Stage(), logic, data);
-        window.show();
-        window.fillInnerParts();
-        return window;
-    }
-
-    private void enter(MainWindow window, String command) {
-        TextField input = (TextField) window.getRoot().getScene().lookup("#commandTextField");
-        input.setText(command);
-        input.fireEvent(new ActionEvent());
-        window.getRoot().getScene().getRoot().applyCss();
-        window.getRoot().getScene().getRoot().layout();
-    }
-
-    private ListView<?> list(MainWindow window) {
-        return (ListView<?>) window.getRoot().getScene().lookup("#personListView");
-    }
-
-    private String feedback(MainWindow window) {
-        return ((TextArea) window.getRoot().getScene().lookup("#resultDisplay")).getText();
+        return MainWindowTestUtil.createWindow(directory, charlie, bob, alice);
     }
 
     private void assertCards(MainWindow window, List<Person> expected) {
         assertEquals(expected, list(window).getItems());
         for (int index = 0; index < expected.size(); index++) {
             list(window).scrollTo(index);
-            window.getRoot().getScene().getRoot().applyCss();
-            window.getRoot().getScene().getRoot().layout();
+            FxTestUtil.layout(window.getRoot().getScene().getRoot());
             VirtualFlow<?> flow = (VirtualFlow<?>) list(window).lookup(".virtual-flow");
             flow.scrollTo(index);
             flow.layout();
@@ -359,23 +312,4 @@ public class SortUiTest {
         }
     }
 
-    private void assertCard(MainWindow window, Person person, String index) {
-        ListCell<?> cell = list(window).lookupAll(".list-cell").stream()
-                .filter(node -> node instanceof ListCell<?> candidate && person.equals(candidate.getItem()))
-                .map(node -> (ListCell<?>) node).findFirst().orElseThrow(() -> new AssertionError(
-                        "Expected card " + person.getName() + "; visible indices: "
-                        + list(window).lookupAll(".list-cell").stream()
-                                .map(node -> ((ListCell<?>) node).getIndex()).toList()));
-        assertEquals(index, ((Label) cell.getGraphic().lookup("#id")).getText());
-        assertEquals(person.getName().fullName, ((Label) cell.getGraphic().lookup("#name")).getText());
-    }
-
-    private void runOnFxThread(Runnable action) throws Exception {
-        FutureTask<Void> task = new FutureTask<>(() -> {
-            action.run();
-            return null;
-        });
-        Platform.runLater(task);
-        task.get(20, TimeUnit.SECONDS);
-    }
 }

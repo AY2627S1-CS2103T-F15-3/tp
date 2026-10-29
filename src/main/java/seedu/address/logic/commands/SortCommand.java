@@ -3,6 +3,7 @@ package seedu.address.logic.commands;
 import static java.util.Objects.requireNonNull;
 
 import java.util.Locale;
+import java.util.Objects;
 import java.util.logging.Logger;
 
 import seedu.address.commons.core.LogsCenter;
@@ -51,6 +52,11 @@ public class SortCommand extends Command {
     public boolean equals(Object other) {
         return other == this || (other instanceof SortCommand otherCommand
                 && field == otherCommand.field && direction == otherCommand.direction);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(field, direction);
     }
 
     @Override

@@ -1,8 +1,11 @@
 package seedu.address.ui;
 
+import static seedu.address.commons.util.CollectionUtil.requireAllNonNull;
+
 import java.util.ArrayList;
 import java.util.List;
 
+import javafx.application.Platform;
 import javafx.geometry.Bounds;
 import javafx.scene.Node;
 import javafx.scene.Parent;
@@ -19,7 +22,10 @@ final class ContactListNavigation {
     private final TextField commandBox;
     private final ListView<Person> contactList;
 
+    /** Installs traversal on the JavaFX thread for a list rendered by {@link PersonListPanel}. */
     ContactListNavigation(Parent root, TextField commandBox, ListView<Person> contactList) {
+        requireAllNonNull(root, commandBox, contactList);
+        assert Platform.isFxApplicationThread() : "Contact navigation must be installed on the JavaFX thread";
         this.commandBox = commandBox;
         this.contactList = contactList;
         root.addEventFilter(KeyEvent.KEY_PRESSED, this::handleTab);
@@ -59,7 +65,10 @@ final class ContactListNavigation {
         double bottom = viewport.getMaxY() - FOCUS_SCROLL_MARGIN;
         double offset = bounds.getMinY() < top || bounds.getHeight() > bottom - top
                 ? bounds.getMinY() - top : Math.max(0, bounds.getMaxY() - bottom);
-        VirtualFlow<?> flow = (VirtualFlow<?>) contactList.lookup(".virtual-flow");
+        // PersonListPanel uses the standard JavaFX list skin, which exposes its virtualized viewport.
+        Node viewportNode = contactList.lookup(".virtual-flow");
+        assert viewportNode instanceof VirtualFlow<?> : "Contact list skin must provide a VirtualFlow";
+        VirtualFlow<?> flow = (VirtualFlow<?>) viewportNode;
         flow.scrollPixels(offset);
     }
 
@@ -72,6 +81,7 @@ final class ContactListNavigation {
         route.add(contactList);
         int selectedIndex = contactList.getSelectionModel().getSelectedIndex();
         contactList.lookupAll(".list-cell").stream()
+                .filter(PersonListCell.class::isInstance)
                 .map(PersonListCell.class::cast)
                 .filter(cell -> cell.getIndex() == selectedIndex)
                 .findFirst()

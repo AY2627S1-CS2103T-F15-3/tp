@@ -38,6 +38,13 @@ final class FxTestUtil {
         return task.get(TIMEOUT_SECONDS, TimeUnit.SECONDS);
     }
 
+    static void runActionOnFxThread(Runnable action) throws Exception {
+        runOnFxThread(() -> {
+            action.run();
+            return null;
+        });
+    }
+
     static void layout(Parent root) {
         // Bindings and virtualized cells may request another layout while a resize is being applied.
         for (int pass = 0; pass < LAYOUT_PASSES; pass++) {
