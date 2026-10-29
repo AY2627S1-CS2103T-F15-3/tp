@@ -9,6 +9,7 @@ import javafx.beans.property.ReadOnlyStringProperty;
 import javafx.collections.ObservableList;
 import seedu.address.commons.core.GuiSettings;
 import seedu.address.commons.core.LogsCenter;
+import seedu.address.commons.exceptions.DataRecoveryRequiredException;
 import seedu.address.logic.commands.Command;
 import seedu.address.logic.commands.CommandResult;
 import seedu.address.logic.commands.RedoCommand;
@@ -39,6 +40,9 @@ public class LogicManager implements Logic {
 
     public static final String MESSAGE_UNSAVED_EXIT = "\nUniMate is still open because some contact changes "
             + "have not been saved. Fix the error, then run list or exit to retry.";
+
+    public static final String MESSAGE_RECOVERY_UNSAVED_CHANGES = "\nContact changes made in this session remain "
+            + "only in memory. Copy any details you need before closing; they cannot be saved in this session.";
 
     private final Logger logger = LogsCenter.getLogger(LogicManager.class);
 
@@ -73,6 +77,9 @@ public class LogicManager implements Logic {
         try {
             storage.saveAddressBook(model.getAddressBook());
             lastSavedPersons = List.copyOf(model.getAddressBook().getPersonList());
+        } catch (DataRecoveryRequiredException e) {
+            throw new CommandException(e.getMessage()
+                    + (hasUnsavedChanges() ? MESSAGE_RECOVERY_UNSAVED_CHANGES : ""), e);
         } catch (AccessDeniedException e) {
             throw new CommandException(String.format(FILE_OPS_PERMISSION_ERROR_FORMAT, e.getMessage())
                     + describeUnsavedChange(command, commandResult, personsBeforeCommand), e);

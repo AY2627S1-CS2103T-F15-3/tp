@@ -6,8 +6,7 @@
 
 # UniMate Developer Guide
 
-This guide describes the **v1.5 development implementation (unreleased)**. Use a matching source
-revision and JAR for testing; the published v1.4 JAR does not include all features described here.
+This guide describes the **v1.5 development implementation**.
 
 Use this guide to find the component boundaries, design decisions and checks for a change.
 
@@ -202,9 +201,20 @@ include the contact position and retain the original validation exception as the
 
 `JsonUtil#readJsonFile` rejects a null JSON root as a `DataLoadingException`; it returns
 `Optional.empty()` only for a missing file. `MainApp` therefore uses its existing empty-contact-list
-recovery for invalid data, while missing files still use sample contacts. Loading and window-close
-shutdown do not rewrite the invalid contact file. `MainAppTest` checks this recovery with isolated
-storage and a stub UI; storage tests check null data, valid empty lists and legacy contacts.
+fallback for invalid data, while missing files still use sample contacts. After a contact-loading
+error, `StorageManager` retains that failure and rejects contact saves with
+`DataRecoveryRequiredException` for the rest of its lifetime. This prevents `list`, changed commands
+and pending `exit` saves from replacing the rejected file. A subsequent successful read cannot
+unlock an old session whose model may still be empty; recovery requires repairing or restoring the
+file and restarting so the model is initialized from valid data. Preference saves remain available.
+
+`MainApp` passes a recovery warning naming the file to `UiManager`; `MainWindow` shows it in amber
+before the first command. `LogicManager` handles a protected-save error separately from retryable
+write errors, explaining that any new changes are in memory and must be copied before closing.
+Help and an exit with no unsaved contacts still work. `MainAppTest` covers malformed JSON, invalid
+years, null entries and valid empty/missing files. `StorageManagerTest` checks protection after an
+external repair and recovery with a fresh storage instance; `DataRecoveryUiTest` checks the startup
+warning and command-box attempts to save over the rejected file.
 
 ### Common classes
 
@@ -365,10 +375,10 @@ retain exact data equality, preserving capitalization changes for display, persi
 `JsonSerializableAddressBook#toModelType` also rejects case-only duplicate names using its existing
 `IllegalValueException` path. There is no automatic migration, deletion, merging or renaming. Users must
 back up legacy files and distinguish conflicting names before loading. The existing `MainApp` startup
-fallback opens an empty list on a loading error; subsequent saves can overwrite that file, so users must
-close the window without entering commands and resolve conflicts in a copy of the backup first.
-Even a successful view-only command can save the empty list over the invalid file; see
-[data-file recovery](UserGuide.md#editing-the-data-file).
+fallback opens an empty list with a recovery warning on a loading error, and `StorageManager` blocks
+contact saves for that session. Users must close UniMate, resolve conflicts in a copy of the backup,
+then reopen it before saving contacts; see
+[data-file recovery](UserGuide.md#recovery-after-a-loading-error).
 After a successful add, it records the previous contact data state in the model's history
 (see [Recording contact data history](#recording-contact-data-history)).
 The normal storage path then saves the contact, including its academic fields.
@@ -703,6 +713,8 @@ criteria; `PersonSortComparator` describes its field and direction.
 whose status label binds to it independently of `ResultDisplay`. Source changes update the counts;
 commands that reset the predicate or comparator also update the status. The label wraps long criteria
 and reserves their preferred height. View settings remain session-local and are not stored in JSON.
+Very long criteria can consume the contact list's space; see
+[Known limitations](#appendix-known-limitations) for the reproduction and workaround.
 
 `ViewStatusTest` checks criteria, counts, command interactions and restart defaults.
 `ViewStatusUiTest` checks persistent status after `shownote`, rejected commands, reset behavior,
@@ -1632,15 +1644,6 @@ For manual UI verification:
 7. Submit `list` three times. Press Up repeatedly and verify the label shows distinct absolute positions,
    pulses even at the oldest entry, then disappears when Down restores the draft or Enter submits input.
 8. Restart UniMate and verify both navigation modes leave the input unchanged until a command is submitted.
-
-## Coming soon
-
-The features in this section are not implemented in the current release. The descriptions and diagrams below are proposals for future development.
-
-### \[Proposed\] Data archiving
-
-Data archiving is planned for a future version. Its implementation details have not yet been specified.
-
 
 --------------------------------------------------------------------------------------------------------------------
 
@@ -2931,15 +2934,25 @@ Use only the separate test folder for these checks. The paths below are relative
 
    1. With the app closed and the valid backup retained, replace the contents of the test copy's `data/unimate.json` with `not valid JSON`.
    2. Relaunch the app without entering a command.
-      Expected: The app opens with an empty contact list. The malformed file remains unchanged on disk; the loading error is recorded in the application log.
+      Expected: The app opens with an empty contact list and an amber recovery warning naming the file.
+      Contact saving is disabled for this session; the malformed file remains unchanged and the error is logged.
    3. Run `list`.
-      Expected: The command succeeds and replaces the malformed file with valid JSON containing an empty person list. Close the app and restore the valid backup.
+      Expected: A recovery error explains that saving is disabled. The malformed file remains unchanged.
+   4. Run `add n/RecoveryProbe a/NUS`, then `exit`.
+      Expected: The new contact appears only in memory. Saving fails, the window stays open, and the
+      message asks you to copy any new details before closing. The original file is unchanged.
+   5. Restore the valid backup while this session is still open, then run `list`.
+      Expected: Saving remains blocked, and the restored file is not overwritten by the old session.
+   6. Close using the window's close button, reopen, then run `find SaveCheck` and `list`.
+      Expected: The restored contacts load, the recovery warning is absent, and saving succeeds.
 <br>
 4. Valid JSON containing an invalid contact
 
    1. With the app closed and the valid backup retained, change `SaveCheck`'s `graduationYear` value to `"1999"` in the test file. Keep the JSON syntax valid.
    2. Relaunch the app without entering a command.
-      Expected: The whole data file is rejected and the app opens with an empty contact list. It does not partially load the other contacts or silently correct the invalid year. The invalid file remains unchanged at this point.
+      Expected: The whole data file is rejected, and an empty contact list and recovery warning appear.
+      Other contacts are not partially loaded, the invalid year is not corrected, and saving is disabled.
+      Running `list` reports the recovery error and leaves the original file unchanged.
    3. Close the window or run `exit` without changing any contacts, then restore the valid backup.
       Expected: The invalid file remains unchanged; exiting an unchanged session does not save contacts.
 <br>
@@ -2952,7 +2965,8 @@ Use only the separate test folder for these checks. The paths below are relative
       * `{"persons":[{"name":"Null Tag","address":"NUS","tags":[null]}]}`
       * `null`
    2. Relaunch the app without entering a command.
-      Expected: The GUI opens with an empty contact list, and the loading error is logged.
+      Expected: The GUI opens with an empty contact list and a recovery warning; contact saving is
+      disabled, and the loading error is logged. Running `list` leaves the invalid file unchanged.
       For the first two files, the log identifies `Contact entry 1 is null.` and
       `Contact entry 1 is invalid: Tag entry 1 is null.`, respectively.
       The original invalid file remains unchanged.
@@ -3072,16 +3086,7 @@ Each item below is a planned fix for a limitation listed in
    *Planned fix:* match the final label with the ordinary label pattern and check its length with a
    separate condition, so the validator matches `Email.MESSAGE_CONSTRAINTS`.
 
-3. **Warn about, and protect, a data file that fails to load.**
-   When `Storage#readAddressBook` throws `DataLoadingException`, `MainApp#initModelManager` logs a
-   warning and starts with an empty `AddressBook`, but the UI shows nothing. A later successful
-   contact save overwrites the original file with the current in-memory contacts, destroying the user's
-   only copy of it.
-   *Planned fix:* show a startup message in the result display naming the file and the problem, and
-   copy the original file to a backup name (e.g., `unimate.json.bak`) before any save replaces it.
-   All-or-nothing contact validation is kept.
-
-4. **Report, instead of silently removing, control characters in pasted input.**
+3. **Report, instead of silently removing, control characters in pasted input.**
    `Notes` rejects tabs and line breaks, but the command box is a single-line JavaFX `TextField`,
    which strips them from pasted text before `CommandBox#handleCommandEntered` runs. Pasting
    `Left<TAB>Right` into `note 1 ...` therefore saves `LeftRight`. The parser-level rejection still
@@ -3089,7 +3094,7 @@ Each item below is a planned fix for a limitation listed in
    *Planned fix:* add a `TextFormatter` to the command box that replaces pasted tabs and line breaks
    with spaces, so words stay separated and the user can see the result before pressing Enter.
 
-5. **Show a focus outline on the message area.**
+4. **Show a focus outline on the message area.**
    Ctrl+Tab moves focus to the `ResultDisplay` text area, but nothing on screen shows it. The
    `.result-display` rule in `DarkTheme.css` replaces the text area's background with one flat colour
    and zero insets, and JavaFX draws a text area's focus ring as part of that background. This falls
@@ -3114,9 +3119,8 @@ These are described in detail, with their planned fixes, in
 | --- | --- |
 | An extremely long email can overflow the regex stack, so a saved file stops the next launch. | 1 |
 | A final domain label containing a hyphen needs two characters on one side, so `a@x.y-z` is rejected. | 2 |
-| A data file that fails to load gives no warning, and a later successful save overwrites it. | 3 |
-| The command box silently removes pasted tabs and line breaks. | 4 |
-| The message area shows no focus outline. | 5 |
+| The command box silently removes pasted tabs and line breaks. | 3 |
+| The message area shows no focus outline. | 4 |
 
 ### Other limitations
 
@@ -3142,5 +3146,16 @@ These are described in detail, with their planned fixes, in
    * The route is fragile: reordering the layout, making the text area non-traversable or consuming Ctrl+Tab in `handleTab` would remove it silently. No automated test covers it.
    * A future version could handle Ctrl+Tab explicitly in `ContactListNavigation` and add a GUI test for the command box → message area → command box route.
 
-4. **Untested requirements.**
+4. **Long search or filter criteria can hide the contact list.**
+   * `PersonListPanel.fxml` gives the wrapping `viewStatus` label its full preferred height without a maximum. Its text can push the `ListView` below the visible window.
+   * Reproduced on Windows at 450 × 600: add `StatusProbe`, then run `find StatusProbe` followed by 250 space-separated `a` keywords. The search finds the contact, but the list is no longer visible. A long exact-major filter has the same effect.
+   * Run `list` to clear the criteria and restore the list, then use a shorter query. Contact data is unchanged by the search or filter.
+
+5. **Tab can skip an off-screen selected contact.**
+   * `ContactListNavigation#getFocusRoute` searches currently loaded `PersonListCell` nodes. If scrolling has recycled the selected card, its expandable values are absent from the route.
+   * Reproduce with enough contacts to scroll: select a contact with an expandable value, keep the list focused, scroll until that card is out of view, then press Tab. Focus returns to the command box instead of an expandable value.
+   * From the command box, press Tab to scroll the selected contact back into view and focus the list, then Tab again to reach its first expandable value. `handleTab` scrolls to the selection when focus starts in the command box.
+   * Both UI workarounds are documented in the [UG known issues](UserGuide.md#known-issues-and-limitations) and were rechecked on Windows.
+
+6. **Untested requirements.**
    * The one-second response target with 1,000 contacts (non-functional requirement 2) has not been measured end to end, including UI rendering.

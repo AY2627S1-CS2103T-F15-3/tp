@@ -3,6 +3,9 @@ package seedu.address;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static seedu.address.testutil.TypicalPersons.getTypicalAddressBook;
 
 import java.io.IOException;
@@ -17,7 +20,10 @@ import org.junit.jupiter.api.io.TempDir;
 
 import javafx.stage.Stage;
 import seedu.address.commons.core.GuiSettings;
+import seedu.address.commons.exceptions.DataRecoveryRequiredException;
 import seedu.address.commons.util.FileUtil;
+import seedu.address.logic.LogicManager;
+import seedu.address.logic.commands.exceptions.CommandException;
 import seedu.address.model.AddressBook;
 import seedu.address.model.Model;
 import seedu.address.model.ModelManager;
@@ -63,11 +69,13 @@ public class MainAppTest {
     }
 
     @Test
-    public void initModel_nullData_recoversAndStartsWithoutChangingFile() throws Exception {
+    public void initModel_invalidData_blocksListSaveAndPreservesOriginalFile() throws Exception {
         Path filePath = addressBookStorage.getAddressBookFilePath();
         String validPerson = "{\"name\":\"Saved Contact\",\"address\":\"NUS\",\"tags\":[]}";
         String nullTagPerson = "{\"name\":\"Null Tag\",\"address\":\"NUS\",\"tags\":[null]}";
-        for (String json : List.of("null", "{\"persons\":[null]}", "{\"persons\":[" + nullTagPerson + "]}",
+        String invalidYearPerson = "{\"name\":\"Saved Contact\",\"address\":\"NUS\",\"graduationYear\":\"1999\"}";
+        for (String json : List.of("not valid JSON", "{\"persons\":[" + invalidYearPerson + "]}",
+                "null", "{\"persons\":[null]}", "{\"persons\":[" + nullTagPerson + "]}",
                 "{\"persons\":[" + validPerson + ",null]}",
                 "{\"persons\":[" + validPerson + "," + nullTagPerson + "]}")) {
             FileUtil.writeToFile(filePath, json);
@@ -76,6 +84,11 @@ public class MainAppTest {
 
             assertEquals(new AddressBook(), mainApp.model.getAddressBook());
             assertEquals(0, mainApp.model.getFilteredPersonList().size());
+            assertEquals(json, FileUtil.readFromFile(filePath));
+            mainApp.logic = new LogicManager(mainApp.model, mainApp.storage);
+            CommandException error = assertThrows(CommandException.class, () -> mainApp.logic.execute("list"));
+            assertInstanceOf(DataRecoveryRequiredException.class, error.getCause());
+            assertTrue(error.getMessage().contains("disabled for this session"));
             assertEquals(json, FileUtil.readFromFile(filePath));
             UiStub ui = new UiStub();
             mainApp.ui = ui;
@@ -87,11 +100,40 @@ public class MainAppTest {
     }
 
     @Test
+    public void initModel_invalidData_changesAndExitCannotOverwriteOriginal() throws Exception {
+        Path filePath = addressBookStorage.getAddressBookFilePath();
+        String invalidJson = "{\"persons\":[{\"name\":\"Saved Contact\",\"address\":\"NUS\","
+                + "\"graduationYear\":\"1999\"}]}";
+        FileUtil.writeToFile(filePath, invalidJson);
+        mainApp.model = initializeModel();
+        mainApp.logic = new LogicManager(mainApp.model, mainApp.storage);
+
+        for (String command : List.of("add n/Unsaved a/NUS", "list", "exit")) {
+            CommandException error = assertThrows(CommandException.class, () -> mainApp.logic.execute(command));
+            assertInstanceOf(DataRecoveryRequiredException.class, error.getCause());
+            assertTrue(error.getMessage().contains(LogicManager.MESSAGE_RECOVERY_UNSAVED_CHANGES));
+            assertFalse(error.getMessage().contains("run list to retry"));
+            assertEquals(invalidJson, FileUtil.readFromFile(filePath));
+        }
+        assertTrue(mainApp.logic.execute("help").isShowHelp());
+        assertEquals(1, mainApp.model.getAddressBook().getPersonList().size());
+        assertTrue(mainApp.model.canUndoAddressBook());
+
+        // Undo restores the initial empty model; a clean exit still leaves the rejected file intact.
+        CommandException undoError = assertThrows(CommandException.class, () -> mainApp.logic.execute("undo"));
+        assertFalse(undoError.getMessage().contains(LogicManager.MESSAGE_RECOVERY_UNSAVED_CHANGES));
+        assertTrue(mainApp.logic.execute("exit").isExit());
+        assertEquals(invalidJson, FileUtil.readFromFile(filePath));
+    }
+
+    @Test
     public void initModel_missingFile_usesSamplesWithoutCreatingDataFile() throws Exception {
         Model initializedModel = initializeModel();
 
         assertEquals(SampleDataUtil.getSampleAddressBook(), initializedModel.getAddressBook());
         assertFalse(Files.exists(addressBookStorage.getAddressBookFilePath()));
+        new LogicManager(initializedModel, mainApp.storage).execute("list");
+        assertEquals(initializedModel.getAddressBook(), addressBookStorage.readAddressBook().orElseThrow());
     }
 
     @Test
@@ -103,6 +145,8 @@ public class MainAppTest {
 
         assertEquals(new AddressBook(), initializedModel.getAddressBook());
         assertEquals("{\"persons\":[]}", FileUtil.readFromFile(filePath));
+        new LogicManager(initializedModel, mainApp.storage).execute("list");
+        assertEquals(new AddressBook(), addressBookStorage.readAddressBook().orElseThrow());
     }
 
     @Test

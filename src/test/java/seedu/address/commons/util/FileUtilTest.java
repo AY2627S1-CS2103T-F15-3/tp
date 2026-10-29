@@ -12,12 +12,16 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import java.io.FilterOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.AccessDeniedException;
 import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -25,6 +29,53 @@ import org.junit.jupiter.api.io.TempDir;
 public class FileUtilTest {
     @TempDir
     public Path directory;
+
+    @Test
+    public void createIfMissing_missingParents_createsEmptyFile() throws IOException {
+        Path target = directory.resolve("new/data/contacts.json");
+
+        FileUtil.createIfMissing(target);
+
+        assertTrue(Files.isRegularFile(target));
+        assertEquals(0, Files.size(target));
+    }
+
+    @Test
+    public void createIfMissing_existingFile_preservesContents() throws IOException {
+        Path target = directory.resolve("contacts.json");
+        byte[] original = "Previously saved contacts".getBytes(StandardCharsets.UTF_8);
+        Files.write(target, original);
+
+        FileUtil.createIfMissing(target);
+
+        assertArrayEquals(original, Files.readAllBytes(target));
+        assertEquals(List.of(target), filesInDirectory());
+    }
+
+    @Test
+    public void createIfMissing_relativePathWithoutParent_createsEmptyFile() throws IOException {
+        // A relative archive path exercises the no-parent case without writing to the working directory.
+        try (FileSystem archive = FileSystems.newFileSystem(directory.resolve("test.zip"), Map.of("create", "true"))) {
+            Path target = archive.getPath("contacts.json");
+
+            FileUtil.createIfMissing(target);
+
+            assertTrue(Files.isRegularFile(target));
+            assertEquals(0, Files.size(target));
+        }
+    }
+
+    @Test
+    public void createIfMissing_parentIsFile_preservesParentAndReportsFailure() throws IOException {
+        Path parent = Files.writeString(directory.resolve("data"), "keep this file");
+        Path target = parent.resolve("contacts.json");
+
+        assertThrows(IOException.class, () -> FileUtil.createIfMissing(target));
+
+        assertEquals("keep this file", Files.readString(parent));
+        assertFalse(Files.exists(target));
+        assertEquals(List.of(parent), filesInDirectory());
+    }
 
     @Test
     public void writeToFile_success_replacesExistingContentsAndRemovesTemporaryFile() throws IOException {
@@ -47,6 +98,27 @@ public class FileUtilTest {
         try (var siblings = Files.list(target.getParent())) {
             assertEquals(List.of(target), siblings.toList());
         }
+    }
+
+    @Test
+    public void writeToFile_unicodeContent_roundTripsUsingUtf8() throws IOException {
+        Path target = directory.resolve("contacts.txt");
+        String contents = "Café — 你好 😀\nSaved contact notes\n";
+
+        FileUtil.writeToFile(target, contents);
+
+        assertArrayEquals(contents.getBytes(StandardCharsets.UTF_8), Files.readAllBytes(target));
+        assertEquals(contents, FileUtil.readFromFile(target));
+    }
+
+    @Test
+    public void writeToFile_nullContent_preservesOriginalAndCleansTemporaryFile() throws IOException {
+        Path target = Files.writeString(directory.resolve("contacts.json"), "original saved data");
+
+        assertThrows(NullPointerException.class, () -> FileUtil.writeToFile(target, null));
+
+        assertEquals("original saved data", Files.readString(target));
+        assertEquals(List.of(target), filesInDirectory());
     }
 
     @Test
