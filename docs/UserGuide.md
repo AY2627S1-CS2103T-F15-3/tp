@@ -1101,7 +1101,7 @@ Advanced users can edit that file while UniMate is closed; back it up first.
 **Caution:** If your changes make the data file invalid, UniMate starts with an empty contact list at the next run.
 
 * **No warning appears in the window**; the message area is blank and the loading error is written only to the log.
-* The invalid file remains on disk until you run a command that executes successfully (including `list` or `help`), which then **replaces it with the empty list**.
+* The invalid file remains on disk until you run a command that executes successfully (including `list` or `help`), which then **overwrites the original file with the current in-memory contacts**.
 * If UniMate unexpectedly opens with no contacts, close the window without running any command, then repair or restore the file.
 * Always back up the file before editing it.
 
@@ -1156,7 +1156,7 @@ remedy or workaround where one exists.
 
 ### Data and saving
 
-7. **If saving the data file fails**, the command's change is still applied inside UniMate. The save error replaces the usual success message, and says that the change is applied but not saved. Running `undo` at this point reverts that change. The remedy is to fix the cause of the error and then run any successful command, such as `list`, to save your contacts. See [Saving the data](#saving-the-data).
+7. **If saving the data file fails**, the command's change is still applied inside UniMate. The save error replaces the usual success message, and says that the change is applied but not saved. To reverse that change, follow the reversal command named in the error: `redo` after `undo`, otherwise `undo`. The remedy is to fix the cause of the error and then run any successful command, such as `list`, to save your contacts. See [Saving the data](#saving-the-data).
 8. **While saving fails, typed `help` and `exit` do not work.** UniMate saves after every command, so these commands show the save error instead of opening the help window or closing. Press F1 or use the **Help** menu to open help, and use the window's close button to exit. Closing loses any unsaved changes.
 9. **If the data file cannot be loaded**, UniMate opens with an empty contact list without showing a warning, and the next successful command overwrites the file. The remedy is to close the window without running a command, then repair or restore the file. See [Editing the data file](#editing-the-data-file).
 

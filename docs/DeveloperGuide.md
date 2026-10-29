@@ -2952,7 +2952,9 @@ Each item below is a planned fix for a limitation listed in
    normal-use failure.
    *Planned fix:* replace the repeated-group regex with an iterative check that splits the local part
    and domain on their separators and validates each segment, and add a test that saves an accepted
-   long email and reloads it in a fresh storage instance. Catching `StackOverflowError` alone is not
+   long email, then launches the app in a fresh JVM against that saved file and checks that startup
+   succeeds. A reload through another storage object in the same JVM is not enough, because the
+   overflow depends on the thread stack and the real failure occurs in `MainApp#init`. Catching `StackOverflowError` alone is not
    planned, as it would hide the design problem.
 
 2. **Check the final domain label's length separately from its syntax.**
@@ -2967,7 +2969,8 @@ Each item below is a planned fix for a limitation listed in
 3. **Warn about, and protect, a data file that fails to load.**
    When `Storage#readAddressBook` throws `DataLoadingException`, `MainApp#initModelManager` logs a
    warning and starts with an empty `AddressBook`, but the UI shows nothing. The next successful
-   command saves `{"persons":[]}` over the unreadable file, destroying the user's only copy of it.
+   command overwrites the original file with the current in-memory contacts, destroying the user's
+   only copy of it.
    *Planned fix:* show a startup message in the result display naming the file and the problem, and
    copy the original file to a backup name (e.g., `unimate.json.bak`) before any save replaces it.
    All-or-nothing contact validation is kept.
@@ -3029,7 +3032,7 @@ These are described in detail, with their planned fixes, in
 2. **A failed save does not roll back the change.**
    * commands commit to the history in `Command#execute`, and `LogicManager#execute` saves to storage only afterwards
       * if saving throws an `IOException`, `LogicManager` throws a `CommandException` with `FILE_OPS_ERROR_FORMAT` or `FILE_OPS_PERMISSION_ERROR_FORMAT`
-   * the in-memory change and its history entry remain, and the UI shows only the save error instead of the command's success message, so a following `undo` reverts that change
+   * the in-memory change and its history entry remain, and the UI shows only the save error instead of the command's success message, so the reversal command named in the error reverts it: `redo` after `undo`, otherwise `undo`
    * to make this clear, `LogicManager` copies the person list (a shallow copy, as `Person` is immutable) before running the command, and appends `MESSAGE_UNSAVED_CHANGE` to the save error if the list changed
    * the note says the change is applied but not saved, that it is lost if the app closes now, and which command would revert it: `redo` after a failed `undo`, otherwise `undo`
    * commands that leave the data unchanged, such as `list`, get no note, because they have no change to describe
