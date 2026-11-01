@@ -65,7 +65,7 @@ public class EditCommand extends Command {
     public static final String MESSAGE_EDIT_PERSON_SUCCESS = "Edited person: %1$s";
     public static final String MESSAGE_NOT_EDITED = "At least one field to edit must be provided.";
     public static final String MESSAGE_DUPLICATE_PERSON =
-            "This person already exists in the address book (names are compared ignoring case).";
+            "A contact with this name already exists in UniMate. Names are compared ignoring case.";
     public static final String MESSAGE_SHARED_DETAILS_WARNING = SharedContactDetailsWarning.MESSAGE_WARNING;
 
     private final Index index;
@@ -143,8 +143,8 @@ public class EditCommand extends Command {
     private static void appendChange(StringBuilder feedback, String label, String before, String after) {
         if (!before.equals(after)) {
             feedback.append("\n").append(label).append(": ")
-                    .append(before.isEmpty() ? "Not specified" : before).append(" → ")
-                    .append(after.isEmpty() ? "Not specified" : after);
+                    .append(Messages.formatOptionalValue(before)).append(" → ")
+                    .append(Messages.formatOptionalValue(after));
         }
     }
 

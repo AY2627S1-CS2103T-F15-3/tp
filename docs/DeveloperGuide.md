@@ -33,6 +33,16 @@ Use this guide to find the component boundaries, design decisions and checks for
 * [JUnit 5](https://docs.junit.org/5.14.4/overview.html) provides the automated testing framework.
 * [MarkBind](https://markbind.org/) generates the documentation website, and [PlantUML](https://plantuml.com/) renders the UML diagrams.
 
+Notable uses of AI:
+
+* @RayWHJ used OpenAI Codex to review their committed contributions, including contact notes and persistence,
+  batch deletion and displayed-index validation, duplicate-name feedback and shared phone/email warnings,
+  startup/storage error handling, related tests and build configuration.
+* OpenAI Codex assisted with reviewing @RayWHJ's User Guide, Developer Guide and UML contributions,
+  including the documentation sections and diagrams marked with `RayWHJ` author tags.
+* OpenAI Codex assisted @RayWHJ with implementing and testing the UniMate message wording, shared empty-field
+  formatting and validation of commands that take no parameters, and with writing the related manual tests.
+
 --------------------------------------------------------------------------------------------------------------------
 
 ## Setting up, getting started
@@ -720,7 +730,11 @@ Very long criteria can consume the contact list's space; see
 `ViewStatusUiTest` checks persistent status after `shownote`, rejected commands, reset behavior,
 favourites membership changes and long text in the actual JavaFX layout.
 
-### Formatting academic fields in command messages
+### Formatting contact details in command messages
+
+Missing phone and email values display `Not specified` through `Messages#formatOptionalValue(String)`,
+which is shared with contact cards and immediate edit feedback. Empty user-tag collections display `Tags: None`;
+automatic system reminders are displayed separately on contact cards.
 
 Commands that report a contact's full details use `Messages#format(Person)`. The formatter includes `Major` and
 `Class year` before tags when those optional academic fields are specified. If either academic field is unspecified,
@@ -1270,7 +1284,7 @@ The model keeps an in-memory history of contact data. The user-facing `undo` and
 | `AddressBookHistory` | Stores defensive `AddressBook` snapshots, each paired with a description of its change, in an undo stack and a redo stack, and restores them into the tracked `AddressBook`. |
 | `Model` | Declares `commitAddressBook(ReadOnlyAddressBook, String)`, `canUndoAddressBook()`, `canRedoAddressBook()`, `getUndoDescription()`, `getRedoDescription()`, `undoAddressBook()` and `redoAddressBook()`. |
 | `ModelManager` | Creates one `AddressBookHistory` for its `AddressBook` and delegates the methods above to it. |
-| `AddCommand`, `EditCommand`, `DeleteCommand`, `ClearCommand`, `TagCommand`, `UntagCommand`, `FavCommand`, `UnfavCommand`, `NoteCommand`, `DeleteNoteCommand` | Copy the contact data before changing it, then call `Model#commitAddressBook` with that copy and the command's history description (`edit` retains the full-contact description, excluding its immediate change summary and duplicate-details warning). A note replacement uses `MESSAGE_REPLACED_DESCRIPTION`, which omits the `Use undo to restore the previous note.` hint, because the hint would be misleading in `Undid:` and `Redid:` messages. |
+| `AddCommand`, `EditCommand`, `DeleteCommand`, `ClearCommand`, `TagCommand`, `UntagCommand`, `FavCommand`, `UnfavCommand`, `NoteCommand`, `DeleteNoteCommand` | Copy the contact data before changing it, then call `Model#commitAddressBook` with that copy and the command's history description (`edit` retains the full-contact description, excluding its immediate change summary and duplicate-details warning). Note replacements use `MESSAGE_REPLACED_DESCRIPTION` and clear uses `MESSAGE_CLEARED_DESCRIPTION`; both omit the immediate hint to use undo, because that hint would be misleading in `Undid:` and `Redid:` messages. |
 | `UndoCommand`, `RedoCommand` | Check history availability, read the description of the change being reversed or reapplied, restore the corresponding state through the model, and reset the displayed list to show all contacts. |
 
 ##### History state
@@ -1516,7 +1530,12 @@ The sequence diagram below shows steps 1 to 4 for `execute("undo")`, including t
 
 1. The description names the original change, not the restored values.
 
-2. Note replacements omit the `Use undo to restore the previous note.` hint.
+2. History descriptions for note replacements and clear omit their immediate hints to use undo.
+
+3. Clearing a non-empty list immediately reports `All contacts have been cleared. Use undo to restore them.`
+   The stored description is only `All contacts have been cleared.` Clearing an already-empty list reports
+   `There are no saved contacts to clear.`, with no restore hint or new history entry; existing undo and redo
+   entries remain available. Clear checks the complete saved list, including contacts hidden by a filter.
 
 #### Design considerations
 
@@ -1540,12 +1559,17 @@ The sequence diagram below shows steps 1 to 4 for `execute("undo")`, including t
 
 **Aspect: Handling extra arguments**
 
-* **Alternative 1 (current choice):** Reject input such as `undo 1` with a parse error.
-  * Pros: Users are not misled into thinking `undo 3` undoes three changes or a specific contact, and no history changes by accident.
-  * Cons: Inconsistent with `help`, `exit` and `clear`, which ignore extra parameters.
-* **Alternative 2:** Ignore extra parameters, as `help` does.
-  * Pros: Consistent with the other commands that take no parameters.
-  * Cons: `undo 3` would silently undo only one change.
+* **Alternative 1 (current choice):** Reject extra arguments for every command that takes no parameters.
+   * Pros: Users are not misled into thinking `undo 3` undoes three changes or a specific contact, and no history changes by accident.
+   * Cons: Users must remove extra text before the command can run.
+* **Alternative 2:** Ignore extra parameters.
+   * Pros: Commands still run when extra text is appended.
+   * Cons: `undo 3` would silently undo only one change.
+
+`AddressBookParser` validates `help`, `exit`, `clear`, `list`, `listfav`, `tags`, `undo` and `redo`
+before execution. Extra arguments produce `MESSAGE_INVALID_COMMAND_FORMAT` and the command's usage text.
+Rejected input cannot clear contacts, change the view, open help, exit or consume undo/redo history.
+Surrounding whitespace is accepted, including the Unicode spaces normalised by the shared parser.
 
 **Aspect: What is displayed after restoring**
 
@@ -1564,9 +1588,10 @@ Undo and redo are tested at each layer:
 |------------|----------------|
 | `AddressBookHistoryTest`, `ModelManagerTest` | Committing, undoing and redoing snapshots, the descriptions returned for undo and redo, ignoring unchanged commits, clearing redo states on a new commit, and stale history after unrecorded changes. |
 | `AddCommandTest`, `AddCommandIntegrationTest`, `EditCommandTest` | Successful `add` and `edit` commands record exactly one history entry, while failed or unchanged ones record none. |
+| `ClearCommandTest` | Clear removes hidden as well as visible contacts, its immediate feedback includes the undo hint, its undo/redo descriptions omit that hint, and an empty clear creates no undo step. |
 | `UndoCommandTest`, `RedoCommandTest` | Each command on its own against a model: success messages naming the undone or redone change, failure messages, the order of repeated undos and redos, redo invalidation, and resetting the filtered list. `UndoCommandTest` also undoes and redoes each of `delete`, `clear`, `tag`, `untag`, `fav`, `unfav` and `note`, checks that unchanged results such as `clear` on an empty list record nothing, and checks stale history after a change made directly through the model. |
-| `AddressBookParserTest` | `undo` and `redo` are parsed, and extra arguments are rejected with the usage message. |
-| `LogicManagerTest`, `UndoRedoIntegrationTest` | Full command strings through `LogicManager#execute`: parser, command, model history and JSON storage together. |
+| `AddressBookParserTest` | All eight parameterless commands accept surrounding whitespace and reject extra arguments with the relevant usage message, including uppercase commands and Unicode separators. |
+| `LogicManagerTest`, `UndoRedoIntegrationTest` | Full command strings through `LogicManager#execute`: parser, command, model history and JSON storage together. Rejected parameterless commands preserve saved contacts, the filtered view and both history descriptions. |
 
 `UndoRedoIntegrationTest` starts each test from the typical contacts saved to a temporary data file.
 
@@ -2029,6 +2054,7 @@ after an edit, undo, redo or restart before using its displayed index again.
 | Area | Checks |
 | --- | --- |
 | Basic commands and validation | The corresponding add, edit, search, filter, sort, delete and tag sections below. |
+| Feedback and parameterless commands | [Empty-field wording and extra-argument rejection](#testing-command-feedback-and-parameterless-commands). |
 | Cards and physical keys | [Contact-list interaction](#testing-contact-list-interaction) and [command recall](#testing-command-history). |
 | Contact flags and derived labels | [Favourites](#testing-favourites) and [reminders](#testing-derived-reminders). |
 | Notes and history | [Managing notes](#managing-contact-notes), [undo/redo](#undoing-and-redoing-changes) and the note-history cases. |
@@ -2064,6 +2090,50 @@ after an edit, undo, redo or restart before using its displayed index again.
    3. Click **Copy URL**, close the help window, then paste into the command box.
       Expected: The exact User Guide address is pasted. UniMate shows no network error. Clear the
       command box and turn the network back on.
+
+<!-- @@author RayWHJ -->
+
+### Testing command feedback and parameterless commands
+
+Use a disposable test folder and the JAR built from the revision under test. These scenarios deliberately
+clear and modify the test contacts. Run each scenario's steps in order.
+
+1. Empty-field feedback and UniMate wording
+
+   Run `clear`, then `add n/FeedbackCheck a/NUS`.
+   Expected: `All contacts have been cleared. Use undo to restore them.` followed by add feedback containing
+   `Phone: Not specified; Email: Not specified; Address: NUS; Tags: None`.
+   The card shows `Not specified` for missing scalar fields. Its incomplete reminder is separate from user tags.
+
+   | Commands, in order | Expected result |
+   | --- | --- |
+   | `fav 1`, then `unfav 1` | Both summaries retain explicit missing phone/email values and `Tags: None`. |
+   | `tag 1 t/Review`, then `untag 1 t/Review` | Tags change to `[Review]`, then `None`. No empty `Tags:` label appears. |
+   | `edit 1 p/91234567 e/feedback@example.com`, then `edit 1 p/ e/` | Edit feedback uses `Not specified` before filling and after clearing both fields. |
+   | `undo`, then `redo` | Phone/email are restored, then cleared again. History summaries use explicit empty values. |
+   | `delete 1`, then `undo` | Deletion feedback uses explicit empty values; undo restores `FeedbackCheck`. |
+   | `add n/feedbackcheck a/Elsewhere` | Rejected with `A contact with this name already exists in UniMate. Names are compared ignoring case.` |
+   | `add n/OtherCheck a/NUS`, then `find OtherCheck`, then `edit 1 n/FEEDBACKCHECK` | Edit rejects the duplicate name with the same UniMate wording. Both saved contacts retain their names. |
+   | `add` | Usage starts with `add: Adds a contact to UniMate.` |
+
+2. Rejecting extra arguments without side effects
+
+   Run `clear`, `add n/GuardAlpha a/NUS`, `add n/GuardBeta a/NUS`, then `find GuardAlpha`.
+
+   | Commands, in order | Expected result |
+   | --- | --- |
+   | `clear abc`, `list 5`, `listfav 5`, `tags extra`, `undo 1`, `redo 1`, `help 123`, `exit now` | Every input shows `Invalid command format!` and the relevant usage. The view still shows only `GuardAlpha`; no help window opens and UniMate stays open. |
+   | `CLEAR abc` | The same rejection applies to uppercase commands. |
+   | `list` | Both `GuardAlpha` and `GuardBeta` are still saved. |
+   | `undo`, then `clear abc`, then `redo 1`, then `redo` | Undo removes `GuardBeta`; both invalid commands preserve the redo entry; plain redo restores `GuardBeta`. |
+   | `  list  ` | Surrounding spaces are accepted and both contacts are shown. |
+   | `find GuardAlpha`, then `clear` | Both the displayed `GuardAlpha` and hidden `GuardBeta` are removed. Feedback is `All contacts have been cleared. Use undo to restore them.` |
+   | `clear` | Feedback is `There are no saved contacts to clear.` No restore hint or new undo step appears. |
+   | `undo` | Both contacts return. Feedback is `Undid: All contacts have been cleared.`, without the restore hint. |
+   | `redo`, then `undo` | Redo clears both again and undo restores both. History feedback describes the clear without repeating the hint. |
+   | `help`, close the help window, then `exit` | Plain help opens normally; plain exit closes UniMate. |
+
+<!-- @@author -->
 
 ### Testing contact-list interaction
 

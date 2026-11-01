@@ -9,6 +9,7 @@ import static seedu.address.testutil.TypicalIndexes.INDEX_FIRST_PERSON;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -28,11 +29,13 @@ import seedu.address.logic.commands.FilterCommand;
 import seedu.address.logic.commands.FindCommand;
 import seedu.address.logic.commands.HelpCommand;
 import seedu.address.logic.commands.ListCommand;
+import seedu.address.logic.commands.ListFavCommand;
 import seedu.address.logic.commands.NoteCommand;
 import seedu.address.logic.commands.RedoCommand;
 import seedu.address.logic.commands.ShowNoteCommand;
 import seedu.address.logic.commands.SortCommand;
 import seedu.address.logic.commands.TagCommand;
+import seedu.address.logic.commands.TagsCommand;
 import seedu.address.logic.commands.UndoCommand;
 import seedu.address.logic.commands.UntagCommand;
 import seedu.address.logic.parser.exceptions.ParseException;
@@ -63,7 +66,7 @@ public class AddressBookParserTest {
     @Test
     public void parseCommand_clear() throws Exception {
         assertTrue(parser.parseCommand(ClearCommand.COMMAND_WORD) instanceof ClearCommand);
-        assertTrue(parser.parseCommand(ClearCommand.COMMAND_WORD + " 3") instanceof ClearCommand);
+        assertTrue(parser.parseCommand("  clear  \t ") instanceof ClearCommand);
     }
 
     @Test
@@ -87,7 +90,7 @@ public class AddressBookParserTest {
     @Test
     public void parseCommand_exit() throws Exception {
         assertTrue(parser.parseCommand(ExitCommand.COMMAND_WORD) instanceof ExitCommand);
-        assertTrue(parser.parseCommand(ExitCommand.COMMAND_WORD + " 3") instanceof ExitCommand);
+        assertTrue(parser.parseCommand("  exit  \t ") instanceof ExitCommand);
     }
 
     @Test
@@ -247,7 +250,37 @@ public class AddressBookParserTest {
     @Test
     public void parseCommand_help() throws Exception {
         assertTrue(parser.parseCommand(HelpCommand.COMMAND_WORD) instanceof HelpCommand);
-        assertTrue(parser.parseCommand(HelpCommand.COMMAND_WORD + " 3") instanceof HelpCommand);
+        assertTrue(parser.parseCommand("  help  \t ") instanceof HelpCommand);
+    }
+
+    @Test
+    public void parseCommand_parameterlessCommandsWithArguments_throwsParseException() {
+        Map<String, String> usages = Map.of(
+                ClearCommand.COMMAND_WORD, ClearCommand.MESSAGE_USAGE,
+                ExitCommand.COMMAND_WORD, ExitCommand.MESSAGE_USAGE,
+                HelpCommand.COMMAND_WORD, HelpCommand.MESSAGE_USAGE,
+                ListCommand.COMMAND_WORD, ListCommand.MESSAGE_USAGE,
+                ListFavCommand.COMMAND_WORD, ListFavCommand.MESSAGE_USAGE,
+                TagsCommand.COMMAND_WORD, TagsCommand.MESSAGE_USAGE,
+                UndoCommand.COMMAND_WORD, UndoCommand.MESSAGE_USAGE,
+                RedoCommand.COMMAND_WORD, RedoCommand.MESSAGE_USAGE);
+        for (Map.Entry<String, String> entry : usages.entrySet()) {
+            String expectedMessage = String.format(MESSAGE_INVALID_COMMAND_FORMAT, entry.getValue());
+            for (String word : List.of(entry.getKey(), entry.getKey().toUpperCase(Locale.ROOT))) {
+                for (String suffix : List.of(" abc", " 5", " t/Friend", "\t extra", "\nextra",
+                        "\u00A0extra", "\u2003extra")) {
+                    assertThrows(ParseException.class, expectedMessage, () -> parser.parseCommand(word + suffix));
+                }
+            }
+        }
+    }
+
+    @Test
+    public void parseCommand_parameterlessCommandsWithWhitespace_acceptsInput() throws Exception {
+        for (String word : List.of("clear", "exit", "help", "list", "listfav", "tags", "undo", "redo")) {
+            assertEquals(parser.parseCommand(word).getClass(),
+                    parser.parseCommand("\u3000" + word.toUpperCase(Locale.ROOT) + "\t\u00A0\u2003").getClass());
+        }
     }
 
     @Test

@@ -90,49 +90,60 @@ public class AddressBookParser {
             case TagCommand.COMMAND_WORD -> new TagCommandParser().parse(arguments);
             case UntagCommand.COMMAND_WORD -> new UntagCommandParser().parse(arguments);
             case TagsCommand.COMMAND_WORD -> {
-                if (!arguments.isBlank()) {
-                    throw new ParseException(String.format(MESSAGE_INVALID_COMMAND_FORMAT, TagsCommand.MESSAGE_USAGE));
-                }
+                validateNoArguments(arguments, TagsCommand.MESSAGE_USAGE);
                 yield new TagsCommand();
             }
             case EditCommand.COMMAND_WORD -> new EditCommandParser().parse(arguments);
             case DeleteCommand.COMMAND_WORD -> new DeleteCommandParser().parse(arguments);
-            case ClearCommand.COMMAND_WORD -> new ClearCommand();
+            case ClearCommand.COMMAND_WORD -> {
+                validateNoArguments(arguments, ClearCommand.MESSAGE_USAGE);
+                yield new ClearCommand();
+            }
             case SortCommand.COMMAND_WORD -> new SortCommandParser().parse(arguments);
             case FilterCommand.COMMAND_WORD -> new FilterCommandParser().parse(arguments);
             case FindCommand.COMMAND_WORD -> new FindCommandParser().parse(arguments);
             case ListCommand.COMMAND_WORD -> {
-                if (!arguments.isBlank()) {
-                    throw new ParseException(String.format(MESSAGE_INVALID_COMMAND_FORMAT, ListCommand.MESSAGE_USAGE));
-                }
+                validateNoArguments(arguments, ListCommand.MESSAGE_USAGE);
                 yield new ListCommand();
             }
             case ListFavCommand.COMMAND_WORD -> {
-                if (!arguments.isBlank()) {
-                    throw new ParseException(
-                            String.format(MESSAGE_INVALID_COMMAND_FORMAT, ListFavCommand.MESSAGE_USAGE));
-                }
+                validateNoArguments(arguments, ListFavCommand.MESSAGE_USAGE);
                 yield new ListFavCommand();
             }
             case UndoCommand.COMMAND_WORD -> {
-                if (!arguments.isBlank()) {
-                    throw new ParseException(String.format(MESSAGE_INVALID_COMMAND_FORMAT, UndoCommand.MESSAGE_USAGE));
-                }
+                validateNoArguments(arguments, UndoCommand.MESSAGE_USAGE);
                 yield new UndoCommand();
             }
             case RedoCommand.COMMAND_WORD -> {
-                if (!arguments.isBlank()) {
-                    throw new ParseException(String.format(MESSAGE_INVALID_COMMAND_FORMAT, RedoCommand.MESSAGE_USAGE));
-                }
+                validateNoArguments(arguments, RedoCommand.MESSAGE_USAGE);
                 yield new RedoCommand();
             }
-            case ExitCommand.COMMAND_WORD -> new ExitCommand();
-            case HelpCommand.COMMAND_WORD -> new HelpCommand();
+            case ExitCommand.COMMAND_WORD -> {
+                validateNoArguments(arguments, ExitCommand.MESSAGE_USAGE);
+                yield new ExitCommand();
+            }
+            case HelpCommand.COMMAND_WORD -> {
+                validateNoArguments(arguments, HelpCommand.MESSAGE_USAGE);
+                yield new HelpCommand();
+            }
             default -> {
                 logger.finer("This user input caused a ParseException: " + userInput);
                 throw new ParseException(MESSAGE_UNKNOWN_COMMAND);
             }
         };
+    }
+
+    /**
+     * Validates that a parameterless command has no non-whitespace arguments.
+     *
+     * @param arguments the arguments supplied after the command word
+     * @param usageMessage the command-specific usage message to show on failure
+     * @throws ParseException if non-whitespace arguments are supplied
+     */
+    private static void validateNoArguments(String arguments, String usageMessage) throws ParseException {
+        if (!arguments.isBlank()) {
+            throw new ParseException(String.format(MESSAGE_INVALID_COMMAND_FORMAT, usageMessage));
+        }
     }
 
 }

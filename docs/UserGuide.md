@@ -153,11 +153,10 @@ on screen changes when Ctrl+Tab moves focus there.
 * Prefixed parameters can be in any order. For `sort`, the field must precede the direction.<br>
   For example, if the command specifies `n/NAME p/PHONE_NUMBER`, `p/PHONE_NUMBER n/NAME` is also acceptable.
 
-* Extraneous parameters for `help`, `exit`, and `clear` are ignored.<br>
-  For example, `help 123` is interpreted as `help`.
-
-* `list`, `listfav`, `tags`, `undo` and `redo` take no parameters and reject extra arguments.<br>
-  In particular, `list all` is rejected; use plain `list` to show all saved contacts.
+* `help`, `exit`, `clear`, `list`, `listfav`, `tags`, `undo` and `redo` take no parameters and reject extra arguments.<br>
+  For example, `clear abc`, `help 123` and `list 5` show `Invalid command format!` followed by the command's
+  usage instructions. Rejected commands leave saved contacts, the current view and undo/redo history unchanged.
+  Leading and trailing whitespace is accepted. Use plain `list` to show all saved contacts.
   See [Listing all persons](#listing-all-persons-list) for details.
 
 * If you are using a PDF version of this document, be careful when copying and pasting commands that span multiple lines as space characters surrounding line-breaks may be omitted when copied over to the application.
@@ -175,6 +174,7 @@ Format: `help`
   the address even without an internet connection.
 * Opening the copied address in a web browser needs an internet connection.
 * Offline use was tested on macOS, Linux and Windows, and works as described.
+* Extra arguments, such as `help 123`, are rejected without opening the help window.
 
 
 ### Adding a person: `add`
@@ -224,6 +224,11 @@ contact, then `edit 1 a/NUS`.
 
 * Supply each single-value field only once. Leading and trailing spaces around values are ignored.
 * The fields are saved with the contact, can be edited using `edit`, are shown in the displayed contact list and appear in command messages when specified.
+
+Full-contact command summaries, such as those from `add`, `delete`, `fav` and `unfav`, show missing phone/email
+values as `Not specified` and an empty user-tag collection as `Tags: None`. Unspecified major and class year
+are omitted from these summaries; contact cards display `Not specified` for those fields.
+Automatic reminder badges on cards are separate from the user tags listed in command feedback.
 
 <!-- @@author RayWHJ -->
 
@@ -924,9 +929,17 @@ Clears all entries from UniMate.
 
 Format: `clear`
 
+Only plain `clear` is accepted, with optional surrounding whitespace. For example, `clear abc` is rejected
+with usage instructions and removes no contacts. Clearing a non-empty list reports
+`All contacts have been cleared. Use undo to restore them.`
+
+If no contacts are saved, the result is `There are no saved contacts to clear.` No new undo step is created,
+and any existing undo or redo history remains available.
+
 <box type="warning" seamless>
 
-**Caution:** `clear` removes all your contacts. You can bring them back with [`undo`](#undoing-a-change-undo), but only while UniMate is still open: undo history is cleared when you close UniMate.
+**Warning:** `clear` deletes all saved contacts, including contacts hidden by a filter.
+Use [`undo`](#undoing-a-change-undo) to restore them. Undo history is cleared when you close UniMate.
 </box>
 
 <!-- @@author sel-couth-ene -->
@@ -1025,9 +1038,13 @@ Exits the program.
 
 Format: `exit`
 
-If earlier contact changes have not been saved, `exit` retries saving them. If saving still fails,
-the window stays open with a recovery message. Fix the saving problem and run `exit` again.
+Extra arguments, such as `exit now`, are rejected and the application stays open.
+
+If a save has failed, use `exit` to retry saving. Closing the window discards any unsaved changes.
+
+If saving still fails, UniMate stays open with a recovery message. Fix the saving problem and run `exit` again.
 With no unsaved contact changes, `exit` works even when the data file is read-only.
+If a loading error disabled saving for the session, follow the [data-file recovery instructions](#recovery-after-a-loading-error).
 
 ### Navigating command history
 

@@ -215,7 +215,7 @@ public class RedoCommandTest {
         new ClearCommand().execute(model);
         model.undoAddressBook();
 
-        assertCommandSuccess(new RedoCommand(), model, redoMessage(ClearCommand.MESSAGE_SUCCESS),
+        assertCommandSuccess(new RedoCommand(), model, redoMessage(ClearCommand.MESSAGE_CLEARED_DESCRIPTION),
                 new ModelManager(new AddressBook(), new UserPrefs()));
     }
 

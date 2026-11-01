@@ -565,11 +565,12 @@ public class UndoRedoIntegrationTest {
     /**
      * Runs a mix of add, edit, fav, unfav, tag and untag commands from an empty contact list,
      * and returns the contacts before the first command and after each one.
-     * The feedback of the clear and of each command is kept in {@code mixedChangeFeedback}.
+     * The history descriptions of the clear and of each command are kept in {@code mixedChangeFeedback}.
      */
     private List<List<Person>> runMixedChanges() throws Exception {
         mixedChangeFeedback.clear();
-        mixedChangeFeedback.add(logic.execute("clear").getFeedbackToUser());
+        logic.execute("clear");
+        mixedChangeFeedback.add(model.getUndoDescription().orElseThrow());
         List<List<Person>> states = new ArrayList<>();
         states.add(currentContacts());
         for (String command : List.of("add n/Alice a/NUS p/91234567", "tag 1 t/Project", "edit 1 p/92345678",
