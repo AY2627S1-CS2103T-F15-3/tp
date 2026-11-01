@@ -7,8 +7,6 @@
 
 We are a team based in the [School of Computing, National University of Singapore](http://www.comp.nus.edu.sg).
 
-You can reach us at the email `seer[at]comp.nus.edu.sg`
-
 ## Project team
 
 ### Pei Teer
@@ -33,7 +31,7 @@ You can reach us at the email `seer[at]comp.nus.edu.sg`
 
 <img src="images/aziz-almarzooq.png" width="200px">
 
-[[github](http://github.com/aziz-Almarzooq)] [[portfolio](team/johndoe.md)]
+[[github](http://github.com/aziz-Almarzooq)]
 
 * Role: Developer
 * Responsibilities:
@@ -51,7 +49,7 @@ You can reach us at the email `seer[at]comp.nus.edu.sg`
 
 <img src="images/sel-couth-ene.png" width="200px">
 
-[[github](http://github.com/sel-couth-ene)] [[portfolio](team/johndoe.md)]
+[[github](http://github.com/sel-couth-ene)]
 
 * Role: Developer
 * Responsibilities: Data
@@ -61,7 +59,6 @@ You can reach us at the email `seer[at]comp.nus.edu.sg`
 <img src="images/raywhj.png" width="200px">
 
 [[github](https://github.com/RayWHJ)]
-[[portfolio](team/johndoe.md)]
 
 * Role: Developer
 * Responsibilities:
