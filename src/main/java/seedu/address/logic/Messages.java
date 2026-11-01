@@ -38,9 +38,9 @@ public class Messages {
         final StringBuilder builder = new StringBuilder();
         builder.append(person.getName())
                 .append("; Phone: ")
-                .append(person.getPhone())
+                .append(formatOptionalValue(person.getPhone().value))
                 .append("; Email: ")
-                .append(person.getEmail())
+                .append(formatOptionalValue(person.getEmail().value))
                 .append("; Address: ")
                 .append(person.getAddress());
         if (!person.getMajor().value.isEmpty()) {
@@ -52,8 +52,19 @@ public class Messages {
                     .append(person.getGraduationYear());
         }
         builder.append("; Tags: ");
-        person.getTags().forEach(builder::append);
+        if (person.getTags().isEmpty()) {
+            builder.append("None");
+        } else {
+            person.getTags().forEach(builder::append);
+        }
         return builder.toString();
+    }
+
+    /**
+     * Returns the value for display, using a placeholder when it is unspecified.
+     */
+    public static String formatOptionalValue(String value) {
+        return value.isEmpty() ? "Not specified" : value;
     }
 
 }

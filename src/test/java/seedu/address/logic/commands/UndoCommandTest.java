@@ -191,12 +191,13 @@ public class UndoCommandTest {
         for (Command command : commands) {
             model = new ModelManager(getTypicalAddressBook(), new UserPrefs());
             AddressBook stateBefore = new AddressBook(model.getAddressBook());
-            String commandMessage = command.execute(model).getFeedbackToUser();
+            command.execute(model);
+            String description = model.getUndoDescription().orElseThrow();
             AddressBook stateAfter = new AddressBook(model.getAddressBook());
 
-            assertCommandSuccess(new UndoCommand(), model, undoMessage(commandMessage),
+            assertCommandSuccess(new UndoCommand(), model, undoMessage(description),
                     new ModelManager(stateBefore, new UserPrefs()));
-            assertCommandSuccess(new RedoCommand(), model, redoMessage(commandMessage),
+            assertCommandSuccess(new RedoCommand(), model, redoMessage(description),
                     new ModelManager(stateAfter, new UserPrefs()));
         }
     }
@@ -261,7 +262,8 @@ public class UndoCommandTest {
         new UndoCommand().execute(model);
 
         // Clearing the already-empty list changes nothing, so the undone add can still be redone.
-        new ClearCommand().execute(model);
+        assertEquals("There are no saved contacts to clear.",
+                new ClearCommand().execute(model).getFeedbackToUser());
 
         assertCommandSuccess(new RedoCommand(), model, redoMessage(addMessage),
                 new ModelManager(stateAfterAdd, new UserPrefs()));

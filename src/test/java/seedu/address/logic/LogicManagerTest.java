@@ -12,6 +12,7 @@ import static seedu.address.testutil.TypicalPersons.AMY;
 import java.io.IOException;
 import java.nio.file.AccessDeniedException;
 import java.nio.file.Path;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -65,6 +66,35 @@ public class LogicManagerTest {
     public void execute_commandExecutionError_throwsCommandException() {
         String deleteCommand = "delete 9";
         assertCommandException(deleteCommand, DeleteCommand.MESSAGE_NO_CONTACTS);
+    }
+
+    @Test
+    public void execute_parameterlessCommandsWithArguments_preservesContactsViewAndHistory() throws Exception {
+        logic.execute("add n/Alpha One a/NUS");
+        logic.execute("add n/Beta Two a/NUS");
+        logic.execute("undo");
+        logic.execute("find Alpha");
+        JsonAddressBookStorage storage =
+                new JsonAddressBookStorage(temporaryFolder.resolve("addressBook.json"));
+        ReadOnlyAddressBook savedContacts = storage.readAddressBook().orElseThrow();
+        List<Person> displayedContacts = List.copyOf(model.getFilteredPersonList());
+        String undoDescription = model.getUndoDescription().orElseThrow();
+        String redoDescription = model.getRedoDescription().orElseThrow();
+
+        for (String input : List.of("clear abc", "exit now", "help 123", "list 5", "listfav 5",
+                "tags extra", "undo 1", "redo 1")) {
+            assertThrows(ParseException.class, () -> logic.execute(input));
+            assertEquals(savedContacts, model.getAddressBook(), input);
+            assertEquals(savedContacts, storage.readAddressBook().orElseThrow(), input);
+            assertEquals(displayedContacts, model.getFilteredPersonList(), input);
+            assertEquals(undoDescription, model.getUndoDescription().orElseThrow(), input);
+            assertEquals(redoDescription, model.getRedoDescription().orElseThrow(), input);
+        }
+
+        logic.execute("redo");
+        assertEquals(2, model.getAddressBook().getPersonList().size());
+        logic.execute("undo");
+        assertEquals(savedContacts, model.getAddressBook());
     }
 
     @Test

@@ -17,6 +17,7 @@ import javafx.scene.control.Tooltip;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+import seedu.address.logic.Messages;
 import seedu.address.model.person.Person;
 import seedu.address.model.tag.SystemTag;
 import seedu.address.model.tag.Tag;
@@ -205,7 +206,7 @@ public class PersonCard extends UiPart<Region> {
 
     //@@author aziz-Almarzooq
     private static String getValueOrFallback(String value) {
-        return value.isEmpty() ? "Not specified" : value;
+        return Messages.formatOptionalValue(value);
     }
     //@@author
 }
