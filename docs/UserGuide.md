@@ -9,7 +9,7 @@
 UniMate helps **university students organise contacts by major, class year and tags**.
 It is a **desktop application for managing contacts, optimized for use through a Command Line Interface (CLI)** while retaining the benefits of a Graphical User Interface (GUI). If you type quickly, UniMate can help you manage contacts faster than traditional GUI applications.
 
-This guide describes **Unimate v1.5**.
+This guide describes **UniMate v1.6**. Older JAR versions may behave differently from this guide.
 
 <!-- * Table of Contents -->
 <page-nav-print />
@@ -24,7 +24,7 @@ unsupported and may overwrite saved changes.
 1. Ensure that Java `25` is installed on your computer.
    **Mac users:** Ensure you have the precise JDK version prescribed [here](https://se-education.org/guides/tutorials/javaInstallationMac.html).
 <br>
-2. Download the v1.5 `unimate.jar`, once published, from the [UniMate releases page](https://github.com/AY2627S1-CS2103T-F15-3/tp/releases).
+2. Download `unimate.jar` from the **v1.6 release** on the [UniMate releases page](https://github.com/AY2627S1-CS2103T-F15-3/tp/releases).
 
 3. Copy the file to a writable folder you want to use as the _home folder_ for UniMate.
 
@@ -236,6 +236,8 @@ Automatic reminder badges on cards are separate from the user tags listed in com
 
 * Names match ignoring case: `John Doe` and `john doe` are duplicates even if other details differ.
   Original capitalization is retained; editing a contact's own name capitalization is allowed.
+* Internal spacing remains significant: `Alice Tan` (one space) and `Alice  Tan` (two spaces) are
+  treated as different contacts. Check for extra spaces before adding or renaming a contact.
 * A duplicate error shows the existing contact's saved details. A **displayed index** refers to its
   current card. A **saved index** means the contact is hidden: run `list`, then `sort reset`, and check
   the card before using that index. `list` alone retains the current sort order.
