@@ -126,8 +126,9 @@ How the `Logic` component works:
 2. This results in a `Command` object (more precisely, an object of one of its subclasses e.g., `DeleteCommand`) which is executed by the `LogicManager`.
 3. The command can communicate with the `Model` when it is executed (e.g., to delete a contact).
    A command that changes contact data also commits the change to the undo history.
-4. The command returns a `CommandResult`. `LogicManager` then saves the address book through `Storage`
-   before returning that result to the `UI`.
+4. The command returns a `CommandResult`. `LogicManager` normally saves the address book through
+   `Storage` before returning the result to the `UI`. `help` skips saving; `exit` skips saving when
+   there are no unsaved contact changes.
 
 For an example interaction trace, including batch-index validation, see
 [Deleting one or more contacts](#deleting-one-or-more-contacts).
