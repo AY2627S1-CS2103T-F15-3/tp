@@ -42,6 +42,12 @@ Notable uses of AI:
   including the documentation sections and diagrams marked with `RayWHJ` author tags.
 * OpenAI Codex assisted @RayWHJ with implementing and testing the UniMate message wording, shared empty-field
   formatting and validation of commands that take no parameters, and with writing the related manual tests.
+* @zruixuan used OpenAI Codex and ChatGPT to assist with implementing and modifying Java features,
+  writing and improving unit and integration tests, developing GUI functionality, creating and simplifying
+  UML class diagrams, drafting and revising the User Guide and Developer Guide, and debugging, reviewing
+  and validating code.
+* OpenAI Codex and ChatGPT assisted @zruixuan with identifying test cases, analysing test failures,
+  and investigating potential bugs to support faster testing and more thorough bug detection.
 
 --------------------------------------------------------------------------------------------------------------------
 
