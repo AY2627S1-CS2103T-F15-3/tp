@@ -3121,21 +3121,21 @@ Each item below is a planned fix for a limitation listed in
    with spaces, so words stay separated and the user can see the result before pressing Enter.
 
 
-4. **Treat names differing only in internal spacing as duplicates.**
+3. **Treat names differing only in internal spacing as duplicates.**
    `Person#isSamePerson` compares names with `equalsIgnoreCase`, so `Alice Tan` and `Alice  Tan` are
    saved as separate contacts that look almost identical on their cards.
    *Planned fix:* collapse runs of spaces in `ParserUtil.parseName` and compare collapsed names in
    `isSamePerson`, so `add` and `edit` reject such names as duplicates. A saved file containing both
    forms is rejected on load in the same way as existing case-only duplicates.
 
-5. **Accept common punctuation and non-ASCII letters in names.**
+4. **Accept common punctuation and non-ASCII letters in names.**
    `Name.VALIDATION_REGEX` allows only ASCII letters, digits and spaces, so `Mary-Jane O'Neil`,
    `Rajesh s/o Kumar`, `José` and `李小龙` are rejected.
    *Planned fix:* allow Unicode letters and marks, plus `-`, `'`, `.` and `/` between letters, and
    update `Name.MESSAGE_CONSTRAINTS` to list them. `s/o` needs no parser change because `s/` is not a
    prefix; `d/o` would still be read as the `d/` prefix in `add`.
 
-6. **Accept international phone formats and limit phone length.**
+5. **Accept international phone formats and limit phone length.**
    `Phone.VALIDATION_REGEX` is `\d{3,}`, so `+6591234567` is rejected while a 30-digit number is accepted.
    *Planned fix:* allow one leading `+`, and limit numbers to 3–15 digits, the maximum length of an
    international number. Update `Phone.MESSAGE_CONSTRAINTS` to match.
@@ -3156,10 +3156,9 @@ These are described in detail, with their planned fixes, in
 | --- | --- |
 | A final domain label containing a hyphen needs two characters on one side, so `a@x.y-z` is rejected. | 1 |
 | The command box silently removes pasted tabs and line breaks. | 2 |
-| The message area shows no focus outline. | 3 |
-| Names differing only in internal spacing are not treated as duplicates. | 4 |
-| Names with hyphens, apostrophes, `s/o` or non-ASCII letters are rejected. | 5 |
-| Phone numbers with a leading `+` are rejected, while overly long numbers are accepted. | 6 |
+| Names differing only in internal spacing are not treated as duplicates. | 3 |
+| Names with hyphens, apostrophes, `s/o` or non-ASCII letters are rejected. | 4 |
+| Phone numbers with a leading `+` are rejected, while overly long numbers are accepted. | 5 |
 
 ### Other limitations
 
