@@ -52,6 +52,39 @@ public class JsonUtilTest {
     }
 
     @Test
+    public void fromJsonString_trailingContent_throwsIoException() {
+        for (String suffix : new String[]{"{}", "[]", "true", "false", "null", "123", "\"text\"",
+            "NOT_JSON", "}"}) {
+            assertThrows(IOException.class, () -> JsonUtil.fromJsonString(
+                    SerializableTestClass.JSON_STRING_REPRESENTATION + "\n" + suffix, SerializableTestClass.class));
+        }
+    }
+
+    @Test
+    public void fromJsonString_surroundingWhitespace_returnsObject() throws IOException {
+        String json = " \t\r\n" + SerializableTestClass.JSON_STRING_REPRESENTATION + "\r\n\t ";
+
+        SerializableTestClass result = JsonUtil.fromJsonString(json, SerializableTestClass.class);
+
+        assertEquals(SerializableTestClass.getNameTestValue(), result.getName());
+        assertEquals(SerializableTestClass.getListTestValues(), result.getListOfLocalDateTimes());
+        assertEquals(SerializableTestClass.getHashMapTestValues(), result.getMapOfIntegerToString());
+    }
+
+    @Test
+    public void readJsonFile_trailingContent_throwsDataLoadingExceptionWithoutChangingFile() throws IOException {
+        Path filePath = temporaryFolder.resolve("trailing.json");
+        for (String suffix : new String[]{"{}", "NOT_JSON"}) {
+            String original = SerializableTestClass.JSON_STRING_REPRESENTATION + "\n" + suffix;
+            FileUtil.writeToFile(filePath, original);
+
+            assertThrows(DataLoadingException.class, () -> JsonUtil.readJsonFile(
+                    filePath, SerializableTestClass.class));
+            assertEquals(original, FileUtil.readFromFile(filePath));
+        }
+    }
+
+    @Test
     public void serializeObjectToJsonFile_noExceptionThrown() throws IOException {
         SerializableTestClass serializableTestClass = new SerializableTestClass();
         serializableTestClass.setTestValues();

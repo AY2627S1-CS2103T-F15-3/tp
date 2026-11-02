@@ -1,6 +1,7 @@
 package seedu.address.storage;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static seedu.address.testutil.TypicalPersons.getTypicalAddressBook;
@@ -15,7 +16,10 @@ import org.junit.jupiter.api.io.TempDir;
 import seedu.address.commons.core.GuiSettings;
 import seedu.address.commons.exceptions.DataLoadingException;
 import seedu.address.commons.exceptions.DataRecoveryRequiredException;
+import seedu.address.logic.LogicManager;
+import seedu.address.logic.commands.exceptions.CommandException;
 import seedu.address.model.AddressBook;
+import seedu.address.model.ModelManager;
 import seedu.address.model.ReadOnlyAddressBook;
 import seedu.address.model.UserPrefs;
 
@@ -91,6 +95,21 @@ public class StorageManagerTest {
         assertEquals(restored, reopened.readAddressBook().orElseThrow());
         reopened.saveAddressBook(restored);
         assertEquals(restored, reopened.readAddressBook().orElseThrow());
+    }
+
+    @Test
+    public void addressBook_trailingRoot_preventsListFromOverwritingRecoveryData() throws Exception {
+        Path dataPath = storageManager.getAddressBookFilePath();
+        String original = "{\"persons\":[]}\n"
+                + "{\"persons\":[{\"name\":\"Alice\",\"address\":\"NUS\"}]}";
+        Files.writeString(dataPath, original);
+
+        assertThrows(DataLoadingException.class, storageManager::readAddressBook);
+        LogicManager logic = new LogicManager(new ModelManager(), storageManager);
+        CommandException error = assertThrows(CommandException.class, () -> logic.execute("list"));
+
+        assertInstanceOf(DataRecoveryRequiredException.class, error.getCause());
+        assertEquals(original, Files.readString(dataPath));
     }
 
     @Test
