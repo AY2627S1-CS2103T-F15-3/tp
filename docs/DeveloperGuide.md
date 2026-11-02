@@ -13,7 +13,7 @@ Use this guide to find the component boundaries, design decisions and checks for
 | Developer task | Start here |
 | --- | --- |
 | Understand startup and component boundaries | [Architecture](#architecture), then the UI, Logic, Model and Storage sections. |
-| Change contact fields or validation | [Add prefixes](#parsing-add-prefixes), [academic fields](#adding-academic-fields) and [editing](#editing-existing-contacts-gui-and-execution-flow). |
+| Change contact fields or validation | [Add prefixes](#parsing-add-prefixes), [email validation](#shared-email-validation), [academic fields](#adding-academic-fields) and [editing](#editing-existing-contacts-gui-and-execution-flow). |
 | Change the displayed contacts or their order | [Search](#searching-by-academic-fields), [filter](#filtering-contacts-by-academic-fields-and-tags), [sort](#sorting-the-displayed-contacts) and [view status](#persistent-view-status). |
 | Change card layout or keyboard interaction | [Contact card layout](#contact-card-layout). |
 | Change deletion or contact notes | [Batch deletion](#deleting-one-or-more-contacts) and [contact notes](#contact-notes). |
@@ -51,6 +51,9 @@ Notable uses of AI:
   and validating code.
 * OpenAI Codex and ChatGPT assisted @zruixuan with identifying test cases, analysing test failures,
   and investigating potential bugs to support faster testing and more thorough bug detection.
+* @hyunmin1211 used OpenAI Codex to assist with implementing and reviewing Add, Filter/Sort and UI changes,
+  writing and checking related tests, revising the User Guide, Developer Guide and UML diagrams,
+  and auditing documentation against the implementation.
 
 --------------------------------------------------------------------------------------------------------------------
 
@@ -380,6 +383,23 @@ describes the addition in undo/redo history. After creation, `fav` and `unfav` c
 undo/redo, editing and rejected inputs, while `FavouriteIconTest` checks that
 the heart appears immediately after adding with the flag.
 
+### Shared email validation
+
+Add and edit input use the `Email` validation rules through `ParserUtil.parseEmail`;
+`JsonAdaptedPerson#toModelType` checks stored email values with `Email.isValidEmail` when loading.
+The accepted syntax is documented in the User Guide's [field rules](UserGuide.md#field-rules).
+
+`Email.MESSAGE_CONSTRAINTS` uses short newline-separated rules and
+explicitly forbids consecutive local-part special characters. `Email#isValidEmail` scans the local
+part and domain labels iteratively; `isValidPart` checks ASCII letters/digits and separated punctuation
+without recursive regex matching or substring allocation. Validation takes linear time and constant
+auxiliary space, with no new length limit. The existing `VALIDATION_REGEX` remains as a reference,
+but is not executed by the validator. Accepted values remain unchanged, including the existing
+final-label restriction requiring two adjacent letters/digits; correcting that restriction remains
+listed under [Planned enhancements](#appendix-planned-enhancements).
+
+`EmailTest` and `LongEmailStorageTest` cover long valid and invalid emails through validation, `add`/`edit` and saving.
+
 ### Adding academic fields
 
 `CliSyntax` defines `m/` for a major and `c/` for a graduation year. `AddCommandParser` recognises
@@ -409,6 +429,7 @@ then reopen it before saving contacts; see
 After a successful add, it records the previous contact data state in the model's history
 (see [Recording contact data history](#recording-contact-data-history)).
 The normal storage path then saves the contact, including its academic fields.
+For email validation shared with editing and loading, see [Shared email validation](#shared-email-validation).
 
 <!-- @@author RayWHJ -->
 
@@ -524,16 +545,7 @@ After composing the change summary, `EditCommand#getEditResult` appends a shared
 for changed phone/email values, using the refreshed displayed indices. Warnings are excluded
 from the stored history description and do not block the edit.
 
-`Email.MESSAGE_CONSTRAINTS` uses short newline-separated rules and
-explicitly forbids consecutive local-part special characters. `Email#isValidEmail` scans the local
-part and domain labels iteratively; `isValidPart` checks ASCII letters/digits and separated punctuation
-without recursive regex matching or substring allocation. Validation takes linear time and constant
-auxiliary space, with no new length limit. The existing `VALIDATION_REGEX` remains as a reference,
-but is not executed by the validator. Accepted values remain unchanged, including the existing
-final-label restriction requiring two adjacent letters/digits; correcting that restriction remains
-listed under [Planned enhancements](#appendix-planned-enhancements).
-
-`EmailTest` and `LongEmailStorageTest` cover long valid and invalid emails through validation, `add`/`edit` and saving.
+See [Shared email validation](#shared-email-validation) for the validator and long-email tests.
 `ResultDisplay.fxml` enables text wrapping so narrow windows do not require horizontal scrolling.
 
 The replacement `Person` retains notes and favourite status. Changes to name, phone, email, address,
@@ -653,7 +665,7 @@ This section covers only how `filter` differs.
 | Combining | OR: any keyword may match | AND: every supplied criterion must match |
 | Match type | Whole word, case-insensitive | Whole value, case-insensitive; class year by exact equality; a tag criterion matches any of the contact's tags |
 
-##### Parsing
+#### Parsing
 
 `FilterCommandParser` tokenizes only `m/`, `c/` and `t/` as criterion delimiters, then rejects a
 non-empty preamble, missing criteria and repeated prefixes. Other prefix-like text stays within the
@@ -670,7 +682,7 @@ in place of `PersonContainsKeywordsPredicate`.
 
 <puml src="diagrams/FilterSequenceDiagram.puml" alt="Filter command parsing into a ContactFilterPredicate" />
 
-##### Interaction with tag commands
+#### Interaction with tag commands
 
 Unlike `find`, the predicate depends on tags. `tag` and `untag` keep the current predicate, so a
 contact disappears from the results when its tags no longer match.
