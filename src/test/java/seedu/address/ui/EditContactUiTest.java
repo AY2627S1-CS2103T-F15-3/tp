@@ -145,7 +145,7 @@ public class EditContactUiTest {
                 TextArea result = (TextArea) window.getRoot().getScene().lookup("#resultDisplay");
                 assertTrue(result.getStyleClass().contains(ResultDisplay.WARNING_STYLE_CLASS));
                 assertEquals(Color.web("#ffcf66"), ((Text) result.lookup(".text")).getFill());
-                assertTrue(result.getBorder() == null || result.getBorder().getStrokes().isEmpty());
+                assertEquals(Color.TRANSPARENT, result.getBorder().getStrokes().get(0).getTopStroke());
                 assertNull(window.getRoot().getScene().lookup("#warningDisplay"));
                 assertEquals("", input(window).getText());
                 assertFalse(input(window).getStyleClass().contains(CommandBox.ERROR_STYLE_CLASS));

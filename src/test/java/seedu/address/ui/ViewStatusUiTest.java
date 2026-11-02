@@ -40,10 +40,10 @@ public class ViewStatusUiTest {
         runActionOnFxThread(() -> {
             MainWindow window = createWindow();
             try {
-                assertStatus(window, "Showing 3 of 3 contacts | Filter: All contacts | Sort: Saved order");
+                assertStatus(window, "Showing 3 of 3 contacts | All contacts | Sort: Saved order");
                 enter(window, "filter c/2027");
                 enter(window, "sort name asc");
-                String filtered = "Showing 1 of 3 contacts | Filter: Class year: 2027 | Sort: Name ascending";
+                String filtered = "Showing 1 of 3 contacts | Filter: Class year = 2027 | Sort: Name ascending";
                 assertStatus(window, filtered);
                 enter(window, "shownote 1");
                 assertTrue(((TextArea) window.getRoot().getScene().lookup("#resultDisplay"))
@@ -52,10 +52,10 @@ public class ViewStatusUiTest {
                 enter(window, "sort reset desc");
                 assertStatus(window, filtered);
                 enter(window, "sort reset");
-                assertStatus(window, "Showing 1 of 3 contacts | Filter: Class year: 2027 | Sort: Saved order");
+                assertStatus(window, "Showing 1 of 3 contacts | Filter: Class year = 2027 | Sort: Saved order");
                 assertEquals(List.of(bob), list(window).getItems());
                 enter(window, "list");
-                assertStatus(window, "Showing 3 of 3 contacts | Filter: All contacts | Sort: Saved order");
+                assertStatus(window, "Showing 3 of 3 contacts | All contacts | Sort: Saved order");
                 assertEquals(List.of(charlie, bob, alice), list(window).getItems());
             } finally {
                 window.getRoot().close();
@@ -69,21 +69,21 @@ public class ViewStatusUiTest {
             MainWindow window = createWindow();
             try {
                 enter(window, "listfav");
-                assertStatus(window, "Showing 1 of 3 contacts | Filter: Favourites | Sort: Saved order");
+                assertStatus(window, "Showing 1 of 3 contacts | Favourites | Sort: Saved order");
                 enter(window, "unfav 1");
-                assertStatus(window, "Showing 0 of 3 contacts | Filter: Favourites | Sort: Saved order");
+                assertStatus(window, "Showing 0 of 3 contacts | Favourites | Sort: Saved order");
                 enter(window, "find Nobody");
-                assertStatus(window, "Showing 0 of 3 contacts | Filter: Search: Nobody | Sort: Saved order");
+                assertStatus(window, "Showing 0 of 3 contacts | Search: Nobody | Sort: Saved order");
                 enter(window, "list");
                 enter(window, "sort name desc");
                 enter(window, "edit 1 n/Zara");
                 enter(window, "find Alice");
                 enter(window, "undo");
-                assertStatus(window, "Showing 3 of 3 contacts | Filter: All contacts | Sort: Name descending");
+                assertStatus(window, "Showing 3 of 3 contacts | All contacts | Sort: Name descending");
                 enter(window, "delete 1");
-                assertStatus(window, "Showing 2 of 2 contacts | Filter: All contacts | Sort: Name descending");
+                assertStatus(window, "Showing 2 of 2 contacts | All contacts | Sort: Name descending");
                 enter(window, "clear");
-                assertStatus(window, "Showing 0 of 0 contacts | Filter: All contacts | Sort: Name descending");
+                assertStatus(window, "Showing 0 of 0 contacts | All contacts | Sort: Name descending");
             } finally {
                 window.getRoot().close();
             }

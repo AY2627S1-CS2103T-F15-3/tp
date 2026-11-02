@@ -6,45 +6,59 @@ import java.util.ArrayList;
 import java.util.List;
 
 import javafx.application.Platform;
+import javafx.css.PseudoClass;
 import javafx.geometry.Bounds;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.control.ListView;
+import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.skin.VirtualFlow;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import seedu.address.model.person.Person;
 
-/** Keeps keyboard traversal within the command box, list and selected contact's expandable values. */
+/** Keeps keyboard traversal within the command box, feedback, list and selected contact's expandable values. */
 final class ContactListNavigation {
     private static final double FOCUS_SCROLL_MARGIN = 4;
+    private static final PseudoClass FOCUS_WITHIN = PseudoClass.getPseudoClass("focus-within");
     private final TextField commandBox;
+    private final TextArea feedback;
     private final ListView<Person> contactList;
 
     /** Installs traversal on the JavaFX thread for a list rendered by {@link PersonListPanel}. */
-    ContactListNavigation(Parent root, TextField commandBox, ListView<Person> contactList) {
-        requireAllNonNull(root, commandBox, contactList);
+    ContactListNavigation(Parent root, TextField commandBox, ListView<Person> contactList, TextArea feedback) {
+        requireAllNonNull(root, commandBox, contactList, feedback);
         assert Platform.isFxApplicationThread() : "Contact navigation must be installed on the JavaFX thread";
         this.commandBox = commandBox;
+        this.feedback = feedback;
         this.contactList = contactList;
         root.addEventFilter(KeyEvent.KEY_PRESSED, this::handleTab);
+        root.getScene().focusOwnerProperty().addListener((observable, previous, focused) -> updateListFocus(focused));
+        updateListFocus(root.getScene().getFocusOwner());
+    }
+
+    /** Shows selection styling only while the list or one of its values owns focus. */
+    private void updateListFocus(Node focused) {
+        while (focused != null && focused != contactList) {
+            focused = focused.getParent();
+        }
+        contactList.pseudoClassStateChanged(FOCUS_WITHIN, focused == contactList);
     }
 
     private void handleTab(KeyEvent event) {
-        if (event.getCode() != KeyCode.TAB || event.isControlDown() || event.isAltDown() || event.isMetaDown()) {
+        if (event.getCode() != KeyCode.TAB || event.isAltDown() || event.isMetaDown()) {
             return;
         }
         event.consume();
-        if (contactList.getItems().isEmpty()) {
-            commandBox.requestFocus();
+        if (event.isControlDown()) {
             return;
         }
-        if (contactList.getSelectionModel().getSelectedIndex() < 0) {
+        if (!contactList.getItems().isEmpty() && contactList.getSelectionModel().getSelectedIndex() < 0) {
             contactList.getSelectionModel().selectFirst();
         }
         Node focused = commandBox.getScene().getFocusOwner();
-        if (focused == commandBox) {
+        if (!contactList.getItems().isEmpty() && (focused == commandBox || focused == feedback)) {
             contactList.scrollTo(contactList.getSelectionModel().getSelectedIndex());
         }
         List<Node> route = getFocusRoute();
@@ -52,7 +66,7 @@ final class ContactListNavigation {
         int next = current < 0 ? 0 : Math.floorMod(current + (event.isShiftDown() ? -1 : 1), route.size());
         Node target = route.get(next);
         target.requestFocus();
-        if (next > 1) {
+        if (next > 2) {
             scrollValueIntoView(target);
         }
     }
@@ -78,6 +92,10 @@ final class ContactListNavigation {
         contactList.layout();
         List<Node> route = new ArrayList<>();
         route.add(commandBox);
+        route.add(feedback);
+        if (contactList.getItems().isEmpty()) {
+            return route;
+        }
         route.add(contactList);
         int selectedIndex = contactList.getSelectionModel().getSelectedIndex();
         contactList.lookupAll(".list-cell").stream()

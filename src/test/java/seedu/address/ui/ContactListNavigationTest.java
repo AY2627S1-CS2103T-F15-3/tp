@@ -28,6 +28,7 @@ import javafx.scene.control.TextField;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
@@ -49,10 +50,12 @@ public class ContactListNavigationTest {
         FxTestUtil.runActionOnFxThread(() -> {
             VBox root = new VBox();
             TextField command = new TextField();
+            TextArea feedback = new TextArea();
             ListView<Person> list = new ListView<>();
-            assertThrows(NullPointerException.class, () -> new ContactListNavigation(null, command, list));
-            assertThrows(NullPointerException.class, () -> new ContactListNavigation(root, null, list));
-            assertThrows(NullPointerException.class, () -> new ContactListNavigation(root, command, null));
+            assertThrows(NullPointerException.class, () -> new ContactListNavigation(null, command, list, feedback));
+            assertThrows(NullPointerException.class, () -> new ContactListNavigation(root, null, list, feedback));
+            assertThrows(NullPointerException.class, () -> new ContactListNavigation(root, command, null, feedback));
+            assertThrows(NullPointerException.class, () -> new ContactListNavigation(root, command, list, null));
         });
     }
 
@@ -60,7 +63,7 @@ public class ContactListNavigationTest {
     public void constructor_outsideFxThread_throwsAssertionError() throws Exception {
         try (View view = open(List.of())) {
             AssertionError error = assertThrows(AssertionError.class, () -> {
-                new ContactListNavigation(view.root, view.command, view.list);
+                new ContactListNavigation(view.root, view.command, view.list, view.result);
             });
             assertEquals("Contact navigation must be installed on the JavaFX thread", error.getMessage());
         }
@@ -70,7 +73,7 @@ public class ContactListNavigationTest {
     public void tab_missingViewport_throwsAssertionError() throws Exception {
         try (View view = open(List.of(longContact("Long")))) {
             FxTestUtil.runActionOnFxThread(() -> {
-                view.press(KeyCode.TAB, false);
+                view.enterList();
                 Node viewport = view.list.lookup(".virtual-flow");
                 // Simulate a skin change that removes the viewport expected by contact navigation.
                 viewport.getStyleClass().remove("virtual-flow");
@@ -91,7 +94,7 @@ public class ContactListNavigationTest {
         try (View view = open(List.of(longContact("First"), longContact("Second")))) {
             FxTestUtil.runOnFxThread(() -> {
                 assertSame(view.command, view.focused());
-                view.press(KeyCode.TAB, false);
+                view.enterList();
                 assertSame(view.list, view.focused());
                 assertEquals(0, view.list.getSelectionModel().getSelectedIndex());
                 view.press(KeyCode.DOWN, false);
@@ -114,6 +117,8 @@ public class ContactListNavigationTest {
                 view.press(KeyCode.UP, false);
                 assertEquals(0, view.list.getSelectionModel().getSelectedIndex());
                 view.press(KeyCode.TAB, true);
+                assertSame(view.result, view.focused());
+                view.press(KeyCode.TAB, true);
                 assertSame(view.command, view.focused());
                 assertEquals("draft command", view.command.getText());
                 return null;
@@ -125,13 +130,15 @@ public class ContactListNavigationTest {
     public void shortSelectedContact_skipsLongValuesOnOtherCards() throws Exception {
         try (View view = open(List.of(new PersonBuilder().withName("Short").build(), longContact("Other")))) {
             FxTestUtil.runOnFxThread(() -> {
-                view.press(KeyCode.TAB, false);
+                view.enterList();
                 assertSame(view.list, view.focused());
                 assertTrue(view.selectedCell().getExpandableValues().isEmpty());
                 view.press(KeyCode.TAB, false);
                 assertSame(view.command, view.focused());
                 view.press(KeyCode.TAB, true);
                 assertSame(view.list, view.focused());
+                view.press(KeyCode.TAB, true);
+                assertSame(view.result, view.focused());
                 view.press(KeyCode.TAB, true);
                 assertSame(view.command, view.focused());
                 return null;
@@ -140,11 +147,15 @@ public class ContactListNavigationTest {
     }
 
     @Test
-    public void emptyList_bothDirectionsKeepCommandFocus() throws Exception {
+    public void emptyList_bothDirectionsCycleBetweenCommandAndFeedback() throws Exception {
         try (View view = open(List.of())) {
             FxTestUtil.runOnFxThread(() -> {
                 view.press(KeyCode.TAB, false);
+                assertSame(view.result, view.focused());
+                view.press(KeyCode.TAB, false);
                 assertSame(view.command, view.focused());
+                view.press(KeyCode.TAB, true);
+                assertSame(view.result, view.focused());
                 view.press(KeyCode.TAB, true);
                 assertSame(view.command, view.focused());
                 return null;
@@ -156,7 +167,7 @@ public class ContactListNavigationTest {
     public void focusedLongTag_hasOrangeOutlineAndKeyboardExpansionKeepsFocus() throws Exception {
         try (View view = open(List.of(longContact("Long")))) {
             FxTestUtil.runOnFxThread(() -> {
-                view.press(KeyCode.TAB, false);
+                view.enterList();
                 view.press(KeyCode.TAB, false);
                 view.press(KeyCode.TAB, false);
                 Label tag = (Label) view.focused();
@@ -191,7 +202,7 @@ public class ContactListNavigationTest {
                 view.command.requestFocus();
                 view.stage.setWidth(450);
                 FxTestUtil.layout(view.root);
-                view.press(KeyCode.TAB, false);
+                view.enterList();
                 assertSame(view.list, view.focused());
                 view.press(KeyCode.TAB, false);
                 assertEquals("name", view.focused().getId());
@@ -202,12 +213,16 @@ public class ContactListNavigationTest {
     }
 
     @Test
-    public void resultDisplayTab_returnsToCommandBox() throws Exception {
+    public void resultDisplayTab_entersListAndShiftTabReturnsToCommandBox() throws Exception {
         try (View view = open(List.of(longContact("Long")))) {
             FxTestUtil.runOnFxThread(() -> {
                 view.result.requestFocus();
                 assertSame(view.result, view.focused());
                 view.press(KeyCode.TAB, false);
+                assertSame(view.list, view.focused());
+                view.press(KeyCode.TAB, true);
+                assertSame(view.result, view.focused());
+                view.press(KeyCode.TAB, true);
                 assertSame(view.command, view.focused());
                 return null;
             });
@@ -223,7 +238,7 @@ public class ContactListNavigationTest {
                 view.stage.setWidth(450);
                 view.root.resize(450, 700);
                 FxTestUtil.layout(view.root);
-                view.press(KeyCode.TAB, false);
+                view.enterList();
                 view.press(KeyCode.TAB, false);
                 view.press(KeyCode.ENTER, false);
                 assertTrue(view.selectedCell().getHeight() > view.list.getHeight());
@@ -259,13 +274,80 @@ public class ContactListNavigationTest {
                     delivered.set(!event.isConsumed());
                     event.consume();
                 });
-                for (int modifier = 0; modifier < 3; modifier++) {
+                for (int modifier = 0; modifier < 2; modifier++) {
                     delivered.set(false);
                     view.command.fireEvent(new KeyEvent(KeyEvent.KEY_PRESSED, "", "", KeyCode.TAB,
-                            false, modifier == 0, modifier == 1, modifier == 2));
+                            false, false, modifier == 0, modifier == 1));
                     assertTrue(delivered.get());
                     assertSame(view.command, view.focused());
                 }
+                return null;
+            });
+        }
+    }
+
+    @Test
+    public void controlTabAndControlShiftTab_areBlockedWithoutChangingFocusOrDraft() throws Exception {
+        for (boolean populated : List.of(false, true)) {
+            try (View view = open(populated ? List.of(longContact("Long")) : List.of())) {
+                FxTestUtil.runOnFxThread(() -> {
+                    AtomicBoolean delivered = new AtomicBoolean();
+                    view.root.addEventFilter(KeyEvent.KEY_PRESSED, event -> delivered.set(!event.isConsumed()));
+                    for (Node target : List.of(view.command, view.result, view.list)) {
+                        target.requestFocus();
+                        assertSame(target, view.focused());
+                        for (boolean shift : List.of(false, false, true, true)) {
+                            delivered.set(false);
+                            target.fireEvent(new KeyEvent(KeyEvent.KEY_PRESSED, "", "", KeyCode.TAB,
+                                    shift, true, false, false));
+                            assertFalse(delivered.get());
+                            assertSame(target, view.focused());
+                        }
+                    }
+                    view.command.requestFocus();
+                    view.press(KeyCode.TAB, false);
+                    assertSame(view.result, view.focused());
+                    for (boolean shift : List.of(false, false, true)) {
+                        view.result.fireEvent(new KeyEvent(KeyEvent.KEY_PRESSED, "", "", KeyCode.TAB,
+                                shift, true, false, false));
+                        assertSame(view.result, view.focused());
+                    }
+                    view.press(KeyCode.TAB, true);
+                    assertSame(view.command, view.focused());
+                    assertEquals("draft command", view.command.getText());
+                    assertEquals("Command feedback", view.result.getText());
+                    return null;
+                });
+            }
+        }
+    }
+
+    @Test
+    public void leavingList_hidesHighlightAndRetainsSelectionWhenReturning() throws Exception {
+        try (View view = open(List.of(longContact("First"), longContact("Second")))) {
+            FxTestUtil.runOnFxThread(() -> {
+                view.enterList();
+                view.press(KeyCode.DOWN, false);
+                Region card = (Region) view.selectedCell().lookup("#cardPane");
+                Color orange = Color.web("#d99664");
+                assertEquals(orange, card.getBorder().getStrokes().get(0).getTopStroke());
+                view.press(KeyCode.TAB, false);
+                assertEquals(orange, card.getBorder().getStrokes().get(0).getTopStroke());
+                view.result.requestFocus();
+                FxTestUtil.layout(view.root);
+                assertEquals(1, view.list.getSelectionModel().getSelectedIndex());
+                assertFalse(orange.equals(card.getBorder().getStrokes().get(0).getTopStroke()));
+                view.result.pseudoClassStateChanged(PseudoClass.getPseudoClass("focused"), true);
+                FxTestUtil.layout(view.root);
+                assertEquals(orange, view.result.getBorder().getStrokes().get(0).getTopStroke());
+                view.result.pseudoClassStateChanged(PseudoClass.getPseudoClass("focused"), false);
+                view.press(KeyCode.TAB, true);
+                assertSame(view.command, view.focused());
+                assertEquals(1, view.list.getSelectionModel().getSelectedIndex());
+                view.enterList();
+                assertEquals(1, view.list.getSelectionModel().getSelectedIndex());
+                card = (Region) view.selectedCell().lookup("#cardPane");
+                assertEquals(orange, card.getBorder().getStrokes().get(0).getTopStroke());
                 return null;
             });
         }
@@ -314,14 +396,24 @@ public class ContactListNavigationTest {
             PersonListPanel panel = new PersonListPanel(FXCollections.observableArrayList(contacts));
             list = panel.getPersonListView();
             result.setEditable(false);
+            result.getStyleClass().add("result-display");
             result.setPrefHeight(70);
             root = new VBox(command, result, panel.getRoot());
             VBox.setVgrow(panel.getRoot(), Priority.ALWAYS);
             root.getStylesheets().add(getClass().getResource("/view/DarkTheme.css").toExternalForm());
             stage.setScene(new Scene(root, 1000, 700));
-            new ContactListNavigation(root, command, list);
+            new ContactListNavigation(root, command, list, result);
             stage.show();
             FxTestUtil.layout(root);
+        }
+
+        void enterList() {
+            command.requestFocus();
+            assertSame(command, focused());
+            press(KeyCode.TAB, false);
+            assertSame(result, focused());
+            press(KeyCode.TAB, false);
+            assertSame(list, focused());
         }
 
         Node focused() {

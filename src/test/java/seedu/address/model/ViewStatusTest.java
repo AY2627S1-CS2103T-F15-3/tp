@@ -52,20 +52,20 @@ public class ViewStatusTest {
                 Optional.of(new GraduationYear("2027")), Optional.of(new Tag("Classmate")));
         new FilterCommand(filter).execute(model);
         new SortCommand(NAME, ASC).execute(model);
-        assertStatus("Showing 1 of 2 contacts | Filter: Major: Computer Science AND Class year: 2027"
-                + " AND Tag: Classmate | Sort: Name ascending");
+        assertStatus("Showing 1 of 2 contacts | Filter: Major = Computer Science AND Class year = 2027"
+                + " AND Tag = Classmate | Sort: Name ascending");
         new SortCommand(NAME, DESC).execute(model);
         assertTrue(status().endsWith("Sort: Name descending"));
         new FindCommand(new PersonContainsKeywordsPredicate(List.of("Bob", "Computing"))).execute(model);
-        assertStatus("Showing 1 of 2 contacts | Filter: Search: Bob OR Computing | Sort: Name descending");
+        assertStatus("Showing 1 of 2 contacts | Search: Bob OR Computing | Sort: Name descending");
         new ListFavCommand().execute(model);
-        assertStatus("Showing 1 of 2 contacts | Filter: Favourites | Sort: Name descending");
+        assertStatus("Showing 1 of 2 contacts | Favourites | Sort: Name descending");
         model.setPerson(bob, new PersonBuilder(bob).withFavourite(false).build());
-        assertStatus("Showing 0 of 2 contacts | Filter: Favourites | Sort: Name descending");
+        assertStatus("Showing 0 of 2 contacts | Favourites | Sort: Name descending");
         new ListCommand().execute(model);
-        assertStatus("Showing 2 of 2 contacts | Filter: All contacts | Sort: Name descending");
+        assertStatus("Showing 2 of 2 contacts | All contacts | Sort: Name descending");
         new SortResetCommand().execute(model);
-        assertStatus("Showing 2 of 2 contacts | Filter: All contacts | Sort: Saved order");
+        assertStatus("Showing 2 of 2 contacts | All contacts | Sort: Saved order");
     }
 
     @Test
@@ -77,12 +77,12 @@ public class ViewStatusTest {
         AtomicInteger changes = new AtomicInteger();
         model.viewStatusProperty().addListener((observable, oldValue, newValue) -> changes.incrementAndGet());
         model.deletePerson(alice);
-        assertStatus("Showing 1 of 1 contacts | Filter: Class year: 2027 | Sort: Saved order");
+        assertStatus("Showing 1 of 1 contacts | Filter: Class year = 2027 | Sort: Saved order");
         model.setPerson(bob, new PersonBuilder(bob).withGraduationYear("2028").build());
-        assertStatus("Showing 0 of 1 contacts | Filter: Class year: 2027 | Sort: Saved order");
+        assertStatus("Showing 0 of 1 contacts | Filter: Class year = 2027 | Sort: Saved order");
         assertTrue(changes.get() >= 2);
         new ClearCommand().execute(model);
-        assertStatus("Showing 0 of 0 contacts | Filter: Class year: 2027 | Sort: Saved order");
+        assertStatus("Showing 0 of 0 contacts | Filter: Class year = 2027 | Sort: Saved order");
     }
 
     @Test
@@ -91,14 +91,14 @@ public class ViewStatusTest {
         new SortCommand(NAME, ASC).execute(model);
         new FindCommand(new PersonContainsKeywordsPredicate(List.of("Nobody"))).execute(model);
         new AddCommand(alice).execute(model);
-        assertStatus("Showing 2 of 2 contacts | Filter: All contacts | Sort: Name ascending");
+        assertStatus("Showing 2 of 2 contacts | All contacts | Sort: Name ascending");
         new ListFavCommand().execute(model);
         new EditCommand(Index.fromOneBased(1), new EditPersonDescriptorBuilder().withMajor("Business").build())
                 .execute(model);
-        assertStatus("Showing 2 of 2 contacts | Filter: All contacts | Sort: Name ascending");
+        assertStatus("Showing 2 of 2 contacts | All contacts | Sort: Name ascending");
         new ListFavCommand().execute(model);
         new UndoCommand().execute(model);
-        assertStatus("Showing 2 of 2 contacts | Filter: All contacts | Sort: Name ascending");
+        assertStatus("Showing 2 of 2 contacts | All contacts | Sort: Name ascending");
     }
 
     @Test
@@ -110,7 +110,7 @@ public class ViewStatusTest {
         assertThrows(ParseException.class, () -> new FilterCommandParser().parse(" c/2100"));
         assertEquals(before, status());
         ModelManager reopened = new ModelManager(model.getAddressBook(), model.getUserPrefs());
-        assertEquals("Showing 1 of 1 contacts | Filter: All contacts | Sort: Saved order",
+        assertEquals("Showing 1 of 1 contacts | All contacts | Sort: Saved order",
                 reopened.viewStatusProperty().get());
         assertFalse(model.canUndoAddressBook());
     }
