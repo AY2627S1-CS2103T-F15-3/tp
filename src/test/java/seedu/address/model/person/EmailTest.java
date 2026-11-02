@@ -1,5 +1,6 @@
 package seedu.address.model.person;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static seedu.address.testutil.Assert.assertThrows;
@@ -99,5 +100,39 @@ public class EmailTest {
 
         // different values -> returns false
         assertFalse(email.equals(new Email("other.valid@email")));
+    }
+
+    @Test
+    public void isValidEmail_longParts_validatedWithoutStackOverflow() {
+        for (String email : new String[]{"a.".repeat(5000) + "a@example.com",
+            "a@" + "a.".repeat(5000) + "com", "a@" + "a-".repeat(5000) + "bc",
+            "a".repeat(20000) + "@example.com"}) {
+            assertTrue(Email.isValidEmail(email));
+            assertEquals(email, new Email(email).value);
+        }
+    }
+
+    @Test
+    public void isValidEmail_longInvalidParts_rejectedWithoutStackOverflow() {
+        for (String email : new String[]{"a.".repeat(5000) + "@example.com",
+            "a@" + "a.".repeat(5000), "a@" + "a-".repeat(5000) + "a",
+            "a".repeat(20000) + "!@example.com", "a@" + "a-".repeat(5000) + "bc!"}) {
+            assertFalse(Email.isValidEmail(email));
+            assertThrows(IllegalArgumentException.class, () -> new Email(email));
+        }
+    }
+
+    @Test
+    public void isValidEmail_shortInputs_preserveExistingRegexRules() {
+        String[] parts = {"", "a", "bc", "1", "A0", "a-b", "ab-c", "a-bc", "a-b-c", "a..b",
+            "a.b", "a+b", "a_b", "-a", "a-", "a b", "é", "中", "a\n", "a\r", "a\u00a0"};
+        for (String local : parts) {
+            for (String domain : parts) {
+                for (String suffix : new String[]{"", ".com", ".a-b", ".ab-c"}) {
+                    String email = local + "@" + domain + suffix;
+                    assertEquals(email.matches(Email.VALIDATION_REGEX), Email.isValidEmail(email), email);
+                }
+            }
+        }
     }
 }
