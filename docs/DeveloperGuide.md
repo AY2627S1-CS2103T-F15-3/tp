@@ -385,7 +385,10 @@ the heart appears immediately after adding with the flag.
 
 ### Shared email validation
 
-Add and edit input use the `Email` validation rules through `ParserUtil.parseEmail`;
+Non-empty email values supplied to `add` and `edit` use the `Email` validation rules through
+`ParserUtil.parseEmail`. An empty `e/` is rejected by `add`; in `edit`, it clears the field by
+assigning `Email.EMPTY` directly. Omitting `e/` leaves a new contact's email unspecified in `add`
+and preserves the existing email in `edit`.
 `JsonAdaptedPerson#toModelType` checks stored email values with `Email.isValidEmail` when loading.
 The accepted syntax is documented in the User Guide's [field rules](UserGuide.md#field-rules).
 
