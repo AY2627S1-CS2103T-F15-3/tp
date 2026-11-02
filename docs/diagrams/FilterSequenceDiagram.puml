@@ -16,8 +16,6 @@ end box
 [-> Parser : parse("m/CS c/2027")
 activate Parser
 
-Parser -> Parser : reject unsupported prefixes
-
 Parser -> Tokenizer : tokenize m/, c/, t/
 activate Tokenizer
 Tokenizer --> Parser : criteria
