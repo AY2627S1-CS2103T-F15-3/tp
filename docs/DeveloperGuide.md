@@ -6,7 +6,7 @@
 
 # UniMate Developer Guide
 
-This guide describes the **v1.5 development implementation**.
+This guide describes the **v1.6 implementation**.
 
 Use this guide to find the component boundaries, design decisions and checks for a change.
 
@@ -132,8 +132,9 @@ How the `Logic` component works:
 2. This results in a `Command` object (more precisely, an object of one of its subclasses e.g., `DeleteCommand`) which is executed by the `LogicManager`.
 3. The command can communicate with the `Model` when it is executed (e.g., to delete a contact).
    A command that changes contact data also commits the change to the undo history.
-4. The command returns a `CommandResult`. `LogicManager` then saves the address book through `Storage`
-   before returning that result to the `UI`.
+4. The command returns a `CommandResult`. `LogicManager` normally saves the address book through
+   `Storage` before returning the result to the `UI`. `help` skips saving; `exit` skips saving when
+   there are no unsaved contact changes.
 
 For an example interaction trace, including batch-index validation, see
 [Deleting one or more contacts](#deleting-one-or-more-contacts).
@@ -386,8 +387,10 @@ a four-digit year from `2000` to `2099`. Invalid input produces a parse error be
 The parser constructs a `Person` containing both academic values and passes it to `AddCommand`.
 The command checks for an existing contact with the same name, ignoring case, before adding the person to the model.
 `Person#isSamePerson` uses `String#equalsIgnoreCase` on `Name.fullName`, so the existing `Model#hasPerson`,
-`UniquePersonList` and edit duplicate checks share this rule. `Name`, `Person#equals` and `Person#hashCode`
-retain exact data equality, preserving capitalization changes for display, persistence and undo/redo.
+`UniquePersonList` and edit duplicate checks share this rule. Internal spaces are not collapsed:
+`Alice Tan` (one space) and `Alice  Tan` (two spaces) remain different names, including when loading
+saved contacts. `Name`, `Person#equals` and `Person#hashCode` retain exact data equality,
+preserving capitalization changes for display, persistence and undo/redo.
 `JsonSerializableAddressBook#toModelType` also rejects case-only duplicate names using its existing
 `IllegalValueException` path. There is no automatic migration, deletion, merging or renaming. Users must
 back up legacy files and distinguish conflicting names before loading. The existing `MainApp` startup
@@ -653,9 +656,6 @@ follows the [`find` sequence diagram](#searching-by-academic-fields), with `Cont
 in place of `PersonContainsKeywordsPredicate`.
 
 <puml src="diagrams/FilterSequenceDiagram.puml" alt="Filter command parsing into a ContactFilterPredicate" />
-
-The diagram's separate unsupported-prefix scan is no longer performed; current tokenization and
-field validation follow the rules above, allowing literal prefix-like text inside a major.
 
 ##### Interaction with tag commands
 
@@ -1704,7 +1704,7 @@ For manual UI verification:
 
 ### User stories
 
-These user stories include requirements for the v1.5 development version and future iterations.
+These user stories include requirements for v1.6 and future iterations.
 Priority indicates importance, not implementation status. See the [User Guide](UserGuide.md#features)
 for implemented features and its version notice before testing a downloaded JAR.
 
@@ -2041,7 +2041,7 @@ in the [Quick start](UserGuide.md#quick-start).
 
 ## Appendix: Instructions for manual testing
 
-Given below are instructions to test the v1.5 development version manually. Use a separate test folder and test contacts, as these checks modify saved data. Ensure the test contact names do not already exist before each scenario; use different unique names when repeating a scenario.
+Given below are instructions to test v1.6 manually. Use a separate test folder and test contacts, as these checks modify saved data. Ensure the test contact names do not already exist before each scenario; use different unique names when repeating a scenario.
 
 <box type="info" seamless>
 
@@ -2071,7 +2071,7 @@ after an edit, undo, redo or restart before using its displayed index again.
 1. Initial launch
 
    1. Ensure Java 25 is installed (the prescribed JDK+FX on macOS). Build the revision under test,
-      or use its matching v1.5 JAR once published. Copy `unimate.jar` into an empty, writable test folder.
+      or use the matching v1.6 release JAR. Copy `unimate.jar` into an empty, writable test folder.
 
    2. Open a terminal, change to that folder, and run `java -jar unimate.jar`.
       Expected: A window titled `UniMate` opens with sample contacts. Unspecified academic fields display `Not specified`. The window size may not be optimal.
