@@ -192,7 +192,7 @@ public class SortUiTest {
                 TextArea result = (TextArea) window.getRoot().getScene().lookup("#resultDisplay");
                 assertTrue(result.getStyleClass().contains(ResultDisplay.WARNING_STYLE_CLASS));
                 assertEquals(Color.web("#ffcf66"), ((Text) result.lookup(".text")).getFill());
-                assertTrue(result.getBorder() == null || result.getBorder().getStrokes().isEmpty());
+                assertEquals(Color.TRANSPARENT, result.getBorder().getStrokes().get(0).getTopStroke());
                 assertNull(window.getRoot().getScene().lookup("#warningDisplay"));
                 assertCards(window, List.of(aaron, alice, bob, charlie));
                 TextField input = (TextField) window.getRoot().getScene().lookup("#commandTextField");

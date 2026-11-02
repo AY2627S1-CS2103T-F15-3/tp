@@ -408,6 +408,8 @@ public class ContactListNavigationTest {
         }
 
         void enterList() {
+            command.requestFocus();
+            assertSame(command, focused());
             press(KeyCode.TAB, false);
             assertSame(result, focused());
             press(KeyCode.TAB, false);
