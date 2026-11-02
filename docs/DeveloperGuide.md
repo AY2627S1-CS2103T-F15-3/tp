@@ -3009,10 +3009,12 @@ Use only the separate test folder for these checks. The paths below are relative
 
       * `null`
       * a valid contact followed by `null` in the same `persons` array
+      * a valid contact followed by a contact whose `tags` array is `["friends",null]`
    2. Relaunch the app without entering a command.
       Expected: The GUI opens with an empty contact list and a recovery warning; contact saving is
-      disabled, and the valid contact is not partially loaded. For the second file, the log identifies
-      `Contact entry 2 is null.`. Close the window and confirm the file is unchanged, then restore the backup.
+      disabled, and the valid contact is not partially loaded. For the second and third files, the log
+      identifies `Contact entry 2 is null.` and `Contact entry 2 is invalid: Tag entry 2 is null.`,
+      respectively. Close the window and confirm the file is unchanged, then restore the backup.
    3. Separately test `{"persons":[]}` and a valid older contact with omitted optional fields.
       Expected: The empty list loads normally, and the older contact loads with unspecified optional details.
 <br>
