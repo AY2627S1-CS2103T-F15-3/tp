@@ -613,7 +613,7 @@ The predicate matches a `Person` if any keyword matches a full word in the perso
 2. The `SortedList` comparator is untouched, so an active sort is kept.
 
 3. The predicate implements `PersonFilter`, so its description appears in the view status.
-   * `find alex david` shows `Filter: Search: alex OR david`
+   * `find alex david` shows `Search: alex OR david`
 
 4. `find` changes no contact data and never calls `Model#commitAddressBook`, so undo and redo availability is preserved.
 
@@ -828,7 +828,7 @@ cards with one-based display indices. Existing cards provide contact details and
 persons or alter their update dates.
 
 The view status is derived from the same filtered and sorted lists. After `list`, it reads
-`Showing N of N contacts | Filter: All contacts | Sort: ...`; the sort description remains the active
+`Showing N of N contacts | All contacts | Sort: ...`; the sort description remains the active
 sort, or `Saved order` when there is no comparator. Display indices belong to this current view,
 so they may differ from indices in the previous search results.
 
@@ -2262,7 +2262,7 @@ clear and modify the test contacts. Run each scenario's steps in order.
    2. Run `find ListAlice`, then `list`.
       Expected: Every saved contact appears, including both test contacts. Feedback starts with `Listed all persons.`
       and the next line reports `N person(s) listed!`, where `N` equals the full displayed count.
-      The status above the cards shows `Showing N of N contacts | Filter: All contacts | Sort: Saved order`
+      The status above the cards shows `Showing N of N contacts | All contacts | Sort: Saved order`
       if no sort was applied.
    3. Run `filter m/Computing`, then `list`; repeat with `listfav`, then `list`.
       Expected: Each `list` restores all contacts and their current details. Favourite hearts and update dates remain unchanged.
@@ -2273,7 +2273,7 @@ clear and modify the test contacts. Run each scenario's steps in order.
 
    1. Run `sort name desc`, then `find ListAlice`, then `list`.
       Expected: Every contact returns in descending name order, numbered consecutively from `1`.
-      The status shows `Filter: All contacts` and still ends with `Sort: Name descending`.
+      The status shows `All contacts` and still ends with `Sort: Name descending`.
    2. Close and relaunch the app from the same folder, then run `list`.
       Expected: Both test contacts and all other saved details remain available. The temporary sort is reset to saved order.
    3. Run `add n/ListUndo a/NUS`, then `undo`, then `list`, then `redo`.
@@ -2514,7 +2514,7 @@ clear and modify the test contacts. Run each scenario's steps in order.
    2. Test case: `find computer`.
       Expected: `SearchComputing` is included and `SearchBusiness` is excluded. 
       
-      Matching is case-insensitive; other contacts with matching names or academic fields may also appear. The view status line shows `Filter: Search: computer`.
+      Matching is case-insensitive; other contacts with matching names or academic fields may also appear. The view status line shows `Search: computer`.
 
    3. Test case: `find 2028`.
       Expected: `SearchBusiness` is included and `SearchComputing` is excluded.
@@ -2667,7 +2667,7 @@ clear and modify the test contacts. Run each scenario's steps in order.
       contacts are `SortGamma`, `SortBeta` and `sortAlpha` in saved order.
    2. Run `filter t/SortDemo`, then `sort name asc`.
       Expected: `sortAlpha`, `SortBeta`, `SortGamma`. The status shows `Showing 3 of N contacts`
-      (`N` is the total saved count), `Filter: Tag: SortDemo` and `Sort: Name ascending`.
+      (`N` is the total saved count), `Filter: Tag = SortDemo` and `Sort: Name ascending`.
    3. Run `shownote 1`.
       Expected: The result display shows the note or no-note feedback; the status remains unchanged.
    4. Run `sort reset` twice.
@@ -2675,7 +2675,7 @@ clear and modify the test contacts. Run each scenario's steps in order.
       `SortGamma`, `SortBeta`, `sortAlpha`. The status shows `Sort: Saved order`.
    5. Run `sort name desc`, then `list`.
       Expected: All contacts return, still sorted by descending name. The status shows equal counts,
-      `Filter: All contacts` and `Sort: Name descending`. Run `sort reset` to restore saved order.
+      `All contacts` and `Sort: Name descending`. Run `sort reset` to restore saved order.
    6. Run `filter t/SortDemo`, then try `sort reset desc`.
       Expected: A usage error; the active filter, saved order and status remain unchanged.
    7. Run `filter m/Computer Science and Information Systems c/2027 t/SortDemo` and narrow the window.

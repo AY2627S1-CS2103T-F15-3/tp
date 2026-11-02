@@ -645,7 +645,7 @@ Format: `list`
 * Lists all saved contacts; it does not provide a recently added view or sort contacts by their creation date.
 * The result starts with `Listed all persons.` and reports `N person(s) listed!` on the next line, where `N` is the
   total number of contacts displayed. An empty address book succeeds with `0 person(s) listed!`.
-  The status above the cards shows `Showing N of N contacts` and `Filter: All contacts`, followed by the current sort order.
+  The status above the cards shows `Showing N of N contacts` and `All contacts`, followed by the current sort order.
 * Viewing contacts does not change their details, recorded update dates or undo/redo history. Saved contacts remain
   available after restarting UniMate from the same folder; active searches, filters and sort choices are temporary.
 
@@ -783,7 +783,7 @@ Format: `find KEYWORD [MORE_KEYWORDS]...`
    * your [`sort`](#sorting-contacts-by-name-major-class-year-or-update-date-sort) order is kept
 
 10. UniMate shows how many contacts were found, such as `2 person(s) listed!`. The line above the list shows what you searched for.
-    * `Filter: Search: alex OR david`
+    * `Search: alex OR david`
 
 11. The results are numbered from `1`. Use these numbers in commands such as `edit`, `delete` and `fav`.
     * run [`list`](#listing-all-persons-list) to see all your contacts again
@@ -827,7 +827,7 @@ Format: `filter [m/MAJOR] [c/CLASS_YEAR] [t/TAG]`
   no contacts are deleted.
 * A persistent status line above the contact list shows the displayed/total contact counts, active
   filter or search, and sort order. For example:
-  `Showing 3 of 20 contacts | Filter: Class year: 2027 | Sort: Name ascending`.
+  `Showing 3 of 20 contacts | Filter: Class year = 2027 | Sort: Name ascending`.
   It stays visible when another command, such as `shownote`, replaces the result message.
   Long criteria wrap onto additional lines. The status also identifies favourites views and empty results.
   Very long search or filter criteria can hide the contact list; see
