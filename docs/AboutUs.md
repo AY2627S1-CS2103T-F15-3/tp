@@ -43,7 +43,7 @@ We are a team based in the [School of Computing, National University of Singapor
 [[github](http://github.com/hyunmin1211)]
 
 * Role: Developer
-* Responsibilities: Data
+* Responsibilities: UI
 
 ### Selene Chan
 
