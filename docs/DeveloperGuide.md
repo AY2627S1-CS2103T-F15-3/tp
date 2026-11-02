@@ -517,10 +517,18 @@ for changed phone/email values, using the refreshed displayed indices. Warnings 
 from the stored history description and do not block the edit.
 
 `Email.MESSAGE_CONSTRAINTS` uses short newline-separated rules and
-explicitly forbids consecutive local-part special characters; the validation regex is unchanged.
-The regex has two known limitations, listed under [Planned enhancements](#appendix-planned-enhancements):
-`DOMAIN_LAST_PART_REGEX` repeats the whole label pattern at least twice instead of checking the
-final label's length, and the nested repeated groups can overflow the stack on extremely long input.
+explicitly forbids consecutive local-part special characters. `Email#isValidEmail` scans the local
+part and domain labels iteratively; `isValidPart` checks ASCII letters/digits and separated punctuation
+without recursive regex matching or substring allocation. Validation takes linear time and constant
+auxiliary space, with no new length limit. The existing `VALIDATION_REGEX` remains as a reference,
+but is not executed by the validator. Accepted values remain unchanged, including the existing
+final-label restriction requiring two adjacent letters/digits; correcting that restriction remains
+listed under [Planned enhancements](#appendix-planned-enhancements).
+
+`EmailTest` covers long valid/invalid local and domain parts and compares short inputs against the
+reference regex. `LongEmailStorageTest` exercises Add/Edit and JSON round trips, and verifies that
+invalid long inputs leave existing contacts unchanged. An isolated fresh-JVM check also verified
+that `MainApp#init` can load saved contacts containing the original long-email reproduction.
 `ResultDisplay.fxml` enables text wrapping so narrow windows do not require horizontal scrolling.
 
 The replacement `Person` retains notes and favourite status. Changes to name, phone, email, address,
@@ -884,7 +892,7 @@ from permanently disabling a reminder.
 
 | Class | Responsibility |
 |-------|----------------|
-| `Phone`, `Email` | Represent unspecified contact methods using immutable `EMPTY` values containing an empty string. Existing regexes still validate every non-empty value. |
+| `Phone`, `Email` | Represent unspecified contact methods using immutable `EMPTY` values containing an empty string. Non-empty values retain their existing format rules; Email uses iterative validation. |
 | `Person` | Evaluates contact completeness without modifying contact state. |
 | `AddCommandParser`, `ParserUtil` | Allow omitted phone/email prefixes, but reject explicitly blank or malformed supplied values in `add`. |
 | `EditCommandParser`, `EditCommand` | Map empty `p/` and `e/` values to `EMPTY`, preserve omitted fields, and apply the existing basic-profile date rules. |
@@ -899,7 +907,7 @@ from permanently disabling a reminder.
   * `ParserUtil.parsePhone` and `parseEmail` still reject a trimmed empty value, preserving malformed-input feedback when an optional prefix is explicitly supplied to `add`.
 * **`add`:** `AddCommandParser` requires name and address, maps omitted phone/email prefixes to `Phone.EMPTY` and `Email.EMPTY`, and continues to reject repeated single-valued prefixes.
 * **`edit`:** `EditCommandParser` uses the same clearing convention as major/class year: an empty prefix supplies `EMPTY`, while an omitted prefix leaves the descriptor field unset.
-* **Validation:** All non-empty values still pass through `ParserUtil` and the original regex validation. An invalid value rejects the whole command before mutation.
+* **Validation:** All non-empty values still pass through `ParserUtil` and the model validators. Email uses iterative validation with the existing format rules. An invalid value rejects the whole command before mutation.
 * **Update date:** `EditCommand` already compares phone/email as basic fields, so filling or clearing either changes `lastUpdated` only when its value changes.
   * Existing person replacement preserves favourite status, tags, notes and academic fields.
   * Notes, favourite and tag commands retain the date.
@@ -3137,32 +3145,17 @@ Team size: 6
 Each item below is a planned fix for a limitation listed in
 [Appendix: Known limitations](#appendix-known-limitations).
 
-1. **Make email validation stack-safe for extremely long input.**
-   `Email.VALIDATION_REGEX` uses nested repeated groups such as `([+_.-][^\W_]+)*`. Java's regex
-   engine matches these recursively, so an email with thousands of repeated segments (e.g.,
-   `"a."` repeated 5,000 times followed by `a@example.com`) throws `StackOverflowError`. The exact
-   threshold depends on the thread stack size and JVM, so no fixed limit is documented. Such a value
-   can be accepted when added in the UI and saved, but the same check then fails while
-   `JsonAdaptedPerson#toModelType` loads the file, so the next launch terminates in `MainApp#init`.
-   The input is far outside any real email address, so this is a robustness limitation rather than a
-   normal-use failure.
-   *Planned fix:* replace the repeated-group regex with an iterative check that splits the local part
-   and domain on their separators and validates each segment, and add a test that saves an accepted
-   long email, then launches the app in a fresh JVM against that saved file and checks that startup
-   succeeds. A reload through another storage object in the same JVM is not enough, because the
-   overflow depends on the thread stack and the real failure occurs in `MainApp#init`. Catching `StackOverflowError` alone is not
-   planned, as it would hide the design problem.
-
-2. **Check the final domain label's length separately from its syntax.**
-   `DOMAIN_LAST_PART_REGEX` is `(label){2,}$`, which requires the label *pattern* to repeat at least
+1. **Check the final domain label's length separately from its syntax.**
+   Iterative Email validation preserves the reference `DOMAIN_LAST_PART_REGEX` rule, `(label){2,}$`,
+   which requires the label *pattern* to repeat at least
    twice, not the final label to have at least two characters. As a result, `a@x.y-z` and `a@a-b` are
    rejected although they satisfy the stated rules, while `a@ab-c` and `a@a-bc` are accepted. The
    command is rejected cleanly without changing data. The User Guide currently states the narrower
    accepted rule.
-   *Planned fix:* match the final label with the ordinary label pattern and check its length with a
+   *Planned fix:* validate the final label's syntax and check its length with a
    separate condition, so the validator matches `Email.MESSAGE_CONSTRAINTS`.
 
-3. **Report, instead of silently removing, control characters in pasted input.**
+2. **Report, instead of silently removing, control characters in pasted input.**
    `Notes` rejects tabs and line breaks, but the command box is a single-line JavaFX `TextField`,
    which strips them from pasted text before `CommandBox#handleCommandEntered` runs. Pasting
    `Left<TAB>Right` into `note 1 ...` therefore saves `LeftRight`. The parser-level rejection still
@@ -3170,7 +3163,7 @@ Each item below is a planned fix for a limitation listed in
    *Planned fix:* add a `TextFormatter` to the command box that replaces pasted tabs and line breaks
    with spaces, so words stay separated and the user can see the result before pressing Enter.
 
-4. **Show a focus outline on the message area.**
+3. **Show a focus outline on the message area.**
    Ctrl+Tab moves focus to the `ResultDisplay` text area, but nothing on screen shows it. The
    `.result-display` rule in `DarkTheme.css` replaces the text area's background with one flat colour
    and zero insets, and JavaFX draws a text area's focus ring as part of that background. This falls
@@ -3193,10 +3186,9 @@ These are described in detail, with their planned fixes, in
 
 | Limitation | Planned enhancement |
 | --- | --- |
-| An extremely long email can overflow the regex stack, so a saved file stops the next launch. | 1 |
-| A final domain label containing a hyphen needs two characters on one side, so `a@x.y-z` is rejected. | 2 |
-| The command box silently removes pasted tabs and line breaks. | 3 |
-| The message area shows no focus outline. | 4 |
+| A final domain label containing a hyphen needs two characters on one side, so `a@x.y-z` is rejected. | 1 |
+| The command box silently removes pasted tabs and line breaks. | 2 |
+| The message area shows no focus outline. | 3 |
 
 ### Other limitations
 

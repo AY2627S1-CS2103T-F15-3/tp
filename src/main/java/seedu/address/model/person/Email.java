@@ -44,7 +44,58 @@ public class Email {
      * Returns true if a string is empty (unspecified) or a valid email.
      */
     public static boolean isValidEmail(String test) {
-        return test.isEmpty() || test.matches(VALIDATION_REGEX);
+        if (test.isEmpty()) {
+            return true;
+        }
+        int at = test.indexOf('@');
+        if (at < 0 || at != test.lastIndexOf('@') || !isValidPart(test, 0, at, SPECIAL_CHARACTERS)) {
+            return false;
+        }
+        int labelStart = at + 1;
+        for (int i = labelStart; i < test.length(); i++) {
+            if (test.charAt(i) == '.') {
+                if (!isValidPart(test, labelStart, i, "-")) {
+                    return false;
+                }
+                labelStart = i + 1;
+            }
+        }
+        if (!isValidPart(test, labelStart, test.length(), "-")) {
+            return false;
+        }
+        // Preserve the existing final-label rule: two adjacent alphanumeric characters are required.
+        // This is equivalent to the repeated DOMAIN_PART_REGEX, including its hyphen restrictions.
+        for (int i = labelStart + 1; i < test.length(); i++) {
+            if (isAsciiAlphanumeric(test.charAt(i - 1)) && isAsciiAlphanumeric(test.charAt(i))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Checks a non-empty part without recursive regex matching or allocating substrings.
+     * Separators must occur singly between ASCII letters or digits, as in the original regex.
+     */
+    private static boolean isValidPart(String text, int start, int end, String separators) {
+        boolean previousAlphanumeric = false;
+        for (int i = start; i < end; i++) {
+            char character = text.charAt(i);
+            if (isAsciiAlphanumeric(character)) {
+                previousAlphanumeric = true;
+            } else if (separators.indexOf(character) >= 0 && previousAlphanumeric) {
+                previousAlphanumeric = false;
+            } else {
+                return false;
+            }
+        }
+        return previousAlphanumeric;
+    }
+
+    private static boolean isAsciiAlphanumeric(char character) {
+        return character >= 'a' && character <= 'z'
+                || character >= 'A' && character <= 'Z'
+                || character >= '0' && character <= '9';
     }
 
     @Override

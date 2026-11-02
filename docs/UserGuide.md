@@ -197,6 +197,10 @@ Format: `add n/NAME [p/PHONE_NUMBER] [e/EMAIL] a/ADDRESS [m/MAJOR] [c/CLASS_YEAR
 
 Omit an optional field when unknown; do not supply an empty value in `add`.
 
+Email validation does not impose a maximum length. Long addresses follow the same format rules
+and can be saved and loaded without a validation stack overflow. Invalid addresses are rejected
+without changing the contact list.
+
 For example, `add n/Alex Tan a/NUS m/Computer Science c/2027` creates a contact
 without a phone or email. Use a name that is not already saved.
 
@@ -1218,4 +1222,3 @@ remedy or workaround where one exists.
 ### Input
 
 10. **Some valid-looking email domains are rejected.** If the last part of the domain (after the final `.`) contains a hyphen, it needs at least two letters or digits on one side of a hyphen. For example, `a@x.y-z` and `a@a-b` are rejected, while `a@x.ab-c` is accepted. The error message does not mention this rule. There is no remedy other than omitting or changing that email; see the [email field rules](#adding-a-person-add).
-11. **An extremely long email address** (thousands of characters, far beyond any real address) may be accepted and saved, but UniMate then fails to start on the next launch. The remedy is to close UniMate, edit `data/unimate.json` to shorten or remove that email, then relaunch. Keep backups before testing unusual input.
