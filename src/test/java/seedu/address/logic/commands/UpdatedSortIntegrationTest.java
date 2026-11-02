@@ -108,7 +108,7 @@ public class UpdatedSortIntegrationTest {
         logic.execute("filter t/Classmate");
         logic.execute("sort updated desc");
         assertEquals(List.of(alice, bob), model.getFilteredPersonList());
-        assertTrue(model.viewStatusProperty().get().contains("Filter: Tag: Classmate"));
+        assertTrue(model.viewStatusProperty().get().contains("Filter: Tag = Classmate"));
         logic.execute("sort reset");
         assertEquals(List.of(bob, alice), model.getFilteredPersonList());
         logic.execute("sort updated asc");

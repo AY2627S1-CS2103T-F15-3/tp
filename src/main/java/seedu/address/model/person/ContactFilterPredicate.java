@@ -44,10 +44,10 @@ public class ContactFilterPredicate implements PersonFilter {
     @Override
     public String getDescription() {
         List<String> criteria = new ArrayList<>();
-        major.ifPresent(value -> criteria.add("Major: " + value.value));
-        graduationYear.ifPresent(value -> criteria.add("Class year: " + value.value));
-        tag.ifPresent(value -> criteria.add("Tag: " + value.tagName));
-        return String.join(" AND ", criteria);
+        major.ifPresent(value -> criteria.add("Major = " + value.value));
+        graduationYear.ifPresent(value -> criteria.add("Class year = " + value.value));
+        tag.ifPresent(value -> criteria.add("Tag = " + value.tagName));
+        return "Filter: " + String.join(" AND ", criteria);
     }
 
     @Override

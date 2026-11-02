@@ -22,6 +22,10 @@ public class ResultDisplay extends UiPart<Region> {
         super(FXML);
     }
 
+    TextArea getTextArea() {
+        return resultDisplay;
+    }
+
     /**
      * Shows ordinary feedback using the normal theme colour, clearing previous warning styling.
      */

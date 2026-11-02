@@ -168,7 +168,7 @@ public class ModelManager implements Model {
         if (comparator instanceof PersonSortComparator personSort) {
             sort = personSort.getDescription();
         }
-        return String.format("Showing %d of %d contacts | Filter: %s | Sort: %s",
+        return String.format("Showing %d of %d contacts | %s | Sort: %s",
                 sortedPersons.size(), addressBook.getPersonList().size(), filter, sort);
     }
 

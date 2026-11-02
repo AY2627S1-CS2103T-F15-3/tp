@@ -256,11 +256,16 @@ independently from their values in `DarkTheme.css`.
   A new contact state starts collapsed; an unchanged contact retains its state. Undo can reuse
   the entry for an earlier contact state and restore its expansion. Restarting the app clears the map.
 * `ContactListNavigation` filters Tab and Shift+Tab at the window root. It builds the route from the
-  command box, list and selected cell's expandable values, skipping the result display and other cards.
+  command box, feedback area, list and selected cell's expandable values, skipping other cards.
   `PersonCard` supplies values in reading order; focusable tags are included. The route is rebuilt on
   each press because scrolling and resizing can recycle cells or change which values are shortened.
   The list skin's JavaFX `VirtualFlow.scrollPixels` brings focused values into view.
-  Shift+Tab reverses the route. An empty list returns focus to the command box. Up/Down selection uses
+  Shift+Tab reverses the route. An empty list cycles between the command box and feedback.
+  The scene focus owner also controls a `focus-within` pseudo-class on the list. CSS highlights the
+  selected card only while focus is on the list or its descendants; selection is retained on leaving.
+  The result display has an orange focus border with a transparent border of the same width when unfocused,
+  so focus styling does not change its size.
+  Ctrl+Tab and Ctrl+Shift+Tab are consumed without moving focus. Up/Down selection uses
   JavaFX's list behaviour; command-history keys and Enter/Space expansion keep their existing handlers.
 * `PersonCardPane` measures the card at its available width and stacks the detail groups below
   560 logical pixels of content width. `TagPane` measures and places tag rows using the same wrapping
@@ -608,7 +613,7 @@ The predicate matches a `Person` if any keyword matches a full word in the perso
 2. The `SortedList` comparator is untouched, so an active sort is kept.
 
 3. The predicate implements `PersonFilter`, so its description appears in the view status.
-   * `find alex david` shows `Filter: Search: alex OR david`
+   * `find alex david` shows `Search: alex OR david`
 
 4. `find` changes no contact data and never calls `Model#commitAddressBook`, so undo and redo availability is preserved.
 
@@ -823,7 +828,7 @@ cards with one-based display indices. Existing cards provide contact details and
 persons or alter their update dates.
 
 The view status is derived from the same filtered and sorted lists. After `list`, it reads
-`Showing N of N contacts | Filter: All contacts | Sort: ...`; the sort description remains the active
+`Showing N of N contacts | All contacts | Sort: ...`; the sort description remains the active
 sort, or `Saved order` when there is no comparator. Display indices belong to this current view,
 so they may differ from indices in the previous search results.
 
@@ -2167,9 +2172,11 @@ clear and modify the test contacts. Run each scenario's steps in order.
    layout. Scrolling and resizing retain expansion. Use the list scrollbar to reach the end of expanded
    content. For a long list, add disposable contacts and check scrollbar dragging and smaller arrow steps.
 <br>
-4. From the command box, press Tab, then use Up/Down to select the long contact. Follow the
+4. From the command box, press Tab to focus feedback, then Tab again to focus the list. Use Up/Down to select the long contact. Follow the
    [UG keyboard route](UserGuide.md#using-the-contact-list) forward and backward with Tab/Shift+Tab.
-   Expected: The list selection has an orange border. Only expandable values on the selected contact
+   Expected: Feedback has an orange outline when focused. The selected card has an orange border only
+   while focus is in the list or its expandable values; leaving hides the highlight and returning retains
+   the same selected contact. Only expandable values on the selected contact
    enter the route, including its long tag. Each focused value has an orange dotted outline;
    Enter/Space toggles it. The route returns to the command box after the last value and reverses
    correctly. Other cards and short values are skipped. Navigation does not submit a command.
@@ -2179,7 +2186,7 @@ clear and modify the test contacts. Run each scenario's steps in order.
    retained expansion state of the earlier contact. Restart collapses all values.
 <br>
 6. In a separate empty disposable book, press Tab and Shift+Tab in the command box.
-   Expected: Focus stays in the command box because there is no contact to select.
+   Expected: Focus cycles between the command box and feedback in both directions; the empty list is skipped.
 
 ### Testing favourites
 
@@ -2255,7 +2262,7 @@ clear and modify the test contacts. Run each scenario's steps in order.
    2. Run `find ListAlice`, then `list`.
       Expected: Every saved contact appears, including both test contacts. Feedback starts with `Listed all persons.`
       and the next line reports `N person(s) listed!`, where `N` equals the full displayed count.
-      The status above the cards shows `Showing N of N contacts | Filter: All contacts | Sort: Saved order`
+      The status above the cards shows `Showing N of N contacts | All contacts | Sort: Saved order`
       if no sort was applied.
    3. Run `filter m/Computing`, then `list`; repeat with `listfav`, then `list`.
       Expected: Each `list` restores all contacts and their current details. Favourite hearts and update dates remain unchanged.
@@ -2266,7 +2273,7 @@ clear and modify the test contacts. Run each scenario's steps in order.
 
    1. Run `sort name desc`, then `find ListAlice`, then `list`.
       Expected: Every contact returns in descending name order, numbered consecutively from `1`.
-      The status shows `Filter: All contacts` and still ends with `Sort: Name descending`.
+      The status shows `All contacts` and still ends with `Sort: Name descending`.
    2. Close and relaunch the app from the same folder, then run `list`.
       Expected: Both test contacts and all other saved details remain available. The temporary sort is reset to saved order.
    3. Run `add n/ListUndo a/NUS`, then `undo`, then `list`, then `redo`.
@@ -2507,7 +2514,7 @@ clear and modify the test contacts. Run each scenario's steps in order.
    2. Test case: `find computer`.
       Expected: `SearchComputing` is included and `SearchBusiness` is excluded. 
       
-      Matching is case-insensitive; other contacts with matching names or academic fields may also appear. The view status line shows `Filter: Search: computer`.
+      Matching is case-insensitive; other contacts with matching names or academic fields may also appear. The view status line shows `Search: computer`.
 
    3. Test case: `find 2028`.
       Expected: `SearchBusiness` is included and `SearchComputing` is excluded.
@@ -2660,7 +2667,7 @@ clear and modify the test contacts. Run each scenario's steps in order.
       contacts are `SortGamma`, `SortBeta` and `sortAlpha` in saved order.
    2. Run `filter t/SortDemo`, then `sort name asc`.
       Expected: `sortAlpha`, `SortBeta`, `SortGamma`. The status shows `Showing 3 of N contacts`
-      (`N` is the total saved count), `Filter: Tag: SortDemo` and `Sort: Name ascending`.
+      (`N` is the total saved count), `Filter: Tag = SortDemo` and `Sort: Name ascending`.
    3. Run `shownote 1`.
       Expected: The result display shows the note or no-note feedback; the status remains unchanged.
    4. Run `sort reset` twice.
@@ -2668,7 +2675,7 @@ clear and modify the test contacts. Run each scenario's steps in order.
       `SortGamma`, `SortBeta`, `sortAlpha`. The status shows `Sort: Saved order`.
    5. Run `sort name desc`, then `list`.
       Expected: All contacts return, still sorted by descending name. The status shows equal counts,
-      `Filter: All contacts` and `Sort: Name descending`. Run `sort reset` to restore saved order.
+      `All contacts` and `Sort: Name descending`. Run `sort reset` to restore saved order.
    6. Run `filter t/SortDemo`, then try `sort reset desc`.
       Expected: A usage error; the active filter, saved order and status remain unchanged.
    7. Run `filter m/Computer Science and Information Systems c/2027 t/SortDemo` and narrow the window.
@@ -3163,14 +3170,6 @@ Each item below is a planned fix for a limitation listed in
    *Planned fix:* add a `TextFormatter` to the command box that replaces pasted tabs and line breaks
    with spaces, so words stay separated and the user can see the result before pressing Enter.
 
-3. **Show a focus outline on the message area.**
-   Ctrl+Tab moves focus to the `ResultDisplay` text area, but nothing on screen shows it. The
-   `.result-display` rule in `DarkTheme.css` replaces the text area's background with one flat colour
-   and zero insets, and JavaFX draws a text area's focus ring as part of that background. This falls
-   short of the requirement that focus remain visible (non-functional requirement 3). Keyboard
-   scrolling and Ctrl+Shift+Tab still work, and the User Guide explains how to check focus.
-   *Planned fix:* add a `.result-display:focused` rule that draws a border in the existing
-   `-fx-focus-color` (orange), matching the outline used for expandable contact values.
 
 --------------------------------------------------------------------------------------------------------------------
 
@@ -3188,7 +3187,6 @@ These are described in detail, with their planned fixes, in
 | --- | --- |
 | A final domain label containing a hyphen needs two characters on one side, so `a@x.y-z` is rejected. | 1 |
 | The command box silently removes pasted tabs and line breaks. | 2 |
-| The message area shows no focus outline. | 3 |
 
 ### Other limitations
 
@@ -3207,12 +3205,11 @@ These are described in detail, with their planned fixes, in
    * `list` retries saving all current contacts; Help remains available, while Exit retries pending saves and stays open if they still fail
    * the user guide documents this under [Saving the data](UserGuide.md#saving-the-data)
 
-3. **Ctrl+Tab into the message area is not implemented by UniMate.**
-   * `ContactListNavigation#handleTab` consumes only plain Tab and Shift+Tab. It returns early when Ctrl, Alt or Meta is held, leaving Ctrl+Tab to JavaFX's default focus traversal.
-   * JavaFX binds Ctrl+Tab and Ctrl+Shift+Tab to "next/previous control", because a text area normally keeps plain Tab for typing.
-   * The default order follows `MainWindow.fxml`: command box, then `ResultDisplay`, then the contact list. `ResultDisplay`'s `TextArea` is focus-traversable by default, so Ctrl+Tab from the command box reaches it.
-   * The route is fragile: reordering the layout, making the text area non-traversable or consuming Ctrl+Tab in `handleTab` would remove it silently. No automated test covers it.
-   * A future version could handle Ctrl+Tab explicitly in `ContactListNavigation` and add a GUI test for the command box → message area → command box route.
+3. **Ctrl+Tab and Ctrl+Shift+Tab are disabled.**
+   * `ContactListNavigation#handleTab` consumes plain Tab and Shift+Tab and moves through the command box, feedback, contact list and selected contact's expandable values. Shift+Tab reverses the route.
+   * `MainWindow` supplies the feedback text area through `ResultDisplay#getTextArea`. Feedback remains reachable even with an empty contact list.
+   * Ctrl+Tab and Ctrl+Shift+Tab are consumed without moving focus, preventing JavaFX's default traversal from creating a competing route. Alt/Meta combinations retain platform handling.
+   * `ContactListNavigationTest` covers forward/reverse feedback traversal, an empty list and repeated blocked Ctrl shortcuts without changing draft input.
 
 4. **Long search or filter criteria can hide the contact list.**
    * `PersonListPanel.fxml` gives the wrapping `viewStatus` label its full preferred height without a maximum. Its text can push the `ListView` below the visible window.
@@ -3222,7 +3219,7 @@ These are described in detail, with their planned fixes, in
 5. **Tab can skip an off-screen selected contact.**
    * `ContactListNavigation#getFocusRoute` searches currently loaded `PersonListCell` nodes. If scrolling has recycled the selected card, its expandable values are absent from the route.
    * Reproduce with enough contacts to scroll: select a contact with an expandable value, keep the list focused, scroll until that card is out of view, then press Tab. Focus returns to the command box instead of an expandable value.
-   * From the command box, press Tab to scroll the selected contact back into view and focus the list, then Tab again to reach its first expandable value. `handleTab` scrolls to the selection when focus starts in the command box.
+   * From the command box, press Tab to focus feedback, then Tab again to scroll to the selected contact and focus the list. A further Tab reaches its first expandable value. `handleTab` scrolls to the selection when focus starts in the command box or feedback.
    * Both UI workarounds are documented in the [UG known issues](UserGuide.md#known-issues-and-limitations) and were rechecked on Windows.
 
 6. **Untested requirements.**
