@@ -42,6 +42,9 @@ Notable uses of AI:
   including the documentation sections and diagrams marked with `RayWHJ` author tags.
 * OpenAI Codex assisted @RayWHJ with implementing and testing the UniMate message wording, shared empty-field
   formatting and validation of commands that take no parameters, and with writing the related manual tests.
+* @sel-couth-ene used Claude Code to draft and review save-failure error messages, the removal of unreachable
+  assertions from `EditCommand` and `CommandHistory`, a post-merge test stub fix, and Developer Guide text on
+  `find` matching, undo view reset, unbounded history and save-failure behaviour.
 * @zruixuan used OpenAI Codex and ChatGPT to assist with implementing and modifying Java features,
   writing and improving unit and integration tests, developing GUI functionality, creating and simplifying
   UML class diagrams, drafting and revising the User Guide and Developer Guide, and debugging, reviewing
@@ -530,10 +533,7 @@ but is not executed by the validator. Accepted values remain unchanged, includin
 final-label restriction requiring two adjacent letters/digits; correcting that restriction remains
 listed under [Planned enhancements](#appendix-planned-enhancements).
 
-`EmailTest` covers long valid/invalid local and domain parts and compares short inputs against the
-reference regex. `LongEmailStorageTest` exercises Add/Edit and JSON round trips, and verifies that
-invalid long inputs leave existing contacts unchanged. An isolated fresh-JVM check also verified
-that `MainApp#init` can load saved contacts containing the original long-email reproduction.
+`EmailTest` and `LongEmailStorageTest` cover long valid and invalid emails through validation, `add`/`edit` and saving.
 `ResultDisplay.fxml` enables text wrapping so narrow windows do not require horizontal scrolling.
 
 The replacement `Person` retains notes and favourite status. Changes to name, phone, email, address,
@@ -2101,8 +2101,6 @@ after an edit, undo, redo or restart before using its displayed index again.
 <br>
 3. Help window without an internet connection
 
-   **Result:** Passed on macOS, Linux and Windows (v1.5 development build).
-
    1. Turn off Wi-Fi and unplug any network cable. Launch the app.
    2. Press F1, or run `help`.
       Expected: The help window opens and shows the User Guide's web address.
@@ -2335,13 +2333,10 @@ clear and modify the test contacts. Run each scenario's steps in order.
       Expected: The addition succeeds. The normal `New person added: ...` message remains complete and
       includes Amy's saved details. An appended line in the same feedback box reads
       `Warning - duplicate details detected: #2 Charlie (email); #4 Zara (phone)`.
-      Both lines are amber with no coloured border. The full list is Amy, Charlie, Morgan, Zara.
-      Morgan's missing fields produce no match. Narrow the window to about 640 pixels. The result
-      area retains its 100-pixel height; both lines can be selected and copied. Scrolling is needed
-      only when the wrapped feedback exceeds that area.
+      The full list is Amy, Charlie, Morgan, Zara. Morgan's missing fields produce no match.
    4. Run `undo`, then `redo`.
       Expected: One undo removes Amy and one redo restores Amy. Their feedback describes the addition
-      in light grey without repeating the warning, and Zara, Charlie and Morgan retain their original details.
+      without repeating the warning, and Zara, Charlie and Morgan retain their original details.
    5. Close and reopen the disposable copy, then run `find Amy`.
       Expected: Amy was saved with the entered phone and uppercase email. Sorting and filtering
       return to their usual restart defaults.
@@ -2349,19 +2344,11 @@ clear and modify the test contacts. Run each scenario's steps in order.
 2. Empty details and both fields matching the same contact
 
    1. Run `add n/NoDetails a/NUS`.
-      Expected: The contact is added with ordinary light grey success feedback. Its missing phone and email
-      do not trigger a warning about Morgan's missing details.
+      Expected: The contact is added without a warning. Its missing phone and email do not match
+      Morgan's missing details.
    2. Run `add n/AnotherZara p/91919191 e/zara172@example.com a/Dover`.
       Expected: The addition succeeds with a warning. Zara appears once with the reason
       `phone and email`; Amy is also listed for sharing the phone number.
-   3. While a warning is showing, run `sort name sideways`, then `list`.
-      Expected: The invalid command replaces the warning with the usual light grey error feedback and input
-      styling. `list` shows ordinary light grey success feedback. Neither command changes saved contacts.
-   4. Repeat a shared-details addition with a deliberately long address (for example, ten repetitions
-      of Lower Kent Ridge Road) in the disposable copy, then narrow the window.
-      Expected: The complete ordinary success message and appended warning appear amber in the
-      original text area, starting at the top. All names, displayed indices and reasons remain
-      complete; the existing vertical scrollbar reveals any wrapped overflow.
 
 ### Shared phone or email warnings on edit
 
@@ -2376,37 +2363,32 @@ clear and modify the test contacts. Run each scenario's steps in order.
       Expected: The edit succeeds and the input clears. `Edited EditWarning Bob:` and the changed
       phone line appear first, followed by `Warning - duplicate details detected: #N EditWarning Alice (phone)`.
       `N` is Alice's current displayed index in the refreshed full sorted list, not necessarily her
-      previous index in the two-contact view. The complete feedback appears amber in the original feedback box,
-      with no coloured border or additional warning control.
+      previous index in the two-contact view.
    4. Run `undo`, then `redo`.
       Expected: One undo restores Bob's previous phone and one redo restores the shared phone.
-      Both use ordinary light grey edit-history feedback without repeating the warning. Alice remains unchanged.
+      Neither repeats the warning. Alice remains unchanged.
    5. Run `find EditWarning`, confirm Bob's displayed index, then edit that index with
       `e/ALICE.EDITWARNING@EXAMPLE.COM t/StudyGroup`.
       Expected: `Edited EditWarning Bob:` is followed by the email difference, then
       `Tags replaced. Removed: None. Added: StudyGroup.` The final warning line identifies Alice for
-      `(email)` only; the already-shared unchanged phone is not reported as newly shared. All feedback
-      lines appear amber in the original feedback box. The uppercase email and replacement tags are saved unchanged.
+      `(email)` only; the already-shared unchanged phone is not reported as newly shared. The uppercase
+      email and replacement tags are saved unchanged.
    6. Run `undo`, then `redo`.
       Expected: One undo restores both Bob's previous email and tags; redo restores both changes.
-      Feedback remains light grey and includes only the base edited-contact details, not the tag summary
-      or duplicate-details warning.
-   7. Rename Bob while changing a contact method to another shared value, then inspect the full sorted list.
-      Expected: The change summary identifies his new name and lists only actual differences; the warning
-      still uses the matching contacts' refreshed indices even if the renamed contact has moved.
+      Feedback includes only the base edited-contact details, not the tag summary or duplicate-details warning.
 <br>
 2. Unchanged, unrelated and empty values
 
    1. Before each check, find the edited contact and use its actual displayed index.
    2. Repeat the current phone value, change only the major with `m/Mathematics`, or change only
       the email's capitalization.
-      Expected: Light grey changed-field feedback for actual changes, or `No changes made to NAME.
+      Expected: Changed-field feedback for actual changes, or `No changes made to NAME.
       The supplied values match the existing details.` for an unchanged edit. Existing shared values
       do not cause a warning. An unchanged edit preserves undo and redo.
    3. Clear a contact method with `p/` or `e/`.
-      Expected: Ordinary light grey success feedback; empty values do not match other empty contact methods.
+      Expected: Success without a warning; empty values do not match other empty contact methods.
    4. Change only tags with `t/StudyGroup`, then clear them with `t/`, checking the displayed index before each edit.
-      Expected: A changed tag set produces the removed/added summary in light grey, with `None`
+      Expected: A changed tag set produces the removed/added summary, with `None`
       for an empty difference. An unchanged set produces no tag summary. Existing shared phone/email values do not trigger a warning for these tag-only edits.
    5. Close and reopen the disposable copy.
       Expected: Edited values persist; the warnings did not modify or merge any other contact.
@@ -2456,9 +2438,9 @@ clear and modify the test contacts. Run each scenario's steps in order.
    1. Prerequisites: Ensure `AcademicInvalid` does not exist. Use
       `add n/AcademicInvalid p/91234567 e/invalid@example.com a/10 Kent Ridge Road` as the base command
       and append each suffix below separately.
-   2. Test cases: `m/`, `m/   `, `c/`, `c/   `.
+   2. Test cases: `m/`, `c/   `.
       Expected: A major or class-year validation error is shown. No contact is added.
-   3. Test cases: `c/1999`, `c/2100`, `c/202`, `c/20270`, `c/abcd`.
+   3. Test cases: `c/1999`, `c/2100`, `c/abcd`.
       Expected: A class-year validation error is shown. No contact is added.
    4. Test cases: `m/Computer Science m/Mathematics`, `c/2027 c/2028`.
       Expected: A repeated-prefix error is shown. No contact is added, and existing contacts are unchanged.
@@ -2668,19 +2650,12 @@ clear and modify the test contacts. Run each scenario's steps in order.
    2. Run `filter t/SortDemo`, then `sort name asc`.
       Expected: `sortAlpha`, `SortBeta`, `SortGamma`. The status shows `Showing 3 of N contacts`
       (`N` is the total saved count), `Filter: Tag = SortDemo` and `Sort: Name ascending`.
-   3. Run `shownote 1`.
-      Expected: The result display shows the note or no-note feedback; the status remains unchanged.
-   4. Run `sort reset` twice.
-      Expected: Both commands succeed. Only the three demo contacts remain visible, in saved order:
+   3. Run `sort reset`.
+      Expected: Only the three demo contacts remain visible, in saved order:
       `SortGamma`, `SortBeta`, `sortAlpha`. The status shows `Sort: Saved order`.
-   5. Run `sort name desc`, then `list`.
+   4. Run `sort name desc`, then `list`.
       Expected: All contacts return, still sorted by descending name. The status shows equal counts,
       `All contacts` and `Sort: Name descending`. Run `sort reset` to restore saved order.
-   6. Run `filter t/SortDemo`, then try `sort reset desc`.
-      Expected: A usage error; the active filter, saved order and status remain unchanged.
-   7. Run `filter m/Computer Science and Information Systems c/2027 t/SortDemo` and narrow the window.
-      Expected: Long status text wraps within the window; all criteria and the sort description remain
-      readable. Zero matches, if any, show `Showing 0 of N contacts` without deleting saved contacts.
 <br>
 5. Latest update date
 
@@ -2703,20 +2678,7 @@ clear and modify the test contacts. Run each scenario's steps in order.
       Expected: `UpdatedAlpha` changes phone and receives today's date, moving after the two older contacts.
       It was third in saved order but is targeted using the first displayed card.
       Run `sort updated desc`: `UpdatedAlpha`, `UpdatedGamma`, `UpdatedBeta` appear.
-   4. Run `undo`, then `filter t/UpdateSortDemo`.
-      Expected: `UpdatedAlpha` regains its original phone and date; descending order becomes
-      `UpdatedGamma`, `UpdatedAlpha`, `UpdatedBeta`. Run `sort updated asc`, then `redo`, then reapply
-      the filter: the edited phone/date return, with `UpdatedBeta`, `UpdatedGamma`, `UpdatedAlpha`
-      in ascending order. Sorting has not consumed undo history or cleared redo.
-   5. Try `sort updated`, `sort updated ascending` and `sort updated desc extra` separately.
-      Expected: Usage errors; the filter, order, dates and status remain unchanged.
-      Run `sort reset`: only the matching contacts remain, in saved order
-      `UpdatedGamma`, `UpdatedBeta`, `UpdatedAlpha`.
-   6. Close and reopen UniMate, then run `filter t/UpdateSortDemo`.
-      Expected: The same saved order and edited phone/date remain. The temporary sort is reset and
-      status ends with `Sort: Saved order`.
-
-   7. Close UniMate and remove `UpdatedGamma`'s `lastUpdated` property from the disposable data file.
+   4. Close UniMate and remove `UpdatedGamma`'s `lastUpdated` property from the disposable data file.
       Relaunch, run `filter t/UpdateSortDemo`, then try `sort updated asc` and `sort updated desc`.
       Expected: `UpdatedGamma` shows `Last updated: Unknown` and stays last in both directions.
       Saving and restarting preserve its unknown date; an actual basic-profile edit records today's date.
@@ -3052,24 +3014,15 @@ Use only the separate test folder for these checks. The paths below are relative
    1. With the app closed, use a disposable test folder and retain the valid backup. Test each of these
       file contents separately in `data/unimate.json`:
 
-      * `{"persons":[null]}`
-      * `{"persons":[{"name":"Null Tag","address":"NUS","tags":[null]}]}`
       * `null`
+      * a valid contact followed by `null` in the same `persons` array
+      * a valid contact followed by a contact whose `tags` array is `["friends",null]`
    2. Relaunch the app without entering a command.
       Expected: The GUI opens with an empty contact list and a recovery warning; contact saving is
-      disabled, and the loading error is logged. Running `list` leaves the invalid file unchanged.
-      For the first two files, the log identifies `Contact entry 1 is null.` and
-      `Contact entry 1 is invalid: Tag entry 1 is null.`, respectively.
-      The original invalid file remains unchanged.
-   3. Close the window using its close button and inspect the file.
-      Expected: It still contains the original invalid data. Restore the backup before the next case.
-   4. Repeat with a valid contact followed by a null entry in the same `persons` array.
-      Expected: The whole file is rejected; the valid contact is not partially loaded. The logged
-      error is `Contact entry 2 is null.`.
-   5. Repeat with a valid contact followed by a contact whose `tags` array is `["friends",null]`.
-      Expected: The whole file is rejected, and the log identifies
-      `Contact entry 2 is invalid: Tag entry 2 is null.`. Positions count entries from 1 in saved-file order.
-   6. Separately test `{"persons":[]}` and a valid older contact with omitted optional fields.
+      disabled, and the valid contact is not partially loaded. For the second and third files, the log
+      identifies `Contact entry 2 is null.` and `Contact entry 2 is invalid: Tag entry 2 is null.`,
+      respectively. Close the window and confirm the file is unchanged, then restore the backup.
+   3. Separately test `{"persons":[]}` and a valid older contact with omitted optional fields.
       Expected: The empty list loads normally, and the older contact loads with unspecified optional details.
 <br>
 6. Loading a file saved under the old filename
@@ -3097,9 +3050,6 @@ Use only the separate test folder for these checks. The paths below are relative
       Close the app and restore the backup before continuing.
 
 ### Testing a permission-denied save
-
-**Result:** Passed on macOS, Linux and Windows (v1.5 development build). On macOS, the permission
-message appeared, `PermCheck` was shown in memory, and the read-only file was left unchanged.
 
 Use a disposable test folder only.
 
@@ -3171,6 +3121,25 @@ Each item below is a planned fix for a limitation listed in
    with spaces, so words stay separated and the user can see the result before pressing Enter.
 
 
+3. **Treat names differing only in internal spacing as duplicates.**
+   `Person#isSamePerson` compares names with `equalsIgnoreCase`, so `Alice Tan` and `Alice  Tan` are
+   saved as separate contacts that look almost identical on their cards.
+   *Planned fix:* collapse runs of spaces in `ParserUtil.parseName` and compare collapsed names in
+   `isSamePerson`, so `add` and `edit` reject such names as duplicates. A saved file containing both
+   forms is rejected on load in the same way as existing case-only duplicates.
+
+4. **Accept common punctuation and non-ASCII letters in names.**
+   `Name.VALIDATION_REGEX` allows only ASCII letters, digits and spaces, so `Mary-Jane O'Neil`,
+   `Rajesh s/o Kumar`, `José` and `李小龙` are rejected.
+   *Planned fix:* allow Unicode letters and marks, plus `-`, `'`, `.` and `/` between letters, and
+   update `Name.MESSAGE_CONSTRAINTS` to list them. `s/o` needs no parser change because `s/` is not a
+   prefix; `d/o` would still be read as the `d/` prefix in `add`.
+
+5. **Accept international phone formats and limit phone length.**
+   `Phone.VALIDATION_REGEX` is `\d{3,}`, so `+6591234567` is rejected while a 30-digit number is accepted.
+   *Planned fix:* allow one leading `+`, and limit numbers to 3–15 digits, the maximum length of an
+   international number. Update `Phone.MESSAGE_CONSTRAINTS` to match.
+
 --------------------------------------------------------------------------------------------------------------------
 
 ## Appendix: Known limitations
@@ -3187,6 +3156,9 @@ These are described in detail, with their planned fixes, in
 | --- | --- |
 | A final domain label containing a hyphen needs two characters on one side, so `a@x.y-z` is rejected. | 1 |
 | The command box silently removes pasted tabs and line breaks. | 2 |
+| Names differing only in internal spacing are not treated as duplicates. | 3 |
+| Names with hyphens, apostrophes, `s/o` or non-ASCII letters are rejected. | 4 |
+| Phone numbers with a leading `+` are rejected, while overly long numbers are accepted. | 5 |
 
 ### Other limitations
 
