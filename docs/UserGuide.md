@@ -97,37 +97,34 @@ fields move below the phone, address and email fields.
 
 | Key | Action |
 | --- | --- |
-| Tab from the command box | Focus the contact list, keeping the selection or selecting the first contact. |
+| Tab from the command box | Focus the feedback area. Use Up / Down or Page Up / Page Down to scroll long notes or errors. |
+| Tab from feedback | Focus the contact list, keeping its selection or selecting the first contact. With no contacts, return to the command box. |
 | Up / Down while the list is focused | Select the previous / next contact. The selected card has an orange border. |
 | Tab from the list | Focus the selected contact's first expandable value. If none exist, return to the command box. |
 | Tab from an expandable value | Focus the next expandable value on that contact; after the last, return to the command box. |
-| Shift+Tab from the command box | Focus the selected contact's last expandable value, or the list if none exist. |
+| Shift+Tab from the command box | Focus the selected contact's last expandable value, or the list if none exist. With no contacts, focus feedback. |
 | Shift+Tab from an expandable value | Focus the previous expandable value; before the first, return to the list. |
-| Shift+Tab from the list | Return to the command box. |
+| Shift+Tab from the list | Focus feedback. |
+| Shift+Tab from feedback | Return to the command box. |
 | Enter / Space on an expandable value | Expand or collapse that value. |
-| Ctrl+Tab from the command box | Focus the message area to read long feedback. Use Up / Down or Page Up / Page Down to scroll it (Command+Down jumps to the end on macOS). The message area shows **no focus outline**; see the note below. |
-| Ctrl+Shift+Tab from the message area | Return to the command box. |
+| Ctrl+Tab / Ctrl+Shift+Tab | Blocked; neither shortcut moves focus. |
 
 Expandable values, including long tags, have an orange dotted outline when focused. Their order is:
 name, tags from left to right, phone, address, email, major, class year, last updated. Short values and
 other contacts are skipped. The list scrolls to keep the focused value visible; for a value taller
-than the viewport, it shows the start of that value. With an empty list, Tab and Shift+Tab keep focus
-in the command box.
+than the viewport, it shows the start of that value. With an empty list, Tab and Shift+Tab cycle only between the command box and feedback.
 For the exception when a selected contact has been scrolled out of view, see
 [Known keyboard limitations](#keyboard).
 Up/Down in the command box still recalls command history.
-Plain Tab and Shift+Tab never enter the message area; use Ctrl+Tab for that. The Ctrl+Tab route
-works on macOS, Linux and Windows. Clicking inside the message area also focuses it.
+The route is command box → feedback → contact list → selected expandable values → command box.
+Shift+Tab reverses it. Ctrl+Tab and Ctrl+Shift+Tab are blocked to prevent a second traversal route.
+Clicking inside feedback also focuses it.
 
-<box type="warning" seamless>
+Feedback has an orange outline while focused. The selected contact's orange highlight is visible only
+while focus is in the contact list or one of its expandable values. Moving to feedback or the command
+box hides that highlight without clearing the selection; returning to the list restores the same contact.
+Typing in feedback does not enter a command. Press Shift+Tab to return to the command box.
 
-**Caution:** The message area does **not** show an outline or highlight when it has focus, so nothing
-on screen changes when Ctrl+Tab moves focus there.
-
-* To check where focus is, press Down: if the message text scrolls, the message area has focus.
-* Typing does nothing while the message area has focus. Press Ctrl+Shift+Tab, or click the command
-  box, before typing your next command.
-</box>
 
 --------------------------------------------------------------------------------------------------------------------
 
@@ -596,8 +593,8 @@ Saving identical text reports `Note unchanged for NAME.` and creates no undo ste
 
 A small orange icon at the card's top right indicates a saved note. Use [`shownote`](#viewing-a-contact-s-note-shownote)
 to read it; scroll vertically in the message area to read long feedback. With the keyboard, press
-Ctrl+Tab to focus the message area (see [Using the contact list](#using-the-contact-list)). The message
-area shows no focus outline, so press Ctrl+Shift+Tab to return to the command box before typing.
+Tab from the command box to focus the message area (see [Using the contact list](#using-the-contact-list)). The message
+area has an orange focus outline. Press Shift+Tab to return to the command box before typing.
 
 ### Viewing a contact's note: `shownote`
 
@@ -1206,13 +1203,12 @@ remedy or workaround where one exists.
 
 ### Keyboard
 
-4. **The message area shows no focus outline.** After Ctrl+Tab moves focus to the message area, nothing on screen changes. The remedy is to press Down to check (the message scrolls if it has focus), and press Ctrl+Shift+Tab or click the command box before typing. See [Using the contact list](#using-the-contact-list).
-5. **Ctrl+Tab into the message area is standard Java behaviour, not a UniMate shortcut.** UniMate handles only plain Tab and Shift+Tab. Ctrl+Tab and Ctrl+Shift+Tab work because the Java window toolkit that UniMate uses moves focus between controls with them. The route works on macOS, Linux and Windows. Clicking inside the message area also focuses it.
+5. **Ctrl+Tab and Ctrl+Shift+Tab are blocked.** Use Tab and Shift+Tab for the single documented focus route.
 6. **Tabs and line breaks in pasted text are removed** by the command box before submission, so pasted words can be joined. See [`note`](#adding-or-replacing-a-contact-s-note-note).
 7. **Tab can skip a selected contact that has been scrolled out of view.** If the list has focus
    and you scroll until the selected card is no longer visible, Tab may return to the command box
-   instead of reaching that contact's expandable values. From the command box, press Tab to bring
-   the selected contact back into view, then Tab again to focus its first expandable value.
+   instead of reaching that contact's expandable values. From the command box, press Tab to reach feedback, Tab again to reach
+   the selected contact, then Tab again to focus its first expandable value.
 
 ### Data and saving
 

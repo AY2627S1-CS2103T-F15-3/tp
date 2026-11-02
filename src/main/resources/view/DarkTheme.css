@@ -108,6 +108,9 @@
 }
 
 .result-display {
+    -fx-border-color: transparent;
+    -fx-border-width: 1;
+    -fx-border-radius: 5;
     -fx-background-color: #1c2023;
     -fx-background-insets: 0;
     -fx-background-radius: 5;
@@ -116,6 +119,10 @@
     -fx-text-fill: #d5d8db;
     -fx-padding: 0;
     -fx-highlight-fill: #634632;
+}
+
+.result-display:focused {
+    -fx-border-color: #d99664;
 }
 
 #resultDisplay .content {
@@ -173,7 +180,7 @@
     -fx-text-fill: #ffcf66;
 }
 
-.list-cell:filled:selected #cardPane {
+.list-view:focus-within .list-cell:filled:selected #cardPane {
     -fx-background-color: #2d2a27;
     -fx-border-color: #d99664;
 }
