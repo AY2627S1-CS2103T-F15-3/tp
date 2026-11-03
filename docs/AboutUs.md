@@ -34,7 +34,7 @@ We are a team based in the [School of Computing, National University of Singapor
 [[github](http://github.com/aziz-Almarzooq)]
 
 * Role: Developer
-* Responsibilities:
+* Responsibilities: View previously added Contacts, track each contact's latest update date.
 
 ### Hyunmin Lee
 
