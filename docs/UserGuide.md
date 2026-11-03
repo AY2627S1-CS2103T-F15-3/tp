@@ -159,6 +159,15 @@ Typing in feedback does not enter a command. Press Shift+Tab to return to the co
 * If you are using a PDF version of this document, be careful when copying and pasting commands that span multiple lines as space characters surrounding line-breaks may be omitted when copied over to the application.
 </box>
 
+### Using displayed contact indices
+
+`INDEX` is the positive number beside a contact in the **current displayed list**, including search,
+filter, favourite and sorted views. It is not a permanent contact identifier.
+Sorting or changing contacts can renumber the list; check the latest card numbers before each indexed command.
+Successful `add`, `edit`, `undo` and `redo` commands show all contacts while retaining the active sort.
+Reapply `find`, `filter` or `listfav` before using a result index again.
+Individual commands describe their own index restrictions and whether they keep the current view.
+
 ### Viewing help: `help`
 
 Shows a message explaining how to access the help page.
@@ -549,7 +558,7 @@ Format: `listfav`
 
 #### Switching between lists
 
-* The existing AB3 `list` command shows all contacts. The new `listfav` command shows only favourites. Both change the view without changing contact data or favourite status.
+* `list` shows all contacts. `listfav` shows only favourites. Both change the view without changing contact data or favourite status.
 * `fav INDEX` and `unfav INDEX` always use the indices in the current view, including search results and the favourite list. A displayed index is not a permanent contact identifier.
 * For example, run `list`, then `fav 1`, then `listfav`. Run `unfav 1` to remove the first person shown in the favourite list, then `list` to see all contacts again.
 * The existing `add` and `edit` commands restore the full list after success. Run `listfav` again to return to favourites. Tag and untag operations preserve the current filter and favourite status.
@@ -832,10 +841,9 @@ Format: `filter [m/MAJOR] [c/CLASS_YEAR] [t/TAG]`
   [Window and display limitations](#window-and-display) for recovery steps.
 * Each `filter` replaces the previous search or filter and retains the active sort order, or the saved
   contact order if no sort has been chosen. `find` replaces the filter; `list` shows all contacts again.
-* Indices refer to the currently displayed list. For example, `delete 1` targets the first filtered result.
+* [Displayed contact indices](#using-displayed-contact-indices) apply: `delete 1` targets the first filtered result.
   Deleting or untagging a contact that no longer matches removes it from the results and renumbers the list.
-* Successful `add`, `edit`, `undo` and `redo` commands show the full list.
-  Reapply the filter before using a filtered index again. Tag and untag retain the active filter.
+  Reapply the filter after a command shows the full list. Tag and untag retain the active filter.
 * Filters are temporary: restarting UniMate shows the full contact list. Filtering does not create
   an undoable data change or clear redo history.
 
@@ -877,8 +885,7 @@ Format: `sort FIELD DIRECTION` or `sort reset`
 * `filter`, `find` and `list` retain the chosen sort order. A successful `add`, `edit`, `undo` or `redo`
   shows all contacts in that order; tag, untag and delete retain the current filter and sort.
   Changing a sorted field can move a contact to a new position.
-* Numbered commands use the **currently displayed order**. Check the latest card numbers before
-  using `edit`, `delete`, `tag` or `untag`; sorting and contact changes can renumber the list.
+* [Displayed contact indices](#using-displayed-contact-indices) apply to the sorted results.
 * Missing arguments, unsupported fields or directions and extra arguments produce
   a usage error without changing the current results or saved data.
 * Sorting is temporary. It does not reorder saved contacts, create an undoable change or clear redo history.
