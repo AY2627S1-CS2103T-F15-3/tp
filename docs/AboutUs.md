@@ -26,6 +26,10 @@ We are a team based in the [School of Computing, National University of Singapor
 
 * Role: Developer
 * Responsibilities:
+  * Implemented Tag Management, including default and custom tags, and `tag`/`untag` commands.
+  * Developed Favourite Contacts, including `fav`, `unfav`, and `listfav` commands.
+  * Implemented automatic Update and Incomplete Reminders.
+  * Added corresponding tests, UML diagrams, and UG/DG documentation.
 
 ### Almarzooq Abdulaziz Moayad A
 
