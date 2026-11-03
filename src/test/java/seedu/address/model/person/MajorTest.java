@@ -32,6 +32,8 @@ public class MajorTest {
         assertFalse(Major.isValidMajor("Computer\rScience")); // carriage return
         assertFalse(Major.isValidMajor("\u2003")); // Unicode whitespace only
         assertFalse(Major.isValidMajor("Computer\u0085Science")); // Unicode control character
+        assertFalse(Major.isValidMajor("Computer\u2028Science")); // Unicode line separator
+        assertFalse(Major.isValidMajor("Computer\u2029Science")); // Unicode paragraph separator
         assertFalse(Major.isValidMajor("\u00a0")); // no-break space only
         assertFalse(Major.isValidMajor("\u200b")); // zero-width space only
         assertFalse(Major.isValidMajor("\ufeff")); // byte order mark only
