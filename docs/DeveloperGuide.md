@@ -42,6 +42,8 @@ Notable uses of AI:
   including the documentation sections and diagrams marked with `RayWHJ` author tags.
 * OpenAI Codex assisted @RayWHJ with implementing and testing the UniMate message wording, shared empty-field
   formatting and validation of commands that take no parameters, and with writing the related manual tests.
+* OpenAI Codex assisted @RayWHJ with the startup logging fallback, subprocess regression tests and related
+  documentation, and with updating version metadata and UI-test bounds.
 * @sel-couth-ene used Claude Code to draft and review save-failure error messages, the removal of unreachable
   assertions from `EditCommand` and `CommandHistory`, a post-merge test stub fix, and Developer Guide text on
   `find` matching, undo view reset, unbounded history and save-failure behaviour.
@@ -2122,6 +2124,17 @@ after an edit, undo, redo or restart before using its displayed index again.
    3. Click **Copy URL**, close the help window, then paste into the command box.
       Expected: The exact User Guide address is pasted. UniMate shows no network error. Clear the
       command box and turn the network back on.
+<br>
+4. File logging unavailable
+
+   1. In a fresh, writable disposable folder, create an empty directory named `unimate.log.0`.
+      Copy the built `unimate.jar` into that folder and launch it using `java -jar unimate.jar`.
+   2. Expected: The terminal warns that file logging is unavailable and console logging will continue.
+      The UniMate window still opens; no `ExceptionInInitializerError` or `NullPointerException` appears.
+   3. Run `add n/LogFallbackProbe a/NUS`, then `exit`. Relaunch from the same folder and run `find LogFallbackProbe`.
+      Expected: The contact was saved and loads normally despite file logging remaining unavailable.
+      Logging failure does not disable or bypass contact-storage checks. `LogsCenterTest` verifies
+      first-time initialization in fresh JVMs with both a writable log file and a directory blocking its path.
 
 <!-- @@author RayWHJ -->
 
