@@ -4,13 +4,18 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
+import java.lang.management.ManagementFactory;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.FileHandler;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -48,8 +53,16 @@ public class LogsCenterTest {
         String classPath = Path.of(LogsCenter.class.getProtectionDomain().getCodeSource().getLocation().toURI())
                 + File.pathSeparator
                 + Path.of(StartupProbe.class.getProtectionDomain().getCodeSource().getLocation().toURI());
+        List<String> command = new ArrayList<>();
+        command.add(java.toString());
+        // Child JVMs do not inherit the coverage agent; reuse it to append to Gradle's execution data.
+        ManagementFactory.getRuntimeMXBean().getInputArguments().stream()
+                .filter(argument -> argument.startsWith("-javaagent:") && argument.contains("jacoco"))
+                .map(LogsCenterTest::withAbsoluteCoverageDestination)
+                .forEach(command::add);
+        command.addAll(List.of("-cp", classPath, StartupProbe.class.getName()));
         Path outputFile = directory.resolve("startup-output.txt");
-        Process process = new ProcessBuilder(java.toString(), "-cp", classPath, StartupProbe.class.getName())
+        Process process = new ProcessBuilder(command)
                 .directory(directory.toFile())
                 .redirectErrorStream(true)
                 .redirectOutput(outputFile.toFile())
@@ -65,6 +78,13 @@ public class LogsCenterTest {
                 process.waitFor(5, TimeUnit.SECONDS);
             }
         }
+    }
+
+    private static String withAbsoluteCoverageDestination(String argument) {
+        // The probe runs in a temporary directory, but must write to the original coverage file.
+        return Pattern.compile("destfile=([^,]+)").matcher(argument)
+                .replaceFirst(match -> Matcher.quoteReplacement(
+                        "destfile=" + Path.of(match.group(1)).toAbsolutePath()));
     }
 
     /** Initializes logging in a fresh JVM, then reports the installed handlers and emits a message. */
