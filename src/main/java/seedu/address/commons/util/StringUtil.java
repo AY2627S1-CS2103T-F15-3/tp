@@ -49,8 +49,30 @@ public class StringUtil {
      * Returns {@code s} with leading and trailing whitespace (as defined by {@link #WHITESPACE_REGEX}) removed.
      */
     public static String stripWhitespace(String s) {
+        return stripEnds(s, false);
+    }
+
+    /** Removes Unicode whitespace and the ASCII controls removed by {@link String#trim()} from both ends. */
+    public static String stripWhitespaceAndControls(String s) {
+        return stripEnds(s, true);
+    }
+
+    private static String stripEnds(String s, boolean includeAsciiControls) {
         requireNonNull(s);
-        return s.replaceAll("^" + WHITESPACE_REGEX + "+|" + WHITESPACE_REGEX + "+$", "");
+        int start = 0;
+        int end = s.length();
+        while (start < end && isWhitespace(s.codePointAt(start), includeAsciiControls)) {
+            start += Character.charCount(s.codePointAt(start));
+        }
+        while (start < end && isWhitespace(s.codePointBefore(end), includeAsciiControls)) {
+            end -= Character.charCount(s.codePointBefore(end));
+        }
+        return s.substring(start, end);
+    }
+
+    private static boolean isWhitespace(int codePoint, boolean includeAsciiControls) {
+        return Character.isWhitespace(codePoint) || Character.isSpaceChar(codePoint)
+                || (includeAsciiControls && codePoint <= 0x20);
     }
 
     /**

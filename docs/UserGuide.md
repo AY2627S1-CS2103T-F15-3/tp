@@ -159,6 +159,15 @@ Typing in feedback does not enter a command. Press Shift+Tab to return to the co
 * If you are using a PDF version of this document, be careful when copying and pasting commands that span multiple lines as space characters surrounding line-breaks may be omitted when copied over to the application.
 </box>
 
+### Using displayed contact indices
+
+`INDEX` is the positive number beside a contact in the **current displayed list**, including search,
+filter, favourite and sorted views. It is not a permanent contact identifier.
+Sorting or changing contacts can renumber the list; check the latest card numbers before each indexed command.
+Successful `add`, `edit`, `undo` and `redo` commands show all contacts while retaining the active sort.
+Reapply `find`, `filter` or `listfav` before using a result index again.
+Individual commands describe their own index restrictions and whether they keep the current view.
+
 ### Viewing help: `help`
 
 Shows a message explaining how to access the help page.
@@ -170,7 +179,6 @@ Format: `help`
 * The help window shows the User Guide's web address and a **Copy URL** button. It opens and copies
   the address even without an internet connection.
 * Opening the copied address in a web browser needs an internet connection.
-* Offline use was tested on macOS, Linux and Windows, and works as described.
 * Extra arguments, such as `help 123`, are rejected without opening the help window.
 
 
@@ -191,15 +199,14 @@ Format: `add n/NAME [p/PHONE_NUMBER] [e/EMAIL] a/ADDRESS [m/MAJOR] [c/CLASS_YEAR
 | Major `m/` | Optional, non-blank text on one line. |
 | Class year `c/` | Optional. Four digits from `2000` to `2099`. |
 | Tag `t/` | Optional. English letters and digits, without spaces. Repeat the prefix for multiple tags. |
+| Default tag `d/` | Optional. An integer from `1` to `5` that adds a default tag: `Friend`, `Classmate`, `Teammate`, `Tutor` or `Prof`, respectively. Run [`tags`](#listing-default-tags-tags) to view this list. Repeat the prefix for multiple default tags. |
 
 Omit an optional field when unknown; do not supply an empty value in `add`.
-
-Email validation does not impose a maximum length. Long addresses follow the same format rules
-and can be saved and loaded without a validation stack overflow. Invalid addresses are rejected
-without changing the contact list.
+Emails have no maximum length.
 
 For example, `add n/Alex Tan a/NUS m/Computer Science c/2027` creates a contact
-without a phone or email. Use a name that is not already saved.
+without a phone or email, and `add n/Bea Lim a/NUS t/CS2103T d/2` tags Bea as `CS2103T` and
+`Classmate`. Use a name that is not already saved.
 
 <box type="tip" seamless>
 
@@ -551,7 +558,7 @@ Format: `listfav`
 
 #### Switching between lists
 
-* The existing AB3 `list` command shows all contacts. The new `listfav` command shows only favourites. Both change the view without changing contact data or favourite status.
+* `list` shows all contacts. `listfav` shows only favourites. Both change the view without changing contact data or favourite status.
 * `fav INDEX` and `unfav INDEX` always use the indices in the current view, including search results and the favourite list. A displayed index is not a permanent contact identifier.
 * For example, run `list`, then `fav 1`, then `listfav`. Run `unfav 1` to remove the first person shown in the favourite list, then `list` to see all contacts again.
 * The existing `add` and `edit` commands restore the full list after success. Run `listfav` again to return to favourites. Tag and untag operations preserve the current filter and favourite status.
@@ -834,10 +841,9 @@ Format: `filter [m/MAJOR] [c/CLASS_YEAR] [t/TAG]`
   [Window and display limitations](#window-and-display) for recovery steps.
 * Each `filter` replaces the previous search or filter and retains the active sort order, or the saved
   contact order if no sort has been chosen. `find` replaces the filter; `list` shows all contacts again.
-* Indices refer to the currently displayed list. For example, `delete 1` targets the first filtered result.
+* [Displayed contact indices](#using-displayed-contact-indices) apply: `delete 1` targets the first filtered result.
   Deleting or untagging a contact that no longer matches removes it from the results and renumbers the list.
-* Successful `add`, `edit`, `undo` and `redo` commands show the full list.
-  Reapply the filter before using a filtered index again. Tag and untag retain the active filter.
+  Reapply the filter after a command shows the full list. Tag and untag retain the active filter.
 * Filters are temporary: restarting UniMate shows the full contact list. Filtering does not create
   an undoable data change or clear redo history.
 
@@ -879,8 +885,7 @@ Format: `sort FIELD DIRECTION` or `sort reset`
 * `filter`, `find` and `list` retain the chosen sort order. A successful `add`, `edit`, `undo` or `redo`
   shows all contacts in that order; tag, untag and delete retain the current filter and sort.
   Changing a sorted field can move a contact to a new position.
-* Numbered commands use the **currently displayed order**. Check the latest card numbers before
-  using `edit`, `delete`, `tag` or `untag`; sorting and contact changes can renumber the list.
+* [Displayed contact indices](#using-displayed-contact-indices) apply to the sorted results.
 * Missing arguments, unsupported fields or directions and extra arguments produce
   a usage error without changing the current results or saved data.
 * Sorting is temporary. It does not reorder saved contacts, create an undoable change or clear redo history.
@@ -1043,7 +1048,8 @@ Format: `exit`
 
 Extra arguments, such as `exit now`, are rejected and the application stays open.
 
-If a save has failed, use `exit` to retry saving. Closing the window discards any unsaved changes.
+If a save has failed, use `exit` to retry saving. Closing the window or choosing **File** > **Exit**
+discards any unsaved changes.
 
 If saving still fails, UniMate stays open with a recovery message. Fix the saving problem and run `exit` again.
 With no unsaved contact changes, `exit` works even when the data file is read-only.
@@ -1110,8 +1116,6 @@ message, the result box shows one of these errors:
 * `Could not save data to file ... due to insufficient permissions to write to the file or the folder.`
 * `Could not save data due to the following error: ...`
 
-Earlier release testing confirmed read-only contact-save errors on macOS, Linux and Windows.
-The new save and UI recovery regressions were checked on Windows.
 
 When contact changes remain unsaved, the message also explains how to recover. For a new change,
 `undo` reverts it; after an `undo`, `redo` restores it. A failed `list` retry identifies earlier
@@ -1134,8 +1138,8 @@ Follow [Recovery after a loading error](#recovery-after-a-loading-error) before 
 
 **Caution:** A save error does **not** mean a contact change was cancelled. Run `undo` only if you
 want to revert that change. To keep it, fix the cause of the error, then run `list` to save all current
-contacts. Closing with the window's close button before saving discards changes since the last
-successful save.
+contacts. Closing with the window's close button or **File** > **Exit** before saving discards
+changes since the last successful save.
 </box>
 
 ### Editing the data file
@@ -1196,10 +1200,9 @@ remedy or workaround where one exists.
 1. **When using multiple screens**, if you move the application to a secondary screen, and later switch to using only the primary screen, the GUI will open off-screen. The remedy is to delete the `preferences.json` file created by the application before running the application again.
 2. **If you minimize the Help Window** and then run the `help` command (or use the `Help` menu, or the keyboard shortcut `F1`) again, the original Help Window will remain minimized, and no new Help Window will appear. The remedy is to manually restore the minimized Help Window.
 3. **Very long search or filter criteria can hide the contact list.** The status text above the
-   cards grows as it wraps, leaving little or no space for contacts in a small window. This was
-   reproduced on Windows at 450 × 600 with `find StatusProbe` followed by 250 space-separated `a`
-   keywords, and with a long exact-major filter. Contacts are not deleted. Run `list` to restore
-   the contact list, then use a shorter search or filter.
+   cards grows as it wraps, leaving little or no space for contacts in a small window, for example
+   after a search with hundreds of keywords. Contacts are not deleted. Run `list` to restore the
+   contact list, then use a shorter search or filter.
 
 ### Keyboard
 
@@ -1213,7 +1216,7 @@ remedy or workaround where one exists.
 ### Data and saving
 
 8. **If saving the data file fails**, contact changes already applied remain inside UniMate. The save error replaces the usual success message and explains which changes still need saving. For a change made by that command, it names `redo` after `undo`, or `undo` otherwise, to reverse it. To keep the changes, fix the saving problem and run `list` to retry. See [Saving the data](#saving-the-data).
-9. **If pending changes cannot be saved, `exit` keeps UniMate open.** Fix the saving problem, then run `list` to retry saving or `exit` to save and close. `help` still works. With no unsaved contact changes, `exit` works even when the data file is read-only. Using the window's close button discards unsaved changes.
+9. **If pending changes cannot be saved, `exit` keeps UniMate open.** Fix the saving problem, then run `list` to retry saving or `exit` to save and close. `help` still works. With no unsaved contact changes, `exit` works even when the data file is read-only. Using the window's close button or **File** > **Exit** discards unsaved changes.
 
 ### Input
 
