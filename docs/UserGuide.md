@@ -977,7 +977,7 @@ Format: `undo`
 
 5. Commands that did not change anything are skipped, and `undo` takes back the change before them.
    * `edit` with the same details, `tag` with a tag the contact already has, or `clear` on an empty list
-   * commands that failed, such as adding a duplicate contact
+   * commands rejected before changing contact data, such as adding a duplicate contact
    * commands that only show contacts, such as `list`, `find`, `filter`, `sort`, `listfav`, `shownote`, `tags` and `help`
 
 6. Do not type anything after `undo`.
@@ -1196,6 +1196,8 @@ This section lists every known issue and limitation of the current release. Each
 remedy or workaround where one exists.
 
 ### Window and display
+
+UniMate’s minimum window size is **450 × 600 logical pixels**.
 
 1. **When using multiple screens**, if you move the application to a secondary screen, and later switch to using only the primary screen, the GUI will open off-screen. The remedy is to delete the `preferences.json` file created by the application before running the application again.
 2. **If you minimize the Help Window** and then run the `help` command (or use the `Help` menu, or the keyboard shortcut `F1`) again, the original Help Window will remain minimized, and no new Help Window will appear. The remedy is to manually restore the minimized Help Window.

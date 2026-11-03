@@ -22,4 +22,4 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           rootDirectory: './docs'
           baseUrl: '/tp' # assuming your repo name is tp
-          version: '^7.2.1'
+          version: '7.2.1'

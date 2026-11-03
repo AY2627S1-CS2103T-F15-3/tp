@@ -20,7 +20,7 @@ public class Major {
      * Spaces and punctuation are allowed, as in "Philosophy, Politics & Economics".
      */
     public static final String VALIDATION_REGEX =
-            "(?=.*" + StringUtil.VISIBLE_CHARACTER_REGEX + ")[^\\p{javaISOControl}]+";
+            "(?=.*" + StringUtil.VISIBLE_CHARACTER_REGEX + ")[^\\p{javaISOControl}\\p{Zl}\\p{Zp}]+";
 
     public static final Major EMPTY = new Major("");
 
