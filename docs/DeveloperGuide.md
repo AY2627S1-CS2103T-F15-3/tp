@@ -134,7 +134,7 @@ Here's a (partial) class diagram of the `Logic` component:
 
 How the `Logic` component works:
 
-1. When `Logic` is called upon to execute a command, the command is passed to an `AddressBookParser` object, which in turn creates a parser that matches the command (e.g., `DeleteCommandParser`) and uses it to parse the command.
+1. `LogicManager` passes the input to `AddressBookParser`, which returns the appropriate command.
 2. This results in a `Command` object (more precisely, an object of one of its subclasses e.g., `DeleteCommand`) which is executed by the `LogicManager`.
 3. The command can communicate with the `Model` when it is executed (e.g., to delete a contact).
    A command that changes contact data also commits the change to the undo history.
@@ -152,7 +152,7 @@ Here are the other classes in `Logic` (omitted from the class diagram above) tha
 How the parsing works:
 * `AddressBookParser#parseCommand` dispatches on `commandWord.toLowerCase(Locale.ROOT)`, so all command words are case-insensitive regardless of the system locale. Argument capitalization is retained. Whitespace is normalized before dispatch except for `note`,
   whose parser receives the raw arguments so that internal note whitespace can be preserved. Prefix matching and argument validation retain their existing rules, and `Tag` equality remains case-sensitive.
-* When called upon to parse a user command, the `AddressBookParser` class creates an `XYZCommandParser` (`XYZ` is a placeholder for the specific command name, e.g., `AddCommandParser`). The parser uses the other classes shown above to parse the user command and create an `XYZCommand` object (e.g., `AddCommand`). The `AddressBookParser` returns that object as a `Command` object.
+* `AddressBookParser` delegates commands with arguments to their corresponding parsers, such as `AddCommandParser`. It validates and constructs parameterless commands such as `list`, `help` and `clear` directly.
 * All `XYZCommandParser` classes, such as `AddCommandParser` and `DeleteCommandParser`, implement the `Parser` interface so they can be treated similarly where appropriate, for example during testing.
 
 ### Model component
@@ -3127,7 +3127,7 @@ Each item below is a planned fix for a limitation listed in
    *Planned fix:* validate the final label's syntax and check its length with a
    separate condition, so the validator matches `Email.MESSAGE_CONSTRAINTS`.
 
-2. **Report, instead of silently removing, control characters in pasted input.**
+2. **Preserve word separation in pasted input.**
    `Notes` rejects tabs and line breaks, but the command box is a single-line JavaFX `TextField`,
    which strips them from pasted text before `CommandBox#handleCommandEntered` runs. Pasting
    `Left<TAB>Right` into `note 1 ...` therefore saves `LeftRight`. The parser-level rejection still

@@ -17,7 +17,7 @@ CI passing on all three platforms is useful evidence, but does not replace nativ
 1. Use Java 25, including the [prescribed JDK+FX on macOS](https://se-education.org/guides/tutorials/javaInstallationMac.html).
 1. Launch from that folder with `java -jar unimate.jar`. Do not reuse your real contact data.
 1. Follow the [DG manual tests](DeveloperGuide.md#appendix-instructions-for-manual-testing).
-   Check the guide version against the candidate; v1.4 does not contain all v1.5 features.
+   Use the guides for the version of the candidate JAR.
 
 ## Native desktop checks
 
@@ -26,7 +26,7 @@ Record pass/fail and a screenshot for each OS, rather than assuming identical fo
 | Area | Procedure and expected result |
 | --- | --- |
 | Resizing | Test wide and minimum-width windows, then maximize and restore. Cards must stay within the list and values must remain reachable. |
-| Resolution and scaling | At 1920×1080 or higher, check 100% and 125% for a comfortable experience. At 1280×720 or higher and 150%, all functions must remain usable. Record the actual settings and check text, icons, focus outlines and scrollbars. 200% is optional. |
+| Resolution and scaling | At 1920×1080 or higher, check 100% and 125% for a comfortable experience. At 1280×720 and 150%, record the usable work area in logical pixels. UniMate requires at least 450 × 600 logical pixels to fit; if the available area is smaller, record that constraint and repeat at a mode that fits. Check text, icons, focus outlines and scrollbars. 200% is optional. |
 | Keyboard | Follow the UG Tab/Shift+Tab route with physical keys. Only the selected contact's expandable values join the route; the outline must identify focus. |
 | Expansion | Expand and collapse long names, tags and each field using mouse and Enter/Space. Scroll to the end, resize and check that adjacent cards do not overlap. |
 | History | Check Up/Down draft restoration and Alt+Up/Down (Option on macOS). Repeated submissions occupy separate `History i/N` positions; prefix search skips positions, boundary presses pulse the label, and returning to the draft or submitting a failed command hides it. History keys must not execute commands. |
@@ -60,5 +60,4 @@ hardware, fixture, cold/warm state and observed times. Include rendering and dis
 an end-to-end command; a parser-only benchmark does not establish UI responsiveness.
 
 Before publishing, record remaining failures and limitations, check the final release notes and
-UG/DG against the actual candidate, and verify the uploaded JAR matches the tested SHA-256. Replace
-the guides' unreleased notice and `MainApp.VERSION` development suffix only when cutting that release.
+UG/DG against the actual candidate, and verify the uploaded JAR matches the tested SHA-256. Confirm that the guides, release tag and `MainApp.VERSION` identify the same version.

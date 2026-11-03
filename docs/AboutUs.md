@@ -47,7 +47,7 @@ We are a team based in the [School of Computing, National University of Singapor
 [[github](http://github.com/hyunmin1211)]
 
 * Role: Developer
-* Responsibilities: UI
+* Responsibilities: Contact card layout and keyboard navigation; academic fields in Add; filtering and sorting; related tests, guides and UML.
 
 ### Selene Chan
 
