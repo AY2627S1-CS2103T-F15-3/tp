@@ -26,6 +26,10 @@ We are a team based in the [School of Computing, National University of Singapor
 
 * Role: Developer
 * Responsibilities:
+  * Implemented Tag Management, including default and custom tags, and `tag`/`untag` commands.
+  * Developed Favourite Contacts, including `fav`, `unfav`, and `listfav` commands.
+  * Implemented automatic Update and Incomplete Reminders.
+  * Added corresponding tests, UML diagrams, and UG/DG documentation.
 
 ### Almarzooq Abdulaziz Moayad A
 
@@ -34,7 +38,7 @@ We are a team based in the [School of Computing, National University of Singapor
 [[github](http://github.com/aziz-Almarzooq)]
 
 * Role: Developer
-* Responsibilities:
+* Responsibilities: View previously added Contacts, track each contact's latest update date.
 
 ### Hyunmin Lee
 
@@ -43,7 +47,7 @@ We are a team based in the [School of Computing, National University of Singapor
 [[github](http://github.com/hyunmin1211)]
 
 * Role: Developer
-* Responsibilities: Data
+* Responsibilities: UI
 
 ### Selene Chan
 
@@ -61,6 +65,6 @@ We are a team based in the [School of Computing, National University of Singapor
 [[github](https://github.com/RayWHJ)]
 
 * Role: Developer
-* Responsibilities:
+* Responsibilities: Command Logic
 
 
