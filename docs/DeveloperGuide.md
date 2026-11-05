@@ -56,6 +56,8 @@ Notable uses of AI:
 * @hyunmin1211 used OpenAI Codex to assist with implementing and reviewing Add, Filter/Sort and UI changes,
   writing and checking related tests, revising the User Guide, Developer Guide and UML diagrams,
   and auditing documentation against the implementation.
+* @aziz-Almarzooq used OpenAI Codex to assist with implementing and reviewing code, writing tests,
+  investigating bugs, and drafting and revising the User Guide, Developer Guide and UML diagrams.
 
 --------------------------------------------------------------------------------------------------------------------
 
